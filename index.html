@@ -1,524 +1,185 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>❄️ Yukina — Discord Bot</title>
-
-    <meta
-        name="description"
-        content="Yukina — um bot de Discord focado em economia, diversão, recompensas e apostas virtuais."
-    >
-
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            background:
-                radial-gradient(circle at top, #25205c 0%, #0b0d24 45%, #050611 100%);
-            color: #ffffff;
-            min-height: 100vh;
-            overflow-x: hidden;
-        }
-
-        /* NEVE */
-
-        .snow {
-            position: fixed;
-            top: -10px;
-            color: #ffffff;
-            opacity: 0.8;
-            animation: fall linear infinite;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        @keyframes fall {
-            to {
-                transform: translateY(110vh) rotate(360deg);
-            }
-        }
-
-        /* MENU */
-
-        nav {
-            position: fixed;
-            top: 0;
-            width: 100%;
-            padding: 18px 7%;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            background: rgba(5, 6, 17, 0.75);
-            backdrop-filter: blur(15px);
-            border-bottom: 1px solid rgba(190, 160, 255, 0.15);
-            z-index: 10;
-        }
-
-        .logo {
-            font-size: 24px;
-            font-weight: bold;
-            color: #d8c7ff;
-        }
-
-        nav a {
-            color: #ddd8ee;
-            text-decoration: none;
-            margin-left: 25px;
-            transition: 0.3s;
-        }
-
-        nav a:hover {
-            color: #bda2ff;
-        }
-
-        /* HERO */
-
-        .hero {
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            text-align: center;
-            padding: 120px 20px 70px;
-            position: relative;
-            z-index: 2;
-        }
-
-        .hero-content {
-            max-width: 850px;
-        }
-
-        .badge {
-            display: inline-block;
-            padding: 8px 18px;
-            border-radius: 30px;
-            background: rgba(180, 150, 255, 0.12);
-            border: 1px solid rgba(190, 160, 255, 0.3);
-            color: #cdb8ff;
-            margin-bottom: 25px;
-        }
-
-        h1 {
-            font-size: clamp(55px, 12vw, 105px);
-            font-weight: 900;
-            letter-spacing: 3px;
-            background: linear-gradient(
-                90deg,
-                #ffffff,
-                #cdb8ff,
-                #91dfff
-            );
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 0 0 40px rgba(160, 130, 255, 0.25);
-        }
-
-        .hero p {
-            margin: 25px auto;
-            max-width: 650px;
-            color: #bcb9cf;
-            font-size: 18px;
-            line-height: 1.7;
-        }
-
-        /* BOTÕES */
-
-        .buttons {
-            display: flex;
-            justify-content: center;
-            gap: 15px;
-            flex-wrap: wrap;
-            margin-top: 30px;
-        }
-
-        .btn {
-            padding: 14px 25px;
-            border-radius: 12px;
-            text-decoration: none;
-            font-weight: bold;
-            transition: 0.3s;
-            display: inline-block;
-        }
-
-        .primary {
-            background: linear-gradient(135deg, #a987ff, #7c63d9);
-            color: white;
-            box-shadow: 0 0 25px rgba(150, 120, 255, 0.3);
-        }
-
-        .secondary {
-            border: 1px solid rgba(190, 160, 255, 0.35);
-            color: #eeeaff;
-            background: rgba(255, 255, 255, 0.04);
-        }
-
-        .btn:hover {
-            transform: translateY(-4px);
-            filter: brightness(1.12);
-        }
-
-        /* SEÇÕES */
-
-        section {
-            padding: 90px 7%;
-            position: relative;
-            z-index: 2;
-        }
-
-        .section-title {
-            text-align: center;
-            font-size: 38px;
-            margin-bottom: 15px;
-        }
-
-        .section-description {
-            text-align: center;
-            color: #aaa7bd;
-            max-width: 650px;
-            margin: auto;
-            line-height: 1.7;
-        }
-
-        /* CARDS */
-
-        .cards {
-            margin-top: 50px;
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-            gap: 20px;
-        }
-
-        .card {
-            padding: 30px;
-            border-radius: 20px;
-            background: rgba(22, 24, 50, 0.7);
-            border: 1px solid rgba(190, 160, 255, 0.15);
-            backdrop-filter: blur(12px);
-            transition: 0.3s;
-        }
-
-        .card:hover {
-            transform: translateY(-7px);
-            border-color: rgba(190, 160, 255, 0.4);
-        }
-
-        .card-icon {
-            font-size: 35px;
-            margin-bottom: 15px;
-        }
-
-        .card h3 {
-            margin-bottom: 10px;
-            color: #ded2ff;
-        }
-
-        .card p {
-            color: #aaa7bd;
-            line-height: 1.6;
-        }
-
-        /* SOBRE */
-
-        .about {
-            max-width: 850px;
-            margin: auto;
-            text-align: center;
-        }
-
-        .about p {
-            color: #b9b6c9;
-            line-height: 1.8;
-            margin-top: 20px;
-        }
-
-        /* FOOTER */
-
-        footer {
-            padding: 40px 20px;
-            text-align: center;
-            color: #77748a;
-            border-top: 1px solid rgba(190, 160, 255, 0.1);
-            position: relative;
-            z-index: 2;
-        }
-
-        footer strong {
-            color: #cbb8ff;
-        }
-
-        /* CELULAR */
-
-        @media (max-width: 700px) {
-
-            nav {
-                padding: 15px 5%;
-            }
-
-            nav div:last-child {
-                display: none;
-            }
-
-            .hero {
-                padding-top: 120px;
-            }
-
-            .hero p {
-                font-size: 16px;
-            }
-
-            section {
-                padding: 70px 5%;
-            }
-
-            .section-title {
-                font-size: 30px;
-            }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Yukina — Central de Comando</title>
+<meta name="description" content="Yukina — uma central de sistemas para Discord, automação e infraestrutura Lavalink.">
+<style>
+:root{
+  --bg:#060713;--bg2:#0b0d1d;--panel:rgba(15,18,38,.76);--panel2:rgba(20,24,49,.9);
+  --line:rgba(174,151,255,.14);--text:#f4f1ff;--muted:#9496ad;--purple:#a78bfa;
+  --cyan:#67e8f9;--green:#67e8a5;--pink:#f0abfc;--shadow:0 25px 80px rgba(0,0,0,.35);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:
+radial-gradient(circle at 80% 0%,rgba(122,86,255,.18),transparent 32rem),
+radial-gradient(circle at 10% 35%,rgba(43,196,220,.07),transparent 28rem),var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body:before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.22;background-image:linear-gradient(rgba(255,255,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.025) 1px,transparent 1px);background-size:48px 48px;mask-image:linear-gradient(to bottom,#000,transparent 90%);z-index:-1}
+a{color:inherit;text-decoration:none}
+button{font:inherit}
+.shell{display:grid;grid-template-columns:250px 1fr;min-height:100vh}
+.sidebar{position:fixed;width:250px;height:100vh;border-right:1px solid var(--line);background:rgba(5,7,17,.82);backdrop-filter:blur(24px);padding:24px 16px;display:flex;flex-direction:column;z-index:20}
+.brand{display:flex;align-items:center;gap:12px;padding:8px 10px 25px}
+.brand-mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(145deg,#c4b5fd,#6366f1);display:grid;place-items:center;color:#fff;font-size:21px;box-shadow:0 0 30px rgba(139,92,246,.28)}
+.brand strong{font-size:17px}.brand span{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.nav-label{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:#5f6279;padding:14px 12px 8px}
+.nav a{display:flex;align-items:center;gap:11px;padding:11px 12px;border-radius:12px;color:#aeb0c5;font-size:13px;margin:3px 0;transition:.2s}
+.nav a:hover,.nav a.active{background:rgba(167,139,250,.1);color:#fff;border:1px solid rgba(167,139,250,.12)}
+.nav .dot{width:7px;height:7px;border-radius:50%;background:#565970}
+.nav a.active .dot{background:var(--purple);box-shadow:0 0 12px var(--purple)}
+.side-bottom{margin-top:auto;padding:12px}
+.status-mini{border:1px solid var(--line);background:rgba(255,255,255,.025);padding:13px;border-radius:14px}
+.status-mini .row{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin:5px 0}
+.online{color:var(--green)!important}
+main{grid-column:2;padding:24px 34px 70px;max-width:1500px;width:100%;margin:auto}
+.topbar{height:54px;display:flex;align-items:center;justify-content:space-between;margin-bottom:30px}
+.crumb{font-size:12px;color:var(--muted)}.crumb b{color:#e5e0f5}
+.top-actions{display:flex;gap:9px}
+.icon-btn{border:1px solid var(--line);background:rgba(255,255,255,.035);color:#c7c9d8;border-radius:11px;padding:9px 12px;font-size:12px}
+.hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:28px;padding:48px;background:
+linear-gradient(120deg,rgba(20,23,50,.92),rgba(9,12,28,.72));box-shadow:var(--shadow);min-height:370px}
+.hero:after{content:"Y";position:absolute;right:5%;top:-40px;font-size:330px;font-weight:900;color:rgba(167,139,250,.035);line-height:1;pointer-events:none}
+.eyebrow{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(103,232,249,.16);background:rgba(103,232,249,.05);color:#9beaf5;padding:7px 11px;border-radius:99px;font-size:11px}
+.pulse{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 12px var(--green)}
+.hero h1{font-size:clamp(42px,6vw,76px);letter-spacing:-3px;margin:22px 0 13px;max-width:760px;line-height:.98}
+.hero h1 span{background:linear-gradient(90deg,#fff,#c4b5fd,#67e8f9);-webkit-background-clip:text;color:transparent}
+.hero p{max-width:650px;color:#9da0b7;line-height:1.75;font-size:15px}
+.hero-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:27px}
+.btn{padding:12px 17px;border-radius:11px;border:1px solid var(--line);font-weight:700;font-size:12px;transition:.2s}
+.btn:hover{transform:translateY(-2px)}.btn.primary{background:linear-gradient(135deg,#8b5cf6,#6366f1);border-color:transparent;box-shadow:0 10px 30px rgba(99,102,241,.2)}.btn.ghost{background:rgba(255,255,255,.035)}
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0 38px}
+.metric{border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:17px}.metric small{color:#74778d;font-size:10px;text-transform:uppercase;letter-spacing:1px}.metric strong{display:block;font-size:22px;margin-top:7px}.metric span{font-size:10px;color:var(--green)}
+.section-head{display:flex;align-items:end;justify-content:space-between;margin:38px 0 15px}.section-head h2{font-size:24px;letter-spacing:-.5px}.section-head p{color:var(--muted);font-size:11px}
+.systems{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.system{border:1px solid var(--line);background:linear-gradient(145deg,rgba(19,22,44,.85),rgba(11,14,30,.78));border-radius:18px;padding:22px;min-height:180px;transition:.25s;position:relative;overflow:hidden}
+.system:hover{transform:translateY(-4px);border-color:rgba(167,139,250,.3);box-shadow:0 20px 50px rgba(0,0,0,.22)}
+.system:after{content:"";position:absolute;width:100px;height:100px;border-radius:50%;right:-40px;top:-40px;background:rgba(167,139,250,.07);filter:blur(10px)}
+.system-top{display:flex;justify-content:space-between;align-items:center}.system-icon{font-size:24px}.tag{font-size:9px;padding:5px 8px;border-radius:99px;background:rgba(103,232,165,.08);color:#82e8ae;border:1px solid rgba(103,232,165,.12)}
+.system h3{font-size:16px;margin:18px 0 7px}.system p{font-size:12px;line-height:1.6;color:var(--muted)}
+.system-foot{margin-top:17px;color:#76798f;font-size:10px;display:flex;justify-content:space-between}.system-foot b{color:#c5c7d5}
+.workspace{display:grid;grid-template-columns:1.4fr .8fr;gap:14px}
+.panel{border:1px solid var(--line);background:var(--panel);border-radius:18px;padding:22px}
+.panel h3{font-size:15px}.panel-sub{font-size:10px;color:var(--muted);margin-top:5px}
+.timeline{margin-top:20px}.event{display:grid;grid-template-columns:28px 1fr auto;gap:11px;align-items:start;padding:12px 0;border-top:1px solid rgba(255,255,255,.05)}.event:first-child{border-top:0}.event-icon{width:28px;height:28px;border-radius:9px;background:rgba(167,139,250,.1);display:grid;place-items:center;font-size:12px}.event strong{font-size:11px}.event p{font-size:10px;color:var(--muted);margin-top:3px}.event time{font-size:9px;color:#66697d}
+.server-card{margin-top:18px;border:1px solid rgba(103,232,165,.13);background:rgba(103,232,165,.035);border-radius:14px;padding:15px}.server-title{display:flex;justify-content:space-between;font-size:11px}.server-title b{color:var(--green)}.bar{height:5px;background:#1b2031;border-radius:99px;margin:12px 0 9px;overflow:hidden}.bar i{display:block;height:100%;width:72%;background:linear-gradient(90deg,var(--purple),var(--cyan));border-radius:99px}.server-meta{display:flex;justify-content:space-between;font-size:9px;color:var(--muted)}
+.arch{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:18px}.node{padding:15px 8px;text-align:center;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.02);font-size:10px;color:#b9bbca}.node b{display:block;color:#fff;margin-bottom:4px}.node:after{content:"→";position:absolute;margin-left:18px;color:#595c72}.node:last-child:after{display:none}
+.roadmap{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.phase{border-left:2px solid #7c3aed;padding:5px 0 5px 15px}.phase small{color:#7f8297;font-size:9px}.phase h4{font-size:12px;margin:5px 0}.phase p{font-size:10px;color:var(--muted);line-height:1.5}
+footer{border-top:1px solid var(--line);margin-top:55px;padding:25px 0;color:#676a80;font-size:10px;display:flex;justify-content:space-between}
+@media(max-width:1000px){.shell{grid-template-columns:1fr}.sidebar{position:relative;width:100%;height:auto;border-right:0;border-bottom:1px solid var(--line);padding:12px 16px}.brand{padding:4px 8px 12px}.nav-label,.side-bottom{display:none}.nav{display:flex;overflow:auto;gap:3px}.nav a{white-space:nowrap}.nav a span:last-child{display:none}main{grid-column:1;padding:18px}.systems{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:680px){main{padding:12px}.topbar{margin-bottom:16px}.top-actions{display:none}.hero{padding:30px 22px;min-height:410px}.hero h1{font-size:48px}.metrics{grid-template-columns:repeat(2,1fr)}.systems,.workspace,.roadmap{grid-template-columns:1fr}.arch{grid-template-columns:1fr 1fr}.node:after{display:none}footer{display:block;line-height:2}.hero p{font-size:13px}}
+</style>
 </head>
-
 <body>
+<div class="shell">
+<aside class="sidebar">
+  <div class="brand"><div class="brand-mark">✦</div><div><strong>YUKINA</strong><span>MANAGER • CORE SYSTEM</span></div></div>
+  <div class="nav-label">Navegação</div>
+  <nav class="nav">
+    <a class="active" href="#inicio"><i class="dot"></i><span>Visão geral</span></a>
+    <a href="#sistemas"><i class="dot"></i><span>Sistemas</span></a>
+    <a href="#infra"><i class="dot"></i><span>Infraestrutura</span></a>
+    <a href="#atividade"><i class="dot"></i><span>Atividade</span></a>
+    <a href="#roadmap"><i class="dot"></i><span>Roadmap</span></a>
+  </nav>
+  <div class="nav-label">Núcleo</div>
+  <nav class="nav">
+    <a href="#infra"><i class="dot"></i><span>Runner</span></a>
+    <a href="#infra"><i class="dot"></i><span>Engine</span></a>
+    <a href="#infra"><i class="dot"></i><span>API</span></a>
+    <a href="#infra"><i class="dot"></i><span>Monitor</span></a>
+  </nav>
+  <div class="side-bottom"><div class="status-mini">
+    <div class="row"><span>Yukina Core</span><b class="online">● online</b></div>
+    <div class="row"><span>Ambiente</span><b>produção</b></div>
+    <div class="row"><span>Versão</span><b>0.1.0</b></div>
+  </div></div>
+</aside>
 
-    <!-- NEVE -->
+<main id="inicio">
+  <div class="topbar">
+    <div class="crumb">YUKINA / <b>Central de Comando</b></div>
+    <div class="top-actions"><div class="icon-btn">◉ Sistema estável</div><div class="icon-btn">⌘ v0.1.0</div></div>
+  </div>
 
-    <div class="snow" style="left:5%; animation-duration:8s;">❄</div>
-    <div class="snow" style="left:15%; animation-duration:12s;">✦</div>
-    <div class="snow" style="left:25%; animation-duration:10s;">❄</div>
-    <div class="snow" style="left:40%; animation-duration:14s;">✧</div>
-    <div class="snow" style="left:55%; animation-duration:9s;">❄</div>
-    <div class="snow" style="left:70%; animation-duration:13s;">✦</div>
-    <div class="snow" style="left:85%; animation-duration:11s;">❄</div>
-    <div class="snow" style="left:95%; animation-duration:15s;">✧</div>
+  <section class="hero">
+    <div class="eyebrow"><i class="pulse"></i> NÚCLEO OPERACIONAL ATIVO</div>
+    <h1>Uma história começa<br>quando <span>os sistemas despertam.</span></h1>
+    <p>A Yukina deixou de ser apenas uma página. Esta é a central onde seus sistemas, infraestrutura, automações e evolução se encontram em um único lugar.</p>
+    <div class="hero-actions">
+      <a class="btn primary" href="#sistemas">✦ Explorar sistemas</a>
+      <a class="btn ghost" href="#infra">◈ Ver infraestrutura</a>
+    </div>
+  </section>
 
+  <div class="metrics">
+    <div class="metric"><small>Núcleo</small><strong>Online</strong><span>● operação normal</span></div>
+    <div class="metric"><small>Sistemas</small><strong>08</strong><span>● módulos registrados</span></div>
+    <div class="metric"><small>Infraestrutura</small><strong>Lavalink</strong><span>● preparado</span></div>
+    <div class="metric"><small>Arquitetura</small><strong>Modular</strong><span>● expansão ativa</span></div>
+  </div>
 
-    <!-- MENU -->
+  <section id="sistemas">
+    <div class="section-head"><div><h2>✦ Os sistemas</h2><p>O universo da Yukina é dividido em módulos independentes.</p></div></div>
+    <div class="systems">
+      <article class="system"><div class="system-top"><div class="system-icon">⚙️</div><span class="tag">ATIVO</span></div><h3>Core Manager</h3><p>O núcleo responsável por coordenar os demais sistemas e manter a arquitetura organizada.</p><div class="system-foot"><span>Função</span><b>Orquestração</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">▶️</div><span class="tag">ATIVO</span></div><h3>Runner</h3><p>Inicia, monitora, reinicia e registra o processo do Lavalink.</p><div class="system-foot"><span>Função</span><b>Execução</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">⚡</div><span class="tag">ATIVO</span></div><h3>Engine</h3><p>O motor que mantém o Runner vivo e reage quando o processo deixa de responder.</p><div class="system-foot"><span>Função</span><b>Persistência</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">⌁</div><span class="tag">ATIVO</span></div><h3>Execution</h3><p>Camada que transforma comandos internos em operações controladas sobre o núcleo.</p><div class="system-foot"><span>Função</span><b>Controle</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">◇</div><span class="tag">ATIVO</span></div><h3>Requests</h3><p>Recebe, identifica e valida solicitações antes que elas avancem pela arquitetura.</p><div class="system-foot"><span>Função</span><b>Validação</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">🔐</div><span class="tag">ATIVO</span></div><h3>Authentication</h3><p>Protege as entradas administrativas e controla quem pode acessar o Manager.</p><div class="system-foot"><span>Função</span><b>Segurança</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">◉</div><span class="tag">ATIVO</span></div><h3>Monitor</h3><p>Acompanha a saúde dos serviços e pode reagir a indisponibilidades.</p><div class="system-foot"><span>Função</span><b>Observabilidade</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">⌘</div><span class="tag">ATIVO</span></div><h3>GitHub Access</h3><p>Camada de integração para autenticar e consultar o repositório da Yukina com segurança.</p><div class="system-foot"><span>Função</span><b>Integração</b></div></article>
+      <article class="system"><div class="system-top"><div class="system-icon">▣</div><span class="tag">BASE</span></div><h3>Configuration</h3><p>Centraliza as configurações do Manager para que os módulos compartilhem uma mesma base.</p><div class="system-foot"><span>Função</span><b>Configuração</b></div></article>
+    </div>
+  </section>
 
-    <nav>
-
-        <div class="logo">
-            ❄️・𝓨𝓾𝓴𝓲𝓷𝓪・💜
+  <section id="infra">
+    <div class="section-head"><div><h2>◈ Infraestrutura</h2><p>O caminho que transforma uma requisição em um serviço funcionando.</p></div></div>
+    <div class="workspace">
+      <div class="panel">
+        <h3>Arquitetura operacional</h3><div class="panel-sub">Fluxo principal do Yukina Manager</div>
+        <div class="arch">
+          <div class="node"><b>API</b>Entrada</div><div class="node"><b>Requests</b>Validação</div><div class="node"><b>Execution</b>Controle</div><div class="node"><b>Runner</b>Processo</div><div class="node"><b>Lavalink</b>Serviço</div>
         </div>
-
-        <div>
-            <a href="#inicio">Início</a>
-            <a href="#recursos">Recursos</a>
-            <a href="#sobre">Sobre</a>
+        <div class="server-card"><div class="server-title"><span>Yukina Lavalink</span><b>● preparado</b></div><div class="bar"><i></i></div><div class="server-meta"><span>Porta: 2333</span><span>Health: /v4/info</span></div></div>
+      </div>
+      <div class="panel" id="atividade">
+        <h3>Registro do sistema</h3><div class="panel-sub">Últimos eventos da central</div>
+        <div class="timeline">
+          <div class="event"><div class="event-icon">✓</div><div><strong>Engine inicializado</strong><p>Motor preparado para manter o Runner ativo.</p></div><time>agora</time></div>
+          <div class="event"><div class="event-icon">◆</div><div><strong>Runner registrado</strong><p>Módulo de execução conectado ao núcleo.</p></div><time>agora</time></div>
+          <div class="event"><div class="event-icon">◇</div><div><strong>API protegida</strong><p>Autenticação administrativa habilitada.</p></div><time>recente</time></div>
+          <div class="event"><div class="event-icon">⌘</div><div><strong>GitHub conectado</strong><p>Integração preparada para o repositório.</p></div><time>recente</time></div>
         </div>
-
-    </nav>
-
-
-    <!-- INÍCIO -->
-
-    <main id="inicio">
-
-        <section class="hero">
-
-            <div class="hero-content">
-
-                <div class="badge">
-                    ❄️ Discord Bot
-                </div>
-
-                <h1>𝓨𝓾𝓴𝓲𝓷𝓪</h1>
-
-                <p>
-                    Uma nova experiência para o seu servidor Discord,
-                    reunindo economia virtual, diversão, recompensas
-                    e apostas virtuais em um só lugar.
-                </p>
-
-                <div class="buttons">
-
-                    <!-- COLOQUE AQUI O LINK DE CONVITE DO BOT -->
-
-                    <a
-                        class="btn primary"
-                        href="#"
-                    >
-                        ✨ Adicionar ao Discord
-                    </a>
-
-                    <a
-                        class="btn secondary"
-                        href="#recursos"
-                    >
-                        ❄️ Conhecer a Yukina
-                    </a>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- RECURSOS -->
-
-        <section id="recursos">
-
-            <h2 class="section-title">
-                ✦ Recursos da Yukina
-            </h2>
-
-            <p class="section-description">
-                Tudo o que você precisa para deixar seu servidor
-                mais divertido e interativo.
-            </p>
-
-
-            <div class="cards">
-
-                <div class="card">
-
-                    <div class="card-icon">
-                        💰
-                    </div>
-
-                    <h3>
-                        Economia
-                    </h3>
-
-                    <p>
-                        Sistema de moedas virtuais, saldo,
-                        pagamentos e muito mais.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-icon">
-                        🎰
-                    </div>
-
-                    <h3>
-                        Apostas Virtuais
-                    </h3>
-
-                    <p>
-                        Sistemas de apostas utilizando
-                        exclusivamente moedas virtuais.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-icon">
-                        🎁
-                    </div>
-
-                    <h3>
-                        Recompensas
-                    </h3>
-
-                    <p>
-                        Daily, bônus, recompensas e eventos
-                        para manter seu servidor ativo.
-                    </p>
-
-                </div>
-
-
-                <div class="card">
-
-                    <div class="card-icon">
-                        🎮
-                    </div>
-
-                    <h3>
-                        Diversão
-                    </h3>
-
-                    <p>
-                        Comandos interativos para deixar
-                        cada servidor mais divertido.
-                    </p>
-
-                </div>
-
-            </div>
-
-        </section>
-
-
-        <!-- SOBRE -->
-
-        <section id="sobre">
-
-            <div class="about">
-
-                <h2 class="section-title">
-                    ❄️ Conheça a Yukina
-                </h2>
-
-                <p>
-                    Yukina foi criada para ser uma companheira
-                    dentro do Discord, trazendo uma experiência
-                    elegante, divertida e fácil de usar.
-                </p>
-
-                <p>
-                    Com uma identidade inspirada em anime,
-                    a Yukina combina uma estética delicada
-                    com sistemas completos de economia e diversão.
-                </p>
-
-                <div class="buttons">
-
-                    <a
-                        class="btn primary"
-                        href="#"
-                    >
-                        💜 Adicionar Yukina
-                    </a>
-
-                </div>
-
-            </div>
-
-        </section>
-
-    </main>
-
-
-    <!-- RODAPÉ -->
-
-    <footer>
-
-    <p>
-        ❄️・<strong>𝓨𝓾𝓴𝓲𝓷𝓪</strong>・💜
-    </p>
-
-    <p>
-        Economia • Apostas Virtuais • Recompensas • Diversão
-    </p>
-
-    <br>
-
-    <p>
-        <a href="termos.html">📜 Termos de Serviço</a>
-        &nbsp; • &nbsp;
-        <a href="privacidade.html">🔒 Política de Privacidade</a>
-    </p>
-
-    <br>
-
-    <p>
-        © 2026 Yukina. Todos os direitos reservados.
-    </p>
-
-    </footer>
-
+      </div>
+    </div>
+  </section>
+
+  <section id="roadmap">
+    <div class="section-head"><div><h2>✧ A história continua</h2><p>O Manager foi pensado para crescer sem destruir o que já funciona.</p></div></div>
+    <div class="roadmap">
+      <div class="phase"><small>CAPÍTULO I • CONCLUÍDO</small><h4>O despertar</h4><p>Runner, Engine, Execution, Requests, Configuration, Authentication e Monitor formam o primeiro núcleo.</p></div>
+      <div class="phase"><small>CAPÍTULO II • EM CONSTRUÇÃO</small><h4>A consciência</h4><p>Observabilidade mais completa, eventos, métricas e integração profunda entre API e painel.</p></div>
+      <div class="phase"><small>CAPÍTULO III • FUTURO</small><h4>A expansão</h4><p>Novos módulos, gerenciamento avançado e uma experiência de controle cada vez mais completa.</p></div>
+    </div>
+  </section>
+
+  <footer><span>✦ YUKINA • CORE SYSTEM</span><span>Uma arquitetura construída para evoluir.</span></footer>
+</main>
+</div>
+<script>
+const links=[...document.querySelectorAll('.nav a')];
+const sections=[...document.querySelectorAll('main section[id]')];
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      links.forEach(a=>a.classList.toggle('active',a.getAttribute('href')==='#'+entry.target.id));
+    }
+  });
+},{rootMargin:'-35% 0px -55% 0px'});
+sections.forEach(s=>observer.observe(s));
+</script>
 </body>
-  </html>
+</html>
