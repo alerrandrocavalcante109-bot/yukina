@@ -8,7 +8,7 @@ lavalink:
       snapshot: false
 
   server:
-    password: "yukina_lavalink_2026"   # <-- TROQUE ESSA SENHA depois
+    password: "${LAVALINK_SERVER_PASSWORD}"
     sources:
       youtube: false          # Desativado porque usamos o plugin oficial
       bandcamp: true
