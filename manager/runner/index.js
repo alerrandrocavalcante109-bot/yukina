@@ -1,15 +1,14 @@
-const { spawnSync } = require("node:child_process");
 const fs = require("node:fs");
 const path = require("node:path");
 
 const ROOT = path.resolve(__dirname, "../..");
-const LAVALINK_DIR = path.join(ROOT, "lavalink");
 const LOG_DIR = path.join(ROOT, "manager", "logs");
 const LOG_FILE = path.join(LOG_DIR, "lavalink.log");
 
-const HOST = process.env.LAVALINK_HOST || "127.0.0.1";
-const PORT = Number(process.env.LAVALINK_PORT || 2333);
-const REMOTE_URL = String(process.env.YUKINA_LAVALINK_URL || process.env.LAVALINK_URL || "").replace(/\/$/, "");
+const REMOTE_URL = String(
+  process.env.YUKINA_LAVALINK_URL || process.env.LAVALINK_URL || ""
+).replace(/\/$/, "");
+
 const LAVALINK_PASSWORD = process.env.LAVALINK_SERVER_PASSWORD || "";
 const CHECK_INTERVAL_MS = Number(process.env.RUNNER_INTERVAL_MS || 10000);
 const RENDER_API_KEY = process.env.RENDER_API_KEY || "";
@@ -17,31 +16,24 @@ const RENDER_SERVICE_ID = process.env.RENDER_LAVALINK_SERVICE_ID || "";
 
 fs.mkdirSync(LOG_DIR, { recursive: true });
 
-function isRemote() { return Boolean(REMOTE_URL); }
-
-function localRun(args) {
-  return spawnSync("docker", ["compose", ...args], {
-    cwd: LAVALINK_DIR, encoding: "utf8", stdio: "pipe"
-  });
+function requireRemote() {
+  if (!REMOTE_URL) {
+    throw new Error(
+      "Yukina não possui YUKINA_LAVALINK_URL. Configure a URL pública do Aeternus-Lavalink."
+    );
+  }
 }
 
-function appendLog(value) { if (value) fs.appendFileSync(LOG_FILE, value); }
-
-function dockerAvailable() {
-  return spawnSync("docker", ["--version"], { encoding: "utf8" }).status === 0;
-}
-
-function containerState() {
-  const result = spawnSync("docker", ["inspect", "--format", "{{.State.Status}}", "yukina-lavalink"], { encoding: "utf8" });
-  return result.status === 0 ? result.stdout.trim() : "not_found";
-}
-
-function remoteConfigured() {
+function renderConfigured() {
   return Boolean(RENDER_API_KEY && RENDER_SERVICE_ID);
 }
 
-async function remoteRequest(method, endpoint) {
-  if (!remoteConfigured()) throw new Error("Controle remoto do Render não configurado. Defina RENDER_API_KEY e RENDER_LAVALINK_SERVICE_ID.");
+async function renderRequest(method, endpoint) {
+  if (!renderConfigured()) {
+    throw new Error(
+      "Controle do Render não configurado. Defina RENDER_API_KEY e RENDER_LAVALINK_SERVICE_ID."
+    );
+  }
 
   const response = await fetch("https://api.render.com" + endpoint, {
     method,
@@ -53,14 +45,20 @@ async function remoteRequest(method, endpoint) {
   });
 
   const body = await response.text();
+
   if (!response.ok) {
     let message = body;
-    try { message = JSON.parse(body)?.message || body; } catch {}
+    try {
+      message = JSON.parse(body)?.message || body;
+    } catch {}
     throw new Error("Render API HTTP " + response.status + ": " + message);
   }
 
-  try { return body ? JSON.parse(body) : { ok: true }; }
-  catch { return { ok: true, body }; }
+  try {
+    return body ? JSON.parse(body) : { ok: true };
+  } catch {
+    return { ok: true, body };
+  }
 }
 
 function lavalinkHeaders() {
@@ -70,141 +68,136 @@ function lavalinkHeaders() {
 }
 
 async function serviceOnline() {
-  if (isRemote()) {
-    try {
-      const response = await fetch(REMOTE_URL + "/v4/info", { headers: lavalinkHeaders(), signal: AbortSignal.timeout(5000) });
-      return response.ok;
-    } catch { return false; }
-  }
+  requireRemote();
 
-  if (containerState() !== "running") return false;
   try {
-    const response = await fetch("http://" + HOST + ":" + PORT + "/v4/info", { headers: lavalinkHeaders(), signal: AbortSignal.timeout(3000) });
+    const response = await fetch(REMOTE_URL + "/v4/info", {
+      headers: lavalinkHeaders(),
+      signal: AbortSignal.timeout(5000)
+    });
     return response.ok;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 async function start() {
-  if (isRemote()) {
-    const result = await remoteRequest("POST", "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID) + "/resume");
-    console.log(JSON.stringify({ mode: "render", action: "start", ok: true, result }, null, 2));
-    return;
-  }
+  requireRemote();
 
-  if (!dockerAvailable()) {
-    console.error("Docker não está instalado ou não está disponível no PATH.");
-    process.exitCode = 1;
-    return;
-  }
-
-  const result = localRun(["up", "-d"]);
-  appendLog(result.stdout); appendLog(result.stderr);
-  if (result.status !== 0) {
-    console.error(result.stderr || "Não foi possível iniciar o Lavalink.");
-    process.exitCode = result.status || 1;
-    return;
-  }
-  console.log("Lavalink iniciado.");
-}
-
-async function stop() {
-  if (isRemote()) {
-    const result = await remoteRequest("POST", "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID) + "/suspend");
-    console.log(JSON.stringify({ mode: "render", action: "stop", ok: true, result }, null, 2));
-    return;
-  }
-
-  const result = localRun(["stop", "lavalink"]);
-  appendLog(result.stdout); appendLog(result.stderr);
-  if (result.status !== 0) {
-    console.error(result.stderr || "Não foi possível parar o Lavalink.");
-    process.exitCode = result.status || 1;
-    return;
-  }
-  console.log("Lavalink parado.");
-}
-
-async function restart() {
-  if (isRemote()) {
-    const result = await remoteRequest("POST", "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID) + "/restart");
-    console.log(JSON.stringify({ mode: "render", action: "restart", ok: true, result }, null, 2));
-    return;
-  }
-
-  const result = localRun(["restart", "lavalink"]);
-  appendLog(result.stdout); appendLog(result.stderr);
-  if (result.status !== 0) {
-    console.error(result.stderr || "Não foi possível reiniciar o Lavalink.");
-    process.exitCode = result.status || 1;
-    return;
-  }
-  console.log("Lavalink reiniciado.");
-}
-
-async function status() {
-  const online = await serviceOnline();
-
-  if (isRemote()) {
-    let render = null;
-    if (remoteConfigured()) {
-      try { render = await remoteRequest("GET", "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID)); }
-      catch (error) { render = { error: error.message }; }
-    }
-
+  if (!renderConfigured()) {
     console.log(JSON.stringify({
-      service: "lavalink",
-      mode: "remote-render",
-      status: online ? "online" : "offline",
-      url: REMOTE_URL,
-      renderServiceId: RENDER_SERVICE_ID || null,
-      render,
-      checkedAt: new Date().toISOString()
+      mode: "remote",
+      action: "start",
+      ok: false,
+      message: "A URL do Lavalink está configurada, mas o controle do Render não está configurado."
     }, null, 2));
     return;
   }
 
-  const state = containerState();
+  const result = await renderRequest(
+    "POST",
+    "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID) + "/resume"
+  );
+
+  console.log(JSON.stringify({
+    mode: "remote-render",
+    action: "start",
+    ok: true,
+    result
+  }, null, 2));
+}
+
+async function stop() {
+  requireRemote();
+
+  if (!renderConfigured()) {
+    throw new Error(
+      "Para parar o host da Yukina pelo Runner, configure RENDER_API_KEY e RENDER_LAVALINK_SERVICE_ID."
+    );
+  }
+
+  const result = await renderRequest(
+    "POST",
+    "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID) + "/suspend"
+  );
+
+  console.log(JSON.stringify({
+    mode: "remote-render",
+    action: "stop",
+    ok: true,
+    result
+  }, null, 2));
+}
+
+async function restart() {
+  requireRemote();
+
+  if (!renderConfigured()) {
+    throw new Error(
+      "Para reiniciar o host da Yukina pelo Runner, configure RENDER_API_KEY e RENDER_LAVALINK_SERVICE_ID."
+    );
+  }
+
+  const result = await renderRequest(
+    "POST",
+    "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID) + "/restart"
+  );
+
+  console.log(JSON.stringify({
+    mode: "remote-render",
+    action: "restart",
+    ok: true,
+    result
+  }, null, 2));
+}
+
+async function status() {
+  requireRemote();
+
+  const online = await serviceOnline();
+  let render = null;
+
+  if (renderConfigured()) {
+    try {
+      render = await renderRequest(
+        "GET",
+        "/v1/services/" + encodeURIComponent(RENDER_SERVICE_ID)
+      );
+    } catch (error) {
+      render = { error: error.message };
+    }
+  }
+
   console.log(JSON.stringify({
     service: "lavalink",
-    mode: "local-docker",
-    status: online ? "online" : state === "running" ? "starting_or_unhealthy" : "offline",
-    container: "yukina-lavalink",
-    containerState: state,
-    host: HOST,
-    port: PORT,
+    owner: "Yukina",
+    runtime: "Aeternus-Lavalink",
+    infrastructure: "Render",
+    mode: "remote-render",
+    status: online ? "online" : "offline",
+    url: REMOTE_URL,
+    renderServiceId: RENDER_SERVICE_ID || null,
+    render,
     checkedAt: new Date().toISOString()
   }, null, 2));
 }
 
 async function logs() {
-  if (isRemote()) {
-    console.log(JSON.stringify({
-      ok: true,
-      mode: "remote-render",
-      message: "Os logs do Aeternus-Lavalink permanecem no Render; o Runner não executa docker logs localmente.",
-      serviceId: RENDER_SERVICE_ID || null
-    }, null, 2));
-    return;
-  }
+  requireRemote();
 
-  const result = localRun(["logs", "--tail", "100", "lavalink"]);
-  appendLog(result.stdout); appendLog(result.stderr);
-  if (result.status !== 0) {
-    console.error(result.stderr || "Não foi possível obter os logs.");
-    process.exitCode = result.status || 1;
-    return;
-  }
-  process.stdout.write(result.stdout);
+  console.log(JSON.stringify({
+    ok: true,
+    mode: "remote-render",
+    message: "Os logs do Aeternus-Lavalink são mantidos pelo serviço de infraestrutura. A Yukina não executa docker logs localmente.",
+    serviceId: RENDER_SERVICE_ID || null
+  }, null, 2));
 }
 
 async function watch() {
-  if (!isRemote() && !dockerAvailable()) {
-    console.error("Docker não está disponível.");
-    process.exitCode = 1;
-    return;
-  }
+  requireRemote();
 
-  console.log("Yukina Runner monitorando Lavalink em modo " + (isRemote() ? "Render remoto" : "Docker local") + ".");
+  console.log("Yukina Runner monitorando o Lavalink hospedado pela Yukina através do Aeternus-Lavalink/Render.");
+
   let wasOnline = false;
 
   const check = async () => {
@@ -212,8 +205,10 @@ async function watch() {
 
     console.log(JSON.stringify({
       event: "status",
+      owner: "Yukina",
+      runtime: "Aeternus-Lavalink",
+      infrastructure: "Render",
       status: online ? "online" : "offline",
-      mode: isRemote() ? "remote-render" : "local-docker",
       checkedAt: new Date().toISOString()
     }));
 
@@ -224,19 +219,17 @@ async function watch() {
 
     if (!wasOnline) return;
 
-    console.log("Lavalink ficou indisponível. Solicitando recuperação...");
+    if (!renderConfigured()) {
+      console.log(
+        "Lavalink indisponível, mas o controle do Render não está configurado; recuperação automática não pode ser executada."
+      );
+      return;
+    }
+
+    console.log("Lavalink ficou indisponível. Solicitando reinicialização do serviço...");
 
     try {
-      if (isRemote()) {
-        if (!remoteConfigured()) {
-          console.log("RENDER_API_KEY/RENDER_LAVALINK_SERVICE_ID ausentes; recuperação remota indisponível.");
-          return;
-        }
-        await restart();
-      } else {
-        const result = localRun(["up", "-d"]);
-        appendLog(result.stdout); appendLog(result.stderr);
-      }
+      await restart();
     } catch (error) {
       console.error("Falha na recuperação: " + error.message);
     }
@@ -252,11 +245,14 @@ function help() {
   console.log(`
 Yukina Manager — Runner
 
-Modo remoto:
-  YUKINA_LAVALINK_URL=https://seu-lavalink.onrender.com
+Arquitetura:
+  Yukina → Aeternus-Lavalink → Docker/Render → Lavalink
+
+Variáveis:
+  YUKINA_LAVALINK_URL=https://seu-servico-aeternus-lavalink.onrender.com
   LAVALINK_SERVER_PASSWORD=mesma_senha_do_Aeternus-Lavalink
-  RENDER_API_KEY=...
-  RENDER_LAVALINK_SERVICE_ID=...
+  RENDER_API_KEY=credencial_do_ambiente
+  RENDER_LAVALINK_SERVICE_ID=id_do_servico
 
 Uso:
   node manager/runner/index.js start
@@ -266,9 +262,8 @@ Uso:
   node manager/runner/index.js logs
   node manager/runner/index.js watch
 
-Com YUKINA_LAVALINK_URL, o Runner monitora o Lavalink do Aeternus-Lavalink.
-Com RENDER_API_KEY + RENDER_LAVALINK_SERVICE_ID, também pode controlar o serviço no Render.
-Sem LAVALINK_URL, mantém o modo Docker local.
+A Yukina não executa Docker localmente. Ela controla e monitora o Lavalink
+que é executado pelo Docker do Aeternus-Lavalink no Render.
 `);
 }
 
