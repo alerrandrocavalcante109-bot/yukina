@@ -9,7 +9,8 @@ const LOG_FILE = path.join(LOG_DIR, "lavalink.log");
 
 const HOST = process.env.LAVALINK_HOST || "127.0.0.1";
 const PORT = Number(process.env.LAVALINK_PORT || 2333);
-const REMOTE_URL = String(process.env.LAVALINK_URL || "").replace(/\/$/, "");
+const REMOTE_URL = String(process.env.YUKINA_LAVALINK_URL || process.env.LAVALINK_URL || "").replace(/\/$/, "");
+const LAVALINK_PASSWORD = process.env.LAVALINK_SERVER_PASSWORD || "";
 const CHECK_INTERVAL_MS = Number(process.env.RUNNER_INTERVAL_MS || 10000);
 const RENDER_API_KEY = process.env.RENDER_API_KEY || "";
 const RENDER_SERVICE_ID = process.env.RENDER_LAVALINK_SERVICE_ID || "";
@@ -62,17 +63,23 @@ async function remoteRequest(method, endpoint) {
   catch { return { ok: true, body }; }
 }
 
+function lavalinkHeaders() {
+  const headers = { Accept: "application/json" };
+  if (LAVALINK_PASSWORD) headers.Authorization = LAVALINK_PASSWORD;
+  return headers;
+}
+
 async function serviceOnline() {
   if (isRemote()) {
     try {
-      const response = await fetch(REMOTE_URL + "/v4/info", { signal: AbortSignal.timeout(5000) });
+      const response = await fetch(REMOTE_URL + "/v4/info", { headers: lavalinkHeaders(), signal: AbortSignal.timeout(5000) });
       return response.ok;
     } catch { return false; }
   }
 
   if (containerState() !== "running") return false;
   try {
-    const response = await fetch("http://" + HOST + ":" + PORT + "/v4/info", { signal: AbortSignal.timeout(3000) });
+    const response = await fetch("http://" + HOST + ":" + PORT + "/v4/info", { headers: lavalinkHeaders(), signal: AbortSignal.timeout(3000) });
     return response.ok;
   } catch { return false; }
 }
@@ -246,7 +253,8 @@ function help() {
 Yukina Manager — Runner
 
 Modo remoto:
-  LAVALINK_URL=https://seu-lavalink.onrender.com
+  YUKINA_LAVALINK_URL=https://seu-lavalink.onrender.com
+  LAVALINK_SERVER_PASSWORD=mesma_senha_do_Aeternus-Lavalink
   RENDER_API_KEY=...
   RENDER_LAVALINK_SERVICE_ID=...
 
@@ -258,7 +266,8 @@ Uso:
   node manager/runner/index.js logs
   node manager/runner/index.js watch
 
-Com LAVALINK_URL, o Runner usa a API do Render para controlar o Aeternus-Lavalink.
+Com YUKINA_LAVALINK_URL, o Runner monitora o Lavalink do Aeternus-Lavalink.
+Com RENDER_API_KEY + RENDER_LAVALINK_SERVICE_ID, também pode controlar o serviço no Render.
 Sem LAVALINK_URL, mantém o modo Docker local.
 `);
 }
