@@ -42,7 +42,7 @@ main{grid-column:2;padding:24px 34px 70px;max-width:1500px;width:100%;margin:aut
 .repo-import.open{display:flex}.repo-backdrop{position:absolute;inset:0;background:rgba(2,3,10,.76);backdrop-filter:blur(10px)}
 .repo-modal{position:relative;width:min(560px,calc(100% - 28px));border:1px solid rgba(167,139,250,.22);background:linear-gradient(145deg,#12152d,#090b19);border-radius:24px;padding:25px;box-shadow:0 30px 100px rgba(0,0,0,.55)}
 .repo-modal-head{display:flex;justify-content:space-between;gap:15px}.repo-modal h2{font-size:25px;margin:15px 0 6px}.repo-modal p{color:var(--muted);font-size:12px}.repo-close{border:1px solid var(--line);background:rgba(255,255,255,.04);color:#ddd;border-radius:10px;width:36px;height:36px;cursor:pointer;font-size:20px}
-.repo-options{display:grid;gap:10px;margin-top:24px}.repo-option{display:grid;grid-template-columns:42px 1fr 20px;align-items:center;text-align:left;gap:12px;padding:16px;border:1px solid var(--line);background:rgba(255,255,255,.025);color:#fff;border-radius:15px;cursor:pointer;transition:.2s}.repo-option:hover{border-color:rgba(167,139,250,.38);background:rgba(167,139,250,.07);transform:translateY(-2px)}.repo-option-icon{width:42px;height:42px;border-radius:12px;background:rgba(167,139,250,.1);display:grid;place-items:center;font-size:18px;color:#c4b5fd}.repo-option b{display:block;font-size:13px}.repo-option small{display:block;color:var(--muted);font-size:10px;line-height:1.5;margin-top:4px}.repo-option strong{color:#8f91a6}.repo-result{margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,.025);border:1px dashed var(--line);color:#8f91a6;font-size:10px;min-height:38px}
+.repo-options{display:grid;gap:10px;margin-top:24px}.repo-option{display:grid;grid-template-columns:42px 1fr 20px;align-items:center;text-align:left;gap:12px;padding:16px;border:1px solid var(--line);background:rgba(255,255,255,.025);color:#fff;border-radius:15px;cursor:pointer;transition:.2s}.repo-option:hover{border-color:rgba(167,139,250,.38);background:rgba(167,139,250,.07);transform:translateY(-2px)}.repo-option-icon{width:42px;height:42px;border-radius:12px;background:rgba(167,139,250,.1);display:grid;place-items:center;font-size:18px;color:#c4b5fd}.repo-option b{display:block;font-size:13px}.repo-option small{display:block;color:var(--muted);font-size:10px;line-height:1.5;margin-top:4px}.repo-option strong{color:#8f91a6}.repo-result{margin-top:14px;padding:12px;border-radius:12px;background:rgba(255,255,255,.025);border:1px dashed var(--line);color:#8f91a6;font-size:10px;min-height:38px}.repo-list{display:grid;gap:8px;margin-top:10px;max-height:320px;overflow:auto}.repo-card{display:block;width:100%;text-align:left;border:1px solid var(--line);background:rgba(255,255,255,.025);color:#fff;border-radius:13px;padding:13px;cursor:pointer}.repo-card:hover{border-color:rgba(103,232,165,.35);background:rgba(103,232,165,.05)}.repo-card b{display:block;font-size:12px}.repo-card small{display:block;color:var(--muted);font-size:9px;margin-top:4px;line-height:1.45}.repo-meta{display:flex;gap:8px;margin-top:7px;color:#7f8297;font-size:9px}.repo-loading{padding:10px;color:#9beaf5;font-size:10px}.repo-error{padding:10px;color:#f0abfc;font-size:10px}
 @media(max-width:680px){.repo-trigger{font-size:0;padding:9px 11px}.repo-trigger:after{content:'＋';font-size:15px}}
 .icon-btn{border:1px solid var(--line);background:rgba(255,255,255,.035);color:#c7c9d8;border-radius:11px;padding:9px 12px;font-size:12px}
 .hero{position:relative;overflow:hidden;border:1px solid var(--line);border-radius:28px;padding:48px;background:
@@ -205,12 +205,39 @@ const githubOption=document.getElementById('githubOption');
 const zipOption=document.getElementById('zipOption');
 const zipInput=document.getElementById('zipInput');
 const repoResult=document.getElementById('repoResult');
+function escapeHtml(value){return String(value).replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[char]));}
 function openRepoImport(){repoImport.classList.add('open');repoImport.setAttribute('aria-hidden','false');}
 function closeRepoImport(){repoImport.classList.remove('open');repoImport.setAttribute('aria-hidden','true');}
 repoTrigger.addEventListener('click',openRepoImport);repoClose.addEventListener('click',closeRepoImport);repoBackdrop.addEventListener('click',closeRepoImport);
-githubOption.addEventListener('click',()=>{
-  repoResult.textContent='Conta GitHub selecionada. A busca dos repositórios será feita pelo Yukina Manager, sem expor o token no navegador.';
+githubOption.addEventListener('click', async ()=>{
   githubOption.style.borderColor='rgba(103,232,165,.35)';
+  repoResult.innerHTML='<div class="repo-loading">⌘ Buscando repositórios pela conta GitHub...</div>';
+  try{
+    const response=await fetch('/api/github/repositories');
+    const data=await response.json();
+    if(!response.ok||!data.ok) throw new Error(data.error||'Não foi possível consultar os repositórios.');
+    if(!data.repositories.length){
+      repoResult.innerHTML='<div class="repo-loading">Nenhum repositório acessível foi encontrado.</div>';
+      return;
+    }
+    const list=document.createElement('div');
+    list.className='repo-list';
+    data.repositories.forEach(repo=>{
+      const card=document.createElement('button');
+      card.type='button';
+      card.className='repo-card';
+      card.innerHTML='<b>'+escapeHtml(repo.fullName)+'</b><small>'+escapeHtml(repo.description||'Sem descrição.')+'</small><div class="repo-meta"><span>'+escapeHtml(repo.visibility||'unknown')+'</span><span>'+escapeHtml(repo.language||'sem linguagem')+'</span><span>branch: '+escapeHtml(repo.defaultBranch||'main')+'</span></div>';
+      card.addEventListener('click',()=>{
+        repoResult.innerHTML='<div class="repo-loading">✓ Repositório selecionado: <b>'+escapeHtml(repo.fullName)+'</b></div>';
+        repoResult.dataset.repository=repo.fullName;
+      });
+      list.appendChild(card);
+    });
+    repoResult.innerHTML='<div class="repo-loading">'+data.repositories.length+' repositório(s) encontrado(s).</div>';
+    repoResult.appendChild(list);
+  }catch(error){
+    repoResult.innerHTML='<div class="repo-error">⚠ '+escapeHtml(error.message)+'</div>';
+  }
 });
 zipOption.addEventListener('click',()=>zipInput.click());
 zipInput.addEventListener('change',()=>{
