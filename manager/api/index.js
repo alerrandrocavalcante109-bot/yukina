@@ -5,6 +5,7 @@ const path = require("node:path");
 
 const { create, validate, checkRateLimit } = require("../requests");
 const { authorize, getToken, isConfigured } = require("../auth");
+const github = require("../github");
 const { load } = require("../config");
 
 const ROOT = path.resolve(__dirname, "../..");
@@ -73,7 +74,7 @@ function protectedRequest(req, res) {
   return true;
 }
 
-const server = http.createServer((req, res) => {
+const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", "http://localhost");
 
   if (req.method === "GET" && url.pathname === "/") {
@@ -103,6 +104,26 @@ const server = http.createServer((req, res) => {
       requestId: request.id,
       result: execute(request.action)
     });
+  }
+
+  if (req.method === "GET" && url.pathname === "/api/github/repositories") {
+    try {
+      const page = url.searchParams.get("page") || "1";
+      const perPage = url.searchParams.get("perPage") || "100";
+      const result = await github.repositories({ page, perPage });
+
+      return sendJson(res, 200, {
+        ok: true,
+        source: "github",
+        ...result
+      });
+    } catch (error) {
+      return sendJson(res, 502, {
+        ok: false,
+        source: "github",
+        error: error.message
+      });
+    }
   }
 
   const match = url.pathname.match(/^\/api\/(start|stop|restart|logs)$/);
