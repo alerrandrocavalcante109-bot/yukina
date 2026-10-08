@@ -74,6 +74,41 @@ async function repository() {
   };
 }
 
+async function repositories({ page = 1, perPage = 100 } = {}) {
+  const safePage = Math.max(1, Number(page) || 1);
+  const safePerPage = Math.min(100, Math.max(1, Number(perPage) || 100));
+  const query = new URLSearchParams({
+    visibility: "all",
+    affiliation: "owner,collaborator,organization_member",
+    sort: "updated",
+    direction: "desc",
+    per_page: String(safePerPage),
+    page: String(safePage)
+  });
+
+  const data = await request(`/user/repos?${query.toString()}`);
+
+  return {
+    page: safePage,
+    perPage: safePerPage,
+    repositories: data.map(repo => ({
+      id: repo.id,
+      name: repo.name,
+      fullName: repo.full_name,
+      description: repo.description || "",
+      private: Boolean(repo.private),
+      visibility: repo.visibility,
+      defaultBranch: repo.default_branch,
+      language: repo.language || null,
+      updatedAt: repo.updated_at,
+      pushedAt: repo.pushed_at,
+      htmlUrl: repo.html_url,
+      cloneUrl: repo.clone_url,
+      permissions: repo.permissions || {}
+    }))
+  };
+}
+
 async function file(path, ref) {
   const { owner, name } = repositoryPath();
   const encodedPath = path.split("/").map(encodeURIComponent).join("/");
@@ -108,6 +143,7 @@ module.exports = {
   configured,
   login,
   repository,
+  repositories,
   file,
   status
 };
