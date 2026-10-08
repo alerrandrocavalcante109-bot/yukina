@@ -26,8 +26,8 @@ docker compose up -d
 
 Arquivo: `lavalink/application.yml`
 
-- **Senha atual:** `yukina_lavalink_2026`  
-  → **Troque essa senha** antes de colocar em produção.
+- **Senha:** definida pela variável `LAVALINK_SERVER_PASSWORD`
+  → Não armazene a senha diretamente no repositório.
 
 - Porta: `2333`
 - Plugin do YouTube já incluído (versão 1.18.2)
@@ -38,7 +38,7 @@ No seu bot (ex: discord.js, discord.py, etc), use:
 
 - Host: `IP_DO_SEU_SERVIDOR`
 - Port: `2333`
-- Password: `yukina_lavalink_2026` (ou a senha que você colocou)
+- Password: valor definido em `LAVALINK_SERVER_PASSWORD`
 
 ---
 
