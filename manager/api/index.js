@@ -12,8 +12,8 @@ const ROOT = path.resolve(__dirname, "../..");
 const EXECUTION = path.join(ROOT, "manager", "execution", "index.js");
 const config = load();
 
-const HOST = process.env.API_HOST || config.api.host;
-const PORT = Number(process.env.API_PORT || config.api.port);
+const HOST = process.env.API_HOST || (process.env.RENDER ? "0.0.0.0" : config.api.host);
+const PORT = Number(process.env.PORT || process.env.API_PORT || config.api.port);
 const REQUIRE_TOKEN = config.security.requireToken;
 
 function execute(action) {
