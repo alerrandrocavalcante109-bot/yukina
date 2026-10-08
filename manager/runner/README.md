@@ -19,20 +19,23 @@ node manager/runner/index.js logs
 ## O que ele faz
 
 - inicia o serviço Lavalink usando Docker Compose;
-- para o serviço;
-- reinicia o serviço;
-- consulta o estado do container;
-- registra saídas em `manager/logs/lavalink.log`;
-- utiliza o `restart: unless-stopped` já definido no Compose para recuperação automática do container.
+- verifica o container e a disponibilidade real pela API do Lavalink;
+- para e reinicia o serviço;
+- captura os logs do container em `manager/logs/lavalink.log`;
+- expõe um status JSON simples;
+- oferece o modo `watch`, que verifica o serviço periodicamente e solicita reinício quando ele fica indisponível.
 
-## Estrutura
+### Comandos
 
-```text
-manager/
-├── logs/
-└── runner/
-    ├── index.js
-    └── README.md
+```bash
+node manager/runner/index.js start
+node manager/runner/index.js stop
+node manager/runner/index.js restart
+node manager/runner/index.js status
+node manager/runner/index.js logs
+node manager/runner/index.js watch
 ```
 
-O Runner precisa ser executado em uma máquina/servidor que tenha Docker disponível. O GitHub Pages continua sendo apenas a parte estática do projeto.
+O Compose continua usando `restart: unless-stopped`, que é a política de reinício automático do container. O modo `watch` adiciona uma camada de monitoramento do próprio Manager. citeturn0search0turn0search3
+
+O GitHub Pages continua sendo apenas a parte estática do projeto.
