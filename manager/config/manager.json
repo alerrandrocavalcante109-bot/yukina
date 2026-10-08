@@ -1,0 +1,13 @@
+{
+  "api": {
+    "host": "127.0.0.1",
+    "port": 8080
+  },
+  "monitoring": {
+    "intervalMs": 15000,
+    "autoRestart": true
+  },
+  "security": {
+    "requireToken": true
+  }
+}
