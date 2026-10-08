@@ -1,0 +1,6 @@
+.env
+.env.*
+manager/logs/*
+!manager/logs/.gitkeep
+lavalink/plugins/*
+!lavalink/plugins/.gitkeep
