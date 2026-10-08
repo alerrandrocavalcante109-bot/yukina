@@ -1,0 +1,23 @@
+{
+  "name": "Aeternus-Lavalink",
+  "role": "remote-lavalink-runtime",
+  "repository": "cavalcantealerrandro901-glitch/Aeternus-lavalink",
+  "transport": "https",
+  "healthPath": "/v4/info",
+  "urlEnv": "YUKINA_LAVALINK_URL",
+  "passwordEnv": "LAVALINK_SERVER_PASSWORD",
+  "renderControl": {
+    "apiBase": "https://api.render.com",
+    "serviceIdEnv": "RENDER_LAVALINK_SERVICE_ID",
+    "apiKeyEnv": "RENDER_API_KEY",
+    "actions": [
+      "resume",
+      "suspend",
+      "restart",
+      "status"
+    ]
+  },
+  "uptime": "UptimeRobot remains external and unchanged",
+  "dockerOwner": "Aeternus-Lavalink",
+  "managerOwner": "Yukina"
+}
