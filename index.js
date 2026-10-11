@@ -6,13 +6,14 @@ const path = require('node:path');
 const { deployCommands } = require('./deploy-commands');
 const { startAeternusUpdater } = require('./aeternus-updater');
 const { startYukinaUpdater } = require('./yukina-updater');
+const { getPrefix, handlePrefixMessage } = require('./prefix');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('[Yukina] DISCORD_TOKEN não foi definido no ambiente.');
   process.exit(1);
 }
 
-const prefix = process.env.PREFIX || '!';
+const prefix = getPrefix();
 
 const client = new Client({
   intents: [
@@ -89,22 +90,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  if (message.author.bot || !message.guild) return;
-  if (!message.content.startsWith(prefix)) return;
-
-  const args = message.content.slice(prefix.length).trim().split(/\s+/);
-  const commandName = args.shift()?.toLowerCase();
-
-  if (!commandName) return;
-
-  const command = client.commands.get(commandName);
-  if (!command?.prefix?.execute) return;
-
-  try {
-    await command.prefix.execute(message, args);
-  } catch (error) {
-    console.error(`[Yukina] Erro no comando de prefixo ${prefix}${commandName}:`, error);
-  }
+  await handlePrefixMessage(message, client.commands);
 });
 
 process.on('unhandledRejection', (reason) => {
