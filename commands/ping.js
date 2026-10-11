@@ -3,46 +3,50 @@ const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 async function buildPingEmbed(client, startedAt) {
   const responseLatency = Date.now() - startedAt;
   const gatewayLatency = client.ws.ping;
-  const healthy = gatewayLatency >= 0 && gatewayLatency < 250;
+  const apiLatency = gatewayLatency;
 
   const status = gatewayLatency < 0
-    ? 'Conectando'
-    : healthy
-      ? 'Operacional'
-      : 'Instável';
-
-  const color = gatewayLatency < 0
-    ? 0x87CEFA
-    : healthy
-      ? 0x87CEFA
-      : 0xE67E22;
+    ? '🔄 Conectando'
+    : gatewayLatency < 150
+      ? '🟢 Excelente'
+      : gatewayLatency < 250
+        ? '🟡 Operacional'
+        : '🔴 Instável';
 
   return new EmbedBuilder()
-    .setColor(color)
+    .setColor(0x87CEFA)
     .setAuthor({
       name: client.user.username,
       iconURL: client.user.displayAvatarURL(),
     })
-    .setTitle('Diagnóstico de conexão')
-    .setDescription('Métricas atuais de comunicação com a API do Discord.')
+    .setTitle('📡 Diagnóstico de conexão')
+    .setDescription(
+      '🛰️ **Status da comunicação com a API do Discord**\n' +
+      '━━━━━━━━━━━━━━━━━━━━',
+    )
     .addFields(
       {
-        name: 'Gateway',
-        value: gatewayLatency < 0 ? 'Calculando…' : `${gatewayLatency} ms`,
+        name: '⚡ Latência da API',
+        value: gatewayLatency < 0 ? 'Calculando…' : `**${apiLatency} ms**`,
         inline: true,
       },
       {
-        name: 'Resposta',
-        value: `${responseLatency} ms`,
+        name: '💬 Tempo de resposta',
+        value: `**${responseLatency} ms**`,
         inline: true,
       },
       {
-        name: 'Estado',
-        value: status,
+        name: '📶 Estado',
+        value: `**${status}**`,
         inline: true,
+      },
+      {
+        name: '🌐 Gateway',
+        value: gatewayLatency < 0 ? 'Calculando…' : `Conectado • ${gatewayLatency} ms`,
+        inline: false,
       },
     )
-    .setFooter({ text: 'Yukina • Sistema de diagnóstico' })
+    .setFooter({ text: 'Yukina • Monitoramento de conexão' })
     .setTimestamp();
 }
 
@@ -56,7 +60,6 @@ module.exports = {
     aliases: [],
     async execute(message) {
       const startedAt = Date.now();
-
       const embed = await buildPingEmbed(message.client, startedAt);
       await message.reply({ embeds: [embed] });
     },
@@ -64,9 +67,7 @@ module.exports = {
 
   async execute(interaction) {
     const startedAt = Date.now();
-
     await interaction.deferReply({ ephemeral: true });
-
     const embed = await buildPingEmbed(interaction.client, startedAt);
     await interaction.editReply({ embeds: [embed] });
   },
