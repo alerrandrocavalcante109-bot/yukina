@@ -61,7 +61,14 @@ module.exports = {
     async execute(message) {
       const startedAt = Date.now();
       const embed = await buildPingEmbed(message.client, startedAt);
-      await message.reply({ embeds: [embed] });
+
+      try {
+        await message.reply({ embeds: [embed], allowedMentions: { repliedUser: false } });
+      } catch (error) {
+        // Se a mensagem original não puder ser usada como referência, envie no canal.
+        if (error?.code !== 50035) throw error;
+        await message.channel.send({ embeds: [embed] });
+      }
     },
   },
 
