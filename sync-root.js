@@ -5,19 +5,55 @@ const execFileAsync = promisify(execFile);
 const ROOT_DIR = __dirname;
 const REMOTE = process.env.GIT_REMOTE || 'origin';
 const BRANCH = process.env.GIT_BRANCH || 'main';
+const GIT_TIMEOUT_MS = 30_000;
+const FETCH_RETRIES = 2;
+const FETCH_RETRY_DELAY_MS = 2_000;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 async function git(args) {
   const { stdout } = await execFileAsync('git', args, {
     cwd: ROOT_DIR,
     windowsHide: true,
+    timeout: GIT_TIMEOUT_MS,
+    killSignal: 'SIGTERM',
+    maxBuffer: 2 * 1024 * 1024,
   });
 
   return stdout.trim();
 }
 
+async function fetchRemote() {
+  let lastError;
+
+  for (let attempt = 1; attempt <= FETCH_RETRIES; attempt += 1) {
+    try {
+      await git(['fetch', REMOTE, BRANCH]);
+      return;
+    } catch (error) {
+      lastError = error;
+      const detail = error?.stderr?.trim() || error?.message || String(error);
+      console.warn(
+        `[Yukina] git fetch falhou (tentativa ${attempt}/${FETCH_RETRIES}): ${detail}`,
+      );
+
+      if (attempt < FETCH_RETRIES) {
+        await wait(FETCH_RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  const detail = lastError?.stderr?.trim() || lastError?.message || String(lastError);
+  throw new Error(`[Yukina] Não foi possível atualizar as referências remotas: ${detail}`, {
+    cause: lastError,
+  });
+}
+
 async function getSyncState(fetchRemote = true) {
   if (fetchRemote) {
-    await git(['fetch', REMOTE, BRANCH]);
+    await fetchRemoteWithRetry();
   }
 
   const currentBranch = await git(['rev-parse', '--abbrev-ref', 'HEAD']);
@@ -32,6 +68,10 @@ async function getSyncState(fetchRemote = true) {
     clean: status === '',
     synchronized: currentBranch === BRANCH && localSha === remoteSha && status === '',
   };
+}
+
+async function fetchRemoteWithRetry() {
+  return fetchRemote();
 }
 
 async function assertSynchronized() {
@@ -73,10 +113,6 @@ async function createSyncBaseline() {
 
 const MAX_PUSH_ATTEMPTS = 3;
 const PUSH_RETRY_DELAY_MS = 2000;
-
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
 
 async function pushWithRetry() {
   let lastError;
