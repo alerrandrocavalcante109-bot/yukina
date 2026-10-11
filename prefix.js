@@ -8,17 +8,20 @@ function getPrefix() {
 function resolvePrefixCommand(commands, commandName) {
   if (!commandName) return null;
 
-  const normalizedName = commandName.toLowerCase();
+  const normalizedName = String(commandName).trim().toLowerCase();
 
   for (const command of commands.values()) {
-    if (command?.data?.name === normalizedName && command?.prefix?.execute) {
+    const commandDataName = String(command?.data?.name || '').trim().toLowerCase();
+
+    if (commandDataName === normalizedName && command?.prefix?.execute) {
       return command;
     }
 
     if (
       Array.isArray(command?.prefix?.aliases) &&
       command.prefix.aliases.some(
-        (alias) => String(alias).toLowerCase() === normalizedName,
+        (alias) =>
+          String(alias).trim().toLowerCase() === normalizedName,
       ) &&
       command?.prefix?.execute
     ) {
@@ -30,16 +33,18 @@ function resolvePrefixCommand(commands, commandName) {
 }
 
 async function handlePrefixMessage(message, commands) {
-  if (message.author.bot || !message.guild) return false;
+  if (message.author?.bot || !message.guild) return false;
 
   const prefix = getPrefix();
-  if (!message.content.startsWith(prefix)) return false;
+  const content = String(message.content || '');
 
-  const content = message.content.slice(prefix.length).trim();
-  if (!content) return true;
+  if (!content.startsWith(prefix)) return false;
 
-  const parts = content.split(/\s+/);
-  const commandName = parts.shift()?.toLowerCase();
+  const commandText = content.slice(prefix.length).trim();
+  if (!commandText) return true;
+
+  const parts = commandText.split(/s+/);
+  const commandName = parts.shift();
   const args = parts;
 
   const command = resolvePrefixCommand(commands, commandName);
