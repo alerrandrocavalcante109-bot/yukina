@@ -12,6 +12,8 @@ if (!process.env.DISCORD_TOKEN) {
   process.exit(1);
 }
 
+const prefix = process.env.PREFIX || '!';
+
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -50,6 +52,8 @@ client.once(Events.ClientReady, (readyClient) => {
   console.log('────────────────────────────────────');
   console.log(`[Yukina] 🟢 Bot online: ${readyClient.user.tag}`);
   console.log(`[Yukina] Comandos carregados: ${client.commands.size}`);
+  console.log(`[Yukina] Prefixo: ${prefix}`);
+  console.log(`[Yukina] Comandos carregados: ${client.commands.size}`);
   console.log(`[Yukina] Latência do gateway: ${Math.round(readyClient.ws.ping)} ms`);
   console.log('────────────────────────────────────');
 });
@@ -86,8 +90,6 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
 client.on(Events.MessageCreate, async (message) => {
   if (message.author.bot || !message.guild) return;
-
-  const prefix = '!';
   if (!message.content.startsWith(prefix)) return;
 
   const args = message.content.slice(prefix.length).trim().split(/\s+/);
@@ -101,7 +103,7 @@ client.on(Events.MessageCreate, async (message) => {
   try {
     await command.prefix.execute(message, args);
   } catch (error) {
-    console.error(`[Yukina] Erro no comando de prefixo !${commandName}:`, error);
+    console.error(`[Yukina] Erro no comando de prefixo ${prefix}${commandName}:`, error);
   }
 });
 
