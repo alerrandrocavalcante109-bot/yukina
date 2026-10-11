@@ -14,7 +14,7 @@ npm install
 cp .env.example .env
 ```
 
-Edite o arquivo `.env` local e preencha `DISCORD_TOKEN` e `CLIENT_ID`. Opcionalmente, defina `GUILD_ID` para registrar comandos em um servidor de teste.
+Edite o arquivo `.env` local e preencha `DISCORD_TOKEN` e `CLIENT_ID`. Para configurar o prefixo de mensagens, use `YUKINA_PREFIX=Y`. Não use a variável `PREFIX`, pois ela já é usada pelo Termux. Opcionalmente, defina `GUILD_ID` para registrar comandos de teste rapidamente.
 
 ## Registrar os comandos
 
@@ -34,7 +34,7 @@ Durante o desenvolvimento, use `npm run dev` com uma versão compatível do Node
 
 ## Adicionar comandos
 
-Crie um arquivo JavaScript em `commands/` que exporte `data` (um `SlashCommandBuilder`) e uma função assíncrona `execute(interaction)`. Depois execute `npm run deploy` novamente.
+Crie um arquivo JavaScript em `commands/` que exporte `data` (um `SlashCommandBuilder`) e uma função assíncrona `execute(interaction)`. Para aceitar comandos por prefixo, o arquivo também deve exportar `prefix: { name: 'nome', aliases: [], async execute(message, args) { ... } }`. Depois execute `npm run deploy` novamente se alterou os comandos slash.
 
 ## Segurança
 
@@ -54,4 +54,3 @@ Configure estas variáveis no ambiente da Yukina:
 - `GITHUB_TOKEN`: opcional; recomendado se o repositório do Aeternus for privado.
 
 A primeira verificação apenas registra o commit atual como referência. Um commit novo detectado depois disso dispara o Deploy Hook uma única vez.
-
