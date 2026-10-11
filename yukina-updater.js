@@ -40,6 +40,8 @@ function startYukinaUpdater() {
     checking = true;
 
     try {
+      // Busca o remoto uma vez. A verificação final usa a mesma referência
+      // origin/main para evitar falha se outro commit chegar durante o update.
       const state = await getSyncState();
 
       if (state.branch !== 'main') {
@@ -76,11 +78,25 @@ function startYukinaUpdater() {
 
       await git(['merge', '--ff-only', 'origin/main']);
 
-      const finalState = await getSyncState();
+      // Não buscar o remoto novamente aqui: ele pode avançar entre o merge
+      // e a validação, causando um falso erro de sincronização.
+      const finalState = await getSyncState(false);
 
       if (!finalState.synchronized) {
+        const reasons = [];
+        if (finalState.branch !== 'main') {
+          reasons.push(`branch=${finalState.branch}`);
+        }
+        if (finalState.localSha !== finalState.remoteSha) {
+          reasons.push(
+            `local=${finalState.localSha.slice(0, 7)} remoto=${finalState.remoteSha.slice(0, 7)}`,
+          );
+        }
+        if (!finalState.clean) reasons.push('há alterações locais não commitadas');
+
         throw new Error(
-          '[Yukina] Atualização concluída, mas a verificação final não confirmou sincronização.',
+          '[Yukina] Atualização aplicada, mas a validação falhou: ' +
+          reasons.join('; '),
         );
       }
 
