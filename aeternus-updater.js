@@ -1,12 +1,13 @@
 require('dotenv').config();
 
-const POLL_INTERVAL_MS = 5000;
+const POLL_INTERVAL_MS = 60_000;
+const REQUEST_TIMEOUT_MS = 15_000;
 
 function getRepositoryParts(repository) {
   const clean = repository.replace(/^https?:\/\/github\.com\//, '').replace(/\.git$/, '').replace(/\/$/, '');
   const [owner, name] = clean.split('/');
 
-  if (!owner || !name) {
+  if (!owner || !name || !/^[A-Za-z0-9_.-]+$/.test(owner) || !/^[A-Za-z0-9_.-]+$/.test(name)) {
     throw new Error('AETERNUS_REPO deve estar no formato owner/repository.');
   }
 
@@ -24,12 +25,15 @@ async function getLatestCommitSha(owner, name, branch, token) {
   }
 
   const response = await fetch(
-    `https://api.github.com/repos/${owner}/${name}/commits/${encodeURIComponent(branch)}`,
-    { headers },
+    `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(name)}/commits/${encodeURIComponent(branch)}`,
+    {
+      headers,
+      signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+    },
   );
 
   if (!response.ok) {
-    throw new Error(`GitHub respondeu HTTP ${response.status}.`);
+    throw new Error(`GitHub respondeu HTTP ${response.status} ao consultar o Aeternus.`);
   }
 
   const data = await response.json();
@@ -42,8 +46,21 @@ async function getLatestCommitSha(owner, name, branch, token) {
 }
 
 async function triggerRenderDeploy(deployHookUrl) {
-  const response = await fetch(deployHookUrl, {
+  let parsedUrl;
+
+  try {
+    parsedUrl = new URL(deployHookUrl);
+  } catch {
+    throw new Error('AETERNUS_RENDER_DEPLOY_HOOK não é uma URL válida.');
+  }
+
+  if (parsedUrl.protocol !== 'https:') {
+    throw new Error('O Deploy Hook do Render deve usar HTTPS.');
+  }
+
+  const response = await fetch(parsedUrl, {
     method: 'POST',
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
 
   if (!response.ok) {
@@ -64,7 +81,16 @@ function startAeternusUpdater() {
     return;
   }
 
-  const { owner, name } = getRepositoryParts(repository);
+  let parts;
+
+  try {
+    parts = getRepositoryParts(repository);
+  } catch (error) {
+    console.error('[Yukina] Configuração do Aeternus inválida:', error.message);
+    return;
+  }
+
+  const { owner, name } = parts;
   let lastCommitSha = null;
   let checking = false;
 
@@ -101,14 +127,17 @@ function startAeternusUpdater() {
         `[Yukina] Deploy do Aeternus solicitado para ${latestCommitSha.slice(0, 7)}.`,
       );
     } catch (error) {
-      console.error('[Yukina] Falha ao verificar/atualizar o Aeternus:', error);
+      const reason = error?.name === 'TimeoutError'
+        ? 'tempo limite da requisição excedido'
+        : (error?.message || String(error));
+      console.error(`[Yukina] Falha ao verificar/atualizar o Aeternus: ${reason}`);
     } finally {
       checking = false;
     }
   }
 
   console.log(
-    `[Yukina] Auto-updater do Aeternus ativo: GitHub ${owner}/${name} (${branch}), verificação a cada 5 segundos.`,
+    `[Yukina] Auto-updater do Aeternus ativo: GitHub ${owner}/${name} (${branch}), verificação a cada 60 segundos.`,
   );
 
   checkForUpdate();
