@@ -3,13 +3,17 @@ const { promisify } = require('node:util');
 const { getSyncState } = require('./sync-root');
 
 const execFileAsync = promisify(execFile);
-// Buscar o GitHub a cada 60 segundos evita chamadas de rede excessivas no Termux.
+const GIT_TIMEOUT_MS = 30_000;
+const NPM_INSTALL_TIMEOUT_MS = 180_000;
 const POLL_INTERVAL_MS = 60_000;
 
 async function git(args) {
   const { stdout } = await execFileAsync('git', args, {
     cwd: __dirname,
     windowsHide: true,
+    timeout: GIT_TIMEOUT_MS,
+    killSignal: 'SIGTERM',
+    maxBuffer: 2 * 1024 * 1024,
   });
 
   return stdout.trim();
@@ -41,8 +45,6 @@ function startYukinaUpdater() {
     checking = true;
 
     try {
-      // Busca o remoto uma vez. A verificação final usa a mesma referência
-      // origin/main para evitar falha se outro commit chegar durante o update.
       const state = await getSyncState();
 
       if (state.branch !== 'main') {
@@ -79,8 +81,6 @@ function startYukinaUpdater() {
 
       await git(['merge', '--ff-only', 'origin/main']);
 
-      // Não buscar o remoto novamente aqui: ele pode avançar entre o merge
-      // e a validação, causando um falso erro de sincronização.
       const finalState = await getSyncState(false);
 
       if (!finalState.synchronized) {
@@ -102,18 +102,21 @@ function startYukinaUpdater() {
       }
 
       if (packageChanged) {
-        console.log('[Yukina] package.json/package-lock.json mudou. Instalando dependências...');
+        console.log('[Yukina] Dependências mudaram. Executando npm install...');
         await execFileAsync('npm', ['install'], {
           cwd: __dirname,
           windowsHide: true,
-          stdio: 'inherit',
+          timeout: NPM_INSTALL_TIMEOUT_MS,
+          killSignal: 'SIGTERM',
+          maxBuffer: 10 * 1024 * 1024,
         });
       }
 
       console.log(`[Yukina] ✅ Atualizada para ${finalState.localSha.slice(0, 7)}.`);
       await restartYukina();
     } catch (error) {
-      console.error('[Yukina] Falha no auto-update:', error);
+      const detail = error?.stderr?.trim() || error?.message || String(error);
+      console.error('[Yukina] Falha no auto-update:', detail);
     } finally {
       checking = false;
     }
