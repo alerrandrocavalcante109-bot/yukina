@@ -7,6 +7,72 @@ const { deployCommands } = require('./deploy-commands');
 const { startAeternusUpdater } = require('./aeternus-updater');
 const { startYukinaUpdater } = require('./yukina-updater');
 const { getPrefix, handlePrefixMessage } = require('./prefix');
+const os = require('node:os');
+const crypto = require('node:crypto');
+
+// Impede duas instâncias locais de responderem às mesmas mensagens do Discord.
+const lockPath = path.join(
+  os.tmpdir(),
+  `yukina-${crypto.createHash('sha1').update(__dirname).digest('hex')}.lock`,
+);
+
+function processIsAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    return error.code === 'EPERM';
+  }
+}
+
+function acquireInstanceLock() {
+  const handoffFromPid = Number(process.env.YUKINA_RESTART_PARENT_PID || 0);
+  let existingPid = 0;
+
+  try {
+    existingPid = Number(JSON.parse(fs.readFileSync(lockPath, 'utf8')).pid || 0);
+  } catch {
+    // Arquivo ausente ou inválido: será criado/substituído abaixo.
+  }
+
+  if (existingPid && processIsAlive(existingPid)) {
+    if (handoffFromPid !== existingPid) {
+      console.error(`[Yukina] Outra instância já está ativa (PID ${existingPid}). Esta instância será encerrada para evitar mensagens duplicadas.`);
+      process.exit(0);
+    }
+
+    // A nova instância assume o lock durante o reinício automático.
+    fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid }), { mode: 0o600 });
+  } else {
+    try {
+      const fd = fs.openSync(lockPath, 'wx', 0o600);
+      fs.writeFileSync(fd, JSON.stringify({ pid: process.pid }));
+      fs.closeSync(fd);
+    } catch (error) {
+      if (error.code === 'EEXIST') {
+        console.error('[Yukina] Não foi possível adquirir o lock de instância; encerrando por segurança.');
+        process.exit(1);
+      }
+      throw error;
+    }
+  }
+
+  const releaseLock = () => {
+    try {
+      const current = JSON.parse(fs.readFileSync(lockPath, 'utf8'));
+      if (Number(current.pid) === process.pid) fs.unlinkSync(lockPath);
+    } catch {
+      // O lock já pode ter sido removido ou transferido para a nova instância.
+    }
+  };
+
+  process.once('exit', releaseLock);
+  process.once('SIGINT', () => process.exit(0));
+  process.once('SIGTERM', () => process.exit(0));
+}
+
+acquireInstanceLock();
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('[Yukina] DISCORD_TOKEN não foi definido no ambiente.');
