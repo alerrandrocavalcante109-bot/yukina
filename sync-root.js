@@ -15,18 +15,22 @@ async function git(args) {
   return stdout.trim();
 }
 
-async function getSyncState() {
-  await git(['fetch', REMOTE, BRANCH]);
+async function getSyncState(fetchRemote = true) {
+  if (fetchRemote) {
+    await git(['fetch', REMOTE, BRANCH]);
+  }
 
+  const currentBranch = await git(['rev-parse', '--abbrev-ref', 'HEAD']);
   const localSha = await git(['rev-parse', 'HEAD']);
   const remoteSha = await git(['rev-parse', `${REMOTE}/${BRANCH}`]);
   const status = await git(['status', '--porcelain']);
 
   return {
+    branch: currentBranch,
     localSha,
     remoteSha,
     clean: status === '',
-    synchronized: localSha === remoteSha && status === '',
+    synchronized: currentBranch === BRANCH && localSha === remoteSha && status === '',
   };
 }
 
@@ -35,6 +39,10 @@ async function assertSynchronized() {
 
   if (!state.synchronized) {
     const reasons = [];
+
+    if (state.branch !== BRANCH) {
+      reasons.push(`branch atual é ${state.branch}, esperado ${BRANCH}`);
+    }
 
     if (state.localSha !== state.remoteSha) {
       reasons.push(
@@ -54,12 +62,44 @@ async function assertSynchronized() {
   return state;
 }
 
-async function safePush(message) {
+async function createSyncBaseline() {
+  const state = await assertSynchronized();
+
+  return {
+    branch: state.branch,
+    sha: state.localSha,
+  };
+}
+
+async function safePush(message, baseline) {
   if (!message || !message.trim()) {
     throw new Error('[Yukina] Push bloqueado: mensagem de commit obrigatória.');
   }
 
-  await assertSynchronized();
+  if (!baseline?.sha || baseline.branch !== BRANCH) {
+    throw new Error(
+      '[Yukina] Push bloqueado: é obrigatório informar uma linha de base sincronizada.',
+    );
+  }
+
+  const beforePush = await getSyncState();
+
+  if (
+    beforePush.branch !== BRANCH ||
+    beforePush.localSha !== baseline.sha ||
+    beforePush.remoteSha !== baseline.sha
+  ) {
+    throw new Error(
+      '[Yukina] Push bloqueado: Termux e GitHub divergiram desde a linha de base. ' +
+      'Nenhum push será realizado.',
+    );
+  }
+
+  if (beforePush.clean) {
+    throw new Error(
+      '[Yukina] Push cancelado: nenhuma alteração local foi preparada para envio.',
+    );
+  }
 
   await git(['add', '-A']);
 
@@ -85,5 +125,6 @@ async function safePush(message) {
 module.exports = {
   getSyncState,
   assertSynchronized,
+  createSyncBaseline,
   safePush,
 };
