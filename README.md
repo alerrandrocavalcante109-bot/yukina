@@ -41,3 +41,17 @@ Crie um arquivo JavaScript em `commands/` que exporte `data` (um `SlashCommandBu
 - Nunca faça commit do arquivo `.env` nem compartilhe o token do bot.
 - Se o token for exposto, regenere-o no Developer Portal.
 - Conceda ao bot apenas as permissões necessárias.
+
+## Atualização automática do Aeternus
+
+A Yukina pode monitorar o repositório do Aeternus a cada 5 segundos e acionar um novo deploy no Render quando detectar um commit novo.
+
+Configure estas variáveis no ambiente da Yukina:
+
+- `AETERNUS_REPO`: repositório no formato `owner/repository` (também aceita a URL do GitHub).
+- `AETERNUS_BRANCH`: branch monitorada; padrão: `main`.
+- `AETERNUS_RENDER_DEPLOY_HOOK`: URL secreta do Deploy Hook do serviço Aeternus no Render.
+- `GITHUB_TOKEN`: opcional; recomendado se o repositório do Aeternus for privado.
+
+A primeira verificação apenas registra o commit atual como referência. Um commit novo detectado depois disso dispara o Deploy Hook uma única vez.
+
