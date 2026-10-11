@@ -25,7 +25,10 @@ async function restartYukina() {
     process.argv.slice(1),
     {
       cwd: __dirname,
-      env: process.env,
+      env: {
+        ...process.env,
+        YUKINA_RESTART_PARENT_PID: String(process.pid),
+      },
       detached: true,
       stdio: 'inherit',
     },
