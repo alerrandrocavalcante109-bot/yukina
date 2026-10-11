@@ -1,5 +1,6 @@
 const { execFile } = require('node:child_process');
 const { promisify } = require('node:util');
+const { getSyncState } = require('./sync-root');
 
 const execFileAsync = promisify(execFile);
 const POLL_INTERVAL_MS = 5000;
@@ -39,15 +40,16 @@ function startYukinaUpdater() {
     checking = true;
 
     try {
-      await git(['fetch', 'origin', 'main']);
+      const state = await getSyncState();
 
-      const localSha = await git(['rev-parse', 'HEAD']);
-      const remoteSha = await git(['rev-parse', 'origin/main']);
-      const status = await git(['status', '--porcelain']);
+      if (state.branch !== 'main') {
+        console.warn(
+          `[Yukina] ⚠️ Atualização bloqueada: branch atual é ${state.branch}; esperado main.`,
+        );
+        return;
+      }
 
-      if (localSha === remoteSha) return;
-
-      if (status) {
+      if (!state.clean) {
         console.warn(
           '[Yukina] ⚠️ Atualização bloqueada: existem alterações locais não commitadas. ' +
           'Nenhum arquivo será sobrescrito.',
@@ -55,8 +57,10 @@ function startYukinaUpdater() {
         return;
       }
 
+      if (state.localSha === state.remoteSha) return;
+
       console.log(
-        `[Yukina] 🆕 Novo commit detectado: ${remoteSha.slice(0, 7)}. Atualizando...`,
+        `[Yukina] 🆕 Novo commit detectado: ${state.remoteSha.slice(0, 7)}. Atualizando...`,
       );
 
       const changedFiles = await git([
@@ -70,7 +74,15 @@ function startYukinaUpdater() {
         .split('\n')
         .some((file) => file === 'package.json' || file === 'package-lock.json');
 
-      await git(['pull', '--ff-only', 'origin', 'main']);
+      await git(['merge', '--ff-only', 'origin/main']);
+
+      const finalState = await getSyncState();
+
+      if (!finalState.synchronized) {
+        throw new Error(
+          '[Yukina] Atualização concluída, mas a verificação final não confirmou sincronização.',
+        );
+      }
 
       if (packageChanged) {
         console.log('[Yukina] package.json/package-lock.json mudou. Instalando dependências...');
@@ -81,7 +93,7 @@ function startYukinaUpdater() {
         });
       }
 
-      console.log(`[Yukina] ✅ Atualizada para ${remoteSha.slice(0, 7)}.`);
+      console.log(`[Yukina] ✅ Atualizada para ${finalState.localSha.slice(0, 7)}.`);
       await restartYukina();
     } catch (error) {
       console.error('[Yukina] Falha no auto-update:', error);
