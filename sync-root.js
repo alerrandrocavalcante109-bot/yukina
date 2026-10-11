@@ -25,7 +25,7 @@ async function git(args) {
   return stdout.trim();
 }
 
-async function fetchRemote() {
+async function fetchRemoteWithRetry() {
   let lastError;
 
   for (let attempt = 1; attempt <= FETCH_RETRIES; attempt += 1) {
@@ -68,10 +68,6 @@ async function getSyncState(fetchRemote = true) {
     clean: status === '',
     synchronized: currentBranch === BRANCH && localSha === remoteSha && status === '',
   };
-}
-
-async function fetchRemoteWithRetry() {
-  return fetchRemote();
 }
 
 async function assertSynchronized() {
