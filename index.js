@@ -13,8 +13,6 @@ if (!process.env.DISCORD_TOKEN) {
   process.exit(1);
 }
 
-const prefix = getPrefix();
-
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -30,20 +28,34 @@ if (!fs.existsSync(commandsPath)) {
   fs.mkdirSync(commandsPath, { recursive: true });
 }
 
-for (const file of fs.readdirSync(commandsPath).filter((name) => name.endsWith('.js'))) {
+const commandFiles = fs.readdirSync(commandsPath)
+  .filter((name) => name.endsWith('.js'))
+  .sort((a, b) => a.localeCompare(b));
+
+for (const file of commandFiles) {
   const filePath = path.join(commandsPath, file);
 
   try {
-    delete require.cache[require.resolve(filePath)];
-    const command = require(filePath);
+    const resolvedPath = require.resolve(filePath);
+    delete require.cache[resolvedPath];
+    const command = require(resolvedPath);
 
-    if (!command.data || !command.execute) {
-      console.warn(`[Yukina] Comando ignorado: ${file} não exporta data e execute.`);
+    if (!command?.data?.name) {
+      console.warn(`[Yukina] Comando ignorado: ${file} não exporta data.name.`);
+      continue;
+    }
+
+    if (typeof command.execute !== 'function' &&
+        typeof command.prefix?.execute !== 'function') {
+      console.warn(`[Yukina] Comando ignorado: ${file} não possui execute nem prefix.execute.`);
       continue;
     }
 
     client.commands.set(command.data.name, command);
-    console.log(`[Yukina] Comando carregado: /${command.data.name}`);
+    const prefixReady = typeof command.prefix?.execute === 'function';
+    console.log(
+      `[Yukina] Comando carregado: /${command.data.name}${prefixReady ? ' + prefixo' : ' (sem prefixo)'}`,
+    );
   } catch (error) {
     console.error(`[Yukina] Falha ao carregar ${file}:`, error);
   }
@@ -53,7 +65,8 @@ client.once(Events.ClientReady, (readyClient) => {
   console.log('────────────────────────────────────');
   console.log(`[Yukina] 🟢 Bot online: ${readyClient.user.tag}`);
   console.log(`[Yukina] Comandos carregados: ${client.commands.size}`);
-  console.log(`[Yukina] Prefixo: ${prefix}`);
+  console.log(`[Yukina] Prefixo ativo: ${getPrefix()}`);
+  console.log(`[Yukina] Comandos com prefixo: ${[...client.commands.values()].filter((command) => typeof command.prefix?.execute === 'function').length}`);
   console.log(`[Yukina] Latência do gateway: ${Math.round(readyClient.ws.ping)} ms`);
   console.log('────────────────────────────────────');
 });
@@ -62,9 +75,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
 
   const command = client.commands.get(interaction.commandName);
-  if (!command) {
+  if (!command || typeof command.execute !== 'function') {
     await interaction.reply({
-      content: 'Este comando não está disponível nesta instância.',
+      content: 'Este comando não está disponível por slash nesta instância.',
       ephemeral: true,
     }).catch(() => {});
     return;
@@ -89,7 +102,11 @@ client.on(Events.InteractionCreate, async (interaction) => {
 });
 
 client.on(Events.MessageCreate, async (message) => {
-  await handlePrefixMessage(message, client.commands);
+  try {
+    await handlePrefixMessage(message, client.commands);
+  } catch (error) {
+    console.error('[Yukina] Falha no sistema de prefixo:', error);
+  }
 });
 
 process.on('unhandledRejection', (reason) => {
@@ -101,7 +118,6 @@ async function startBot() {
     console.log('[Yukina] Iniciando deploy automático dos comandos...');
     await deployCommands();
   } catch (error) {
-    // Um erro de deploy não impede o bot de iniciar com os comandos já registrados.
     console.error('[Yukina] Deploy automático falhou; tentando iniciar mesmo assim:', error);
   }
 
