@@ -43,8 +43,17 @@ function startYukinaUpdater() {
 
       const localSha = await git(['rev-parse', 'HEAD']);
       const remoteSha = await git(['rev-parse', 'origin/main']);
+      const status = await git(['status', '--porcelain']);
 
       if (localSha === remoteSha) return;
+
+      if (status) {
+        console.warn(
+          '[Yukina] ⚠️ Atualização bloqueada: existem alterações locais não commitadas. ' +
+          'Nenhum arquivo será sobrescrito.',
+        );
+        return;
+      }
 
       console.log(
         `[Yukina] 🆕 Novo commit detectado: ${remoteSha.slice(0, 7)}. Atualizando...`,
