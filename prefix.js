@@ -1,7 +1,8 @@
 const DEFAULT_PREFIX = 'Y';
 
 function getPrefix() {
-  const configured = String(process.env.PREFIX ?? '').trim();
+  // PREFIX é reservado pelo próprio Termux; não o use para configuração do bot.
+  const configured = String(process.env.YUKINA_PREFIX ?? '').trim();
   return configured || DEFAULT_PREFIX;
 }
 
@@ -34,7 +35,6 @@ async function handlePrefixMessage(message, commands) {
   const prefix = getPrefix();
   const content = String(message.content ?? '');
 
-  // O prefixo não diferencia maiúsculas de minúsculas, mas preserva o texto dos argumentos.
   if (!content.slice(0, prefix.length).toLowerCase().startsWith(prefix.toLowerCase())) {
     return false;
   }
@@ -42,7 +42,7 @@ async function handlePrefixMessage(message, commands) {
   const commandText = content.slice(prefix.length).trim();
   if (!commandText) return true;
 
-  const parts = commandText.split(/\s+/);
+  const parts = commandText.split(/\\s+/);
   const commandName = parts.shift();
   const args = parts;
   const command = resolvePrefixCommand(commands, commandName);
