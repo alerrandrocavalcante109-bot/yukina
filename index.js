@@ -4,6 +4,7 @@ const { Client, Collection, GatewayIntentBits, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
 const { deployCommands } = require('./deploy-commands');
+const { startAeternusUpdater } = require('./aeternus-updater');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('[Yukina] DISCORD_TOKEN não foi definido no ambiente.');
@@ -100,3 +101,4 @@ async function startBot() {
 }
 
 startBot();
+startAeternusUpdater();
