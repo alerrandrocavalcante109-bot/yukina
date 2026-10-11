@@ -1,4 +1,4 @@
-const DEFAULT_PREFIX = '!';
+const DEFAULT_PREFIX = 'Y';
 
 function getPrefix() {
   const configured = process.env.PREFIX?.trim();
@@ -20,8 +20,7 @@ function resolvePrefixCommand(commands, commandName) {
     if (
       Array.isArray(command?.prefix?.aliases) &&
       command.prefix.aliases.some(
-        (alias) =>
-          String(alias).trim().toLowerCase() === normalizedName,
+        (alias) => String(alias).trim().toLowerCase() === normalizedName,
       ) &&
       command?.prefix?.execute
     ) {
@@ -43,8 +42,8 @@ async function handlePrefixMessage(message, commands) {
   const commandText = content.slice(prefix.length).trim();
   if (!commandText) return true;
 
-  const parts = commandText.split(/s+/);
-  const commandName = parts.shift();
+  const parts = commandText.split(/\s+/);
+  const commandName = parts.shift()?.toLowerCase();
   const args = parts;
 
   const command = resolvePrefixCommand(commands, commandName);
