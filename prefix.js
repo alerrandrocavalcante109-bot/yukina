@@ -42,7 +42,7 @@ async function handlePrefixMessage(message, commands) {
   const commandText = content.slice(prefix.length).trim();
   if (!commandText) return true;
 
-  const parts = commandText.split(/\\s+/);
+  const parts = commandText.split(/\s+/);
   const commandName = parts.shift();
   const args = parts;
   const command = resolvePrefixCommand(commands, commandName);
