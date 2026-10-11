@@ -71,6 +71,38 @@ async function createSyncBaseline() {
   };
 }
 
+const MAX_PUSH_ATTEMPTS = 3;
+const PUSH_RETRY_DELAY_MS = 2000;
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function pushWithRetry() {
+  let lastError;
+
+  for (let attempt = 1; attempt <= MAX_PUSH_ATTEMPTS; attempt += 1) {
+    try {
+      await git(['push', REMOTE, BRANCH]);
+      return;
+    } catch (error) {
+      lastError = error;
+
+      if (attempt < MAX_PUSH_ATTEMPTS) {
+        console.warn(
+          `[Yukina] Push falhou (tentativa ${attempt}/${MAX_PUSH_ATTEMPTS}). Tentando novamente...`,
+        );
+        await wait(PUSH_RETRY_DELAY_MS);
+      }
+    }
+  }
+
+  throw new Error(
+    `[Yukina] Push falhou após ${MAX_PUSH_ATTEMPTS} tentativas.`,
+    { cause: lastError },
+  );
+}
+
 async function safePush(message, baseline) {
   if (!message || !message.trim()) {
     throw new Error('[Yukina] Push bloqueado: mensagem de commit obrigatória.');
@@ -109,7 +141,7 @@ async function safePush(message, baseline) {
   }
 
   await git(['commit', '-m', message.trim()]);
-  await git(['push', REMOTE, BRANCH]);
+  await pushWithRetry();
 
   const finalState = await getSyncState();
 
