@@ -54,7 +54,6 @@ client.once(Events.ClientReady, (readyClient) => {
   console.log(`[Yukina] 🟢 Bot online: ${readyClient.user.tag}`);
   console.log(`[Yukina] Comandos carregados: ${client.commands.size}`);
   console.log(`[Yukina] Prefixo: ${prefix}`);
-  console.log(`[Yukina] Comandos carregados: ${client.commands.size}`);
   console.log(`[Yukina] Latência do gateway: ${Math.round(readyClient.ws.ping)} ms`);
   console.log('────────────────────────────────────');
 });
