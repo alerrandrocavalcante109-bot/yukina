@@ -3,7 +3,8 @@ const { promisify } = require('node:util');
 const { getSyncState } = require('./sync-root');
 
 const execFileAsync = promisify(execFile);
-const POLL_INTERVAL_MS = 5000;
+// Buscar o GitHub a cada 60 segundos evita chamadas de rede excessivas no Termux.
+const POLL_INTERVAL_MS = 60_000;
 
 async function git(args) {
   const { stdout } = await execFileAsync('git', args, {
@@ -119,7 +120,7 @@ function startYukinaUpdater() {
   }
 
   console.log(
-    '[Yukina] 🔄 Auto-update ativo: verificando o repositório a cada 5 segundos.',
+    '[Yukina] 🔄 Auto-update ativo: verificando o repositório a cada 60 segundos.',
   );
 
   checkForUpdate();
