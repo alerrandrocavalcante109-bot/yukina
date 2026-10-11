@@ -8,11 +8,11 @@ function createBalanceEmbed(user, balance, isOwnBalance) {
       name: user.username,
       iconURL: user.displayAvatarURL(),
     })
-    .setTitle('Saldo')
+    .setTitle('🪙 Saldo')
     .setDescription(
       isOwnBalance
-        ? `Seu saldo atual é de **${balance.toLocaleString('pt-BR')} moedas**.`
-        : `O saldo de <@${user.id}> é de **${balance.toLocaleString('pt-BR')} moedas**.`,
+        ? `Seu saldo atual é de **${balance.toLocaleString('pt-BR')} Kizuna 🪙**.`
+        : `O saldo de <@${user.id}> é de **${balance.toLocaleString('pt-BR')} Kizuna 🪙**.`,
     )
     .setFooter({ text: 'Yukina • Economia' })
     .setTimestamp();
