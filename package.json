@@ -1,0 +1,18 @@
+{
+  "name": "yukina",
+  "version": "1.0.0",
+  "description": "Bot Discord com comandos slash e estrutura modular.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "deploy": "node deploy-commands.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.22.1",
+    "dotenv": "^16.6.1"
+  }
+}
