@@ -5,6 +5,7 @@ const fs = require('node:fs');
 const path = require('node:path');
 const { deployCommands } = require('./deploy-commands');
 const { startAeternusUpdater } = require('./aeternus-updater');
+const { startYukinaUpdater } = require('./yukina-updater');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('[Yukina] DISCORD_TOKEN não foi definido no ambiente.');
@@ -102,3 +103,4 @@ async function startBot() {
 
 startBot();
 startAeternusUpdater();
+startYukinaUpdater();
