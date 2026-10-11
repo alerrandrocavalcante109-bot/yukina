@@ -1,61 +1,62 @@
 const DEFAULT_PREFIX = 'Y';
 
 function getPrefix() {
-  const configured = process.env.PREFIX?.trim();
+  const configured = String(process.env.PREFIX ?? '').trim();
   return configured || DEFAULT_PREFIX;
 }
 
-function resolvePrefixCommand(commands, commandName) {
-  if (!commandName) return null;
+function normalizeName(value) {
+  return String(value ?? '').trim().toLowerCase();
+}
 
-  const normalizedName = String(commandName).trim().toLowerCase();
+function resolvePrefixCommand(commands, commandName) {
+  const normalizedName = normalizeName(commandName);
+  if (!normalizedName || !commands) return null;
 
   for (const command of commands.values()) {
-    const commandDataName = String(command?.data?.name || '').trim().toLowerCase();
+    if (typeof command?.prefix?.execute !== 'function') continue;
 
-    if (commandDataName === normalizedName && command?.prefix?.execute) {
-      return command;
-    }
+    const names = [
+      command?.data?.name,
+      command?.prefix?.name,
+      ...(Array.isArray(command?.prefix?.aliases) ? command.prefix.aliases : []),
+    ].map(normalizeName).filter(Boolean);
 
-    if (
-      Array.isArray(command?.prefix?.aliases) &&
-      command.prefix.aliases.some(
-        (alias) => String(alias).trim().toLowerCase() === normalizedName,
-      ) &&
-      command?.prefix?.execute
-    ) {
-      return command;
-    }
+    if (names.includes(normalizedName)) return command;
   }
 
   return null;
 }
 
 async function handlePrefixMessage(message, commands) {
-  if (message.author?.bot || !message.guild) return false;
+  if (!message || message.author?.bot || !message.guild) return false;
 
   const prefix = getPrefix();
-  const content = String(message.content || '');
+  const content = String(message.content ?? '');
 
-  if (!content.startsWith(prefix)) return false;
+  // O prefixo não diferencia maiúsculas de minúsculas, mas preserva o texto dos argumentos.
+  if (!content.slice(0, prefix.length).toLowerCase().startsWith(prefix.toLowerCase())) {
+    return false;
+  }
 
   const commandText = content.slice(prefix.length).trim();
   if (!commandText) return true;
 
   const parts = commandText.split(/\s+/);
-  const commandName = parts.shift()?.toLowerCase();
+  const commandName = parts.shift();
   const args = parts;
-
   const command = resolvePrefixCommand(commands, commandName);
-  if (!command) return true;
+
+  if (!command) {
+    console.warn(`[Yukina] Comando de prefixo não encontrado: ${prefix}${commandName}`);
+    return true;
+  }
 
   try {
     await command.prefix.execute(message, args);
   } catch (error) {
-    console.error(
-      `[Yukina] Erro no comando de prefixo ${prefix}${commandName}:`,
-      error,
-    );
+    console.error(`[Yukina] Erro no comando de prefixo ${prefix}${commandName}:`, error);
+    await message.reply('Ocorreu um erro ao executar esse comando.').catch(() => {});
   }
 
   return true;
