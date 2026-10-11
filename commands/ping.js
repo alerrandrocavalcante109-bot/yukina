@@ -21,9 +21,9 @@ module.exports = {
         : 'Instável';
 
     const color = gatewayLatency < 0
-      ? 0xF1C40F
+      ? 0x87CEFA
       : healthy
-        ? 0x2ECC71
+        ? 0x87CEFA
         : 0xE67E22;
 
     const embed = new EmbedBuilder()
