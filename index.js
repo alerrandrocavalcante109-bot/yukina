@@ -3,6 +3,7 @@ require('dotenv').config();
 const { Client, Collection, GatewayIntentBits, Events } = require('discord.js');
 const fs = require('node:fs');
 const path = require('node:path');
+const { deployCommands } = require('./deploy-commands');
 
 if (!process.env.DISCORD_TOKEN) {
   console.error('[Yukina] DISCORD_TOKEN não foi definido no ambiente.');
@@ -40,8 +41,11 @@ for (const file of fs.readdirSync(commandsPath).filter((name) => name.endsWith('
 }
 
 client.once(Events.ClientReady, (readyClient) => {
-  console.log(`[Yukina] Online como ${readyClient.user.tag}`);
+  console.log('────────────────────────────────────');
+  console.log(`[Yukina] 🟢 Bot online: ${readyClient.user.tag}`);
   console.log(`[Yukina] Comandos carregados: ${client.commands.size}`);
+  console.log(`[Yukina] Latência do gateway: ${Math.round(readyClient.ws.ping)} ms`);
+  console.log('────────────────────────────────────');
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -78,7 +82,21 @@ process.on('unhandledRejection', (reason) => {
   console.error('[Yukina] Promise rejeitada sem tratamento:', reason);
 });
 
-client.login(process.env.DISCORD_TOKEN).catch((error) => {
-  console.error('[Yukina] Não foi possível conectar ao Discord:', error);
-  process.exitCode = 1;
-});
+async function startBot() {
+  try {
+    console.log('[Yukina] Iniciando deploy automático dos comandos...');
+    await deployCommands();
+  } catch (error) {
+    // Um erro de deploy não impede o bot de iniciar com os comandos já registrados.
+    console.error('[Yukina] Deploy automático falhou; tentando iniciar mesmo assim:', error);
+  }
+
+  try {
+    await client.login(process.env.DISCORD_TOKEN);
+  } catch (error) {
+    console.error('[Yukina] Não foi possível conectar ao Discord:', error);
+    process.exitCode = 1;
+  }
+}
+
+startBot();
