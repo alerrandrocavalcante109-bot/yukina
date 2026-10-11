@@ -45,6 +45,13 @@ function acquireInstanceLock() {
     // A nova instância assume o lock durante o reinício automático.
     fs.writeFileSync(lockPath, JSON.stringify({ pid: process.pid }), { mode: 0o600 });
   } else {
+    // Remove lock antigo deixado por um processo que já morreu.
+    try {
+      fs.unlinkSync(lockPath);
+    } catch (error) {
+      if (error.code !== 'ENOENT') throw error;
+    }
+
     try {
       const fd = fs.openSync(lockPath, 'wx', 0o600);
       fs.writeFileSync(fd, JSON.stringify({ pid: process.pid }));
