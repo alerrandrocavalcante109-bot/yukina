@@ -57,6 +57,42 @@
     }
     input::placeholder, textarea::placeholder { color: #d0c4df !important; opacity: 1 !important; }
   `;
+
+  /* Tela inicial: menos transparência e leitura mais nítida */
+  style.textContent += `
+    body:has(.character) {
+      background-color: #090611 !important;
+    }
+    body:has(.character) .hero,
+    body:has(.character) .hero-content,
+    body:has(.character) .hero-card,
+    body:has(.character) .hero-panel,
+    body:has(.character) .hero-copy,
+    body:has(.character) .hero-info,
+    body:has(.character) .intro,
+    body:has(.character) .welcome,
+    body:has(.character) main > section {
+      background-color: rgba(12, 7, 24, .96) !important;
+      border-color: rgba(210, 166, 255, .48) !important;
+      backdrop-filter: blur(16px);
+      box-shadow: 0 12px 36px rgba(0,0,0,.38);
+    }
+    body:has(.character) h1,
+    body:has(.character) h2,
+    body:has(.character) p,
+    body:has(.character) .subtitle,
+    body:has(.character) .description {
+      color: #fff !important;
+      text-shadow: 0 2px 7px rgba(0,0,0,.98) !important;
+    }
+    body:has(.character) button,
+    body:has(.character) .btn,
+    body:has(.character) .button,
+    body:has(.character) a.button {
+      opacity: 1 !important;
+      filter: saturate(1.15);
+    }
+  `;
   apply(saved);
   document.addEventListener('click', function(event){
     const button = event.target.closest('#themeToggle');
