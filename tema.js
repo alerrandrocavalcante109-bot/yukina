@@ -150,38 +150,6 @@
     }
   `;
 
-  function addDiscordProfile() {
-    let user = null;
-    try { user = JSON.parse(sessionStorage.getItem('yukina_discord_user') || 'null'); } catch (_) {}
-    if (!user) return;
-    const candidates = Array.from(document.querySelectorAll('.site-menu,.dropdown-menu,.nav-menu,.menu,[role="menu"],nav,[class*="menu"],[id*="menu"]'));
-    const menu = candidates.find(el => /início|inicio|comandos|wiki|vip/i.test(el.innerText || ''));
-    if (!menu || menu.querySelector('.yukina-discord-profile')) return;
-    const profile = document.createElement('div');
-    profile.className = 'yukina-discord-profile';
-    profile.style.cssText = 'display:flex;align-items:center;gap:12px;padding:14px 16px;margin:0 0 10px;border-bottom:1px solid rgba(190,130,255,.35);background:rgba(25,12,43,.98);border-radius:12px;color:#fff;';
-    const avatar = document.createElement('img');
-    avatar.alt = '';
-    avatar.width = 44; avatar.height = 44;
-    avatar.style.cssText = 'width:44px;height:44px;border-radius:50%;object-fit:cover;border:2px solid #c084fc;background:#241333;flex-shrink:0;';
-    if (user.avatar) avatar.src = user.avatar;
-    else avatar.src = 'https://cdn.discordapp.com/embed/avatars/0.png';
-    const info = document.createElement('div');
-    info.style.cssText = 'min-width:0;display:flex;flex-direction:column;gap:3px;';
-    const name = document.createElement('strong');
-    name.textContent = user.global_name || user.username || 'Usuário Discord';
-    name.style.cssText = 'font-size:14px;line-height:1.3;overflow-wrap:anywhere;color:#fff;';
-    const tag = document.createElement('span');
-    tag.textContent = 'Conectado pelo Discord';
-    tag.style.cssText = 'font-size:11px;color:#d8b4fe;text-shadow:none;';
-    info.append(name, tag);
-    profile.append(avatar, info);
-    menu.insertBefore(profile, menu.firstChild);
-  }
-  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', addDiscordProfile);
-  else addDiscordProfile();
-  const profileObserver = new MutationObserver(addDiscordProfile);
-  if (document.documentElement) profileObserver.observe(document.documentElement, {childList:true,subtree:true});
   apply(saved);
   document.addEventListener('click', function(event){
     const button = event.target.closest('#themeToggle');
