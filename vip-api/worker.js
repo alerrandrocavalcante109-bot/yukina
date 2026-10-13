@@ -46,6 +46,15 @@ export default {
         message: "O checkout ainda não foi habilitado. Nenhuma cobrança foi realizada."
       }, 503);
     }
+    if (url.pathname === "/api/vip/proofs" && request.method === "POST") {
+      // Deliberately fail closed until private file storage, durable DB,
+      // authentication, rate limits, and transaction matching are configured.
+      return json({
+        error: "proof_review_not_configured",
+        status: "unavailable",
+        message: "O envio e a conferência de comprovantes ainda não estão habilitados. Nenhum arquivo foi recebido e nenhum VIP foi ativado."
+      }, 503);
+    }
     if (url.pathname === "/api/vip/webhook" && request.method === "POST") {
       return json({
         error: "webhook_not_configured",
