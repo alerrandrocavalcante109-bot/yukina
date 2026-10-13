@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#100817">
+<meta name="description" content="Envie os dados da sua compra Yukina VIP para conferência do pagamento.">
+<title>Enviar comprovante • Yukina</title>
+<style>
+:root{color-scheme:dark;--bg:#0b0712;--panel:#171020;--line:#c084fc48;--purple:#a855f7;--pink:#ec4899;--text:#fff8ff;--muted:#cbbdd8}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#57247b 0,transparent 38%),var(--bg);color:var(--text);font-family:Inter,ui-sans-serif,system-ui,sans-serif}.wrap{width:min(760px,calc(100% - 28px));margin:auto}.nav{height:72px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}a{color:#e9b8ff;text-decoration:none}.brand{font-weight:950;letter-spacing:.14em;color:white}.panel{margin:38px auto;border:1px solid var(--line);border-radius:20px;padding:clamp(20px,5vw,34px);background:#171020eF;box-shadow:0 22px 70px #0004}.eyebrow{text-transform:uppercase;letter-spacing:.16em;color:#e9b8ff;font-weight:850;font-size:.75rem}h1{font-size:clamp(2rem,7vw,3rem);letter-spacing:-.05em;margin:10px 0}.lead,.hint{color:var(--muted);line-height:1.65}.notice{padding:13px 15px;border:1px solid #fbbf244d;background:#fbbf2410;border-radius:12px;line-height:1.6;margin:20px 0}.form{display:grid;gap:16px;margin-top:22px}label{display:grid;gap:7px;font-weight:750}input,select{width:100%;border:1px solid #c084fc55;border-radius:11px;padding:12px 13px;background:#0e0916;color:white;font:inherit}input[type=file]{padding:10px}input:focus,select:focus{outline:2px solid #c084fc;outline-offset:2px}.hint{font-size:.84rem;font-weight:400}.btn{border:0;border-radius:12px;padding:14px 16px;background:linear-gradient(110deg,#9333ea,#be185d);color:white;font:inherit;font-weight:900;cursor:pointer}.btn:disabled{opacity:.55;cursor:not-allowed}.result{display:none;padding:13px;border-radius:12px;background:#a855f71a;border:1px solid var(--line);line-height:1.6}.result.show{display:block}.foot{padding:0 0 30px;color:var(--muted);font-size:.85rem}@media(min-width:600px){.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}}
+</style>
+<script src="./tema.js" defer></script>
+</head>
+<body>
+<header class="wrap nav"><a class="brand" href="./index.html">雪 YUKINA</a><a href="./vip.html">← Voltar aos planos</a></header>
+<main class="wrap">
+<section class="panel">
+<span class="eyebrow">Yukina VIP · Conferência de pagamento</span>
+<h1>Enviar comprovante</h1>
+<p class="lead">Informe os dados da compra e anexe o comprovante para conferência. O plano só poderá ser ativado depois que o pagamento for validado com segurança.</p>
+<div class="notice"><strong>Importante:</strong> o envio do arquivo não confirma pagamento. Imagens podem ser editadas ou reutilizadas; a equipe precisa comparar os dados com os registros de pagamento e verificar a transação na fonte confiável. Neste momento, o recebimento e a validação ainda estão em preparação.</div>
+<form id="proofForm" class="form">
+<div class="two">
+<label>Seu ID de usuário do Discord
+<input name="discordUserId" inputmode="numeric" pattern="[0-9]{17,20}" minlength="17" maxlength="20" placeholder="Ex.: 123456789012345678" required>
+<span class="hint">Use o ID numérico, não a senha nem o token da conta.</span></label>
+<label>Plano comprado
+<select name="plan" required><option value="">Selecione um plano</option><option value="starter">Starter</option><option value="plus">Plus</option><option value="premium">Premium</option><option value="ultra">Ultra</option><option value="infinity">Infinity</option></select>
+</label>
+</div>
+<div class="two">
+<label>Periodicidade
+<select name="billing" required><option value="">Selecione</option><option value="monthly">Mensal</option><option value="annual">Anual</option></select></label>
+<label>Valor pago (R$)
+<input name="amount" inputmode="decimal" placeholder="Ex.: 14,90" required></label>
+</div>
+<label>Identificador da transação ou referência Pix
+<input name="transactionReference" maxlength="120" autocomplete="off" placeholder="Código da transação, se disponível" required>
+<span class="hint">Não envie senhas, códigos de autenticação, número completo de cartão ou dados bancários sensíveis.</span></label>
+<label>Arquivo do comprovante
+<input name="proof" type="file" accept="image/jpeg,image/png,image/webp,application/pdf" required>
+<span class="hint">Formatos permitidos planejados: JPG, PNG, WEBP ou PDF, até 5 MB. Evite incluir informações pessoais desnecessárias.</span></label>
+<button class="btn" type="submit">Enviar para conferência</button>
+<div id="result" class="result" role="status" aria-live="polite"></div>
+</form>
+</section>
+<p class="foot">A aprovação não é automática por imagem. O sistema permanece em modo de preparação até o banco de dados, o armazenamento privado dos arquivos e as regras de conferência serem configurados.</p>
+</main>
+<script>
+(() => {
+ const form=document.getElementById('proofForm'), result=document.getElementById('result');
+ form.addEventListener('submit',async event=>{
+  event.preventDefault();
+  const file=form.elements.proof.files[0];
+  if(!file){result.textContent='Selecione o comprovante.';result.classList.add('show');return;}
+  if(file.size>5*1024*1024){result.textContent='O arquivo ultrapassa o limite de 5 MB.';result.classList.add('show');return;}
+  const allowed=['image/jpeg','image/png','image/webp','application/pdf'];
+  if(!allowed.includes(file.type)){result.textContent='Formato não aceito. Use JPG, PNG, WEBP ou PDF.';result.classList.add('show');return;}
+  result.textContent='O envio de comprovantes ainda não está habilitado. Nenhum arquivo foi enviado e nenhuma compra foi aprovada. Tente novamente quando o sistema for configurado.';
+  result.classList.add('show');
+ });
+})();
+</script>
+</body>
+</html>
