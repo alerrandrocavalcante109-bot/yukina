@@ -28,6 +28,7 @@ function json(data, status = 200, extraHeaders = {}) {
       "access-control-allow-credentials": "true",
       "access-control-allow-methods": "GET, POST, OPTIONS",
       "access-control-allow-headers": "Content-Type",
+      "vary": "Origin",
       ...extraHeaders
     }
   });
@@ -80,7 +81,7 @@ async function handleDiscordLogin(env) {
   return redirect(authorize.toString());
 }
 
-async function handleDiscordCallback(request, env, url) {
+async function handleDiscordCallback(env, url) {
   if (!configured(env)) return json({ error: "discord_login_not_configured" }, 503);
   const code = url.searchParams.get("code");
   const state = url.searchParams.get("state");
@@ -141,28 +142,30 @@ async function currentUser(request, env) {
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (url.origin === SITE_ORIGIN && request.method === "OPTIONS") {
+    const origin = request.headers.get("Origin");
+    if (request.method === "OPTIONS") {
+      if (origin !== SITE_ORIGIN) return new Response(null, { status: 403 });
       return new Response(null, { status: 204, headers: {
         "access-control-allow-origin": SITE_ORIGIN,
         "access-control-allow-credentials": "true",
         "access-control-allow-methods": "GET, POST, OPTIONS",
         "access-control-allow-headers": "Content-Type",
+        "access-control-max-age": "600",
         "vary": "Origin"
       }});
     }
-    if (request.method === "OPTIONS") return new Response(null, { status: 403 });
     if (url.pathname === "/health" && request.method === "GET") {
       return json({ service: "yukina-vip-api", mode: "preparation", paymentsEnabled: false, discordLoginConfigured: configured(env) });
     }
     if (url.pathname === "/auth/discord" && request.method === "GET") return handleDiscordLogin(env);
-    if (url.pathname === "/auth/discord/callback" && request.method === "GET") return handleDiscordCallback(request, env, url);
+    if (url.pathname === "/auth/discord/callback" && request.method === "GET") return handleDiscordCallback(env, url);
     if (url.pathname === "/api/auth/me" && request.method === "GET") {
       if (!env.DB) return json({ error: "database_not_configured" }, 503);
       const user = await currentUser(request, env);
       return json({ authenticated: Boolean(user), user: user || null });
     }
     if (url.pathname === "/api/auth/logout" && request.method === "POST") {
-      if (request.headers.get("Origin") !== SITE_ORIGIN) return json({ error: "origin_not_allowed" }, 403);
+      if (origin !== SITE_ORIGIN) return json({ error: "origin_not_allowed" }, 403);
       const token = cookieValue(request, SESSION_COOKIE);
       if (token && env.DB) await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(token)).run();
       return json({ ok: true }, 200, { "Set-Cookie": cookieHeader("", 0) });
