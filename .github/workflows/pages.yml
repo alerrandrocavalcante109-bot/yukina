@@ -27,8 +27,8 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Inject Wiki menu script into homepage
-        run: sed -i 's#</body>#<script src="./wiki-menu.js" defer></script></body>#i' index.html
+      - name: Inject navigation scripts into homepage
+        run: sed -i 's#</body>#<script src="./wiki-menu.js" defer></script><script src="./vip-menu.js" defer></script></body>#i' index.html
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
