@@ -93,6 +93,31 @@
       filter: saturate(1.15);
     }
   `;
+
+  style.textContent += `
+    /* Contraste forte na página inicial */
+    .card, .daily, .about, .cta, .panel, .login-card, .glass, .feature,
+    .feature-card, .stat-card, article {
+      background: #100a20 !important;
+      background-color: #100a20 !important;
+      opacity: 1 !important;
+      border-color: rgba(171,111,255,.8) !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    .hero, .hero-content, .hero-copy, .hero-info, .intro, .welcome {
+      background-color: rgba(9,5,19,.94) !important;
+      opacity: 1 !important;
+      backdrop-filter: none !important;
+      -webkit-backdrop-filter: none !important;
+    }
+    p, li, label, small, .description, .muted, .subtitle, .lead {
+      opacity: 1 !important;
+      color: #fff !important;
+      text-shadow: 0 2px 5px #000 !important;
+    }
+    body { background-color: #080511 !important; }
+  `;
   apply(saved);
   document.addEventListener('click', function(event){
     const button = event.target.closest('#themeToggle');
