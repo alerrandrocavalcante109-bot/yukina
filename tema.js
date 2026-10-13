@@ -23,6 +23,40 @@
     html[data-theme="light"] .muted, html[data-theme="light"] .description { color:#665675 !important; }
   `;
   (document.head || document.documentElement).appendChild(style);
+  style.textContent += `
+    /* Contraste reforçado para texto e controles sobre o fundo ilustrado */
+    body { color:#fff !important; }
+    h1,h2,h3,h4,h5,h6,p,label,small,span,li,a:not(.gradient),.description,.muted,.subtitle,.eyebrow,.lead {
+      text-shadow: 0 1px 4px rgba(0,0,0,.85);
+    }
+    .site-menu, .menu, .dropdown-menu, .nav-menu {
+      background: rgba(12,7,22,.97) !important;
+      border: 1px solid rgba(220,190,255,.42) !important;
+      backdrop-filter: blur(18px);
+    }
+    .site-menu a, .site-menu button, .menu a, .dropdown-menu a, .nav-menu a {
+      color: #fff !important;
+      background-color: rgba(25,14,42,.96);
+      opacity: 1 !important;
+      text-shadow: none;
+    }
+    button, .button, .btn, a.button, a.btn, .cta a, .cta button {
+      opacity: 1 !important;
+      color: #fff !important;
+      text-shadow: none;
+      border-color: rgba(220,190,255,.65);
+    }
+    .card, .daily, .about, .cta, .panel, .login-card, .glass, .feature {
+      background-color: rgba(14,8,26,.88) !important;
+      border-color: rgba(220,190,255,.32);
+    }
+    input, textarea, select {
+      background: rgba(14,8,26,.94) !important;
+      color: #fff !important;
+      border-color: rgba(220,190,255,.55) !important;
+    }
+    input::placeholder, textarea::placeholder { color: #d0c4df !important; opacity: 1 !important; }
+  `;
   apply(saved);
   document.addEventListener('click', function(event){
     const button = event.target.closest('#themeToggle');
