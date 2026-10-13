@@ -61,7 +61,7 @@
      if(!res.ok)throw new Error("O Discord não conseguiu carregar os servidores (HTTP "+res.status+").");
      const all=await res.json();guilds=all.filter(canManage);
      select.innerHTML='<option value="">Selecione um servidor…</option>';
-     guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});
+     guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});const params=new URLSearchParams(location.search);const requested=params.get("guild");if(requested&&guilds.some(g=>g.id===requested)){select.value=requested;select.dispatchEvent(new Event("change"));}
      status.textContent=guilds.length?guilds.length+" servidor(es) com permissão administrativa encontrados.":"Nenhum servidor com permissão de administrador ou Gerenciar servidor foi encontrado.";
      notice.textContent="A presença da Yukina precisa ser confirmada pelo serviço do bot. Esta página não finge que essa verificação ocorreu.";
    }catch(e){select.innerHTML='<option value="">Não foi possível carregar</option>';status.textContent=e.message||"Erro ao consultar o Discord.";notice.textContent="Se você acabou de alterar as permissões, entre novamente pelo Discord."}
