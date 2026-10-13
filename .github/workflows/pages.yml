@@ -27,6 +27,22 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
+      - name: Inject Wiki menu script into homepage
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          path = Path("index.html")
+          html = path.read_text(encoding="utf-8")
+          tag = '<script src="./wiki-menu.js" defer></script>'
+          if tag not in html:
+              marker = "</body>"
+              if marker in html.lower():
+                  i = html.lower().rfind(marker)
+                  html = html[:i] + tag + "\n" + html[i:]
+              else:
+                  html += "\n" + tag
+              path.write_text(html, encoding="utf-8")
+          PY
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
