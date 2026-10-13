@@ -175,24 +175,30 @@ client.on("interactionCreate", async interaction => {
           await interaction.reply({ content: `Este pedido já está ${order.status}; nenhuma alteração foi feita.`, ephemeral: true });
           return;
         }
-        if (action === "approve") {
-          await interaction.reply({ content: "Antes de aprovar, confirme que a transação aparece como recebida na conta oficial, com valor exato e sem ter sido usada em outro pedido. Digite /vip-aprovar somente depois dessa conferência.", ephemeral: true });
-          return;
-        }
-        const changed = updateDecision.run("rejected", timestamp(), interaction.user.id, "Recusado pela equipe", order.id);
-        if (changed.changes !== 1) {
-          await interaction.reply({ content: "O pedido foi alterado por outra ação. Atualize o ticket.", ephemeral: true });
-          return;
-        }
-        audit.run(order.id, interaction.user.id, "rejected", "Recusado pela equipe", timestamp());
-        await interaction.update({ embeds: [orderEmbed({ ...order, status: "rejected" }).setDescription("Pedido recusado pela equipe. Entre em contato com o suporte para obter detalhes." )], components: [controls(order.id)] });
+        const nextStatus = action === "approve" ? "approved" : "rejected";
+      const note = action === "approve"
+        ? "Aprovação manual; a equipe declara ter verificado o recebimento na fonte oficial."
+        : "Recusado pela equipe";
+      if (action === "approve") {
+        // The button is an explicit human attestation. The bot never infers payment from an image.
+        await interaction.reply({ content: "Confirme apenas se verificou o crédito na conta oficial, o valor exato e que a transação não foi usada em outro pedido. Ao confirmar, você assume a decisão manual.", ephemeral: true });
+      }
+      const changed = updateDecision.run(nextStatus, timestamp(), interaction.user.id, note, order.id);
+      if (changed.changes !== 1) {
+        if (!interaction.replied) await interaction.reply({ content: "O pedido foi alterado por outra ação. Atualize o ticket.", ephemeral: true });
+        return;
+      }
+      audit.run(order.id, interaction.user.id, nextStatus, note, timestamp());
+      const updated = { ...order, status: nextStatus };
+      const description = action === "approve"
+        ? "Pagamento marcado como conferido manualmente pela equipe. A aprovação não libera automaticamente benefícios do bot; a vinculação de cargos/recursos deve ser configurada e testada separadamente."
+        : "Pedido recusado pela equipe. Entre em contato com o suporte para obter detalhes.";
+      const payload = { embeds: [orderEmbed(updated).setDescription(description)], components: [controls(order.id)] };
+      if (interaction.replied) await interaction.message.edit(payload);
+      else await interaction.update(payload);
       }
     }
 
-    if (interaction.isChatInputCommand() && interaction.commandName === "vip-aprovar") {
-      // Registered only after the separate command definition is added; retained as a fail-closed placeholder.
-      await interaction.reply({ content: "A aprovação manual ainda exige implementação e configuração da equipe.", ephemeral: true });
-    }
   } catch (error) {
     console.error("Erro em interação VIP:", error?.message || "erro desconhecido");
     if (interaction.isRepliable() && !interaction.replied && !interaction.deferred) {
