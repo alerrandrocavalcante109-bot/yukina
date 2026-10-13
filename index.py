@@ -1,25 +1,33 @@
-"""Ponto de entrada mínimo do bot Yukina (discord.py).
+"""Entrada do bot Yukina.
 
-Configure DISCORD_TOKEN como variável de ambiente antes de executar:
-    python index.py
+As credenciais são carregadas de variáveis de ambiente; em desenvolvimento,
+python-dotenv lê o arquivo .env local. Nunca coloque o .env no Git.
 """
-
 import os
 import sys
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    print("Dependência ausente: instale com: python -m pip install -r requirements.txt", file=sys.stderr)
+    raise SystemExit(1)
+
+# Carrega .env da pasta deste arquivo, independente da pasta atual do terminal.
+load_dotenv(Path(__file__).resolve().parent / ".env")
 
 try:
     import discord
 except ImportError:
-    print("Dependência ausente: instale discord.py com: python -m pip install -U discord.py", file=sys.stderr)
+    print("Dependência ausente: instale com: python -m pip install -r requirements.txt", file=sys.stderr)
     raise SystemExit(1)
 
-TOKEN = os.getenv("DISCORD_TOKEN")
+TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
 if not TOKEN:
-    print("Erro: defina a variável de ambiente DISCORD_TOKEN com o token do bot.", file=sys.stderr)
+    print("Erro: DISCORD_TOKEN não foi definido. Crie um .env baseado em .env.example.", file=sys.stderr)
     raise SystemExit(1)
 
 intents = discord.Intents.default()
-
 client = discord.Client(intents=intents)
 
 
