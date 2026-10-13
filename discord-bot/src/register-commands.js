@@ -1,5 +1,4 @@
 import "dotenv/config";
-import { createHash } from "node:crypto";
 import { REST, Routes, SlashCommandBuilder } from "discord.js";
 
 const required = ["DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_GUILD_ID"];
