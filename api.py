@@ -92,7 +92,7 @@ async def authorize_guild(guild_id: str, user_token: str) -> dict:
     if not DISCORD_TOKEN:
         raise HTTPException(503, "DISCORD_TOKEN não está configurado no servidor da API.")
     # A consulta ao endpoint de membros comprova que o bot está no servidor.
-    await discord_get(f"/guilds/{guild_id}/members/@me", DISCORD_TOKEN, bot=True)
+    await discord_get(f"/guilds/{guild_id}", DISCORD_TOKEN, bot=True)
     return {"user": user, "guild": guild}
 
 @app.get("/api/health")
