@@ -216,3 +216,37 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
   else start();
 })();
+
+
+/* Link da página Configurações do Sistema no menu principal. */
+(function () {
+  const URL = "./configuracoes.html";
+  function addSystemSettingsLink() {
+    if (document.querySelector('a[href="./configuracoes.html"],a[href="configuracoes.html"]')) return true;
+    const selectors = [".site-menu", ".dropdown-menu", ".nav-menu", "[role='menu']", ".menu"];
+    for (const selector of selectors) {
+      const menus = Array.from(document.querySelectorAll(selector));
+      const menu = menus.find(el => {
+        const text = (el.innerText || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+        return text.includes("comandos") || text.includes("wiki") || text.includes("painel") || el.querySelector("a,button");
+      });
+      if (!menu) continue;
+      const link = document.createElement("a");
+      link.href = URL;
+      link.textContent = "Configurações do Sistema";
+      link.setAttribute("aria-label", "Abrir Configurações do Sistema da Yukina");
+      link.style.cssText = "display:flex;align-items:center;gap:8px;padding:10px 14px;color:inherit;text-decoration:none;cursor:pointer;";
+      menu.appendChild(link);
+      return true;
+    }
+    return false;
+  }
+  function start() {
+    if (addSystemSettingsLink()) return;
+    const observer = new MutationObserver(() => { if (addSystemSettingsLink()) observer.disconnect(); });
+    observer.observe(document.documentElement, {childList:true,subtree:true});
+    setTimeout(() => observer.disconnect(), 20000);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
+  else start();
+})();
