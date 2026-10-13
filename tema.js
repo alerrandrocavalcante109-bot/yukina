@@ -157,3 +157,62 @@
     apply(document.documentElement.dataset.theme === 'light' ? 'dark' : 'light');
   });
 })();
+
+/* Perfil Discord: adiciona o cartão sem substituir nem limpar os itens do menu. */
+(function () {
+  const PROFILE_ID = "yukina-discord-profile";
+  function getUser() {
+    try {
+      const raw = sessionStorage.getItem("yukina_discord_user");
+      return raw ? JSON.parse(raw) : null;
+    } catch (_) { return null; }
+  }
+  function findMenu() {
+    const selectors = [".site-menu", ".dropdown-menu", ".nav-menu", "[role='menu']", ".menu"];
+    for (const selector of selectors) {
+      const elements = Array.from(document.querySelectorAll(selector));
+      const menu = elements.find(el => {
+        const style = getComputedStyle(el);
+        const text = (el.innerText || "").toLowerCase();
+        return style.display !== "none" &&
+          (text.includes("comandos") || text.includes("wiki") || text.includes("painel") || el.querySelector("a,button"));
+      });
+      if (menu) return menu;
+    }
+    return null;
+  }
+  function addProfile() {
+    const user = getUser();
+    if (!user || !user.id) return;
+    const menu = findMenu();
+    if (!menu || menu.querySelector("#" + PROFILE_ID)) return;
+    const card = document.createElement("div");
+    card.id = PROFILE_ID;
+    card.style.cssText = "display:flex;align-items:center;gap:12px;padding:12px 14px;margin:4px 8px 10px;border-bottom:1px solid rgba(220,190,255,.35);color:#fff;background:rgba(28,15,45,.98);border-radius:12px;min-width:0;";
+    const avatar = document.createElement("img");
+    avatar.alt = "";
+    avatar.width = 42;
+    avatar.height = 42;
+    avatar.style.cssText = "width:42px;height:42px;flex:0 0 42px;border-radius:50%;object-fit:cover;border:2px solid #d18cff;";
+    avatar.src = user.avatar || ("https://cdn.discordapp.com/embed/avatars/" + (Number(user.id) % 6) + ".png");
+    const info = document.createElement("div");
+    info.style.cssText = "display:flex;flex-direction:column;min-width:0;gap:3px;";
+    const name = document.createElement("strong");
+    name.textContent = user.global_name || user.username || "Usuário Discord";
+    name.style.cssText = "color:#fff;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:190px;";
+    const status = document.createElement("small");
+    status.textContent = "Conectado pelo Discord";
+    status.style.cssText = "color:#d8b4fe;font-size:11px;";
+    info.append(name, status);
+    card.append(avatar, info);
+    menu.insertBefore(card, menu.firstChild);
+  }
+  function start() {
+    addProfile();
+    const observer = new MutationObserver(addProfile);
+    observer.observe(document.documentElement, {childList:true, subtree:true});
+    document.addEventListener("click", () => setTimeout(addProfile, 80));
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
+  else start();
+})();
