@@ -4,7 +4,7 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="theme-color" content="#100817">
 <title>Configurações do Servidor • Yukina</title>
-<script src="./tema.js" defer></script>
+<script src="./api-config.js"></script><script src="./tema.js" defer></script>
 <style>
 :root{color-scheme:dark;--bg:#0b0712;--panel:#171020;--line:#c084fc55;--pink:#ff8dcc;--purple:#b79aff;--muted:#cbbdd8}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#57247b 0,transparent 36%),radial-gradient(ellipse at 90% 15%,#641b52 0,transparent 30%),var(--bg);font-family:Inter,system-ui,sans-serif;color:#fff}
@@ -29,13 +29,13 @@
 <label class="setting"><input type="checkbox" data-setting="notifications"><div><strong>Notificações do sistema</strong><span>Ativar notificações da Yukina para este servidor.</span></div></label>
 </div>
 <div class="row"><button class="btn" id="save" type="button" disabled>Salvar preferências</button><button id="reset" type="button" disabled>Restaurar padrão</button></div>
-<p class="muted">Aviso: nesta versão, as preferências são salvas apenas neste navegador. Elas ainda não alteram o comportamento do bot e não são sincronizadas entre dispositivos.</p>
+<p class="muted">As preferências são salvas pela API da Yukina no servidor, por servidor Discord. A aplicação efetiva dessas opções aos comandos do bot precisa ser implementada separadamente.</p>
 </section>
 <footer class="muted" style="padding:12px 0 36px">Yukina • Acesso limitado por permissões do Discord</footer>
 </div>
 <script>
 (() => {
- const CLIENT_ID = "1537936570869350400";
+ const API_BASE = (window.YUKINA_API_URL || "").replace(/\/$/, "");
  const select = document.getElementById("guildSelect");
  const status = document.getElementById("status");
  const notice = document.getElementById("botNotice");
@@ -49,7 +49,7 @@
  function canManage(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n}catch(_){return false}}
  function key(id){return "yukina-system-settings:"+id}
  function lock(on){checks.forEach(c=>c.disabled=on);save.disabled=on;reset.disabled=on}
- function loadSaved(id){let saved={};try{saved=JSON.parse(localStorage.getItem(key(id))||"{}")}catch(_){}checks.forEach(c=>c.checked===true?null:null);checks.forEach(c=>c.checked=Boolean(saved[c.dataset.setting]));lock(false)}
+ async function api(path, options={}) { if(!API_BASE) throw new Error("A API ainda não foi configurada. Defina YUKINA_API_URL em api-config.js após publicar o serviço."); const access=token(); if(!access) throw new Error("Entre com o Discord primeiro."); const response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||("Falha na API (HTTP "+response.status+").")); return data; }\n async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked===Boolean(data.settings?.[c.dataset.setting]));lock(false);notice.textContent="Yukina está presente no servidor e as configurações foram carregadas pela API.";}catch(e){notice.textContent=e.message;lock(true);}}
  function selected(){return guilds.find(g=>g.id===select.value)||null}
  async function loadGuilds(){
    const access=token();
@@ -70,15 +70,15 @@
    const g=selected();
    if(!g){selectedName.textContent="As opções ficam bloqueadas até selecionar um servidor válido.";notice.textContent="Selecione um servidor.";lock(true);return}
    selectedName.textContent="Servidor selecionado: "+g.name;
-   notice.textContent="Permissão confirmada pela lista do Discord. A presença da Yukina não pode ser confirmada sem uma verificação no servidor do bot.";
+   notice.textContent="Verificando permissões, presença da Yukina e configurações no backend…";
    loadSaved(g.id);
  });
  save.addEventListener("click",()=>{
    const g=selected();if(!g){status.textContent="Selecione um servidor antes de salvar.";lock(true);return}
    const values={};checks.forEach(c=>values[c.dataset.setting]=c.checked);
-   try{localStorage.setItem(key(g.id),JSON.stringify(values));status.textContent="Preferências salvas neste navegador para "+g.name+"."}catch(_){status.textContent="Não foi possível salvar neste navegador."}
+   save.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify(values)});status.textContent="Preferências salvas na API para "+g.name+".";}catch(e){status.textContent=e.message;}finally{save.disabled=false;}
  });
- reset.addEventListener("click",()=>{const g=selected();if(!g)return;localStorage.removeItem(key(g.id));checks.forEach(c=>c.checked=false);status.textContent="Preferências restauradas para "+g.name+"."});
+ reset.addEventListener("click",async()=>{const g=selected();if(!g)return;reset.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"DELETE"});checks.forEach(c=>c.checked=false);status.textContent="Preferências padrão restauradas para "+g.name+".";}catch(e){status.textContent=e.message;}finally{reset.disabled=false;}});
  document.getElementById("reload").addEventListener("click",loadGuilds);
  lock(true);loadGuilds();
 })();
