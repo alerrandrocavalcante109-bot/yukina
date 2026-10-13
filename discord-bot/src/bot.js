@@ -1,5 +1,6 @@
 import "dotenv/config";
 import fs from "node:fs";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import Database from "better-sqlite3";
 import {
@@ -145,6 +146,40 @@ client.on("interactionCreate", async interaction => {
       );
       await channel.send({ content: `<@${interaction.user.id}> <@&${STAFF_ROLE_ID}>`, embeds: [embed], components: [controls(order.id)], allowedMentions: { users: [interaction.user.id], roles: [STAFF_ROLE_ID] } });
       await interaction.editReply(`Seu ticket privado foi criado: <#${channel.id}>. **Não faça pagamento até receber instruções oficiais da equipe.**`);
+      return;
+    }
+
+    if (interaction.isChatInputCommand() && interaction.commandName === "vip-referencia") {
+      const order = getByChannel.get(interaction.channelId);
+      if (!order || order.guild_id !== interaction.guildId || order.status !== "pending") {
+        await interaction.reply({ content: "Use este comando dentro de um ticket VIP pendente.", ephemeral: true });
+        return;
+      }
+      if (interaction.user.id !== order.user_id && !isStaff(interaction.member)) {
+        await interaction.reply({ content: "Somente o comprador deste pedido ou a equipe autorizada pode registrar a referência.", ephemeral: true });
+        return;
+      }
+      const raw = interaction.options.getString("referencia", true).trim();
+      if (raw.length < 4 || raw.length > 120 || /[\\r\\n\\t]/.test(raw)) {
+        await interaction.reply({ content: "Referência inválida. Confira o identificador e tente novamente.", ephemeral: true });
+        return;
+      }
+      const digest = createHash("sha256").update(raw.normalize("NFKC").toLowerCase(), "utf8").digest("hex");
+      try {
+        const result = db.prepare("UPDATE orders SET transaction_ref_hash=? WHERE id=? AND status='pending' AND transaction_ref_hash IS NULL").run(digest, order.id);
+        if (result.changes !== 1) {
+          await interaction.reply({ content: "Este pedido já tem uma referência registrada ou não está mais pendente. Peça à equipe para revisar.", ephemeral: true });
+          return;
+        }
+        audit.run(order.id, interaction.user.id, "transaction_reference_recorded", "Referência guardada somente como hash SHA-256", timestamp());
+        await interaction.reply({ content: "Referência registrada. O bot guarda somente um hash para ajudar a detectar reutilização; isso não confirma o pagamento. A equipe ainda precisa conferir o crédito na fonte oficial.", ephemeral: true });
+      } catch (error) {
+        if (String(error?.message || "").includes("UNIQUE")) {
+          await interaction.reply({ content: "Esta referência já foi registrada em outro pedido. O pedido permanece pendente para revisão da equipe.", ephemeral: true });
+        } else {
+          throw error;
+        }
+      }
       return;
     }
 
