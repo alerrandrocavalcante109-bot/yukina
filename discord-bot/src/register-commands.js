@@ -1,5 +1,6 @@
 import "dotenv/config";
-import { REST, Routes, SlashCommandBuilder, ChannelType, PermissionFlagsBits } from "discord.js";
+import { createHash } from "node:crypto";
+import { REST, Routes, SlashCommandBuilder } from "discord.js";
 
 const required = ["DISCORD_TOKEN", "DISCORD_CLIENT_ID", "DISCORD_GUILD_ID"];
 for (const key of required) {
@@ -23,6 +24,12 @@ const commands = [
       ))
     .addStringOption(option => option.setName("periodo").setDescription("Duração").setRequired(true)
       .addChoices({ name: "Mensal", value: "monthly" }, { name: "Anual", value: "annual" }))
+    .setDMPermission(false)
+    .toJSON(),
+  new SlashCommandBuilder()
+    .setName("vip-referencia")
+    .setDescription("Registra o identificador da transação Pix no ticket atual.")
+    .addStringOption(option => option.setName("referencia").setDescription("ID/referência da transação, não senha nem código de autenticação").setRequired(true).setMinLength(4).setMaxLength(120))
     .setDMPermission(false)
     .toJSON()
 ];
