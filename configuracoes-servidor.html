@@ -73,7 +73,7 @@
    notice.textContent="Verificando permissões, presença da Yukina e configurações no backend…";
    loadSaved(g.id);
  });
- save.addEventListener("click",()=>{
+ save.addEventListener("click",async()=>{
    const g=selected();if(!g){status.textContent="Selecione um servidor antes de salvar.";lock(true);return}
    const values={};checks.forEach(c=>values[c.dataset.setting]=c.checked);
    save.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify(values)});status.textContent="Preferências salvas na API para "+g.name+".";}catch(e){status.textContent=e.message;}finally{save.disabled=false;}
