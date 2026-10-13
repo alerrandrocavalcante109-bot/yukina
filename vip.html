@@ -48,15 +48,74 @@
 </main>
 <footer class="wrap foot"><span>© <span id="year"></span> Yukina · Planos VIP</span><span><a href="./termos.html">Termos</a> · <a href="./privacidade.html">Privacidade</a> · <a href="./wiki.html">Wiki</a></span></footer>
 <script>
-(()=> {
- const status=document.getElementById('vipStatus');
- let billing='monthly';
- const plans={starter:{name:'Starter',monthly:'R$ 7,90',annual:'R$ 79,90'},plus:{name:'Plus',monthly:'R$ 9,90',annual:'R$ 99,90'},premium:{name:'Premium',monthly:'R$ 14,90',annual:'R$ 149,90'},ultra:{name:'Ultra',monthly:'R$ 19,90',annual:'R$ 199,90'},infinity:{name:'Infinity',monthly:'R$ 29,90',annual:'R$ 299,90'}};
- function renderBilling(next){billing=next;document.querySelectorAll('[data-billing]').forEach(btn=>{const active=btn.dataset.billing===billing;btn.classList.toggle('active',active);btn.setAttribute('aria-pressed',String(active))});document.querySelectorAll('.plan').forEach(card=>{const price=card.querySelector('.price');const annual=card.querySelector('.annual-note');price.textContent=price.dataset[billing];card.querySelector('.period').textContent=billing==='annual'?'por ano':'por mês';annual.textContent=billing==='annual'?'Economia de cerca de 2 mensalidades':''})}
- document.querySelectorAll('[data-billing]').forEach(btn=>btn.addEventListener('click',()=>renderBilling(btn.dataset.billing)));
- document.querySelectorAll('[data-choose]').forEach(btn=>btn.addEventListener('click',()=>{const p=plans[btn.dataset.choose];status.innerHTML='<strong>'+p.name+' '+(billing==='annual'?'Anual':'Mensal')+' selecionado.</strong> O checkout ainda não está conectado. Nenhuma cobrança foi feita e nenhum VIP foi ativado. <button type="button" id="dismissStatus">Fechar</button>';status.classList.add('show');document.getElementById('dismissStatus').addEventListener('click',()=>{status.classList.remove('show');status.textContent=''});status.scrollIntoView({behavior:'smooth',block:'center'})}));
- document.getElementById('year').textContent=new Date().getFullYear();
+(() => {
+  'use strict';
+  const status = document.getElementById('vipStatus');
+  const plans = {
+    starter: { name: 'Starter', monthly: 'R$ 7,90', annual: 'R$ 79,90' },
+    plus: { name: 'Plus', monthly: 'R$ 9,90', annual: 'R$ 99,90' },
+    premium: { name: 'Premium', monthly: 'R$ 14,90', annual: 'R$ 149,90' },
+    ultra: { name: 'Ultra', monthly: 'R$ 19,90', annual: 'R$ 199,90' },
+    infinity: { name: 'Infinity', monthly: 'R$ 29,90', annual: 'R$ 299,90' }
+  };
+  let billing = 'monthly';
+
+  function renderBilling(next) {
+    billing = next === 'annual' ? 'annual' : 'monthly';
+    document.querySelectorAll('[data-billing]').forEach(btn => {
+      const active = btn.dataset.billing === billing;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+    document.querySelectorAll('.plan').forEach(card => {
+      const price = card.querySelector('.price');
+      const annual = card.querySelector('.annual-note');
+      if (!price || !annual) return;
+      price.textContent = price.dataset[billing] || '';
+      const period = card.querySelector('.period');
+      if (period) period.textContent = billing === 'annual' ? 'por ano' : 'por mês';
+      annual.textContent = billing === 'annual' ? 'Economia de cerca de 2 mensalidades' : '';
+    });
+  }
+
+  document.addEventListener('click', event => {
+    const billingButton = event.target.closest('[data-billing]');
+    if (billingButton) {
+      renderBilling(billingButton.dataset.billing);
+      return;
+    }
+
+    const chooseButton = event.target.closest('[data-choose]');
+    if (chooseButton) {
+      const plan = plans[chooseButton.dataset.choose];
+      if (!plan || !status) return;
+      const price = plan[billing];
+      status.replaceChildren();
+
+      const heading = document.createElement('strong');
+      heading.textContent = plan.name + ' — plano ' + (billing === 'annual' ? 'anual' : 'mensal');
+      const detail = document.createElement('p');
+      detail.textContent = 'Valor selecionado: ' + price + (billing === 'annual' ? ' por ano.' : ' por mês.');
+      const notice = document.createElement('p');
+      notice.textContent = 'O checkout ainda não foi habilitado. Nenhuma cobrança será feita e nenhum VIP será ativado agora.';
+      const close = document.createElement('button');
+      close.type = 'button';
+      close.textContent = 'Fechar';
+      close.addEventListener('click', () => {
+        status.classList.remove('show');
+        status.replaceChildren();
+      });
+      status.append(heading, detail, notice, close);
+      status.classList.add('show');
+      status.scrollIntoView({ behavior: 'auto', block: 'center' });
+      return;
+    }
+  });
+
+  const year = document.getElementById('year');
+  if (year) year.textContent = new Date().getFullYear();
+  renderBilling('monthly');
 })();
-</script>
+</script>>
 </body>
 </html>
