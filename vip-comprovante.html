@@ -50,6 +50,9 @@
 <script>
 (() => {
  const form=document.getElementById('proofForm'), result=document.getElementById('result');
+ const params=new URLSearchParams(window.location.search);
+ if(['starter','plus','premium','ultra','infinity'].includes(params.get('plan'))) form.elements.plan.value=params.get('plan');
+ if(['monthly','annual'].includes(params.get('billing'))) form.elements.billing.value=params.get('billing');
  form.addEventListener('submit',async event=>{
   event.preventDefault();
   const file=form.elements.proof.files[0];
