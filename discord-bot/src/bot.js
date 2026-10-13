@@ -71,7 +71,7 @@ const getOpenForUser = db.prepare("SELECT id FROM orders WHERE guild_id=? AND us
 
 function controls(orderId) {
   return new ActionRowBuilder().addComponents(
-    new ButtonBuilder().setCustomId(`vip:approve:${orderId}`).setLabel("Pagamento conferido — aprovar").setStyle(ButtonStyle.Success),
+    new ButtonBuilder().setCustomId(`vip:approve:${orderId}`).setLabel("Aprovar após conferir o pagamento").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId(`vip:reject:${orderId}`).setLabel("Recusar pedido").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId(`vip:close:${orderId}`).setLabel("Fechar ticket").setStyle(ButtonStyle.Secondary)
   );
@@ -179,13 +179,11 @@ client.on("interactionCreate", async interaction => {
       const note = action === "approve"
         ? "Aprovação manual; a equipe declara ter verificado o recebimento na fonte oficial."
         : "Recusado pela equipe";
-      if (action === "approve") {
-        // The button is an explicit human attestation. The bot never infers payment from an image.
-        await interaction.reply({ content: "Confirme apenas se verificou o crédito na conta oficial, o valor exato e que a transação não foi usada em outro pedido. Ao confirmar, você assume a decisão manual.", ephemeral: true });
-      }
+      // Clicking "Aprovar após conferir o pagamento" is the explicit staff attestation.
+      // The bot never infers payment from an image or receipt text.
       const changed = updateDecision.run(nextStatus, timestamp(), interaction.user.id, note, order.id);
       if (changed.changes !== 1) {
-        if (!interaction.replied) await interaction.reply({ content: "O pedido foi alterado por outra ação. Atualize o ticket.", ephemeral: true });
+        await interaction.reply({ content: "O pedido foi alterado por outra ação. Atualize o ticket.", ephemeral: true });
         return;
       }
       audit.run(order.id, interaction.user.id, nextStatus, note, timestamp());
