@@ -118,6 +118,37 @@
     }
     body { background-color: #080511 !important; }
   `;
+
+  /* Botões coloridos no estilo rosa e violeta da Yukina */
+  style.textContent += `
+    .btn, button, .button, a.button, a.btn, .cta a, .cta button,
+    .hero-actions a {
+      background: linear-gradient(115deg, #ff8dcc 0%, #d18cff 52%, #a98bff 100%) !important;
+      color: #21112c !important;
+      border: 1px solid rgba(255, 196, 239, .82) !important;
+      border-radius: 13px !important;
+      font-weight: 800 !important;
+      opacity: 1 !important;
+      box-shadow: 0 5px 18px rgba(190, 105, 255, .22) !important;
+      text-shadow: none !important;
+      transition: transform .2s ease, filter .2s ease, box-shadow .2s ease !important;
+    }
+    .btn:hover, button:hover, .button:hover, a.button:hover, a.btn:hover,
+    .cta a:hover, .cta button:hover, .hero-actions a:hover {
+      filter: brightness(1.12) saturate(1.12) !important;
+      box-shadow: 0 8px 24px rgba(255, 141, 204, .3) !important;
+      transform: translateY(-2px);
+    }
+    .btn.primary, .primary {
+      background: linear-gradient(110deg, #ff8dcc, #b79aff) !important;
+      color: #21112c !important;
+    }
+    .site-menu button, .menu button, #themeToggle, #languageToggle {
+      background: linear-gradient(115deg, #28143d, #3a2055) !important;
+      color: #fff !important;
+      border: 1px solid rgba(215, 171, 255, .72) !important;
+    }
+  `;
   apply(saved);
   document.addEventListener('click', function(event){
     const button = event.target.closest('#themeToggle');
