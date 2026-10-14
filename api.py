@@ -1,6 +1,6 @@
 """API da Yukina para o painel web.
 
-Execute como serviço web separado (ex.: Render) com DISCORD_TOKEN configurado.
+Pode ser executada junto ao bot no Termux ou como serviço web separado.
 O token do bot fica exclusivamente no servidor.
 """
 import json
@@ -12,7 +12,7 @@ import httpx
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
 
@@ -35,10 +35,12 @@ app.add_middleware(
 )
 
 class Settings(BaseModel):
-    model_config = ConfigDict(extra="forbid")
     welcome: bool = False
     moderation: bool = False
     notifications: bool = False
+
+    class Config:
+        extra = "forbid"
 
 def read_settings() -> dict[str, Any]:
     try:
@@ -75,7 +77,10 @@ async def discord_get(path: str, token: str, *, bot: bool = False):
 def bearer(authorization: str | None) -> str:
     if not authorization or not authorization.startswith("Bearer "):
         raise HTTPException(401, "Entre com sua conta Discord.")
-    return authorization[7:].strip()
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(401, "Entre com sua conta Discord.")
+    return token
 
 async def authorize_guild(guild_id: str, user_token: str) -> dict:
     user = await discord_get("/users/@me", user_token)
@@ -91,7 +96,6 @@ async def authorize_guild(guild_id: str, user_token: str) -> dict:
         raise HTTPException(403, "É necessário ser administrador ou ter Gerenciar servidor.")
     if not DISCORD_TOKEN:
         raise HTTPException(503, "DISCORD_TOKEN não está configurado no servidor da API.")
-    # A consulta ao endpoint de membros comprova que o bot está no servidor.
     await discord_get(f"/guilds/{guild_id}", DISCORD_TOKEN, bot=True)
     return {"user": user, "guild": guild}
 
@@ -111,7 +115,7 @@ async def get_guild_settings(guild_id: str, authorization: str | None = Header(d
 async def put_guild_settings(guild_id: str, settings: Settings, authorization: str | None = Header(default=None)):
     await authorize_guild(guild_id, bearer(authorization))
     data = read_settings()
-    data[guild_id] = settings.model_dump()
+    data[guild_id] = settings.dict()
     write_settings(data)
     return {"ok": True, "guild_id": guild_id, "settings": data[guild_id]}
 
