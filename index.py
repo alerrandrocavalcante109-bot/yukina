@@ -1,40 +1,47 @@
-"""Entrada do bot Yukina.
-
-As credenciais são carregadas de variáveis de ambiente; em desenvolvimento,
-python-dotenv lê o arquivo .env local. Nunca coloque o .env no Git.
-"""
+"""Entrada do bot Yukina com endpoint HTTP de saúde para o Render."""
+import asyncio
 import os
 import sys
 from pathlib import Path
 
 try:
     from dotenv import load_dotenv
-except ImportError:
-    print("Dependência ausente: instale com: python -m pip install -r requirements.txt", file=sys.stderr)
-    raise SystemExit(1)
-
-# Carrega .env da pasta deste arquivo, independente da pasta atual do terminal.
-load_dotenv(Path(__file__).resolve().parent / ".env")
-
-try:
     import discord
+    from aiohttp import web
 except ImportError:
     print("Dependência ausente: instale com: python -m pip install -r requirements.txt", file=sys.stderr)
     raise SystemExit(1)
 
+load_dotenv(Path(__file__).resolve().parent / ".env")
 TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
 if not TOKEN:
-    print("Erro: DISCORD_TOKEN não foi definido. Crie um .env baseado em .env.example.", file=sys.stderr)
+    print("Erro: DISCORD_TOKEN não foi definido nas variáveis de ambiente.", file=sys.stderr)
     raise SystemExit(1)
 
 intents = discord.Intents.default()
 client = discord.Client(intents=intents)
 
-
 @client.event
 async def on_ready():
-    print(f"Yukina conectada como {client.user} (ID: {client.user.id})")
+    print(f"Yukina conectada como {client.user} (ID: {client.user.id})", flush=True)
 
+async def health(_request):
+    return web.json_response({"ok": True, "service": "Yukina Bot"})
+
+async def main():
+    app = web.Application()
+    app.router.add_get("/", health)
+    app.router.add_get("/api/health", health)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", "10000"))
+    site = web.TCPSite(runner, "0.0.0.0", port)
+    await site.start()
+    print(f"Health endpoint ativo na porta {port}", flush=True)
+    try:
+        await client.start(TOKEN)
+    finally:
+        await runner.cleanup()
 
 if __name__ == "__main__":
-    client.run(TOKEN)
+    asyncio.run(main())
