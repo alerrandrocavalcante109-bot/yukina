@@ -5,8 +5,25 @@
 *.pem
 *.key
 
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Dados locais e bancos
+data/
+*.sqlite
+*.sqlite-shm
+*.sqlite-wal
+*.db
+
 # Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+
+# Ferramentas e sistema
+.DS_Store
+Thumbs.db
