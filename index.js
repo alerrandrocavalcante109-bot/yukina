@@ -333,6 +333,32 @@ client.on("messageCreate", async (message) => {
         return;
       }
       plan.channels[0].name = options[Number(choice.content.trim()) - 1].name;
+
+      const categories = message.guild.channels.cache
+        .filter((item) => item.type === ChannelType.GuildCategory)
+        .map((item) => item.name);
+      const planned = plan.categories.map((item) => String(item?.name || "").trim()).filter(Boolean);
+      const names = [...new Set([...planned, ...categories])].slice(0, 20);
+      const prompt = ["**Em qual categoria ficará o canal?**", "Responda com o número ou **0** para deixar sem categoria.",
+        ...names.map((name, index) => `${index + 1}. ${name}`), "", "Responda **CANCELAR** para desistir."].join("\n");
+      await message.channel.send({ content: prompt.slice(0, 1800), allowedMentions: { parse: [] } });
+      const answer = await waitForExactReply(message.channel, message.author.id, message.guild.id,
+        ["0", "CANCELAR", ...names.map((_, index) => String(index + 1))]);
+      if (!answer || answer.content.trim().toUpperCase() === "CANCELAR") {
+        await message.channel.send("Criação cancelada. Nenhum item foi criado.");
+        return;
+      }
+      const number = Number(answer.content.trim());
+      if (number === 0) {
+        plan.channels[0].category = null;
+      } else {
+        const selected = names[number - 1];
+        plan.channels[0].category = selected;
+        if (!categories.some((name) => name.toLowerCase() === selected.toLowerCase()) &&
+            !plan.categories.some((item) => String(item?.name || "").toLowerCase() === selected.toLowerCase())) {
+          plan.categories.push({ name: selected });
+        }
+      }
     }
 
     if (hasDeletes) {
