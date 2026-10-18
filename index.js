@@ -440,9 +440,6 @@ async function registerSlashCommands() {
 async function ensurePromotionNotifyRole() {
   const roleName = (process.env.PROMOTION_NOTIFY_ROLE_NAME || "📣・Avisos de promoção").trim();
   const configuredId = (process.env.PROMOTION_NOTIFY_ROLE_ID || "").trim();
-  let role = configuredId ? await client.guilds.cache
-    .map((guild) => guild.roles.fetch(configuredId).catch(() => null))
-    .reduce(async (previous, promise) => (await previous) || await promise, Promise.resolve(null)) : null;
 
   for (const guild of client.guilds.cache.values()) {
     if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
@@ -450,7 +447,9 @@ async function ensurePromotionNotifyRole() {
       continue;
     }
 
+    let role = configuredId ? await guild.roles.fetch(configuredId).catch(() => null) : null;
     if (!role) role = guild.roles.cache.find((item) => item.name === roleName) || null;
+
     if (!role) {
       try {
         role = await guild.roles.create({
@@ -469,7 +468,6 @@ async function ensurePromotionNotifyRole() {
     }
 
     console.log("[Promoções] Cargo de notificação disponível em " + guild.name + ": " + role.name + " (" + role.id + ")");
-    role = null;
   }
 }
 
