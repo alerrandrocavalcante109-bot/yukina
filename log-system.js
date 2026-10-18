@@ -31,6 +31,11 @@ function short(value, limit) {
   const text = String(value || "").trim();
   return (text || "(vazio)").slice(0, limit || 900);
 }
+function channelLabel(channel) {
+  if (!channel) return "Canal desconhecido";
+  const name = channel.name ? `#${channel.name}` : "canal";
+  return `<#${channel.id}> (${name})`;
+}
 function userLabel(user) {
   return user ? (user.tag || user.username || "Usuário") + " (<@" + user.id + ">) · ID: " + user.id : "Desconhecido";
 }
@@ -60,7 +65,7 @@ module.exports = function startLogSystem(client) {
   client.on("messageDeleteBulk", async messages => {
     const first = messages.first();
     if (!first || !first.guild) return;
-    await send(first.guild, "mensagens", "🧹 Mensagens apagadas em lote", "**Canal:** " + first.channel + "\n**Quantidade:** " + messages.size + "\nO Discord pode não disponibilizar o conteúdo de todas as mensagens.");
+    await send(first.guild, "mensagens", "🧹 Mensagens apagadas em lote", "**Canal:** " + channelLabel(first.channel) + "\n**Quantidade:** " + messages.size + "\nO Discord pode não disponibilizar o conteúdo de todas as mensagens.");
   });
   client.on("messageUpdate", async (before, after) => {
     if (!after.guild || after.author && after.author.bot || before.content === after.content) return;
