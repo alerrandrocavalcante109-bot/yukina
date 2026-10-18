@@ -8,16 +8,11 @@ module.exports = {
     const token = match?.[2];
     const item = pending.get(token);
     if (!item) return interaction.update({ content: "Esta confirmação expirou ou já foi utilizada. Execute o comando novamente.", components: [] });
-    if (interaction.user.id !== item.moderatorId) return interaction.reply({ content: "Somente a pessoa que iniciou esta ação pode confirmar ou cancelar.", ephemeral: true });
-    if (Date.now() - item.createdAt > 60000) {
+    if (interaction.user.id !== item.moderatorId) return interaction.reply({ content: "Somente a pessoa que iniciou esta ação pode confirmar.", ephemeral: true });
+    if (Date.now() - item.createdAt > 300000) {
       pending.delete(token);
       return interaction.update({ content: "Esta confirmação expirou. Execute o comando novamente.", components: [] });
     }
-    if (decision === "cancelar") {
-      pending.delete(token);
-      return interaction.update({ content: "Ação de moderação cancelada. Nenhuma alteração foi feita.", components: [] });
-    }
-
     const guild = await interaction.client.guilds.fetch(item.guildId).catch(() => null);
     if (!guild) {
       pending.delete(token);
