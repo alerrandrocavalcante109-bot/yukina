@@ -400,7 +400,7 @@ client.on("messageCreate", async (message) => {
           "Responda **CANCELAR** para desistir. Você tem 60 segundos.",
         ].join("\n");
         await message.channel.send({ content: categoryPreview.slice(0, 1700), allowedMentions: { parse: [] } });
-        const categoryChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
+        const categoryChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, [...Array(10)].map((_, optionIndex) => String(optionIndex + 1)).concat("CANCELAR"));
         if (!categoryChoice || categoryChoice.content.trim().toUpperCase() === "CANCELAR") {
           await message.channel.send("⏱️ Criação cancelada. Nenhuma categoria, canal ou cargo foi criado.");
           return;
