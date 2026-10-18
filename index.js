@@ -6,6 +6,7 @@ const {
   PermissionsBitField,
   PermissionFlagsBits,
   Colors,
+  EmbedBuilder,
 } = require("discord.js");
 const http = require("node:http");
 
@@ -18,16 +19,22 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-const SYSTEM_PROMPT = `Você é a planejadora e administradora assistida de servidores Discord da Yukina. Converta o pedido em JSON válido, sem Markdown, usando EXATAMENTE esta estrutura:
+const SYSTEM_PROMPT = `Você é Yukina, uma guardiã de uma fantasia japonesa de neve, luar e constelações, com um toque acolhedor de anime e magia serena. Sua identidade visual usa azul-gelo, azul-noite, branco perolado, prata, sakura e brilho de estrelas. Ao planejar canais, preserve a personalidade do universo Yukina: nomes elegantes, acolhedores e temáticos sem exagerar em emojis ou deixar os nomes difíceis de entender.
+Converta o pedido em JSON válido, sem Markdown, usando EXATAMENTE esta estrutura:
 {
  "style_tips": ["dica de estilo"],
  "roles": [{"name":"Nome","color":"#5865F2","hoist":false,"mentionable":false}],
  "categories": [{"name":"Nome"}],
- "channels": [{"name":"nome-do-canal","type":"text|voice|forum|stage","category":"Nome exato da categoria ou null","topic":"descrição curta"}],
+ "channels": [{"name":"nome-do-canal","type":"text|voice|forum|stage","category":"Nome exato da categoria ou null","topic":"descrição curta","suggestion":"mensagem curta, temática e prática para orientar como usar este canal"}],
  "delete_roles": ["nome exato do cargo a excluir"],
  "delete_categories": ["nome exato da categoria a excluir"],
  "delete_channels": ["nome exato do canal a excluir"]
 }
+ESTILO YUKINA PARA CANAIS:
+- Para cada canal criado, escreva uma sugestão específica e útil em "suggestion": o que publicar/fazer nele, como manter a organização e qual clima/comportamento combina com ele.
+- Escreva como a Yukina, gentil e levemente mística, usando referências sutis a neve, lua, sakura, estrelas ou santuário apenas quando combinarem com o propósito. Evite repetir a mesma frase e não force fantasia em canais sérios, regras ou suporte.
+- O texto deve ter 1 a 3 frases, em português, sem mencionar IA. Não invente regras oficiais; apresente como sugestão.
+- "topic" deve ser uma descrição clara e curta, adequada à finalidade do canal.
 REGRAS CRÍTICAS DE EXCLUSÃO:
 - Só preencha os arrays delete_* se o usuário pedir claramente para excluir, apagar, deletar ou remover.
 - Liste SOMENTE nomes exatos explicitamente indicados pelo usuário; nunca invente nomes, nunca interprete "limpar tudo" como autorização para apagar tudo.
@@ -158,8 +165,26 @@ async function buildServer(guild, plan) {
     if ([ChannelType.GuildText, ChannelType.GuildForum].includes(typeMap[kind]) && topic) {
       options.topic = topic;
     }
-    await guild.channels.create(options);
+    const createdChannel = await guild.channels.create(options);
     results.push(`Canal ${kind} criado: ${name}`);
+
+    const suggestion = String(item?.suggestion || "").trim().slice(0, 1400);
+    if (suggestion && typeMap[kind] === ChannelType.GuildText) {
+      try {
+        const embed = new EmbedBuilder()
+          .setColor(0xA7D8F0)
+          .setAuthor({ name: "Yukina · Guia do canal", iconURL: guild.client.user.displayAvatarURL() })
+          .setTitle("❄️ Um pequeno conselho para este espaço")
+          .setDescription(suggestion)
+          .setFooter({ text: "Sob o luar de Yukina · Sugestão de uso, ajustável pela comunidade" });
+        await createdChannel.send({ embeds: [embed], allowedMentions: { parse: [] } });
+        results.push(`Sugestão temática enviada em #${name}`);
+      } catch (error) {
+        results.push(`Canal criado, mas não consegui enviar a sugestão em #${name}`);
+      }
+    } else if (suggestion) {
+      results.push(`Sugestão para ${name}: ${suggestion.slice(0, 220)}`);
+    }
   }
   return results;
 }
