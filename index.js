@@ -379,11 +379,14 @@ async function applyDeletions(guild, plan) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
 // O motor carrega os módulos de commands/ e executa prefixos Y/y.
 require("./command-engine")(client);
+
+// Hierarquia automática: XP + tempo de permanência.
+require("./rank-system")(client);
 
 // Slash, botões, menus e modais ficam centralizados em interaction.js.
 require("./interaction")(client);
@@ -493,6 +496,7 @@ client.once("clientReady", async () => {
     ["🌙 Comandos Slash", "carregamento e sincronização automática"],
     ["🪄 Interações", "botões, menus e modais"],
     ["📣 Avisos de promoção", "cargo de notificação e canal de promoções"],
+    ["❄️ Hierarquia de membros", "cargos automáticos por XP e tempo de permanência"],
     ["💓 Monitor de serviço", "endpoint HTTP para health check"],
     ["🤖 Assistente de organização", (process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY) ? "API configurada" : "aguardando AI_API_KEY/OPENROUTER_API_KEY"],
   ];
