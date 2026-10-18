@@ -9,6 +9,7 @@ const YUKINA_BLUE = 0xA7D8F0;
 function yukinaEmbed(text) {
   return new EmbedBuilder()
     .setColor(YUKINA_BLUE)
+    .setTitle("💬 Mensagem")
     .setDescription(text)
     .setFooter({ text: "Yukina · Cuidando deste cantinho" })
     .setTimestamp();
@@ -104,7 +105,6 @@ module.exports = {
           ? { embeds: [yukinaEmbed(text)], allowedMentions: { parse: [] } }
           : { content: text, allowedMentions: { parse: [] } }
       );
-      // Apaga a mensagem que invocou o comando depois que o envio foi concluído.
       await message.delete().catch(() => {});
     } catch (error) {
       console.error("[Yukina Ysay]", error);
