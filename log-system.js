@@ -60,7 +60,7 @@ async function audit(guild, action, targetId) {
 module.exports = function startLogSystem(client) {
   client.on("messageDelete", async message => {
     if (!message.guild || message.author && message.author.bot) return;
-    await send(message.guild, "mensagens", "🗑️ Mensagem apagada", "**Autor:** " + userLabel(message.author) + "\n**Canal:** " + message.channel + "\n**Conteúdo:**\n" + short(message.content, 2200));
+    await send(message.guild, "mensagens", "🗑️ Mensagem apagada", "**Autor:** " + userLabel(message.author) + "\n**Canal:** " + channelLabel(message.channel) + "\n**Conteúdo:**\n" + short(message.content, 2200));
   });
   client.on("messageDeleteBulk", async messages => {
     const first = messages.first();
@@ -69,7 +69,7 @@ module.exports = function startLogSystem(client) {
   });
   client.on("messageUpdate", async (before, after) => {
     if (!after.guild || after.author && after.author.bot || before.content === after.content) return;
-    await send(after.guild, "mensagens", "✏️ Mensagem editada", "**Autor:** " + userLabel(after.author) + "\n**Canal:** " + after.channel + "\n**Antes:**\n" + short(before.content, 1000) + "\n\n**Depois:**\n" + short(after.content, 1000));
+    await send(after.guild, "mensagens", "✏️ Mensagem editada", "**Autor:** " + userLabel(after.author) + "\n**Canal:** " + channelLabel(after.channel) + "\n**Antes:**\n" + short(before.content, 1000) + "\n\n**Depois:**\n" + short(after.content, 1000));
   });
   client.on("guildMemberUpdate", async (before, after) => {
     if (before.nickname !== after.nickname) {
