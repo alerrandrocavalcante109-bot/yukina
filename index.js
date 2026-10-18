@@ -108,6 +108,20 @@ function makeChannelNameOptions(name) {
   ];
 }
 
+function makeCategoryNameOptions(name) {
+  const base = String(name || "categoria").trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-").replace(/-+/g, "-")
+    .replace(/^-|-$/g, "").slice(0, 80) || "categoria";
+  const pretty = base.replace(/-/g, "・");
+  return [
+    { label: `❄️・${pretty}`, name: `❄️・${pretty}` },
+    { label: `🌙・${base}`, name: `🌙・${base}` },
+    { label: `✧・${pretty}・✧`, name: `✧・${pretty}・✧` },
+  ];
+}
+
 async function waitForExactReply(channel, userId, guildId, accepted) {
   const collected = await channel.awaitMessages({
     filter: (reply) => reply.author.id === userId &&
@@ -351,6 +365,33 @@ client.on("messageCreate", async (message) => {
     const hasDeletes = plan.delete_roles.length || plan.delete_categories.length || plan.delete_channels.length;
     const hasCreates = plan.roles.length || plan.categories.length || plan.channels.length;
     let deleted = [];
+
+    if (hasCreates && plan.categories.length) {
+      for (let index = 0; index < plan.categories.length; index++) {
+        const categoryItem = plan.categories[index];
+        const options = makeCategoryNameOptions(categoryItem.name);
+        const categoryPreview = [
+          `**❄️ Yukina · sugestões para a categoria ${index + 1}/${plan.categories.length}**`,
+          `Nome original sugerido: **${String(categoryItem.name || "categoria")}**`,
+          "Escolha o estilo respondendo **1**, **2** ou **3**:",
+          ...options.map((option, optionIndex) => `${optionIndex + 1}. ${option.label}`),
+          "",
+          "Responda **CANCELAR** para desistir. Você tem 60 segundos.",
+        ].join("\\n");
+        await message.channel.send({ content: categoryPreview.slice(0, 1700), allowedMentions: { parse: [] } });
+        const categoryChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
+        if (!categoryChoice || categoryChoice.content.trim().toUpperCase() === "CANCELAR") {
+          await message.channel.send("⏱️ Criação cancelada. Nenhuma categoria, canal ou cargo foi criado.");
+          return;
+        }
+        categoryItem.name = options[Number(categoryChoice.content.trim()) - 1].name;
+        for (const channelItem of plan.channels) {
+          if (String(channelItem?.category || "").toLowerCase() === String(categoryItem.name || "").toLowerCase()) {
+            channelItem.category = categoryItem.name;
+          }
+        }
+      }
+    }
 
     if (hasCreates && plan.channels.length) {
       const options = makeChannelNameOptions(plan.channels[0].name);
