@@ -487,6 +487,21 @@ client.once("ready", async () => {
   startupLog(`🌸 Identidade: ${client.user.tag}`);
   startupLog(`🏠 Servidores conectados: ${client.guilds.cache.size}`);
   startupLog("⚙️ Preparando os sistemas da Yukina...");
+  const systems = [
+    ["🧩 Construtor de servidores", "menção à Yukina + permissões de servidor"],
+    ["🌙 Comandos Slash", "carregamento e sincronização automática"],
+    ["🪄 Interações", "botões, menus e modais"],
+    ["📣 Avisos de promoção", "cargo de notificação e canal de promoções"],
+    ["💓 Monitor de serviço", "endpoint HTTP para health check"],
+    ["🤖 Assistente de organização", (process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY) ? "API configurada" : "aguardando AI_API_KEY/OPENROUTER_API_KEY"],
+  ];
+  console.log("");
+  console.log("╭────────────── ❄️ SISTEMAS YUKINA ❄️ ──────────────╮");
+  for (const [name, detail] of systems) {
+    startupLog(`${name} — ${detail}`);
+  }
+  console.log("╰──────────────────────────────────────────────────╯");
+  console.log("");
 
   await registerSlashCommands();
   await ensurePromotionNotifyRole();
