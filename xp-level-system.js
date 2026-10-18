@@ -1,12 +1,9 @@
 /**
- * Cargos de nível da Yukina — usa o XP compartilhado com rank-system.js.
+ * Cargos de nível da Yukina — compartilha XP persistido no MongoDB com rank-system.js.
  * Não altera nem remove cargos da hierarquia por tempo de permanência.
  */
-const fs = require("node:fs");
-const path = require("node:path");
 const { PermissionFlagsBits } = require("discord.js");
-
-const DATA_FILE = path.join(__dirname, "data", "member-ranks.json");
+const memberData = require("./member-data");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 
 const LEVEL_ROLES = [
@@ -23,15 +20,6 @@ const LEVEL_ROLES = [
   { level: 75, name: "🔮・Nível 75 | Mítico", xp: 35000, color: 0xC77DFF },
   { level: 100, name: "♾️・Nível 100 | Imortal", xp: 50000, color: 0xE0FBFC },
 ];
-
-function readMembers() {
-  try {
-    const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-    return parsed?.members && typeof parsed.members === "object" ? parsed.members : {};
-  } catch {
-    return {};
-  }
-}
 
 function getLevelRole(xp) {
   let selected = LEVEL_ROLES[0];
@@ -80,9 +68,8 @@ async function updateLevel(member, announce = false) {
   const roles = await ensureLevelRoles(member.guild);
   if (!roles) return;
 
-  const members = readMembers();
-  const record = members[member.guild.id + ":" + member.id];
-  const xp = Math.max(0, Number(record?.xp) || 0);
+  const record = memberData.getRecord(member.guild.id, member.id);
+  const xp = Math.max(0, Number(record.xp) || 0);
   const selected = getLevelRole(xp);
   const selectedRole = roles.get(selected.level);
   if (!selectedRole) return;
@@ -114,16 +101,19 @@ async function updateLevel(member, announce = false) {
 
 function startXpLevelSystem(client) {
   client.on("guildMemberAdd", async (member) => {
-    if (!member.user.bot) await updateLevel(member, false);
+    if (member.user.bot) return;
+    await memberData.initialize();
+    await updateLevel(member, false);
   });
 
-  // rank-system.js é carregado antes deste módulo e compartilha o XP no mesmo arquivo.
   client.on("messageCreate", async (message) => {
     if (!message.guild || message.author.bot || !message.member) return;
+    await memberData.initialize();
     await updateLevel(message.member, true);
   });
 
   client.once("clientReady", async () => {
+    await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
       await ensureLevelRoles(guild);
       for (const member of guild.members.cache.values()) {
@@ -134,6 +124,7 @@ function startXpLevelSystem(client) {
   });
 
   setInterval(async () => {
+    await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
       for (const member of guild.members.cache.values()) {
         if (!member.user.bot) await updateLevel(member, false);
