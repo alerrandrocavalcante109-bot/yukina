@@ -7,6 +7,7 @@ const {
 
 const YUKINA_BLUE = 0xA7D8F0;
 const MAX_BULK_DELETE = 100;
+const CONFIRMATION_DELETE_DELAY = 5000;
 
 function yukinaEmbed(title, description, color = YUKINA_BLUE) {
   return new EmbedBuilder()
@@ -59,7 +60,7 @@ async function runClear({ channel, guild, amount, actor, botMember }) {
   try {
     const deleted = await deleteRecentMessages(channel, amount);
     if (deleted === 0) {
-      return { ok: true, title: "🌸 Tudo já está em ordem!", message: "Não encontrei mensagens recentes que o Discord permita apagar em grupo. Mensagens com 14 dias ou mais precisam ser removidas individualmente." , deleted };
+      return { ok: true, title: "🌸 Tudo já está em ordem!", message: "Não encontrei mensagens recentes que o Discord permita apagar em grupo. Mensagens com 14 dias ou mais precisam ser removidas individualmente.", deleted };
     }
 
     return {
@@ -78,24 +79,43 @@ async function runClear({ channel, guild, amount, actor, botMember }) {
   }
 }
 
+function scheduleSlashConfirmationDeletion(interaction, result) {
+  if (!result.ok || !result.deleted) return;
+  const timer = setTimeout(() => {
+    interaction.deleteReply().catch(() => {});
+  }, CONFIRMATION_DELETE_DELAY);
+  timer.unref?.();
+}
+
 async function replySlash(interaction, result) {
   const embed = yukinaEmbed(result.title, result.message, result.ok ? YUKINA_BLUE : 0xEFA6B8);
+  let response;
+
   if (interaction.deferred) {
-    return interaction.editReply({ embeds: [embed] });
+    response = await interaction.editReply({ embeds: [embed] });
+  } else if (interaction.replied) {
+    response = await interaction.followUp({ embeds: [embed], ephemeral: !result.ok });
+  } else {
+    response = await interaction.reply({ embeds: [embed], ephemeral: !result.ok });
   }
-  if (interaction.replied) {
-    return interaction.followUp({ embeds: [embed], ephemeral: !result.ok });
-  }
-  return interaction.reply({ embeds: [embed], ephemeral: !result.ok });
+
+  scheduleSlashConfirmationDeletion(interaction, result);
+  return response;
 }
 
 async function replyPrefix(message, result) {
   // Não usar message.reply: o comando pode apagar a mensagem original,
   // o que gera MESSAGE_REFERENCE_UNKNOWN_MESSAGE no Discord.
-  return message.channel.send({
+  const response = await message.channel.send({
     embeds: [yukinaEmbed(result.title, result.message, result.ok ? YUKINA_BLUE : 0xEFA6B8)],
     allowedMentions: { repliedUser: false },
   });
+
+  if (result.ok && result.deleted) {
+    const timer = setTimeout(() => response.delete().catch(() => {}), CONFIRMATION_DELETE_DELAY);
+    timer.unref?.();
+  }
+  return response;
 }
 
 module.exports = {
@@ -152,7 +172,7 @@ module.exports = {
       botMember: message.guild.members.me,
     });
 
-    // Mensagens com mais de 14 dias não são apagáveis em lote pela API do Discord.
+    // Apaga a mensagem de comando quando a limpeza foi executada com sucesso.
     if (result.ok && result.deleted > 0) {
       try { await message.delete(); } catch {}
     }
