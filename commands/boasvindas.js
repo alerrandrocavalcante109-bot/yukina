@@ -113,8 +113,13 @@ const data = new SlashCommandBuilder()
 async function execute(interaction) {
   const action = interaction.options.getSubcommand();
   const event = action === "status" ? "welcome" : interaction.options.getString("evento");
+  const member = interaction.guild?.members.cache.get(interaction.user.id) || {
+    id: interaction.user.id,
+    user: interaction.user,
+    permissions: interaction.memberPermissions,
+  };
   await runAction({
-    guild: interaction.guild, member: interaction.member, channel: interaction.channel,
+    guild: interaction.guild, member, channel: interaction.channel,
     action, event, targetChannel: interaction.options.getChannel("canal"),
     title: interaction.options.getString("titulo"), message: interaction.options.getString("mensagem"),
     color: interaction.options.getString("cor"),
