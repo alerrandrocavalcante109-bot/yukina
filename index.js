@@ -379,7 +379,7 @@ async function applyDeletions(guild, plan) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
 });
 
 // O motor carrega os módulos de commands/ e executa prefixos Y/y.
@@ -393,6 +393,9 @@ require("./xp-level-system")(client);
 
 // Slash, botões, menus e modais ficam centralizados em interaction.js.
 require("./interaction")(client);
+
+// Registros de punições, mensagens, perfis e nicknames.
+require("./log-system")(client);
 
 client.on("error", (error) => {
   console.error("Erro do cliente Discord:", error);
