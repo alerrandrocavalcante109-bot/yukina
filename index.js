@@ -397,8 +397,6 @@ require("./interaction")(client);
 // Registros de punições, mensagens, perfis e nicknames.
 require("./log-system")(client);
 
-// Boas-vindas e despedidas personalizadas por servidor.
-require("./welcome-system").register(client);
 
 client.on("error", (error) => {
   console.error("Erro do cliente Discord:", error);
@@ -441,7 +439,7 @@ async function registerSlashCommands() {
 
   try {
     const existing = await rest.get(route);
-    const merged = new Map((Array.isArray(existing) ? existing : []).map((command) => [command.name, command]));
+    const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => command.name !== "boasvindas").map((command) => [command.name, command]));
     for (const command of commands) merged.set(command.name, command);
     const result = await rest.put(route, { body: [...merged.values()] });
     // Registro concluído silenciosamente para manter o log de inicialização limpo.
