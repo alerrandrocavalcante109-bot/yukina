@@ -384,9 +384,10 @@ client.on("messageCreate", async (message) => {
           await message.channel.send("⏱️ Criação cancelada. Nenhuma categoria, canal ou cargo foi criado.");
           return;
         }
+        const originalCategoryName = String(categoryItem.name || "").toLowerCase();
         categoryItem.name = options[Number(categoryChoice.content.trim()) - 1].name;
         for (const channelItem of plan.channels) {
-          if (String(channelItem?.category || "").toLowerCase() === String(categoryItem.name || "").toLowerCase()) {
+          if (String(channelItem?.category || "").toLowerCase() === originalCategoryName) {
             channelItem.category = categoryItem.name;
           }
         }
