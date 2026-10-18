@@ -7,8 +7,12 @@ const {
   PermissionFlagsBits,
   Colors,
   EmbedBuilder,
+  REST,
+  Routes,
 } = require("discord.js");
 const http = require("node:http");
+const fs = require("node:fs");
+const path = require("node:path");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
@@ -385,8 +389,94 @@ client.on("error", (error) => {
   console.error("Erro do cliente Discord:", error);
 });
 
-client.once("ready", () => {
+async function registerSlashCommands() {
+  const commandsDir = path.join(__dirname, "commands");
+  const commands = [];
+
+  function collect(directory) {
+    if (!fs.existsSync(directory)) return;
+    for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
+      const file = path.join(directory, entry.name);
+      if (entry.isDirectory()) collect(file);
+      else if (entry.isFile() && entry.name.endsWith(".js") && !entry.name.startsWith("_")) {
+        try {
+          delete require.cache[require.resolve(file)];
+          const command = require(file);
+          if (command?.data?.toJSON && typeof command.execute === "function") {
+            commands.push(command.data.toJSON());
+          }
+        } catch (error) {
+          console.error("[Slash] Não consegui carregar " + path.relative(__dirname, file) + ":", error.message);
+        }
+      }
+    }
+  }
+
+  collect(commandsDir);
+  if (!commands.length) {
+    console.log("[Slash] Nenhum comando local encontrado; registro automático ignorado.");
+    return;
+  }
+
+  const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || "").trim();
+  const route = guildId
+    ? Routes.applicationGuildCommands(client.application.id, guildId)
+    : Routes.applicationCommands(client.application.id);
+  const rest = new REST({ version: "10" }).setToken(TOKEN);
+
+  try {
+    const existing = await rest.get(route);
+    const merged = new Map((Array.isArray(existing) ? existing : []).map((command) => [command.name, command]));
+    for (const command of commands) merged.set(command.name, command);
+    const result = await rest.put(route, { body: [...merged.values()] });
+    console.log("[Slash] Registro automático concluído: " + commands.length +
+      " comando(s) sincronizado(s), " + result.length + " no total" +
+      (guildId ? " no servidor " + guildId : " globalmente") + ".");
+  } catch (error) {
+    console.error("[Slash] Falha no registro automático dos comandos:", error);
+  }
+}
+
+async function ensurePromotionNotifyRole() {
+  const roleName = (process.env.PROMOTION_NOTIFY_ROLE_NAME || "📣・Avisos de promoção").trim();
+  const configuredId = (process.env.PROMOTION_NOTIFY_ROLE_ID || "").trim();
+  let role = configuredId ? await client.guilds.cache
+    .map((guild) => guild.roles.fetch(configuredId).catch(() => null))
+    .reduce(async (previous, promise) => (await previous) || await promise, Promise.resolve(null)) : null;
+
+  for (const guild of client.guilds.cache.values()) {
+    if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
+      console.warn("[Promoções] Sem Gerenciar cargos em " + guild.name + "; não foi possível conferir/criar o cargo de avisos.");
+      continue;
+    }
+
+    if (!role) role = guild.roles.cache.find((item) => item.name === roleName) || null;
+    if (!role) {
+      try {
+        role = await guild.roles.create({
+          name: roleName,
+          color: "#C7E7FF",
+          hoist: false,
+          mentionable: true,
+          permissions: [],
+          reason: "Cargo de notificação dos anúncios de promoção da Yukina",
+        });
+        console.log("[Promoções] Cargo criado: " + role.name + " (" + role.id + ") no servidor " + guild.name);
+      } catch (error) {
+        console.error("[Promoções] Não consegui criar o cargo de avisos em " + guild.name + ":", error.message);
+        continue;
+      }
+    }
+
+    console.log("[Promoções] Cargo de notificação disponível em " + guild.name + ": " + role.name + " (" + role.id + ")");
+    role = null;
+  }
+}
+
+client.once("ready", async () => {
   console.log(`Yukina conectada como ${client.user.tag}`);
+  await registerSlashCommands();
+  await ensurePromotionNotifyRole();
 });
 
 client.on("messageCreate", async (message) => {
