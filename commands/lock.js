@@ -101,17 +101,25 @@ module.exports = {
       return message.reply({ embeds: [createEmbed("🥺 Preciso de uma ajudinha", "A Yukina precisa da permissão **Gerenciar canais** para cuidar deste espaço.")] });
     }
 
+    // Envia a mensagem antes de bloquear: depois, a Yukina pode perder
+    // a permissão de enviar mensagens neste canal.
+    const notice = await message.channel.send({
+      embeds: [createEmbed("🌙 Um instante, vou cuidar deste cantinho…", "A Yukina está ajustando as permissões deste canal. ❄️")],
+    }).catch(() => null);
+
     try {
       await lockChannel(message.channel, message.guild);
-      return message.reply({
-        embeds: [createEmbed(
-          "🔒 Shhh… vamos cuidar do cantinho!",
-          `O canal <#${message.channel.id}> foi **bloqueado para novas mensagens**.\n\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸`
-        )],
-      });
+      const payload = { embeds: [createEmbed(
+        "🔒 Shhh… vamos cuidar do cantinho!",
+        `O canal <#${message.channel.id}> foi **bloqueado para novas mensagens**.\\n\\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸`
+      )] };
+      if (notice) return notice.edit(payload);
+      return message.channel.send(payload);
     } catch (error) {
       console.error("[Yukina Ylock]", error);
-      return message.reply({ embeds: [createEmbed("💧 Não consegui fechar o canal", "Confira as permissões da Yukina e tente novamente.", 0xEFA6B8)] });
+      const payload = { embeds: [createEmbed("💧 Não consegui fechar o canal", "Não consegui alterar as permissões. Verifique se a Yukina tem **Gerenciar canais** e **Gerenciar cargos** e se o cargo dela está configurado corretamente.", 0xEFA6B8)] };
+      if (notice) return notice.edit(payload).catch(() => null);
+      return message.channel.send(payload).catch(() => null);
     }
   },
 };
