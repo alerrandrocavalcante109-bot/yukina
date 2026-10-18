@@ -18,14 +18,23 @@ if (!TOKEN) {
   process.exit(1);
 }
 
-const SYSTEM_PROMPT = `Você é a planejadora de servidores Discord da Yukina. Converta o pedido em um plano JSON válido, sem Markdown, com esta estrutura:
+const SYSTEM_PROMPT = `Você é a planejadora e administradora assistida de servidores Discord da Yukina. Converta o pedido em JSON válido, sem Markdown, usando EXATAMENTE esta estrutura:
 {
  "style_tips": ["dica de estilo"],
  "roles": [{"name":"Nome","color":"#5865F2","hoist":false,"mentionable":false}],
  "categories": [{"name":"Nome"}],
- "channels": [{"name":"nome-do-canal","type":"text|voice|forum|stage","category":"Nome exato da categoria ou null","topic":"descrição curta"}]
+ "channels": [{"name":"nome-do-canal","type":"text|voice|forum|stage","category":"Nome exato da categoria ou null","topic":"descrição curta"}],
+ "delete_roles": ["nome exato do cargo a excluir"],
+ "delete_categories": ["nome exato da categoria a excluir"],
+ "delete_channels": ["nome exato do canal a excluir"]
 }
-Crie apenas o que foi pedido e complemente com sugestões úteis. Nomes de canais em minúsculas com hífens são preferíveis. Cores devem ser HEX. Não inclua permissões administrativas nos cargos; a aplicação usará permissões seguras padrão. Limites: até 12 cargos, 12 categorias e 30 canais. Para categorias/canais, mantenha nomes únicos e coerentes. Responda SOMENTE com JSON válido.`;
+REGRAS CRÍTICAS DE EXCLUSÃO:
+- Só preencha os arrays delete_* se o usuário pedir claramente para excluir, apagar, deletar ou remover.
+- Liste SOMENTE nomes exatos explicitamente indicados pelo usuário; nunca invente nomes, nunca interprete "limpar tudo" como autorização para apagar tudo.
+- Se o alvo for ambíguo ou o usuário não especificar o nome exato, deixe os arrays delete_* vazios e peça esclarecimento em style_tips.
+- Excluir uma categoria NÃO significa excluir os canais dentro dela.
+- Não coloque itens para exclusão nos arrays de criação.
+Para criação: crie apenas o que foi pedido e complemente com sugestões úteis. Nomes de canais em minúsculas com hífens são preferíveis. Cores devem ser HEX. Não inclua permissões administrativas nos cargos; a aplicação usará permissões seguras padrão. Limites: até 12 cargos, 12 categorias, 30 canais e 10 exclusões por tipo. Responda SOMENTE com JSON válido.`;
 
 function cleanJson(text) {
   const cleaned = String(text).trim().replace(/^```(?:json)?\s*|\s*```$/gi, "");
@@ -38,7 +47,7 @@ function cleanJson(text) {
 async function createPlan(prompt) {
   const apiKey = (process.env.AI_API_KEY || process.env.OPENROUTER_API_KEY || "").trim();
   if (!apiKey) {
-    throw new Error("Chave da API ausente. No Render, configure AI_API_KEY ou OPENROUTER_API_KEY com sua chave real do OpenRouter.");
+    throw new Error("Chave da API ausente. No Render, configure AI_API_KEY com sua chave do provedor de IA.");
   }
   const response = await fetch(AI_API_URL, {
     method: "POST",
@@ -65,13 +74,16 @@ async function createPlan(prompt) {
   const content = data?.choices?.[0]?.message?.content;
   if (!content) throw new Error("A API de IA não retornou conteúdo.");
   const plan = cleanJson(content);
-  for (const key of ["roles", "categories", "channels", "style_tips"]) {
+  for (const key of ["roles", "categories", "channels", "style_tips", "delete_roles", "delete_categories", "delete_channels"]) {
     if (!Array.isArray(plan[key])) plan[key] = [];
   }
   plan.roles = plan.roles.slice(0, 12);
   plan.categories = plan.categories.slice(0, 12);
   plan.channels = plan.channels.slice(0, 30);
   plan.style_tips = plan.style_tips.slice(0, 6).map((x) => String(x).slice(0, 250));
+  for (const key of ["delete_roles", "delete_categories", "delete_channels"]) {
+    plan[key] = plan[key].slice(0, 10).map((x) => String(x || "").trim().slice(0, 100)).filter(Boolean);
+  }
   return plan;
 }
 
@@ -152,6 +164,67 @@ async function buildServer(guild, plan) {
   return results;
 }
 
+async function applyDeletions(guild, plan) {
+  const results = [];
+  const me = guild.members.me;
+  const botTopRole = me?.roles?.highest;
+
+  // Delete only exact name matches. Managed roles and roles at/above the bot's
+  // highest role are never deletable by this routine.
+  for (const target of plan.delete_channels || []) {
+    const name = String(target).trim();
+    const channel = guild.channels.cache.find((item) => item.name === name);
+    if (!channel) {
+      results.push(`Canal não encontrado (não excluído): ${name}`);
+      continue;
+    }
+    try {
+      await channel.delete("Exclusão explicitamente confirmada por administrador via Yukina");
+      results.push(`Canal excluído: ${name}`);
+    } catch (error) {
+      results.push(`Falha ao excluir canal ${name}: ${String(error.message || error).slice(0, 100)}`);
+    }
+  }
+
+  // Removing a category does not delete its child channels.
+  for (const target of plan.delete_categories || []) {
+    const name = String(target).trim();
+    const category = guild.channels.cache.find((item) =>
+      item.type === ChannelType.GuildCategory && item.name === name
+    );
+    if (!category) {
+      results.push(`Categoria não encontrada (não excluída): ${name}`);
+      continue;
+    }
+    try {
+      await category.delete("Exclusão explicitamente confirmada por administrador via Yukina");
+      results.push(`Categoria excluída (canais mantidos): ${name}`);
+    } catch (error) {
+      results.push(`Falha ao excluir categoria ${name}: ${String(error.message || error).slice(0, 100)}`);
+    }
+  }
+
+  for (const target of plan.delete_roles || []) {
+    const name = String(target).trim();
+    const role = guild.roles.cache.find((item) => item.name === name);
+    if (!role) {
+      results.push(`Cargo não encontrado (não excluído): ${name}`);
+      continue;
+    }
+    if (role.id === guild.id || role.managed || !botTopRole || role.position >= botTopRole.position) {
+      results.push(`Cargo protegido ou acima da Yukina (não excluído): ${name}`);
+      continue;
+    }
+    try {
+      await role.delete("Exclusão explicitamente confirmada por administrador via Yukina");
+      results.push(`Cargo excluído: ${name}`);
+    } catch (error) {
+      results.push(`Falha ao excluir cargo ${name}: ${String(error.message || error).slice(0, 100)}`);
+    }
+  }
+  return results;
+}
+
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
@@ -187,10 +260,38 @@ client.on("messageCreate", async (message) => {
   try {
     await message.channel.sendTyping();
     const plan = await createPlan(request);
-    await message.reply({ content: formatPlan(plan) + "\n\nVou criar essa estrutura agora. Não vou apagar nem alterar canais ou cargos existentes.", allowedMentions: { repliedUser: false } });
+    const hasDeletes = plan.delete_roles.length || plan.delete_categories.length || plan.delete_channels.length;
+
+    if (hasDeletes) {
+      const preview = [
+        "**Confirme as exclusões solicitadas**",
+        ...(plan.delete_channels.length ? [`Canais: ${plan.delete_channels.join(", ")}`] : []),
+        ...(plan.delete_categories.length ? [`Categorias (os canais serão mantidos): ${plan.delete_categories.join(", ")}`] : []),
+        ...(plan.delete_roles.length ? [`Cargos: ${plan.delete_roles.join(", ")}`] : []),
+        "",
+        "Para executar, responda **CONFIRMAR** a esta mensagem em até 60 segundos. Qualquer outra resposta ou tempo esgotado cancela as exclusões.",
+      ].join("\n");
+      await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
+      const collected = await message.channel.awaitMessages({
+        filter: (reply) => reply.author.id === message.author.id && reply.guild?.id === message.guild.id && reply.content.trim().toUpperCase() === "CONFIRMAR",
+        max: 1,
+        time: 60000,
+        errors: [],
+      });
+      if (collected.size === 0) {
+        await message.channel.send("⏱️ Exclusões canceladas: não recebi **CONFIRMAR** em até 60 segundos.");
+        return;
+      }
+    }
+
+    const deleted = hasDeletes ? await applyDeletions(message.guild, plan) : [];
     const created = await buildServer(message.guild, plan);
-    const summary = created.length ? created.slice(0, 35).map((line) => `• ${line}`).join("\n") : "Nenhum item novo foi necessário; os itens já existiam ou o plano veio vazio.";
-    await message.channel.send({ content: `**Yukina concluiu!**\n${summary}`.slice(0, 1900) });
+    const summary = [...deleted, ...created];
+    if (!summary.length) {
+      await message.channel.send("A Yukina não fez alterações: nenhum item novo foi necessário ou nenhum alvo válido foi encontrado. Confira os nomes exatos.");
+    } else {
+      await message.channel.send({ content: `**Yukina concluiu!**\n${summary.slice(0, 35).map((line) => `• ${line}`).join("\n")}`.slice(0, 1900) });
+    }
   } catch (error) {
     console.error("Erro no construtor de servidor IA:", error);
     await message.reply({ content: `Não consegui concluir a montagem: ${String(error.message || error).slice(0, 700)}`, allowedMentions: { repliedUser: false } });
