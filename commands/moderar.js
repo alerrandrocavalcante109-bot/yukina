@@ -57,19 +57,31 @@ module.exports = {
     pending.set(token, { action, guildId: guild.id, targetId: user.id, moderatorId: interaction.user.id, reason, minutes, createdAt: Date.now() });
     const label = action === "banir" ? "Confirmar banir" : action === "expulsar" ? "Confirmar expulsar" : action === "timeout" ? "Confirmar timeout" : "Confirmar remoção";
     const row = new ActionRowBuilder().addComponents(
-      new ButtonBuilder().setCustomId("moderar:confirmar:" + token).setLabel(label).setStyle(ButtonStyle.Danger),
-      new ButtonBuilder().setCustomId("moderar:cancelar:" + token).setLabel("Cancelar").setStyle(ButtonStyle.Secondary)
+      new ButtonBuilder().setCustomId("moderar:confirmar:" + token).setLabel(label).setStyle(ButtonStyle.Danger)
     );
     await interaction.reply({
-      content: "⚠️ **Confirme a ação de moderação**\\n\\nAção: **" + action + "**\\nMembro: " + user.tag + " (" + user.id + ")\\n" +
-        (minutes ? "Duração: **" + minutes + " minuto(s)**\\n" : "") +
-        "Motivo: " + reason + "\\n\\nA ação só será executada depois que você clicar em **" + label + "**. A confirmação expira em 60 segundos.",
+      content: "⚠️ **Confirme a ação de moderação**\n\nAção: **" + action + "**\nMembro: " + user.tag + " (" + user.id + ")\n" +
+        (minutes ? "Duração: **" + minutes + " minuto(s)**\n" : "") +
+        "Motivo: " + reason + "\n\nA ação só será executada depois que você clicar em **" + label + "**. Você tem **5 minutos** para confirmar. Se não confirmar, a ação será cancelada automaticamente.",
       components: [row], ephemeral: true, allowedMentions: { parse: [] },
     });
-    const timer = setTimeout(() => {
+    const timer = setTimeout(async () => {
       const item = pending.get(token);
-      if (item && Date.now() - item.createdAt >= 60000) pending.delete(token);
-    }, 61000);
+      if (!item || Date.now() - item.createdAt < 300000) return;
+      pending.delete(token);
+      try {
+        await interaction.editReply({
+          content: "⌛ O tempo para confirmar acabou. Nenhuma ação foi executada.",
+          components: [],
+        });
+        await interaction.followUp({
+          content: "⌛ O tempo acabou, <@" + item.moderatorId + ">! <@" + item.targetId + "> se salvou — a confirmação não chegou a tempo e nenhuma punição foi aplicada.",
+          allowedMentions: { users: [item.moderatorId, item.targetId] },
+        });
+      } catch (error) {
+        console.error("[Moderação] Não foi possível avisar sobre a confirmação expirada:", error);
+      }
+    }, 300000);
     timer.unref?.();
   },
 };
