@@ -8,12 +8,12 @@ try:
     from dotenv import load_dotenv
     import discord
     from aiohttp import web
-    from ai_server_builder import create_plan, build_server, format_plan
 except ImportError:
     print("Dependência ausente: instale com: python -m pip install -r requirements.txt", file=sys.stderr)
     raise SystemExit(1)
 
 load_dotenv(Path(__file__).resolve().parent / ".env")
+from ai_server_builder import create_plan, build_server, format_plan
 TOKEN = os.getenv("DISCORD_TOKEN", "").strip()
 if not TOKEN:
     print("Erro: DISCORD_TOKEN não foi definido nas variáveis de ambiente.", file=sys.stderr)
