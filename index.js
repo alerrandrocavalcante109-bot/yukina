@@ -157,8 +157,8 @@ async function moveMentionedChannel(message, request) {
   const channel = await message.guild.channels.fetch(match[1]).catch(() => null);
   if (!channel || channel.type === ChannelType.GuildCategory) return "Não encontrei um canal válido nessa menção.";
   const targetName = String(request).replace(tagPattern, " ")
-    .replace(/^\\s*(?:mover|mude|mudar|transferir|colocar)\\s*/i, "")
-    .replace(/\\b(?:para\\s+)?(?:a\\s+)?categoria\\s*[:：-]?\\s*/i, "").trim();
+    .replace(/^\s*(?:mover|mude|mudar|transferir|colocar)\s*/i, "")
+    .replace(/\b(?:para\s+)?(?:a\s+)?categoria\s*[:：-]?\s*/i, "").trim();
   if (!targetName) return "Marque o canal e escreva o nome da categoria de destino.";
   const category = message.guild.channels.cache.find((item) =>
     item.type === ChannelType.GuildCategory && item.name.toLowerCase() === targetName.toLowerCase()
