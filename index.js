@@ -118,6 +118,33 @@ async function waitForExactReply(channel, userId, guildId, accepted) {
   return collected.first() || null;
 }
 
+
+async function moveMentionedChannel(message, request) {
+  const marker = "<" + "#";
+  const tagPattern = new RegExp(marker + "([0-9]{15,22})>");
+  const match = String(request).match(tagPattern);
+  if (!match) return null;
+  const channel = await message.guild.channels.fetch(match[1]).catch(() => null);
+  if (!channel || channel.type === ChannelType.GuildCategory) return "Não encontrei um canal válido nessa menção.";
+  const targetName = String(request).replace(tagPattern, " ")
+    .replace(/^\\s*(?:mover|mude|mudar|transferir|colocar)\\s*/i, "")
+    .replace(/\\b(?:para\\s+)?(?:a\\s+)?categoria\\s*[:：-]?\\s*/i, "").trim();
+  if (!targetName) return "Marque o canal e escreva o nome da categoria de destino.";
+  const category = message.guild.channels.cache.find((item) =>
+    item.type === ChannelType.GuildCategory && item.name.toLowerCase() === targetName.toLowerCase()
+  );
+  if (!category) {
+    const available = message.guild.channels.cache.filter((item) => item.type === ChannelType.GuildCategory).map((item) => item.name);
+    return available.length ? `Não encontrei **${targetName}**. Categorias disponíveis: ${available.join(", ")}.` : "Não há categorias neste servidor.";
+  }
+  try {
+    await channel.setParent(category.id, { lockPermissions: false, reason: "Canal movido a pedido via Yukina" });
+    return "Canal " + marker + channel.id + "> movido para a categoria **" + category.name + "**.";
+  } catch (error) {
+    return `Não consegui mover o canal: ${String(error.message || error).slice(0, 200)}`;
+  }
+}
+
 function formatPlan(plan) {
   const lines = ["**Sugestões de estilo da Yukina**"];
   lines.push(...plan.style_tips.slice(0, 5).map((tip) => `• ${tip}`));
@@ -305,6 +332,12 @@ client.on("messageCreate", async (message) => {
   const request = message.content
     .replace(new RegExp(`<@!?\${client.user.id}>`, "g"), "")
     .trim();
+  if (request.includes("<" + "#") && /(?:mover|mude|mudar|transferir|colocar|categoria)/i.test(request)) {
+    const moveResult = await moveMentionedChannel(message, request);
+    if (moveResult) await message.channel.send({ content: moveResult, allowedMentions: { parse: [] } });
+    return;
+  }
+
   if (!request) {
     await message.channel.send({ content: "Oi! Me marque e diga o que você quer montar. Exemplo: @Yukina crie um servidor gamer com categorias, canais de texto/voz e cargos coloridos.", allowedMentions: { repliedUser: false } });
     return;
