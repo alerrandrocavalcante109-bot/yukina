@@ -6,7 +6,9 @@ import re
 import aiohttp
 import discord
 
-AI_API_KEY = os.getenv("AI_API_KEY", "").strip()
+def _get_api_key() -> str:
+    # Lê no momento da chamada para também funcionar se o ambiente for carregado depois do import.
+    return (os.getenv("AI_API_KEY") or os.getenv("OPENROUTER_API_KEY") or "").strip()
 AI_API_URL = os.getenv("AI_API_URL", "https://openrouter.ai/api/v1/chat/completions").strip()
 AI_MODEL = os.getenv("AI_MODEL", "meta-llama/llama-3.3-70b-instruct:free").strip()
 
@@ -29,10 +31,11 @@ def _clean_json(text: str) -> dict:
     return json.loads(text[start:end + 1])
 
 async def create_plan(prompt: str) -> dict:
-    if not AI_API_KEY:
-        raise RuntimeError("A API de IA não está configurada. Adicione AI_API_KEY nas variáveis de ambiente do Render.")
+    api_key = _get_api_key()
+    if not api_key:
+        raise RuntimeError("Chave da API ausente. No Render, configure AI_API_KEY ou OPENROUTER_API_KEY com sua chave real do OpenRouter e reinicie o serviço.")
     timeout = aiohttp.ClientTimeout(total=50)
-    headers = {"Authorization": f"Bearer {AI_API_KEY}", "Content-Type": "application/json"}
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
     payload = {
         "model": AI_MODEL,
         "temperature": 0.35,
