@@ -321,7 +321,7 @@ client.on("messageCreate", async (message) => {
         ...options.map((option, index) => `${index + 1}. ${option.label}`),
         "",
         "Você tem 60 segundos. Responda **CANCELAR** para desistir.",
-      ].join("\\n");
+      ].join("\n");
       await message.reply({ content: choiceText, allowedMentions: { repliedUser: false } });
       const choice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
       if (!choice || choice.content.trim().toUpperCase() === "CANCELAR") {
@@ -339,7 +339,7 @@ client.on("messageCreate", async (message) => {
         ...(plan.delete_roles.length ? [`Cargos: ${plan.delete_roles.join(", ")}`] : []),
         "",
         "Responda **CONFIRMAR** para executar as exclusões, ou **CANCELAR**. Expira em 60 segundos.",
-      ].join("\\n");
+      ].join("\n");
       await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
       const deletionConfirmation = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["CONFIRMAR", "CANCELAR"]);
       if (!deletionConfirmation || deletionConfirmation.content.trim().toUpperCase() !== "CONFIRMAR") {
@@ -358,7 +358,7 @@ client.on("messageCreate", async (message) => {
         ...(plan.channels.length ? [`Canais: ${plan.channels.map((x) => `${x.name} (${x.type || "text"})`).join(", ")}`] : []),
         "",
         "Nada foi criado ainda. Responda **CONFIRMAR** para criar esta estrutura ou **CANCELAR** para desistir. Expira em 60 segundos.",
-      ].join("\\n");
+      ].join("\n");
       await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
       const confirmation = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["CONFIRMAR", "CANCELAR"]);
       if (!confirmation || confirmation.content.trim().toUpperCase() !== "CONFIRMAR") {
