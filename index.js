@@ -449,19 +449,29 @@ client.on("messageCreate", async (message) => {
 
         const colorPreview = [
           `**🌙 Yukina · escolha a cor do cargo ${index + 1}/${plan.roles.length}**`,
-          "Escolha uma cor de **1 a 10**:",
+          "Escolha uma cor de **1 a 10**, envie um código HEX (ex.: **#FF69B4**) ou responda **11** para uma cor aleatória.",
           ...colorOptions.map((option, optionIndex) => `${optionIndex + 1}. ${option.swatch} **${option.name}** — \`${option.hex}\``),
+          "11. 🎲 **Cor aleatória da paleta Yukina**",
           "",
-          "As cores seguem a paleta de neve, luar, sakura e constelações.",
+          "Você também pode enviar qualquer cor no formato #RRGGBB. Responda **CANCELAR** para desistir.",
         ].join("\\n");
-        await message.channel.send({ content: colorPreview.slice(0, 1700), allowedMentions: { parse: [] } });
-        const colorChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, [...Array(10)].map((_, i) => String(i + 1)).concat("CANCELAR"));
+        await message.channel.send({ content: colorPreview.slice(0, 1800), allowedMentions: { parse: [] } });
+        const colorChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id,
+          [...Array(11)].map((_, i) => String(i + 1)).concat("CANCELAR"));
         if (!colorChoice || colorChoice.content.trim().toUpperCase() === "CANCELAR") {
           await message.channel.send("⏱️ Criação cancelada. Nenhum cargo, canal ou categoria foi criado.");
           return;
         }
-        const selectedColor = colorOptions[Number(colorChoice.content.trim()) - 1];
-        roleItem.color = selectedColor.hex;
+        const colorAnswer = colorChoice.content.trim();
+        if (/^#[0-9a-f]{6}$/i.test(colorAnswer)) {
+          roleItem.color = colorAnswer.toUpperCase();
+        } else if (colorAnswer === "11") {
+          const randomColor = colorOptions[Math.floor(Math.random() * colorOptions.length)];
+          roleItem.color = randomColor.hex;
+          await message.channel.send(`🎲 A Yukina escolheu **${randomColor.name}** (${randomColor.hex}) para este cargo.`);
+        } else {
+          roleItem.color = colorOptions[Number(colorAnswer) - 1].hex;
+        }
       }
     }
 
