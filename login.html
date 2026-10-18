@@ -43,7 +43,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
   const params = new URLSearchParams(window.location.search);
   const requestedReturn = params.get("return") || "./index.html";
   function safeReturnTarget(value) {
-    try { const url = new URL(value, window.location.href); if (url.origin !== window.location.origin || !value.startsWith("./")) return "./index.html"; return url.pathname + url.search; } catch (_) { return "./index.html"; }
+    try { const url = new URL(value, window.location.href); if (url.origin !== window.location.origin || value.startsWith("//") || (!value.startsWith("./") && !value.startsWith("/"))) return "./index.html"; return url.pathname + url.search; } catch (_) { return "./index.html"; }
   }
   const random = (length=64) => {
     const bytes = crypto.getRandomValues(new Uint8Array(length));
