@@ -382,7 +382,10 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
-// Interações slash, botões, menus e modais ficam centralizadas em interaction.js.
+// O motor carrega os módulos de commands/ e executa prefixos Y/y.
+require("./command-engine")(client);
+
+// Slash, botões, menus e modais ficam centralizados em interaction.js.
 require("./interaction")(client);
 
 client.on("error", (error) => {
