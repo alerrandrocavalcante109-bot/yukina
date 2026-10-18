@@ -94,6 +94,30 @@ async function createPlan(prompt) {
   return plan;
 }
 
+function makeChannelNameOptions(name) {
+  const base = String(name || "chat-geral").trim().toLowerCase()
+    .replace(/[^\\p{L}\\p{N}\\s-]/gu, "")
+    .replace(/\\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || "chat-geral";
+  const pretty = base.replace(/-/g, "・");
+  return [
+    { label: `❄️・${base}`, name: `❄️・${base}` },
+    { label: `🌙・${pretty}`, name: `🌙・${pretty}` },
+    { label: `✧・${base}・✧`, name: `✧・${base}・✧` },
+  ];
+}
+
+async function waitForExactReply(channel, userId, guildId, accepted) {
+  const collected = await channel.awaitMessages({
+    filter: (reply) => reply.author.id === userId &&
+      reply.guild?.id === guildId &&
+      accepted.includes(reply.content.trim().toUpperCase()),
+    max: 1,
+    time: 60000,
+    errors: [],
+  });
+  return collected.first() || null;
+}
+
 function formatPlan(plan) {
   const lines = ["**Sugestões de estilo da Yukina**"];
   lines.push(...plan.style_tips.slice(0, 5).map((tip) => `• ${tip}`));
@@ -286,31 +310,64 @@ client.on("messageCreate", async (message) => {
     await message.channel.sendTyping();
     const plan = await createPlan(request);
     const hasDeletes = plan.delete_roles.length || plan.delete_categories.length || plan.delete_channels.length;
+    const hasCreates = plan.roles.length || plan.categories.length || plan.channels.length;
+    let deleted = [];
+
+    if (hasCreates && plan.channels.length) {
+      const options = makeChannelNameOptions(plan.channels[0].name);
+      const choiceText = [
+        "**❄️ Yukina · escolha o nome do canal**",
+        "Escolha uma opção respondendo apenas com **1**, **2** ou **3**. Ainda não vou criar nada.",
+        ...options.map((option, index) => `${index + 1}. ${option.label}`),
+        "",
+        "Você tem 60 segundos. Responda **CANCELAR** para desistir.",
+      ].join("\\n");
+      await message.reply({ content: choiceText, allowedMentions: { repliedUser: false } });
+      const choice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
+      if (!choice || choice.content.trim().toUpperCase() === "CANCELAR") {
+        await message.channel.send("⏱️ Criação cancelada. Nenhum canal, cargo ou categoria foi criado.");
+        return;
+      }
+      plan.channels[0].name = options[Number(choice.content.trim()) - 1].name;
+    }
 
     if (hasDeletes) {
       const preview = [
-        "**Confirme as exclusões solicitadas**",
+        "**⚠️ Prévia das exclusões solicitadas**",
         ...(plan.delete_channels.length ? [`Canais: ${plan.delete_channels.join(", ")}`] : []),
         ...(plan.delete_categories.length ? [`Categorias (os canais serão mantidos): ${plan.delete_categories.join(", ")}`] : []),
         ...(plan.delete_roles.length ? [`Cargos: ${plan.delete_roles.join(", ")}`] : []),
         "",
-        "Para executar, responda **CONFIRMAR** a esta mensagem em até 60 segundos. Qualquer outra resposta ou tempo esgotado cancela as exclusões.",
-      ].join("\n");
+        "Responda **CONFIRMAR** para executar as exclusões, ou **CANCELAR**. Expira em 60 segundos.",
+      ].join("\\n");
       await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
-      const collected = await message.channel.awaitMessages({
-        filter: (reply) => reply.author.id === message.author.id && reply.guild?.id === message.guild.id && reply.content.trim().toUpperCase() === "CONFIRMAR",
-        max: 1,
-        time: 60000,
-        errors: [],
-      });
-      if (collected.size === 0) {
-        await message.channel.send("⏱️ Exclusões canceladas: não recebi **CONFIRMAR** em até 60 segundos.");
+      const deletionConfirmation = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["CONFIRMAR", "CANCELAR"]);
+      if (!deletionConfirmation || deletionConfirmation.content.trim().toUpperCase() !== "CONFIRMAR") {
+        await message.channel.send("⏱️ Exclusões canceladas. Nenhuma exclusão foi executada.");
+        if (!hasCreates) return;
+      } else {
+        deleted = await applyDeletions(message.guild, plan);
+      }
+    }
+
+    if (hasCreates) {
+      const preview = [
+        "**🌙 Yukina · prévia final da criação**",
+        ...(plan.categories.length ? [`Categorias: ${plan.categories.map((x) => x.name).join(", ")}`] : []),
+        ...(plan.roles.length ? [`Cargos: ${plan.roles.map((x) => x.name).join(", ")}`] : []),
+        ...(plan.channels.length ? [`Canais: ${plan.channels.map((x) => `${x.name} (${x.type || "text"})`).join(", ")}`] : []),
+        "",
+        "Nada foi criado ainda. Responda **CONFIRMAR** para criar esta estrutura ou **CANCELAR** para desistir. Expira em 60 segundos.",
+      ].join("\\n");
+      await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
+      const confirmation = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["CONFIRMAR", "CANCELAR"]);
+      if (!confirmation || confirmation.content.trim().toUpperCase() !== "CONFIRMAR") {
+        await message.channel.send("⏱️ Criação cancelada. Nenhum item da prévia foi criado.");
         return;
       }
     }
 
-    const deleted = hasDeletes ? await applyDeletions(message.guild, plan) : [];
-    const created = await buildServer(message.guild, plan);
+    const created = hasCreates ? await buildServer(message.guild, plan) : [];
     const summary = [...deleted, ...created];
     if (!summary.length) {
       await message.channel.send("A Yukina não fez alterações: nenhum item novo foi necessário ou nenhum alvo válido foi encontrado. Confira os nomes exatos.");
