@@ -38,13 +38,13 @@ module.exports = {
       return interaction.editReply("🫧 Você precisa da permissão **Gerenciar cargos** para promover alguém.");
     }
     if (!actor) return interaction.editReply("🌙 Não consegui confirmar suas permissões no servidor.");
-    if (!PROMOTION_NOTIFY_ROLE_ID) {
-      return interaction.editReply("⚙️ Configure PROMOTION_NOTIFY_ROLE_ID nas variáveis de ambiente para definir qual cargo será marcado no anúncio.");
-    }
+    const notifyRoleName = (process.env.PROMOTION_NOTIFY_ROLE_NAME || "📣・Avisos de promoção").trim();
+    const notifyRole = (PROMOTION_NOTIFY_ROLE_ID
+      ? await guild.roles.fetch(PROMOTION_NOTIFY_ROLE_ID).catch(() => null)
+      : null) || guild.roles.cache.find((role) => role.name === notifyRoleName);
 
-    const notifyRole = await guild.roles.fetch(PROMOTION_NOTIFY_ROLE_ID).catch(() => null);
     if (!notifyRole) {
-      return interaction.editReply("⚙️ Não encontrei o cargo de notificação configurado em PROMOTION_NOTIFY_ROLE_ID. Confira o ID.");
+      return interaction.editReply("⚙️ Não encontrei o cargo de notificação. Reinicie a Yukina com a permissão **Gerenciar cargos** ou crie o cargo **" + notifyRoleName + "**.");
     }
     if (targetRole.id === guild.id || targetRole.managed) {
       return interaction.editReply("❄️ Esse cargo é protegido ou gerenciado por uma integração e não pode ser atribuído por este comando.");
