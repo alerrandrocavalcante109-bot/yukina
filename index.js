@@ -397,6 +397,9 @@ require("./interaction")(client);
 // Registros de punições, mensagens, perfis e nicknames.
 require("./log-system")(client);
 
+// Boas-vindas e despedidas personalizadas por servidor.
+require("./welcome-system").register(client);
+
 client.on("error", (error) => {
   console.error("Erro do cliente Discord:", error);
 });
