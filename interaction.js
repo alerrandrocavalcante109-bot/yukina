@@ -47,7 +47,10 @@ function loadCommands(client) {
         continue;
       }
       client.commands.set(name, command);
-      console.log(`[Interactions] Comando carregado: /${name}`);
+      console.log(`   🌙 [SLASH] /${name} — carregado e pronto para sincronização`);
+      if (typeof command.prefixExecute === "function" || typeof command.executePrefix === "function") {
+        console.log(`   ⌨️ [PREFIXO] ${command.prefix || "Y"}${name} — handler de prefixo encontrado`);
+      }
     } catch (error) {
       console.error(`[Interactions] Falha ao carregar ${path.relative(ROOT, file)}:`, error);
     }
@@ -110,8 +113,21 @@ function registerInteractionHandlers(client) {
   client.commands = client.commands || new Map();
   client.components = client.components || { button: [], select: [], modal: [] };
 
+  console.log("");
+  console.log("╭────────────── ❄️ COMANDOS YUKINA ❄️ ──────────────╮");
   loadCommands(client);
+  const prefixCommands = [...client.commands.entries()].filter(([, command]) =>
+    typeof command.prefixExecute === "function" || typeof command.executePrefix === "function"
+  );
+  if (prefixCommands.length) {
+    console.log(`⌨️ Prefixo: ${prefixCommands.length} comando(s) com suporte a prefixo.`);
+  } else {
+    console.log("⌨️ Prefixo: nenhum handler de prefixo encontrado nos módulos atuais.");
+  }
+  console.log(`🌙 Slash: ${client.commands.size} comando(s) carregado(s) para interações.`);
   loadComponents(client);
+  console.log("╰───────────────────────────────────────────────────╯");
+  console.log("");
 
   client.on("interactionCreate", async (interaction) => {
     try {
