@@ -90,7 +90,9 @@ async function replySlash(interaction, result) {
 }
 
 async function replyPrefix(message, result) {
-  return message.reply({
+  // Não usar message.reply: o comando pode apagar a mensagem original,
+  // o que gera MESSAGE_REFERENCE_UNKNOWN_MESSAGE no Discord.
+  return message.channel.send({
     embeds: [yukinaEmbed(result.title, result.message, result.ok ? YUKINA_BLUE : 0xEFA6B8)],
     allowedMentions: { repliedUser: false },
   });
