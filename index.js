@@ -342,6 +342,9 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
+// Interações slash, botões, menus e modais ficam centralizadas em interaction.js.
+require("./interaction")(client);
+
 client.on("error", (error) => {
   console.error("Erro do cliente Discord:", error);
 });
