@@ -278,6 +278,10 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
 });
 
+client.on("error", (error) => {
+  console.error("Erro do cliente Discord:", error);
+});
+
 client.once("ready", () => {
   console.log(`Yukina conectada como ${client.user.tag}`);
 });
@@ -287,14 +291,14 @@ client.on("messageCreate", async (message) => {
 
   if (!message.member.permissions.has(PermissionFlagsBits.ManageGuild) &&
       !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
-    await message.reply({ content: "Para montar canais, categorias e cargos, você precisa ter **Gerenciar servidor** ou **Administrador**.", allowedMentions: { repliedUser: false } });
+    await message.channel.send({ content: "Para montar canais, categorias e cargos, você precisa ter **Gerenciar servidor** ou **Administrador**.", allowedMentions: { repliedUser: false } });
     return;
   }
 
   const me = message.guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageChannels) ||
       !me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
-    await message.reply({ content: "Preciso das permissões **Gerenciar canais** e **Gerenciar cargos**. Confira também se meu cargo está acima dos cargos que devo criar.", allowedMentions: { repliedUser: false } });
+    await message.channel.send({ content: "Preciso das permissões **Gerenciar canais** e **Gerenciar cargos**. Confira também se meu cargo está acima dos cargos que devo criar.", allowedMentions: { repliedUser: false } });
     return;
   }
 
@@ -302,7 +306,7 @@ client.on("messageCreate", async (message) => {
     .replace(new RegExp(`<@!?\${client.user.id}>`, "g"), "")
     .trim();
   if (!request) {
-    await message.reply({ content: "Oi! Me marque e diga o que você quer montar. Exemplo: @Yukina crie um servidor gamer com categorias, canais de texto/voz e cargos coloridos.", allowedMentions: { repliedUser: false } });
+    await message.channel.send({ content: "Oi! Me marque e diga o que você quer montar. Exemplo: @Yukina crie um servidor gamer com categorias, canais de texto/voz e cargos coloridos.", allowedMentions: { repliedUser: false } });
     return;
   }
 
@@ -322,7 +326,7 @@ client.on("messageCreate", async (message) => {
         "",
         "Você tem 60 segundos. Responda **CANCELAR** para desistir.",
       ].join("\n");
-      await message.reply({ content: choiceText, allowedMentions: { repliedUser: false } });
+      await message.channel.send({ content: choiceText, allowedMentions: { repliedUser: false } });
       const choice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
       if (!choice || choice.content.trim().toUpperCase() === "CANCELAR") {
         await message.channel.send("⏱️ Criação cancelada. Nenhum canal, cargo ou categoria foi criado.");
@@ -340,7 +344,7 @@ client.on("messageCreate", async (message) => {
         "",
         "Responda **CONFIRMAR** para executar as exclusões, ou **CANCELAR**. Expira em 60 segundos.",
       ].join("\n");
-      await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
+      await message.channel.send({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
       const deletionConfirmation = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["CONFIRMAR", "CANCELAR"]);
       if (!deletionConfirmation || deletionConfirmation.content.trim().toUpperCase() !== "CONFIRMAR") {
         await message.channel.send("⏱️ Exclusões canceladas. Nenhuma exclusão foi executada.");
@@ -359,7 +363,7 @@ client.on("messageCreate", async (message) => {
         "",
         "Nada foi criado ainda. Responda **CONFIRMAR** para criar esta estrutura ou **CANCELAR** para desistir. Expira em 60 segundos.",
       ].join("\n");
-      await message.reply({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
+      await message.channel.send({ content: preview.slice(0, 1800), allowedMentions: { repliedUser: false } });
       const confirmation = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["CONFIRMAR", "CANCELAR"]);
       if (!confirmation || confirmation.content.trim().toUpperCase() !== "CONFIRMAR") {
         await message.channel.send("⏱️ Criação cancelada. Nenhum item da prévia foi criado.");
@@ -376,7 +380,7 @@ client.on("messageCreate", async (message) => {
     }
   } catch (error) {
     console.error("Erro no construtor de servidor IA:", error);
-    await message.reply({ content: `Não consegui concluir a montagem: ${String(error.message || error).slice(0, 700)}`, allowedMentions: { repliedUser: false } });
+    await message.channel.send({ content: `Não consegui concluir a montagem: ${String(error.message || error).slice(0, 700)}`, allowedMentions: { repliedUser: false } });
   }
 });
 
