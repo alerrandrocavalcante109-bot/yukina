@@ -417,7 +417,7 @@ async function registerSlashCommands() {
 
   collect(commandsDir);
   if (!commands.length) {
-    console.log("[Slash] Nenhum comando local encontrado; registro automático ignorado.");
+    // Sem comandos locais, não há nada para sincronizar.
     return;
   }
 
@@ -432,9 +432,7 @@ async function registerSlashCommands() {
     const merged = new Map((Array.isArray(existing) ? existing : []).map((command) => [command.name, command]));
     for (const command of commands) merged.set(command.name, command);
     const result = await rest.put(route, { body: [...merged.values()] });
-    console.log("[Slash] Registro automático concluído: " + commands.length +
-      " comando(s) sincronizado(s), " + result.length + " no total" +
-      (guildId ? " no servidor " + guildId : " globalmente") + ".");
+    // Registro concluído silenciosamente para manter o log de inicialização limpo.
   } catch (error) {
     console.error("[Slash] Falha no registro automático dos comandos:", error);
   }
@@ -479,7 +477,7 @@ function startupLog(message = "") {
   console.log(`❄️ [${time} UTC] ${message}`);
 }
 
-client.once("ready", async () => {
+client.once("clientReady", async () => {
   console.log("");
   console.log("╭──────────────────────────────────────────────╮");
   console.log("│          ❄️  Y U K I N A  🌙                 │");
