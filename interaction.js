@@ -119,12 +119,18 @@ function registerInteractionHandlers(client) {
   const prefixCommands = [...client.commands.entries()].filter(([, command]) =>
     typeof command.prefixExecute === "function" || typeof command.executePrefix === "function"
   );
-  if (prefixCommands.length) {
-    console.log(`⌨️ Prefixo: ${prefixCommands.length} comando(s) com suporte a prefixo.`);
-  } else {
-    console.log("⌨️ Prefixo: nenhum handler de prefixo encontrado nos módulos atuais.");
-  }
-  console.log(`🌙 Slash: ${client.commands.size} comando(s) carregado(s) para interações.`);
+  const slashNames = [...client.commands.values()]
+    .filter((command) => command?.data?.name)
+    .map((command) => `/${command.data.name}`);
+  const prefixNames = prefixCommands.map(([name, command]) => `${command.prefix || "Y"}${name}`);
+
+  console.log(prefixNames.length
+    ? `⌨️ Prefixo (${prefixNames.length}): ${prefixNames.join(", ")}`
+    : "⌨️ Prefixo: nenhum comando com executor de prefixo foi encontrado.");
+  console.log(slashNames.length
+    ? `🌙 Slash (${slashNames.length}): ${slashNames.join(", ")}`
+    : "🌙 Slash: nenhum comando com definição slash foi encontrado.");
+
   loadComponents(client);
   console.log("╰───────────────────────────────────────────────────╯");
   console.log("");
