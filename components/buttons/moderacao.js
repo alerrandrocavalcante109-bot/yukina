@@ -1,11 +1,10 @@
 const { pending, ACTIONS, hierarchyError } = require("../../commands/moderar");
 
 module.exports = {
-  customId: /^moderar:(confirmar|cancelar):(\d+:\d+)$/,
+  customId: /^moderar:confirmar:(\d+:\d+)$/,
   async execute(interaction) {
-    const match = interaction.customId.match(/^moderar:(confirmar|cancelar):(\d+:\d+)$/);
-    const decision = match?.[1];
-    const token = match?.[2];
+    const match = interaction.customId.match(/^moderar:confirmar:(\d+:\d+)$/);
+    const token = match?.[1];
     const item = pending.get(token);
     if (!item) return interaction.update({ content: "Esta confirmação expirou ou já foi utilizada. Execute o comando novamente.", components: [] });
     if (interaction.user.id !== item.moderatorId) return interaction.reply({ content: "Somente a pessoa que iniciou esta ação pode confirmar.", ephemeral: true });
