@@ -136,6 +136,42 @@ function makeCategoryNameOptions(name) {
   ];
 }
 
+function makeRoleNameOptions(name) {
+  const base = String(name || "membro").trim().toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-").replace(/-+/g, "-")
+    .replace(/^-|-$/g, "").slice(0, 80) || "membro";
+  const pretty = base.replace(/-/g, "・");
+  return [
+    { label: `❄️・${base}`, name: `❄️・${base}` },
+    { label: `🌙・${pretty}`, name: `🌙・${pretty}` },
+    { label: `✧・${base}・✧`, name: `✧・${base}・✧` },
+    { label: `୨୧・${pretty}`, name: `୨୧・${pretty}` },
+    { label: `☾・${base}`, name: `☾・${base}` },
+    { label: `❅・${pretty}・❅`, name: `❅・${pretty}・❅` },
+    { label: `✦・${base}`, name: `✦・${base}` },
+    { label: `🌸・${pretty}`, name: `🌸・${pretty}` },
+    { label: `「${base}」`, name: `「${base}」` },
+    { label: `꒰ა・${pretty}・໒꒱`, name: `꒰ა・${pretty}・໒꒱` },
+  ];
+}
+
+function makeRoleColorOptions() {
+  return [
+    { name: "Azul-gelo", hex: "#A7D8F0", swatch: "🩵" },
+    { name: "Prata lunar", hex: "#DCE6F2", swatch: "🤍" },
+    { name: "Azul-noite", hex: "#29345C", swatch: "🌌" },
+    { name: "Rosa sakura", hex: "#F2A7C6", swatch: "🌸" },
+    { name: "Lavanda mágica", hex: "#B9A7E8", swatch: "💜" },
+    { name: "Verde aurora", hex: "#83D6C5", swatch: "🩵" },
+    { name: "Pérola", hex: "#F5F1E8", swatch: "🫧" },
+    { name: "Dourado estelar", hex: "#F4D58D", swatch: "✨" },
+    { name: "Azul cristal", hex: "#C7E7FF", swatch: "❄️" },
+    { name: "Violeta noturno", hex: "#8E7CC3", swatch: "🌙" },
+  ];
+}
+
 async function waitForExactReply(channel, userId, guildId, accepted) {
   const collected = await channel.awaitMessages({
     filter: (reply) => reply.author.id === userId &&
@@ -389,6 +425,45 @@ client.on("messageCreate", async (message) => {
     const hasDeletes = plan.delete_roles.length || plan.delete_categories.length || plan.delete_channels.length;
     const hasCreates = plan.roles.length || plan.categories.length || plan.channels.length;
     let deleted = [];
+
+    if (hasCreates && plan.roles.length) {
+      const colorOptions = makeRoleColorOptions();
+      for (let index = 0; index < plan.roles.length; index++) {
+        const roleItem = plan.roles[index];
+        const nameOptions = makeRoleNameOptions(roleItem.name);
+        const roleNamePreview = [
+          `**❄️ Yukina · estilos para o cargo ${index + 1}/${plan.roles.length}**`,
+          `Nome sugerido: **${String(roleItem.name || "membro")}**`,
+          "Escolha um nome de **1 a 10**:",
+          ...nameOptions.map((option, optionIndex) => `${optionIndex + 1}. ${option.label}`),
+          "",
+          "Responda **CANCELAR** para desistir. Você tem 60 segundos.",
+        ].join("\\n");
+        await message.channel.send({ content: roleNamePreview.slice(0, 1700), allowedMentions: { parse: [] } });
+        const roleNameChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, [...Array(10)].map((_, i) => String(i + 1)).concat("CANCELAR"));
+        if (!roleNameChoice || roleNameChoice.content.trim().toUpperCase() === "CANCELAR") {
+          await message.channel.send("⏱️ Criação cancelada. Nenhum cargo, canal ou categoria foi criado.");
+          return;
+        }
+        roleItem.name = nameOptions[Number(roleNameChoice.content.trim()) - 1].name;
+
+        const colorPreview = [
+          `**🌙 Yukina · escolha a cor do cargo ${index + 1}/${plan.roles.length}**`,
+          "Escolha uma cor de **1 a 10**:",
+          ...colorOptions.map((option, optionIndex) => `${optionIndex + 1}. ${option.swatch} **${option.name}** — \`${option.hex}\``),
+          "",
+          "As cores seguem a paleta de neve, luar, sakura e constelações.",
+        ].join("\\n");
+        await message.channel.send({ content: colorPreview.slice(0, 1700), allowedMentions: { parse: [] } });
+        const colorChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, [...Array(10)].map((_, i) => String(i + 1)).concat("CANCELAR"));
+        if (!colorChoice || colorChoice.content.trim().toUpperCase() === "CANCELAR") {
+          await message.channel.send("⏱️ Criação cancelada. Nenhum cargo, canal ou categoria foi criado.");
+          return;
+        }
+        const selectedColor = colorOptions[Number(colorChoice.content.trim()) - 1];
+        roleItem.color = selectedColor.hex;
+      }
+    }
 
     if (hasCreates && plan.categories.length) {
       for (let index = 0; index < plan.categories.length; index++) {
