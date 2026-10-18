@@ -19,7 +19,7 @@ const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat
 const AI_MODEL = (process.env.AI_MODEL || "meta-llama/llama-3.3-70b-instruct:free").trim();
 
 if (!TOKEN) {
-  console.error("Erro: defina DISCORD_TOKEN nas variáveis de ambiente.");
+  console.error("❌ [Yukina] Token do Discord ausente. Configure DISCORD_TOKEN nas variáveis de ambiente do Render.");
   process.exit(1);
 }
 
@@ -471,10 +471,30 @@ async function ensurePromotionNotifyRole() {
   }
 }
 
+function startupLog(message = "") {
+  const time = new Date().toLocaleTimeString("pt-BR", { hour12: false, timeZone: "UTC" });
+  console.log(`❄️ [${time} UTC] ${message}`);
+}
+
 client.once("ready", async () => {
-  console.log(`Yukina conectada como ${client.user.tag}`);
+  console.log("");
+  console.log("╭──────────────────────────────────────────────╮");
+  console.log("│          ❄️  Y U K I N A  🌙                 │");
+  console.log("│       ✦ Sob o luar, entre estrelas ✦         │");
+  console.log("╰──────────────────────────────────────────────╯");
+  console.log("");
+  startupLog("🩵 Conexão com o Discord estabelecida!");
+  startupLog(`🌸 Identidade: ${client.user.tag}`);
+  startupLog(`🏠 Servidores conectados: ${client.guilds.cache.size}`);
+  startupLog("⚙️ Preparando os sistemas da Yukina...");
+
   await registerSlashCommands();
   await ensurePromotionNotifyRole();
+
+  console.log("");
+  startupLog("✨ Inicialização concluída. Yukina está pronta para ajudar!");
+  console.log("❄️──────────────────────────────────────────────🌙");
+  console.log("");
 });
 
 client.on("messageCreate", async (message) => {
