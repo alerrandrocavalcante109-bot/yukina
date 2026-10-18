@@ -105,6 +105,13 @@ function makeChannelNameOptions(name) {
     { label: `❄️・${base}`, name: `❄️・${base}` },
     { label: `🌙・${pretty}`, name: `🌙・${pretty}` },
     { label: `✧・${base}・✧`, name: `✧・${base}・✧` },
+    { label: `୨୧・${base}`, name: `୨୧・${base}` },
+    { label: `☾・${pretty}`, name: `☾・${pretty}` },
+    { label: `❅・${base}・❅`, name: `❅・${base}・❅` },
+    { label: `✦・${pretty}`, name: `✦・${pretty}` },
+    { label: `🌸・${base}`, name: `🌸・${base}` },
+    { label: `「${base}」`, name: `「${base}」` },
+    { label: `꒰ა・${pretty}・໒꒱`, name: `꒰ა・${pretty}・໒꒱` },
   ];
 }
 
@@ -119,6 +126,13 @@ function makeCategoryNameOptions(name) {
     { label: `❄️・${pretty}`, name: `❄️・${pretty}` },
     { label: `🌙・${base}`, name: `🌙・${base}` },
     { label: `✧・${pretty}・✧`, name: `✧・${pretty}・✧` },
+    { label: `୨୧・${base}`, name: `୨୧・${base}` },
+    { label: `☾・${pretty}`, name: `☾・${pretty}` },
+    { label: `❅・${base}・❅`, name: `❅・${base}・❅` },
+    { label: `✦・${pretty}`, name: `✦・${pretty}` },
+    { label: `🌸・${base}`, name: `🌸・${base}` },
+    { label: `「${pretty}」`, name: `「${pretty}」` },
+    { label: `꒰ა・${base}・໒꒱`, name: `꒰ა・${base}・໒꒱` },
   ];
 }
 
@@ -373,11 +387,11 @@ client.on("messageCreate", async (message) => {
         const categoryPreview = [
           `**❄️ Yukina · sugestões para a categoria ${index + 1}/${plan.categories.length}**`,
           `Nome original sugerido: **${String(categoryItem.name || "categoria")}**`,
-          "Escolha o estilo respondendo **1**, **2** ou **3**:",
+          "Escolha o estilo respondendo com um número de **1 a 10**:",
           ...options.map((option, optionIndex) => `${optionIndex + 1}. ${option.label}`),
           "",
           "Responda **CANCELAR** para desistir. Você tem 60 segundos.",
-        ].join("\\n");
+        ].join("\n");
         await message.channel.send({ content: categoryPreview.slice(0, 1700), allowedMentions: { parse: [] } });
         const categoryChoice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
         if (!categoryChoice || categoryChoice.content.trim().toUpperCase() === "CANCELAR") {
@@ -398,13 +412,13 @@ client.on("messageCreate", async (message) => {
       const options = makeChannelNameOptions(plan.channels[0].name);
       const choiceText = [
         "**❄️ Yukina · escolha o nome do canal**",
-        "Escolha uma opção respondendo apenas com **1**, **2** ou **3**. Ainda não vou criar nada.",
+        "Escolha uma opção respondendo com um número de **1 a 10**. Ainda não vou criar nada.",
         ...options.map((option, index) => `${index + 1}. ${option.label}`),
         "",
         "Você tem 60 segundos. Responda **CANCELAR** para desistir.",
       ].join("\n");
       await message.channel.send({ content: choiceText, allowedMentions: { repliedUser: false } });
-      const choice = await waitForExactReply(message.channel, message.author.id, message.guild.id, ["1", "2", "3", "CANCELAR"]);
+      const choice = await waitForExactReply(message.channel, message.author.id, message.guild.id, [...Array(10)].map((_, optionIndex) => String(optionIndex + 1)).concat("CANCELAR"));
       if (!choice || choice.content.trim().toUpperCase() === "CANCELAR") {
         await message.channel.send("⏱️ Criação cancelada. Nenhum canal, cargo ou categoria foi criado.");
         return;
