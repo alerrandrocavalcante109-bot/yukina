@@ -44,11 +44,12 @@ module.exports = {
     const reason = interaction.options.getString("motivo")?.trim() || "Motivo não informado.";
     const minutes = action === "timeout" ? interaction.options.getInteger("minutos", true) : null;
     const guild = interaction.guild;
-    if (!interaction.memberPermissions?.has(config.permission)) return interaction.reply({ content: "Você não tem a permissão necessária para executar esta ação.", ephemeral: true });
+    const moderator = await guild.members.fetch(interaction.user.id).catch(() => null);
+    if (!moderator?.permissions.has(config.permission)) return interaction.reply({ content: "Você não tem a permissão necessária para executar esta ação.", ephemeral: true });
     const target = await guild.members.fetch(user.id).catch(() => null);
     if (!target) return interaction.reply({ content: "Não encontrei esse membro neste servidor.", ephemeral: true });
     const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
-    const denial = hierarchyError(interaction.member, target, guild, botMember);
+    const denial = hierarchyError(moderator, target, guild, botMember);
     if (denial) return interaction.reply({ content: denial, ephemeral: true });
     if (!botMember?.permissions.has(config.botPermission)) return interaction.reply({ content: "Preciso da permissão correspondente para executar essa ação. Confira minhas permissões e a posição do meu cargo.", ephemeral: true });
 
