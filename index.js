@@ -388,6 +388,9 @@ require("./command-engine")(client);
 // Hierarquia automática: XP + tempo de permanência.
 require("./rank-system")(client);
 
+// Hierarquia paralela: 12 cargos por nível de XP, sem remover cargos de permanência.
+require("./xp-level-system")(client);
+
 // Slash, botões, menus e modais ficam centralizados em interaction.js.
 require("./interaction")(client);
 
