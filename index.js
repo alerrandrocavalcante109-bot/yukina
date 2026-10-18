@@ -96,8 +96,10 @@ async function createPlan(prompt) {
 
 function makeChannelNameOptions(name) {
   const base = String(name || "chat-geral").trim().toLowerCase()
-    .replace(/[^\\p{L}\\p{N}\\s-]/gu, "")
-    .replace(/\\s+/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 70) || "chat-geral";
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/\s+/g, "-").replace(/-+/g, "-")
+    .replace(/^-|-$/g, "").slice(0, 70) || "chat-geral";
   const pretty = base.replace(/-/g, "・");
   return [
     { label: `❄️・${base}`, name: `❄️・${base}` },
