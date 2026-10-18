@@ -246,8 +246,15 @@ async function buildServer(guild, plan) {
     if ([ChannelType.GuildText, ChannelType.GuildForum].includes(typeMap[kind]) && topic) {
       options.topic = topic;
     }
-    const createdChannel = await guild.channels.create(options);
-    results.push(`Canal ${kind} criado: ${name}`);
+    let createdChannel;
+    try {
+      createdChannel = await guild.channels.create(options);
+      results.push(`Canal ${kind} criado: ${name}${parent ? ` na categoria ${parent.name}` : " sem categoria"}`);
+    } catch (error) {
+      results.push(`FALHA ao criar canal ${name}${parent ? ` na categoria ${parent.name}` : ""}: ${String(error.message || error).slice(0, 180)}`);
+      console.error("Falha ao criar canal no Discord:", { name, kind, category: parent?.name || null, code: error.code, message: error.message });
+      continue;
+    }
 
     const suggestion = String(item?.suggestion || "").trim().slice(0, 1400);
     if (suggestion && typeMap[kind] === ChannelType.GuildText) {
