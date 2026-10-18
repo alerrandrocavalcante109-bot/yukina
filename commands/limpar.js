@@ -80,7 +80,10 @@ async function runClear({ channel, guild, amount, actor, botMember }) {
 
 async function replySlash(interaction, result) {
   const embed = yukinaEmbed(result.title, result.message, result.ok ? YUKINA_BLUE : 0xEFA6B8);
-  if (interaction.deferred || interaction.replied) {
+  if (interaction.deferred) {
+    return interaction.editReply({ embeds: [embed] });
+  }
+  if (interaction.replied) {
     return interaction.followUp({ embeds: [embed], ephemeral: !result.ok });
   }
   return interaction.reply({ embeds: [embed], ephemeral: !result.ok });
