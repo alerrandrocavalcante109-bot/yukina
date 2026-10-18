@@ -111,7 +111,7 @@ module.exports = {
       await lockChannel(message.channel, message.guild);
       const payload = { embeds: [createEmbed(
         "🔒 Shhh… vamos cuidar do cantinho!",
-        `O canal <#${message.channel.id}> foi **bloqueado para novas mensagens**.\\n\\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸`
+        `O canal <#${message.channel.id}> foi **bloqueado para novas mensagens**.\n\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸`
       )] };
       if (notice) return notice.edit(payload);
       return message.channel.send(payload);
