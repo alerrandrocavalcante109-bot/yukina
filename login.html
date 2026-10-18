@@ -6,27 +6,32 @@
   <meta name="theme-color" content="#100b1d">
   <title>Entrar com Discord • Yukina</title>
   <style>
-    :root{color-scheme:dark;--bg:#100b1d;--panel:rgba(30,20,47,.88);--purple:#a855f7;--pink:#ec4899;--muted:#b9aecb}
-    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 15% 15%,#47216c 0,transparent 38%),radial-gradient(ellipse at 85% 85%,#4a174c 0,transparent 35%),var(--bg);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#fff}
-    .card{width:min(100%,430px);padding:34px;border:1px solid #ffffff20;border-radius:24px;background:var(--panel);box-shadow:0 24px 90px #0007;backdrop-filter:blur(18px);text-align:center}
-    .logo{width:76px;height:76px;margin:0 auto 18px;border-radius:24px;display:grid;place-items:center;background:linear-gradient(135deg,var(--purple),var(--pink));font-size:35px;font-weight:800;box-shadow:0 10px 34px #a855f755}
-    h1{margin:0;font-size:30px;letter-spacing:-.8px}p{color:var(--muted);line-height:1.65;font-size:14px}
-    .login{width:100%;border:0;border-radius:13px;padding:15px 18px;margin-top:14px;background:#5865f2;color:#fff;font-weight:750;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .18s,filter .18s}
-    .login:hover{filter:brightness(1.1);transform:translateY(-1px)}.login:disabled{opacity:.6;cursor:wait;transform:none}
-    .status{min-height:24px;margin-top:16px;font-size:13px;color:#e9d5ff}.back{display:inline-block;margin-top:18px;color:#d8b4fe;text-decoration:none;font-size:13px}.back:hover{text-decoration:underline}
-    .note{border-top:1px solid #ffffff18;margin-top:24px;padding-top:16px;font-size:11px;color:#9f93b2}
-  </style>
+:root{color-scheme:dark;--bg:#080d19;--panel:rgba(15,25,43,.82);--line:#9bdcff35;--ice:#a7d8f0;--lav:#c8c4ff;--muted:#a9bad0}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;overflow:hidden;position:relative;background:radial-gradient(ellipse at 12% 12%,#1d4263 0,transparent 38%),radial-gradient(ellipse at 90% 90%,#29214f 0,transparent 38%),linear-gradient(145deg,#080d19,#0b1020 55%,#11162a);font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif;color:#f5f8ff}
+body:before,body:after{content:"";position:fixed;pointer-events:none;border:1px solid #b6e7ff18;border-radius:50%;width:48vw;height:48vw;min-width:380px;min-height:380px;right:-20vw;top:-22vw;box-shadow:0 0 90px #80cfff08,inset 0 0 90px #80cfff05}
+body:after{width:34vw;height:34vw;min-width:280px;min-height:280px;right:auto;left:-15vw;top:auto;bottom:-18vw}
+.card{position:relative;width:min(100%,470px);padding:clamp(26px,6vw,42px);border:1px solid var(--line);border-radius:28px;background:linear-gradient(150deg,#17243be8,#10182be8 60%,#15162ee8);box-shadow:0 30px 100px #0008,0 0 55px #8edbff0a;backdrop-filter:blur(22px);text-align:center}
+.brandline{display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:28px;color:#d6f1ff;font-size:12px;font-weight:850;letter-spacing:.22em}
+.logo{width:76px;height:76px;margin:0 auto 20px;border-radius:26px;display:grid;place-items:center;background:linear-gradient(145deg,#c4efff,#a8baff 65%,#d7c4ff);color:#15233a;font-size:34px;font-weight:950;box-shadow:0 12px 38px #7dd3fc26;border:1px solid #fff9}
+.eyebrow{margin:0 0 9px;color:var(--ice);font-size:11px;font-weight:850;letter-spacing:.19em;text-transform:uppercase}
+h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.12}p{color:var(--muted);line-height:1.75;font-size:14px;margin:14px 0 24px}
+.login{width:100%;border:1px solid #c8f0ff70;border-radius:15px;padding:15px 18px;background:linear-gradient(105deg,#b8eaff,#b9c8ff 65%,#d6c8ff);color:#111d32;font-weight:850;font-size:15px;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:11px;transition:transform .2s,filter .2s,box-shadow .2s;box-shadow:0 9px 28px #7dd3fc17}
+.login:hover{filter:brightness(1.06);transform:translateY(-2px);box-shadow:0 14px 34px #7dd3fc25}.login:disabled{opacity:.62;cursor:wait;transform:none}
+.status{min-height:24px;margin-top:17px;font-size:13px;color:#cdeeff;line-height:1.5}.back{display:inline-flex;align-items:center;gap:7px;margin-top:15px;color:#c4e9ff;text-decoration:none;font-size:13px}.back:hover{text-decoration:underline}
+.note{border-top:1px solid #d7eaff16;margin-top:25px;padding-top:17px;font-size:11px;line-height:1.65;color:#8194ae}.spark{color:#c9c9ff;font-size:14px}
+@media(prefers-reduced-motion:no-preference){.card{animation:rise .55s ease-out both}@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}}
+</style>
 <script src="./tema.js" defer></script>
 </head>
 <body>
   <main class="card">
-    <div class="logo">Y</div>
-    <h1>Bem-vindo à Yukina</h1>
-    <p>Entre com sua conta do Discord para acessar seu perfil e as configurações da Yukina.</p>
+    <div class="brandline"><span class="spark">✦</span> YUKINA <span class="spark">✦</span></div><div class="logo">雪</div>
+    <div class="eyebrow">Seu espaço, suas regras</div><h1>Bem-vindo à Yukina</h1>
+    <p>Conecte seu Discord para acessar o painel, escolher seus servidores e personalizar a experiência da Yukina.</p>
     <button class="login" id="loginButton" type="button"><svg width="22" height="22" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19.73 5.1A18.4 18.4 0 0 0 15.2 3.7l-.57 1.16a16.8 16.8 0 0 0-5.26 0L8.8 3.7A18.4 18.4 0 0 0 4.27 5.1C1.4 9.35.62 13.5 1.01 17.6a18.5 18.5 0 0 0 5.56 2.8l1.2-1.95c-.66-.25-1.28-.57-1.87-.94l.46-.36c3.6 1.68 7.5 1.68 11.06 0l.47.36c-.6.37-1.22.69-1.88.94l1.2 1.95a18.4 18.4 0 0 0 5.56-2.8c.46-4.75-.78-8.86-3.04-12.5ZM8.5 14.95c-1.08 0-1.96-.99-1.96-2.2s.86-2.2 1.96-2.2 1.98.99 1.96 2.2c0 1.21-.86 2.2-1.96 2.2Zm7 0c-1.08 0-1.96-.99-1.96-2.2s.86-2.2 1.96-2.2 1.98.99 1.96 2.2c0 1.21-.86 2.2-1.96 2.2Z"/></svg> Entrar com Discord</button>
     <div class="status" id="status" role="status" aria-live="polite"></div>
     <a class="back" href="./index.html">← Voltar para a página inicial</a>
-    <div class="note">A autenticação é feita pelo Discord. A Yukina não recebe sua senha.</div>
+    <div class="note">AUTENTICAÇÃO OFICIAL DO DISCORD · A Yukina nunca recebe sua senha.</div>
   </main>
 <script>
 (() => {
@@ -36,6 +41,10 @@
   const status = document.getElementById("status");
   const button = document.getElementById("loginButton");
   const params = new URLSearchParams(window.location.search);
+  const requestedReturn = params.get("return") || "./index.html";
+  function safeReturnTarget(value) {
+    try { const url = new URL(value, window.location.href); if (url.origin !== window.location.origin || !value.startsWith("./")) return "./index.html"; return url.pathname + url.search; } catch (_) { return "./index.html"; }
+  }
   const random = (length=64) => {
     const bytes = crypto.getRandomValues(new Uint8Array(length));
     return Array.from(bytes, b => String.fromCharCode(b)).join("");
@@ -48,8 +57,9 @@
       status.textContent = "Falta configurar o Client ID do aplicativo Discord.";
       return;
     }
+    sessionStorage.setItem("yukina_login_return", safeReturnTarget(requestedReturn));
     button.disabled = true;
-    status.textContent = "Redirecionando para o Discord…";
+    status.textContent = "Preparando uma conexão segura com o Discord…";
     const verifier = base64url(new TextEncoder().encode(random(64)));
     const challenge = base64url(await sha256(verifier));
     const state = base64url(new TextEncoder().encode(random(32)));
@@ -117,7 +127,9 @@
       sessionStorage.removeItem("yukina_oauth_verifier");
       sessionStorage.removeItem("yukina_oauth_state");
       status.textContent = "Login concluído! Voltando para a página inicial…";
-      window.location.replace("./index.html?login=success");
+      const returnTo = safeReturnTarget(sessionStorage.getItem("yukina_login_return") || "./index.html");
+      sessionStorage.removeItem("yukina_login_return");
+      window.location.replace(returnTo + (returnTo.includes("?") ? "&" : "?") + "login=success");
     } catch (error) {
       status.textContent = error.message || "Erro ao entrar. Tente novamente.";
       button.disabled = false;
