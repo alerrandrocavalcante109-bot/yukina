@@ -1,14 +1,10 @@
 /**
  * Hierarquia de membros Yukina — XP + tempo de permanência.
- * O progresso fica em data/member-ranks.json. Em hospedagens com disco efêmero,
- * configure um disco persistente ou banco de dados para preservar XP entre deploys.
+ * Os dados são compartilhados com xp-level-system.js e persistidos no MongoDB quando configurado.
  */
-const fs = require("node:fs");
-const path = require("node:path");
 const { PermissionFlagsBits } = require("discord.js");
+const memberData = require("./member-data");
 
-const DATA_DIR = path.join(__dirname, "data");
-const DATA_FILE = path.join(DATA_DIR, "member-ranks.json");
 const XP_COOLDOWN_MS = 60_000;
 const XP_MIN = 8;
 const XP_MAX = 15;
@@ -21,45 +17,11 @@ const RANKS = [
   { key: "lenda", name: "✨・Lenda", color: 0xF4D58D, xp: 1500, days: 45 },
 ];
 
-let store = { members: {} };
 const lastXpAt = new Map();
-
-function loadStore() {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    if (fs.existsSync(DATA_FILE)) {
-      const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-      if (parsed && parsed.members && typeof parsed.members === "object") store = parsed;
-    }
-  } catch (error) {
-    console.error("[Hierarquia] Não consegui ler os dados salvos:", error.message);
-  }
-}
-
-function saveStore() {
-  try {
-    fs.mkdirSync(DATA_DIR, { recursive: true });
-    const temp = DATA_FILE + ".tmp";
-    fs.writeFileSync(temp, JSON.stringify(store, null, 2));
-    fs.renameSync(temp, DATA_FILE);
-  } catch (error) {
-    console.error("[Hierarquia] Não consegui salvar XP:", error.message);
-  }
-}
-
-function memberKey(guildId, userId) {
-  return guildId + ":" + userId;
-}
-
-function getRecord(guildId, userId) {
-  const key = memberKey(guildId, userId);
-  if (!store.members[key]) store.members[key] = { xp: 0, joinedAt: null, rank: null };
-  return store.members[key];
-}
 
 function daysSince(date) {
   if (!date) return 0;
-  return Math.max(0, (Date.now() - date) / 86_400_000);
+  return Math.max(0, (Date.now() - new Date(date).getTime()) / 86_400_000);
 }
 
 async function ensureRankRoles(guild) {
@@ -110,7 +72,7 @@ async function updateMemberRank(member, announce = false) {
   const roles = await ensureRankRoles(member.guild);
   if (!roles) return;
 
-  const record = getRecord(member.guild.id, member.id);
+  const record = memberData.getRecord(member.guild.id, member.id);
   const joinedAt = member.joinedAt || (record.joinedAt ? new Date(record.joinedAt) : new Date());
   if (!record.joinedAt) record.joinedAt = joinedAt.toISOString();
   const chosen = rankFor(record, joinedAt);
@@ -127,7 +89,7 @@ async function updateMemberRank(member, announce = false) {
     if (!alreadyHasChosen) await member.roles.add(chosenRole, "Cargo automático da hierarquia Yukina");
     const changed = record.rank !== chosen.key || !alreadyHasChosen;
     record.rank = chosen.key;
-    saveStore();
+    await memberData.persistRecord(memberData.keyFor(member.guild.id, member.id));
 
     if (announce && changed) {
       const channel = member.guild.systemChannel;
@@ -148,33 +110,34 @@ async function updateMemberRank(member, announce = false) {
 }
 
 function startRankSystem(client) {
-  loadStore();
-
   client.on("guildMemberAdd", async (member) => {
     if (member.user.bot) return;
-    const record = getRecord(member.guild.id, member.id);
+    await memberData.initialize();
+    const record = memberData.getRecord(member.guild.id, member.id);
     record.joinedAt = member.joinedAt?.toISOString() || new Date().toISOString();
-    saveStore();
+    await memberData.persistRecord(memberData.keyFor(member.guild.id, member.id));
     await updateMemberRank(member, true);
   });
 
   client.on("messageCreate", async (message) => {
     if (!message.guild || message.author.bot || !message.member) return;
-    const key = memberKey(message.guild.id, message.author.id);
+    await memberData.initialize();
+    const key = memberData.keyFor(message.guild.id, message.author.id);
     const now = Date.now();
     if (now - (lastXpAt.get(key) || 0) < XP_COOLDOWN_MS) return;
     lastXpAt.set(key, now);
 
-    const record = getRecord(message.guild.id, message.author.id);
+    const record = memberData.getRecord(message.guild.id, message.author.id);
     if (!record.joinedAt) record.joinedAt = message.member.joinedAt?.toISOString() || new Date().toISOString();
     const before = rankFor(record, message.member.joinedAt || new Date(record.joinedAt));
     record.xp += XP_MIN + Math.floor(Math.random() * (XP_MAX - XP_MIN + 1));
-    saveStore();
+    await memberData.persistRecord(key);
     const after = rankFor(record, message.member.joinedAt || new Date(record.joinedAt));
     if (after.key !== before.key) await updateMemberRank(message.member, true);
   });
 
   client.once("clientReady", async () => {
+    await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
       await ensureRankRoles(guild);
       for (const member of guild.members.cache.values()) {
@@ -185,12 +148,12 @@ function startRankSystem(client) {
   });
 
   setInterval(async () => {
+    await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
       for (const member of guild.members.cache.values()) {
         if (member.user.bot) continue;
-        const record = getRecord(guild.id, member.id);
-        const before = record.rank;
-        await updateMemberRank(member, before !== null);
+        const record = memberData.getRecord(guild.id, member.id);
+        await updateMemberRank(member, record.rank !== null);
       }
     }
   }, TENURE_CHECK_MS).unref?.();
