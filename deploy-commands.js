@@ -31,9 +31,12 @@ const rest = new REST({ version: "10" }).setToken(token);
 (async () => {
   try {
     const route = guildId ? Routes.applicationGuildCommands(clientId, guildId) : Routes.applicationCommands(clientId);
-    const result = await rest.put(route, { body: commands });
-    console.log("Yukina: " + result.length + " comando(s) slash registrado(s) " +
-      (guildId ? "no servidor " + guildId : "globalmente") + ".");
+    const existing = await rest.get(route);
+    const merged = new Map((Array.isArray(existing) ? existing : []).map((command) => [command.name, command]));
+    for (const command of commands) merged.set(command.name, command);
+    const result = await rest.put(route, { body: [...merged.values()] });
+    console.log("Yukina: " + commands.length + " comando(s) local(is) sincronizado(s); " + result.length +
+      " comando(s) no total " + (guildId ? "no servidor " + guildId : "globalmente") + ".");
   } catch (error) {
     console.error("Falha ao registrar comandos slash:", error);
     process.exitCode = 1;
