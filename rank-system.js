@@ -132,6 +132,7 @@ function startRankSystem(client) {
     const before = rankFor(record, message.member.joinedAt || new Date(record.joinedAt));
     record.xp += XP_MIN + Math.floor(Math.random() * (XP_MAX - XP_MIN + 1));
     await memberData.persistRecord(key);
+    client.emit("yukinaXpUpdated", message.member);
     const after = rankFor(record, message.member.joinedAt || new Date(record.joinedAt));
     if (after.key !== before.key) await updateMemberRank(message.member, true);
   });
