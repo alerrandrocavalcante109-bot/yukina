@@ -398,8 +398,45 @@ require("./interaction")(client);
 require("./log-system")(client);
 
 
+// Diagnóstico da conexão Gateway: registra quedas e tentativas de reconexão
+// sem expor o token nem confundir uma reconexão com uma inicialização completa.
 client.on("error", (error) => {
-  console.error("Erro do cliente Discord:", error);
+  console.error("[Discord] Erro do cliente:", error);
+});
+
+client.on("warn", (warning) => {
+  console.warn("[Discord] Aviso:", warning);
+});
+
+client.on("shardError", (error, shardId) => {
+  console.error(`[Discord] Erro no Gateway (shard ${shardId}):`, error);
+});
+
+client.on("shardDisconnect", (event, shardId) => {
+  console.warn(`[Discord] Gateway desconectado (shard ${shardId}). Código: ${event?.code ?? "desconhecido"}; motivo: ${event?.reason || "não informado"}; reconexão automática será tentada pelo discord.js.`);
+});
+
+client.on("shardReconnecting", (shardId) => {
+  console.warn(`[Discord] Tentando reconectar ao Gateway (shard ${shardId})...`);
+});
+
+client.on("shardResume", (shardId, replayedEvents) => {
+  console.log(`[Discord] Conexão retomada (shard ${shardId}); eventos recuperados: ${replayedEvents}.`);
+});
+
+client.on("invalidated", () => {
+  console.error("[Discord] A sessão foi invalidada. O processo será encerrado para o Render reiniciar o serviço.");
+  process.exitCode = 1;
+  setTimeout(() => process.exit(1), 1000).unref();
+});
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[Node.js] Promise rejeitada sem tratamento:", reason);
+});
+
+process.on("uncaughtException", (error) => {
+  console.error("[Node.js] Exceção não capturada; encerrando para permitir reinício limpo:", error);
+  process.exit(1);
 });
 
 async function registerSlashCommands() {
@@ -744,7 +781,34 @@ const server = http.createServer((req, res) => {
 });
 server.listen(port, "0.0.0.0", () => console.log(`Health endpoint ativo na porta ${port}`));
 
-client.login(TOKEN).catch((error) => {
-  console.error("Falha ao conectar a Yukina:", error);
+client.login(TOKEN).then(() => {
+  console.log("[Discord] Solicitação de login iniciada; aguardando o evento clientReady.");
+}).catch((error) => {
+  console.error("[Discord] Falha no login inicial. Confira DISCORD_TOKEN no Render e o status do Discord.", {
+    name: error?.name,
+    code: error?.code,
+    message: error?.message,
+  });
   process.exit(1);
 });
+
+// Encerramento limpo quando o Render reinicia ou interrompe o serviço.
+let shuttingDown = false;
+async function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`[Yukina] Recebido ${signal}; encerrando conexão e servidor HTTP...`);
+  const forceExit = setTimeout(() => process.exit(1), 10000);
+  forceExit.unref();
+  try {
+    client.destroy();
+    await new Promise((resolve) => server.close(() => resolve()));
+    clearTimeout(forceExit);
+    process.exit(0);
+  } catch (error) {
+    console.error("[Yukina] Erro durante o encerramento:", error);
+    process.exit(1);
+  }
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
