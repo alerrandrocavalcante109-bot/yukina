@@ -12,14 +12,26 @@ function isTextChannel(channel) {
 }
 function isLocked(channel, guild) {
   const overwrite = channel.permissionOverwrites.cache.get(guild.roles.everyone.id);
-  return Boolean(overwrite?.deny.has(PermissionFlagsBits.SendMessages) ||
-    overwrite?.deny.has(PermissionFlagsBits.SendMessagesInThreads));
+  return Boolean(
+    overwrite?.deny.has(PermissionFlagsBits.SendMessages) ||
+    overwrite?.deny.has(PermissionFlagsBits.SendMessagesInThreads) ||
+    overwrite?.deny.has(PermissionFlagsBits.CreatePublicThreads) ||
+    overwrite?.deny.has(PermissionFlagsBits.CreatePrivateThreads)
+  );
+}
+function lockPermissions() {
+  return {
+    SendMessages: false,
+    SendMessagesInThreads: false,
+    CreatePublicThreads: false,
+    CreatePrivateThreads: false,
+  };
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("lock")
-    .setDescription("Bloqueia um canal para novas mensagens.")
+    .setDescription("Bloqueia um canal para novas mensagens e tópicos.")
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
     .addChannelOption(option => option.setName("canal")
       .setDescription("Escolha o canal que a Yukina deve bloquear.")
@@ -38,7 +50,7 @@ module.exports = {
       return interaction.reply({ embeds: [createEmbed("❄️ Este canal é diferente", "Escolha um canal de texto ou de anúncios deste servidor.")], ephemeral: true });
     }
     if (isLocked(channel, interaction.guild)) {
-      return interaction.reply({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado**. Não precisei alterar nada. ❄️")], ephemeral: true });
+      return interaction.reply({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado para mensagens e criação de tópicos**. Não precisei alterar nada. ❄️")], ephemeral: true });
     }
 
     const botMember = interaction.guild.members.me;
@@ -47,16 +59,15 @@ module.exports = {
     }
 
     try {
-      await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-        SendMessages: false, SendMessagesInThreads: false,
-      }, { reason: "Canal bloqueado com /lock da Yukina" });
+      await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, lockPermissions(), {
+        reason: "Canal bloqueado com /lock da Yukina; bloqueia mensagens e criação de tópicos",
+      });
       return interaction.reply({ embeds: [createEmbed("🔒 Shhh… vamos cuidar do cantinho!",
-        "O canal " + channel + " foi **bloqueado para novas mensagens**.\n\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸")] });
+        "O canal " + channel + " foi **bloqueado para novas mensagens e criação de tópicos públicos e privados**.\n\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸")] });
     } catch (error) {
       console.error("[Yukina /lock]", error);
       return interaction.reply({ embeds: [createEmbed("💧 Não consegui fechar o canal", "Confira se a Yukina tem **Gerenciar canais** e **Gerenciar cargos**, e tente novamente.", YUKINA_PINK)], ephemeral: true });
     }
-
   },
 
   async prefixExecute(message) {
@@ -74,7 +85,7 @@ module.exports = {
       return message.reply({ embeds: [createEmbed("❄️ Este canal é diferente", "Escolha um canal de texto ou de anúncios deste servidor.")] });
     }
     if (isLocked(channel, message.guild)) {
-      return message.channel.send({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado**. Não precisei alterar nada. ❄️")] });
+      return message.channel.send({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado para mensagens e criação de tópicos**. Não precisei alterar nada. ❄️")] });
     }
 
     const botMember = message.guild.members.me;
@@ -88,13 +99,12 @@ module.exports = {
     }).catch(() => null);
 
     try {
-      await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
-        SendMessages: false,
-        SendMessagesInThreads: false,
-      }, { reason: "Canal bloqueado com Ylock da Yukina" });
+      await channel.permissionOverwrites.edit(message.guild.roles.everyone, lockPermissions(), {
+        reason: "Canal bloqueado com Ylock da Yukina; bloqueia mensagens e criação de tópicos",
+      });
 
       const payload = { embeds: [createEmbed("🔒 Shhh… vamos cuidar do cantinho!",
-        "O canal " + channel + " foi **bloqueado para novas mensagens**.\\n\\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸")] };
+        "O canal " + channel + " foi **bloqueado para novas mensagens e criação de tópicos públicos e privados**.\n\nA conversa fica em pausa por enquanto, mas a equipe ainda pode organizar tudo com carinho. 🌸")] };
       if (notice) return notice.edit(payload);
       return message.channel.send(payload);
     } catch (error) {
