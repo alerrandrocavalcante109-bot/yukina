@@ -784,25 +784,53 @@ const server = http.createServer((req, res) => {
 });
 server.listen(port, "0.0.0.0", () => console.log(`Health endpoint ativo na porta ${port}`));
 
-console.log("[Discord] Iniciando login no Gateway do Discord...");
-
+// Inicialização centralizada do cliente Discord.
 let discordReady = false;
-const loginWatchdog = setTimeout(() => {
-  if (!discordReady) {
-    console.error("[Discord] Ainda não ocorreu clientReady após 45 segundos. Verifique token, intents privilegiadas no Developer Portal, rede e status do Discord.");
-  }
-}, 45000);
-loginWatchdog.unref();
+let loginWatchdog;
 
-client.login(TOKEN).then(() => {
-  console.log("[Discord] client.login() foi resolvido; aguardando/confirmando o estado Ready.");
+async function initializeDiscord() {
+  console.log("[Inicialização] Etapa 1/4: validando configuração...");
+  if (!TOKEN) {
+    throw new Error("DISCORD_TOKEN não está configurado.");
+  }
+
+  console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
+  console.log("[Inicialização] Etapa 3/4: abrindo conexão com o Gateway do Discord...");
+  console.log("[Discord] Estado inicial do WebSocket:", client.ws.status);
+
+  loginWatchdog = setTimeout(() => {
+    if (discordReady) return;
+    console.error("[Inicialização] O Discord ainda não ficou pronto após 60 segundos.", {
+      wsStatus: client.ws.status,
+      ready: client.isReady(),
+      ping: client.ws.ping,
+      guildsCached: client.guilds.cache.size,
+      hint: "Confira DISCORD_TOKEN, os intents privilegiados e os eventos de shard acima."
+    });
+  }, 60000);
+  loginWatchdog.unref();
+
+  try {
+    await client.login(TOKEN);
+    console.log("[Inicialização] A chamada de login foi concluída; aguardando clientReady.");
+  } catch (error) {
+    clearTimeout(loginWatchdog);
+    console.error("[Inicialização] Falha ao autenticar/conectar ao Discord:", {
+      name: error?.name,
+      code: error?.code,
+      message: error?.message,
+      wsStatus: client.ws.status
+    });
+    throw error;
+  }
+}
+
+initializeDiscord().then(() => {
+  console.log("[Inicialização] Etapa 4/4: processo de login iniciado sem erro imediato.");
 }).catch((error) => {
-  console.error("[Discord] Falha no login inicial. Confira DISCORD_TOKEN no Render e o status do Discord.", {
-    name: error?.name,
-    code: error?.code,
-    message: error?.message,
-  });
-  process.exit(1);
+  console.error("[Inicialização] Inicialização do Discord falhou.", error);
+  process.exitCode = 1;
+  setTimeout(() => process.exit(1), 1500).unref();
 });
 
 // Encerramento limpo quando o Render reinicia ou interrompe o serviço.
