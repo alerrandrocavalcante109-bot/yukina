@@ -406,6 +406,12 @@ client.on("warn", (warning) => {
   console.warn("[Discord] Aviso:", warning);
 });
 
+client.on("debug", (message) => {
+  if (/WebSocket|Gateway|heartbeat|identify|resume|session|close|connect|error/i.test(message)) {
+    console.log("[Discord Debug]", message);
+  }
+});
+
 client.on("shardError", (error, shardId) => {
   console.error(`[Discord] Erro no Gateway (shard ${shardId}):`, error);
 });
