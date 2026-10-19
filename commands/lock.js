@@ -50,7 +50,7 @@ module.exports = {
       return interaction.reply({ embeds: [createEmbed("❄️ Este canal é diferente", "Escolha um canal de texto ou de anúncios deste servidor.")], ephemeral: true });
     }
     if (isLocked(channel, interaction.guild)) {
-      return interaction.reply({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado para mensagens e criação de tópicos**. Não precisei alterar nada. ❄️")], ephemeral: true });
+      return interaction.reply({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado**. Esse bloqueio pode ter sido feito por outro bot ou manualmente nas permissões do Discord. A Yukina não vai sobrescrever as configurações existentes. ❄️")], ephemeral: true });
     }
 
     const botMember = interaction.guild.members.me;
@@ -85,7 +85,7 @@ module.exports = {
       return message.reply({ embeds: [createEmbed("❄️ Este canal é diferente", "Escolha um canal de texto ou de anúncios deste servidor.")] });
     }
     if (isLocked(channel, message.guild)) {
-      return message.channel.send({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado para mensagens e criação de tópicos**. Não precisei alterar nada. ❄️")] });
+      return message.channel.send({ embeds: [createEmbed("🔒 Este cantinho já está fechado!", "O canal " + channel + " **já está bloqueado**. Esse bloqueio pode ter sido feito por outro bot ou manualmente nas permissões do Discord. A Yukina não vai sobrescrever as configurações existentes. ❄️")] });
     }
 
     const botMember = message.guild.members.me;
