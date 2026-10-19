@@ -116,7 +116,7 @@ function startXpLevelSystem(client) {
     await updateLevel(message.member, true);
   });
 
-  client.once("clientReady", async () => {
+  const initializeXpLevels = async () => {
     await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
       await ensureLevelRoles(guild);
@@ -125,7 +125,9 @@ function startXpLevelSystem(client) {
       }
     }
     console.log("[Níveis XP] 12 cargos automáticos de nível ativados.");
-  });
+  };
+  if (client.isReady()) void initializeXpLevels();
+  else client.once("clientReady", initializeXpLevels);
 
   setInterval(async () => {
     await memberData.initialize();
