@@ -4,7 +4,7 @@
  */
 const { PermissionFlagsBits } = require("discord.js");
 const memberData = require("./member-data");
-const CHECK_INTERVAL_MS = 10 * 60_000;
+const CHECK_INTERVAL_MS = 10 * 60_000;\nconst roleCache = new Map();\nconst updateLocks = new Set();
 
 const LEVEL_ROLES = [
   { level: 1, name: "❄️・Nível 1 | Iniciante", xp: 0, color: 0xA7D8F0 },
@@ -30,7 +30,7 @@ function getLevelRole(xp) {
 }
 
 async function ensureLevelRoles(guild) {
-  const me = guild.members.me;
+  const cached = roleCache.get(guild.id);\n  if (cached && cached.every((role) => guild.roles.cache.has(role.id))) return new Map(cached.map((role) => [role.level, role]));\n  const me = guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
     console.warn("[Níveis XP] Yukina precisa da permissão Gerenciar cargos em " + guild.name + ".");
     return null;
