@@ -382,20 +382,18 @@ const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
 });
 
-// O motor carrega os módulos de commands/ e executa prefixos Y/y.
-require("./command-engine")(client);
-
-// Hierarquia automática: XP + tempo de permanência.
-require("./rank-system")(client);
-
-// Hierarquia paralela: 12 cargos por nível de XP, sem remover cargos de permanência.
-require("./xp-level-system")(client);
-
-// Slash, botões, menus e modais ficam centralizados em interaction.js.
-require("./interaction")(client);
-
-// Registros de punições, mensagens, perfis e nicknames.
-require("./log-system")(client);
+// Os sistemas são carregados somente depois que o Gateway confirmar que a Yukina está online.
+let systemsLoaded = false;
+function loadYukinaSystems() {
+  if (systemsLoaded) return;
+  systemsLoaded = true;
+  console.log("[Yukina] Conexão estabelecida; iniciando os sistemas em seguida...");
+  require("./command-engine")(client);
+  require("./rank-system")(client);
+  require("./xp-level-system")(client);
+  require("./interaction")(client);
+  require("./log-system")(client);
+}
 
 
 // Diagnóstico da conexão Gateway: registra quedas e tentativas de reconexão
@@ -535,6 +533,7 @@ client.once("clientReady", async () => {
   console.log("╰──────────────────────────────────────────────╯");
   console.log("");
   startupLog("🩵 Conexão com o Discord estabelecida!");
+  loadYukinaSystems();
   startupLog(`🌸 Identidade: ${client.user.tag}`);
   startupLog(`🏠 Servidores conectados: ${client.guilds.cache.size}`);
   startupLog("⚙️ Preparando os sistemas da Yukina...");
