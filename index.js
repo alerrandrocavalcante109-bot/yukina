@@ -525,6 +525,9 @@ function startupLog(message = "") {
 }
 
 client.once("clientReady", async () => {
+  discordReady = true;
+  clearTimeout(loginWatchdog);
+  console.log("[Discord] Evento clientReady recebido; cliente autenticado e pronto.");
   console.log("");
   console.log("╭──────────────────────────────────────────────╮");
   console.log("│          ❄️  Y U K I N A  🌙                 │");
@@ -781,8 +784,18 @@ const server = http.createServer((req, res) => {
 });
 server.listen(port, "0.0.0.0", () => console.log(`Health endpoint ativo na porta ${port}`));
 
+console.log("[Discord] Iniciando login no Gateway do Discord...");
+
+let discordReady = false;
+const loginWatchdog = setTimeout(() => {
+  if (!discordReady) {
+    console.error("[Discord] Ainda não ocorreu clientReady após 45 segundos. Verifique token, intents privilegiadas no Developer Portal, rede e status do Discord.");
+  }
+}, 45000);
+loginWatchdog.unref();
+
 client.login(TOKEN).then(() => {
-  console.log("[Discord] Solicitação de login iniciada; aguardando o evento clientReady.");
+  console.log("[Discord] client.login() foi resolvido; aguardando/confirmando o estado Ready.");
 }).catch((error) => {
   console.error("[Discord] Falha no login inicial. Confira DISCORD_TOKEN no Render e o status do Discord.", {
     name: error?.name,
