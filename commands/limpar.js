@@ -45,6 +45,11 @@ async function deleteRecentMessages(channel, amount) {
 }
 
 async function runClear({ channel, guild, amount, actor, botMember }) {
+  // Defesa adicional: nenhuma chamada pode apagar mais de 100 mensagens.
+  if (!Number.isSafeInteger(amount) || amount < 1 || amount > MAX_BULK_DELETE) {
+    return { ok: false, title: "📝 Quantidade inválida", message: "Posso limpar de **1 a 100 mensagens** por vez." };
+  }
+
   if (!isSupportedChannel(channel)) {
     return { ok: false, title: "❄️ Este canal é diferente", message: "Posso limpar mensagens em canais de texto e de anúncios." };
   }
