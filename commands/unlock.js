@@ -13,7 +13,9 @@ function isTextChannel(channel) {
 function isLocked(channel, guild) {
   const overwrite = channel.permissionOverwrites.cache.get(guild.roles.everyone.id);
   return Boolean(overwrite?.deny.has(PermissionFlagsBits.SendMessages) ||
-    overwrite?.deny.has(PermissionFlagsBits.SendMessagesInThreads));
+    overwrite?.deny.has(PermissionFlagsBits.SendMessagesInThreads) ||
+    overwrite?.deny.has(PermissionFlagsBits.CreatePublicThreads) ||
+    overwrite?.deny.has(PermissionFlagsBits.CreatePrivateThreads));
 }
 
 module.exports = {
@@ -48,13 +50,53 @@ module.exports = {
 
     try {
       await channel.permissionOverwrites.edit(interaction.guild.roles.everyone, {
-        SendMessages: null, SendMessagesInThreads: null,
+        SendMessages: null,
+        SendMessagesInThreads: null,
+        CreatePublicThreads: null,
+        CreatePrivateThreads: null,
       }, { reason: "Canal desbloqueado com /unlock da Yukina" });
       return interaction.reply({ embeds: [createEmbed("🌸 O cantinho está aberto novamente!",
         "As mensagens foram **liberadas** em " + channel + ".\n\nPodem continuar a conversa com carinho e respeito. A Yukina está de olho para manter tudo acolhedor! ✨")] });
     } catch (error) {
       console.error("[Yukina /unlock]", error);
       return interaction.reply({ embeds: [createEmbed("💧 Não consegui reabrir o canal", "Confira as permissões da Yukina e tente novamente.", YUKINA_PINK)], ephemeral: true });
+    }
+  },
+
+  async prefixExecute(message) {
+    if (!message.guild || !message.channel) {
+      return message.reply({ embeds: [createEmbed("🌸 Um cantinho de cada vez", "Este comando só pode ser usado dentro de um servidor.")] });
+    }
+    if (!message.member?.permissions?.has(PermissionFlagsBits.ManageChannels)) {
+      return message.reply({ embeds: [createEmbed("🔒 Só a equipe pode fazer isso", "Você precisa da permissão **Gerenciar canais** para reabrir este espaço.")] });
+    }
+
+    // Permite Yunlock ou Yunlock #canal. Sem menção, usa o canal atual.
+    const channel = message.mentions.channels.first() || message.channel;
+    if (!isTextChannel(channel) || channel.guildId !== message.guild.id) {
+      return message.reply({ embeds: [createEmbed("❄️ Este canal é diferente", "Escolha um canal de texto ou de anúncios deste servidor.")] });
+    }
+    if (!isLocked(channel, message.guild)) {
+      return message.channel.send({ embeds: [createEmbed("🌸 Este cantinho já está desbloqueado!", "O canal " + channel + " **já está aberto** para novas mensagens. Está tudo certinho! ✨")] });
+    }
+
+    const botMember = message.guild.members.me;
+    if (!botMember?.permissionsIn(channel).has(PermissionFlagsBits.ManageChannels)) {
+      return message.reply({ embeds: [createEmbed("🥺 Preciso de uma ajudinha", "A Yukina precisa da permissão **Gerenciar canais** para cuidar deste espaço.", YUKINA_PINK)] });
+    }
+
+    try {
+      await channel.permissionOverwrites.edit(message.guild.roles.everyone, {
+        SendMessages: null,
+        SendMessagesInThreads: null,
+        CreatePublicThreads: null,
+        CreatePrivateThreads: null,
+      }, { reason: "Canal desbloqueado com Yunlock da Yukina" });
+      return message.channel.send({ embeds: [createEmbed("🌸 O cantinho está aberto novamente!",
+        "As mensagens e a criação de tópicos foram liberadas em " + channel + ", removendo as restrições do cargo @everyone.\n\nPodem continuar a conversa com carinho e respeito. ✨")] });
+    } catch (error) {
+      console.error("[Yukina Yunlock]", error);
+      return message.channel.send({ embeds: [createEmbed("💧 Não consegui reabrir o canal", "Confira as permissões da Yukina e tente novamente.", YUKINA_PINK)] }).catch(() => null);
     }
   },
 };
