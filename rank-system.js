@@ -137,7 +137,7 @@ function startRankSystem(client) {
     if (after.key !== before.key) await updateMemberRank(message.member, true);
   });
 
-  client.once("clientReady", async () => {
+  const initializeRanks = async () => {
     await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
       await ensureRankRoles(guild);
@@ -146,7 +146,9 @@ function startRankSystem(client) {
       }
     }
     console.log("[Hierarquia] Progressão por XP e tempo ativada.");
-  });
+  };
+  if (client.isReady()) void initializeRanks();
+  else client.once("clientReady", initializeRanks);
 
   setInterval(async () => {
     await memberData.initialize();
