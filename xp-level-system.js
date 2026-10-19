@@ -32,7 +32,9 @@ function getLevelRole(xp) {
 }
 
 async function ensureLevelRoles(guild) {
-  const cached = roleCache.get(guild.id);\n  if (cached && cached.every(([level, role]) => guild.roles.cache.has(role.id))) return new Map(cached);\n  const me = guild.members.me;
+  const cached = roleCache.get(guild.id);
+  if (cached && cached.every(([level, role]) => guild.roles.cache.has(role.id))) return new Map(cached);
+  const me = guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
     console.warn("[Níveis XP] Yukina precisa da permissão Gerenciar cargos em " + guild.name + ".");
     return null;
