@@ -4,7 +4,9 @@
  */
 const { PermissionFlagsBits } = require("discord.js");
 const memberData = require("./member-data");
-const CHECK_INTERVAL_MS = 10 * 60_000;\nconst roleCache = new Map();\nconst updateLocks = new Set();
+const CHECK_INTERVAL_MS = 10 * 60_000;
+const roleCache = new Map();
+const updateLocks = new Set();
 
 const LEVEL_ROLES = [
   { level: 1, name: "❄️・Nível 1 | Iniciante", xp: 0, color: 0xA7D8F0 },
