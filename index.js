@@ -799,13 +799,14 @@ async function initializeDiscord() {
 
   loginWatchdog = setTimeout(() => {
     if (discordReady) return;
-    console.error("[Inicialização] O Discord ainda não ficou pronto após 60 segundos.", {
-      wsStatus: client.ws.status,
-      ready: client.isReady(),
-      ping: client.ws.ping,
-      guildsCached: client.guilds.cache.size,
-      hint: "Confira DISCORD_TOKEN, os intents privilegiados e os eventos de shard acima."
-    });
+    console.error("❌ [Yukina] NÃO INICIOU: não foi possível concluir a conexão com o Discord em 60 segundos.");
+    console.error("[Diagnóstico] Estado do WebSocket:", client.ws.status);
+    console.error("[Diagnóstico] Cliente pronto:", client.isReady());
+    console.error("[Diagnóstico] Latência do Gateway:", client.ws.ping);
+    console.error("[Diagnóstico] Servidores em cache:", client.guilds.cache.size);
+    console.error("[Ação necessária] Confira DISCORD_TOKEN no Render, as intenções do bot e os erros do Gateway acima. O serviço será encerrado para permitir a reinicialização pelo Render.");
+    process.exitCode = 1;
+    process.exit(1);
   }, 60000);
   loginWatchdog.unref();
 
