@@ -15,6 +15,7 @@ const { MongoClient } = require("mongodb");
 const fs = require("node:fs");
 const path = require("node:path");
 const memberData = require("./member-data");
+const { parseCountingValue } = require("./counting-number-parser");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
@@ -576,15 +577,10 @@ async function handleCountingMessage(message) {
       if (!config?.enabled || !config.channelId || config.channelId !== message.channel.id) return;
 
       const raw = String(message.content || "").trim();
-      // Mensagens com emojis são ignoradas por completo: não reagem nem alteram a sequência.
-      const containsEmoji = /[\p{Extended_Pictographic}\uFE0F\u200D\u20E3\u{1F1E6}-\u{1F1FF}]/u.test(raw);
-      if (containsEmoji) return;
-
-      // O número precisa ser o primeiro conteúdo; texto depois dele é permitido (ex.: "1 oi").
-      const match = raw.match(/^(\d+)(?:\s|$)/);
-      if (!match) return;
-
-      const numeric = Number(match[1]);
+      // Reconhece algarismos, números por extenso, romanos, numerais CJK e expressões matemáticas.
+      // Mensagens com emojis são ignoradas pelo parser, sem alterar a sequência.
+      const numeric = parseCountingValue(raw);
+      if (numeric === null) return;
       const expected = Math.max(0, Number(config.currentNumber) || 0) + 1;
       const repeatedUser = String(message.author.id) === String(config.lastUserId || "");
 
