@@ -13,6 +13,7 @@ const {
 const http = require("node:http");
 const fs = require("node:fs");
 const path = require("node:path");
+const memberData = require("./member-data");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
@@ -798,6 +799,10 @@ async function initializeDiscord() {
   if (!TOKEN) {
     throw new Error("DISCORD_TOKEN não está configurado.");
   }
+
+  console.log("[Inicialização] Verificando armazenamento de membros...");
+  await memberData.initialize();
+  console.log("[Inicialização] Banco de membros validado.");
 
   console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
   console.log("[Inicialização] Etapa 3/4: abrindo conexão com o Gateway do Discord...");
