@@ -137,7 +137,7 @@ body .pill, body button:not(.server-item) {
  const checks = Array.from(document.querySelectorAll("[data-setting]"));
  let guilds = [];
  const ADMIN = 0x8n, MANAGE_GUILD = 0x20n;
- function token(){try{return sessionStorage.getItem("yukina_discord_token")}catch(_){return null}}
+ function token(){try{const expires=Number(localStorage.getItem("yukina_discord_token_expires_at")||"0");if(!expires||Date.now()>=expires){localStorage.removeItem("yukina_discord_token");localStorage.removeItem("yukina_discord_token_expires_at");return null}return localStorage.getItem("yukina_discord_token")}catch(_){return null}}
  function canManage(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n}catch(_){return false}}
  function key(id){return "yukina-system-settings:"+id}
  function lock(on){checks.forEach(c=>c.disabled=on);save.disabled=on;reset.disabled=on}
