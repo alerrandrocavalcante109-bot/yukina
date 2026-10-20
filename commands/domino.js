@@ -57,11 +57,19 @@ async function playTile(interaction,game,tileId) {
   hand.splice(index,1); game.passes=0;
   if(!hand.length) {
     games.delete(game.id);
-    await interaction.update({content:`🏆 <@${interaction.user.id}> venceu o Domino!`,embeds:[boardEmbed(game)],components:[]});
+    await interaction.deferUpdate();
+    const channel=await interaction.client.channels.fetch(game.channelId);
+    const boardMessage=await channel.messages.fetch(game.messageId);
+    await boardMessage.edit({content:`🏆 <@${interaction.user.id}> venceu o Domino!`,embeds:[boardEmbed(game)],components:[]});
+    await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",ephemeral:true}).catch(()=>{});
     return;
   }
   game.turnIndex=(game.turnIndex+1)%game.players.length;game.turn=game.players[game.turnIndex];
-  await interaction.deferUpdate();\n  const channel=await interaction.client.channels.fetch(game.channelId);\n  const boardMessage=await channel.messages.fetch(game.messageId);\n  await boardMessage.edit({content:`🁫 <@${interaction.user.id}> jogou ${tileText(placed)}.`,embeds:[boardEmbed(game)],components:[controls(game)]});\n  await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,ephemeral:true}).catch(()=>{});
+  await interaction.deferUpdate();
+  const channel=await interaction.client.channels.fetch(game.channelId);
+  const boardMessage=await channel.messages.fetch(game.messageId);
+  await boardMessage.edit({content:`🁫 <@${interaction.user.id}> jogou ${tileText(placed)}.`,embeds:[boardEmbed(game)],components:[controls(game)]});
+  await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,ephemeral:true}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
   const id=interaction.customId||"";
