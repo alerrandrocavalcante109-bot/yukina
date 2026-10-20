@@ -197,7 +197,8 @@ body .pill, body button:not(.server-item) {
      const res=await fetch("https://discord.com/api/users/@me/guilds",{headers:{Authorization:"Bearer "+access}});
      if(res.status===401||res.status===403)throw new Error("A autorização atual não permite listar servidores. Entre novamente para autorizar a permissão de servidores.");
      if(!res.ok)throw new Error("O Discord não conseguiu carregar os servidores (HTTP "+res.status+").");
-     const all=await res.json();guilds=all.filter(canManage);\n     updateDrawerServer(null);
+     const all=await res.json();guilds=all.filter(canManage);
+     updateDrawerServer(null);\n     updateDrawerServer(null);
      select.innerHTML='<option value="">Selecione um servidor…</option>';
      guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});const params=new URLSearchParams(location.search);const requested=params.get("guild");if(requested&&guilds.some(g=>g.id===requested)){select.value=requested;select.dispatchEvent(new Event("change"));}
      status.textContent=guilds.length?guilds.length+" servidor(es) com permissão administrativa encontrados.":"Nenhum servidor com permissão de administrador ou Gerenciar servidor foi encontrado.";
@@ -206,6 +207,7 @@ body .pill, body button:not(.server-item) {
  }
  select.addEventListener("change",()=>{
    const g=selected();
+   updateDrawerServer(g);
    if(!g){selectedName.textContent="As opções ficam bloqueadas até selecionar um servidor válido.";notice.textContent="Selecione um servidor.";lock(true);return}
    selectedName.textContent="Servidor selecionado: "+g.name;
    notice.textContent="Verificando permissões, presença da Yukina e configurações no backend…";
