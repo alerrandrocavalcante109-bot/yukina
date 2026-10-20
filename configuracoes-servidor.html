@@ -17,6 +17,11 @@
 .rule-note{font-size:.82rem;color:#a9bad0;margin:0}.section-intro{color:#c3d3e7}
 @media(max-width:620px){.rule-row{grid-template-columns:1fr}.rule-row .remove-rule{width:100%}}
 
+/* Garantir que o menu lateral fique acima do conteúdo e possa receber toques no celular. */
+#menuToggle{position:fixed!important;top:calc(12px + env(safe-area-inset-top))!important;left:12px!important;z-index:1302!important;display:flex!important;align-items:center!important;justify-content:center!important;touch-action:manipulation}
+#sideDrawer{z-index:1301!important;pointer-events:auto}
+#drawerBackdrop{z-index:1300!important;touch-action:pan-y}
+body.menu-open #sideDrawer{visibility:visible;pointer-events:auto}
 /* Menu lateral deslizante */
 .menu-toggle{position:fixed;z-index:1200;top:14px;left:14px;width:46px;height:46px;border-radius:14px;background:#111d31eF;border:1px solid #8edcff80;color:#d8f3ff;font-size:1.35rem;box-shadow:0 8px 28px #0006;cursor:pointer}
 .drawer-backdrop{position:fixed;inset:0;z-index:1190;background:#05030bb8;opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s}
@@ -212,7 +217,8 @@ body .pill, body button:not(.server-item) {
    if(!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-touchStartX;const dy=e.changedTouches[0].clientY-touchStartY;
    if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;
    const open=document.body.classList.contains("menu-open");
-   if(!open&&touchStartX<38&&dx>0)setMenu(true);
+   /* Abrir com deslize para a direita começando na borda ou no corpo da tela. */
+   if(!open&&dx>0&&touchStartX<Math.min(180,window.innerWidth*0.35))setMenu(true);
    else if(open&&dx<0)setMenu(false);
  },{passive:true});
 
