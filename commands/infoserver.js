@@ -9,7 +9,7 @@ function formatDate(date) {
   return "<t:" + unix + ":F>\n<t:" + unix + ":R>";
 }
 
-function buildServerInfo(guild, owner) {
+function buildServerInfo(guild, owner, invoker) {
   const channels = guild.channels.cache;
   const textChannels = channels.filter(channel =>
     channel.type === ChannelType.GuildText ||
@@ -24,6 +24,7 @@ function buildServerInfo(guild, owner) {
 
   const embed = new EmbedBuilder()
     .setColor(COLOR)
+    .setAuthor({ name: "Yukina · Informações solicitadas por " + (invoker.globalName || invoker.username), iconURL: invoker.displayAvatarURL({ size: 128 }) })
     .setTitle("❄️ Informações do servidor")
     .setDescription("Aqui estão os dados de **" + guild.name + "**.")
     .addFields(
@@ -59,11 +60,7 @@ async function replyWithInfo(interaction) {
     await guild.fetch();
     await guild.channels.fetch();
     const owner = await guild.fetchOwner();
-    const payload = { embeds: [buildServerInfo(guild, owner)] };
-    if (isPrefixCommand) {
-      payload.content = "❄️ Informações solicitadas por <@" + invoker.id + ">.";
-      payload.allowedMentions = { users: [invoker.id], parse: [] };
-    }
+    const payload = { embeds: [buildServerInfo(guild, owner, invoker)] };
     return interaction.reply(payload);
   } catch (error) {
     console.error("[Yukina /infoserver]", error);
