@@ -576,8 +576,16 @@ async function handleCountingMessage(message) {
       if (!config?.enabled || !config.channelId || config.channelId !== message.channel.id) return;
 
       const raw = String(message.content || "").trim();
+      // Mensagens com emojis são ignoradas por completo: não reagem nem alteram a sequência.
+      const containsEmoji = /[\p{Extended_Pictographic}\uFE0F\u200D\u20E3\u{1F1E6}-\u{1F1FF}]/u.test(raw);
+      if (containsEmoji) return;
+
+      // O número precisa ser o primeiro conteúdo; texto depois dele é permitido (ex.: "1 oi").
+      const match = raw.match(/^(\d+)(?:\s|$)/);
+      if (!match) return;
+
+      const numeric = Number(match[1]);
       const expected = Math.max(0, Number(config.currentNumber) || 0) + 1;
-      const numeric = /^\\d+$/.test(raw) ? Number(raw) : NaN;
       const repeatedUser = String(message.author.id) === String(config.lastUserId || "");
 
       if (repeatedUser || !Number.isSafeInteger(numeric) || numeric !== expected) {
