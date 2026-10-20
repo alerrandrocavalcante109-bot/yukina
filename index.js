@@ -397,20 +397,9 @@ function loadYukinaSystems() {
 }
 
 
-// Diagnóstico da conexão Gateway: registra quedas e tentativas de reconexão
-// sem expor o token nem confundir uma reconexão com uma inicialização completa.
+// Mantém apenas erros reais do cliente, sem despejar diagnósticos de heartbeat/Gateway.
 client.on("error", (error) => {
   console.error("[Discord] Erro do cliente:", error);
-});
-
-client.on("warn", (warning) => {
-  console.warn("[Discord] Aviso:", warning);
-});
-
-client.on("debug", (message) => {
-  if (/WebSocket|Gateway|heartbeat|identify|resume|session|close|connect|error/i.test(message)) {
-    console.log("[Discord Debug]", message);
-  }
 });
 
 client.on("shardError", (error, shardId) => {
@@ -805,17 +794,11 @@ async function initializeDiscord() {
   console.log("[Inicialização] Banco de membros validado.");
 
   console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
-  console.log("[Inicialização] Etapa 3/4: abrindo conexão com o Gateway do Discord...");
-  console.log("[Discord] Estado inicial do WebSocket:", client.ws.status);
+  console.log("[Inicialização] Etapa 3/4: conectando ao Discord...");
 
   loginWatchdog = setTimeout(() => {
     if (discordReady) return;
-    console.error("❌ [Yukina] NÃO INICIOU: não foi possível concluir a conexão com o Discord em 60 segundos.");
-    console.error("[Diagnóstico] Estado do WebSocket:", client.ws.status);
-    console.error("[Diagnóstico] Cliente pronto:", client.isReady());
-    console.error("[Diagnóstico] Latência do Gateway:", client.ws.ping);
-    console.error("[Diagnóstico] Servidores em cache:", client.guilds.cache.size);
-    console.error("[Ação necessária] Confira DISCORD_TOKEN no Render, as intenções do bot e os erros do Gateway acima. O serviço será encerrado para permitir a reinicialização pelo Render.");
+    console.error("❌ [Yukina] Não foi possível iniciar: a conexão com o Discord não ficou pronta em 60 segundos.");
     process.exitCode = 1;
     process.exit(1);
   }, 60000);
@@ -823,7 +806,7 @@ async function initializeDiscord() {
 
   try {
     await client.login(TOKEN);
-    console.log("[Inicialização] A chamada de login foi concluída; aguardando clientReady.");
+  
   } catch (error) {
     clearTimeout(loginWatchdog);
     console.error("[Inicialização] Falha ao autenticar/conectar ao Discord:", {
@@ -837,7 +820,7 @@ async function initializeDiscord() {
 }
 
 initializeDiscord().then(() => {
-  console.log("[Inicialização] Etapa 4/4: processo de login iniciado sem erro imediato.");
+
 }).catch((error) => {
   console.error("[Inicialização] Inicialização do Discord falhou.", error);
   process.exitCode = 1;
