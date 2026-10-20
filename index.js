@@ -465,10 +465,15 @@ async function registerSlashCommands() {
     return;
   }
 
+  const clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
+  if (!clientId) {
+    console.error("[Slash] DISCORD_CLIENT_ID não está configurada; os comandos slash não foram registrados.");
+    return;
+  }
   const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || "").trim();
   const route = guildId
-    ? Routes.applicationGuildCommands(client.application.id, guildId)
-    : Routes.applicationCommands(client.application.id);
+    ? Routes.applicationGuildCommands(clientId, guildId)
+    : Routes.applicationCommands(clientId);
   const rest = new REST({ version: "10" }).setToken(TOKEN);
 
   try {
