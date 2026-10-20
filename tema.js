@@ -297,7 +297,13 @@
     const header=document.querySelector("header.nav, header, .nav");
     if(!header) return;
     const brand=header.querySelector(".brand, a[href='./index.html']");
-    const toggle=document.createElement("button");
+    /* Reutiliza o botão de menu que já fica no canto; não cria um segundo hamburger. */
+    const existingToggle=Array.from(header.querySelectorAll("button,[role='button'],a")).find(el => {
+      const label=((el.getAttribute("aria-label")||"")+" "+(el.innerText||el.textContent||"")).trim();
+      return el.id!=="yukina-drawer-toggle" && (/menu/i.test(label)||label==="☰"||label==="≡") && !el.closest("#yukina-drawer");
+    });
+    const toggle=existingToggle ? existingToggle.cloneNode(true) : document.createElement("button");
+    if(existingToggle) existingToggle.replaceWith(toggle);
     toggle.id="yukina-drawer-toggle";toggle.type="button";toggle.textContent="☰";
     toggle.setAttribute("aria-label","Abrir menu");toggle.setAttribute("aria-expanded","false");toggle.setAttribute("aria-controls","yukina-drawer");
     const shade=document.createElement("div");shade.id="yukina-drawer-shade";
@@ -329,7 +335,7 @@
     let startX=null;
     document.addEventListener("touchstart",e=>{if(e.touches.length===1)startX=e.touches[0].clientX;},{passive:true});
     document.addEventListener("touchend",e=>{if(startX===null)return;const dx=e.changedTouches[0].clientX-startX;if(!document.body.classList.contains("yukina-drawer-open")&&startX<28&&dx>75)open();else if(document.body.classList.contains("yukina-drawer-open")&&dx< -75)close();startX=null;},{passive:true});
-    header.insertBefore(toggle,brand||header.firstChild);
+    if(!existingToggle) header.insertBefore(toggle,brand||header.firstChild);
     document.body.append(shade,drawer);
   }
   if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup,{once:true});else setup();
