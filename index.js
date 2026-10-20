@@ -875,7 +875,7 @@ async function panelApi(req, res, url) {
     }
   }
 
-  const match = url.pathname.match(/^\\/api\\/guilds\\/([0-9]{17,20})(?:\\/(resources|settings))?$/);  const match = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})(?:\/(resources|settings))?$/);
+  const match = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})(?:\/(resources|settings))?$/);
   if (!match) return sendJson(res, 404, { detail: "Rota não encontrada." });
   const guildId = match[1], section = match[2] || "resources";
   try {
