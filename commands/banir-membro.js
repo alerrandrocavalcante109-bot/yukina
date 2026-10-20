@@ -56,12 +56,14 @@ async function createRequest({ guild, moderator, targetId, reason, durationValue
   });
 }
 module.exports = {
-  data: new SlashCommandBuilder().setName("banirmembro").setDescription("Solicita confirmação antes de banir um membro.").setDMPermission(false)
-    .addUserOption(o => o.setName("usuario").setDescription("Usuário que será banido").setRequired(true))
-    .addStringOption(o => o.setName("motivo").setDescription("Motivo do banimento").setRequired(false).setMaxLength(400))
-    .addStringOption(o => o.setName("duracao").setDescription("Opcional: 30m, 2h, 3d, 1semana; vazio = permanente").setRequired(false).setMaxLength(20)),
+  data: new SlashCommandBuilder().setName("banir").setDescription("Comandos de banimento da Yukina.").setDMPermission(false)
+    .addSubcommand(sub => sub.setName("membro").setDescription("Banir um membro do servidor")
+      .addUserOption(o => o.setName("usuario").setDescription("Usuário que será banido").setRequired(true))
+      .addStringOption(o => o.setName("motivo").setDescription("Motivo do banimento").setRequired(false).setMaxLength(400))
+      .addStringOption(o => o.setName("duracao").setDescription("Opcional: 30m, 2h, 3d, 1semana; vazio = permanente").setRequired(false).setMaxLength(20))),
   aliases: ["banir", "ban", "membro", "banirmembro"],
   async execute(interaction) {
+    if (interaction.options.getSubcommand() !== "membro") return interaction.reply({ content: "Subcomando inválido.", ephemeral: true });
     return createRequest({ guild: interaction.guild, moderator: interaction.member, targetId: interaction.options.getUser("usuario", true).id,
       reason: interaction.options.getString("motivo") || "", durationValue: interaction.options.getString("duracao"), reply: payload => interaction.reply(payload) });
   },
