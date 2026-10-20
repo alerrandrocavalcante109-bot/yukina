@@ -100,7 +100,7 @@ body .wrap > section.hero,
 body .wrap > section.panel:not(.progress-panel){display:none!important}
 body .wrap{width:min(960px,calc(100% - 28px));padding-top:92px}
 body .wrap::before{
- content:"Bem-vindo ao painel da Yukina! ❄️\\Acesse os sistemas clicando no menu à esquerda ou deslizando a tela para a direita.";
+ content:"Bem-vindo ao painel da Yukina! ❄️\A Acesse os sistemas clicando no menu à esquerda ou deslizando a tela para a direita.";
  display:block;max-width:760px;margin:28px auto;padding:34px 24px;
  text-align:center;font-size:clamp(1.65rem,5vw,2.5rem);font-weight:850;letter-spacing:-.035em;line-height:1.5;white-space:pre-line;font-size:clamp(1.25rem,4vw,2.1rem);
  color:#30213f;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(244,236,255,.94));
@@ -207,7 +207,7 @@ body .pill, body button:not(.server-item) {
  <div class="row"><button type="button" class="btn" id="addMultiplierRule">＋ Adicionar multiplicador</button><button type="button" class="save-draft" data-system="Multiplicador de XP por cargo">Salvar configuração</button></div>
  <p class="muted">Exemplos: apoiador ×1,5; booster ×2; equipe ×1,2. O limite e a aplicação real serão definidos na etapa de integração.</p>
 </section>
-\n<footer class="muted" style="padding:12px 0 36px">Yukina • Acesso limitado por permissões do Discord</footer>
+<footer class="muted" style="padding:12px 0 36px">Yukina • Acesso limitado por permissões do Discord</footer>
 </div>
 <script>
 (() => {
@@ -234,7 +234,7 @@ body .pill, body button:not(.server-item) {
   try{serverResources=await api("/api/guilds/"+encodeURIComponent(id)+"/resources");fillSelect(cs,serverResources.channels.map(x=>({id:x.id,name:(x.parentName?"# "+x.parentName+" / ":"")+x.name})),"Selecione um canal");fillSelect(cats,serverResources.categories.map(x=>({id:x.id,name:x.name})),"Selecione uma categoria");summary.textContent=serverResources.roles.length+" cargos · "+serverResources.channels.length+" canais · "+serverResources.categories.length+" categorias carregados do Discord.";fillRoleSelects();}catch(e){summary.textContent=e.message;serverResources={roles:[],channels:[],categories:[]};}
  }
  function fillSelect(el,items,placeholder){if(!el)return;const prior=el.value;el.replaceChildren();const first=document.createElement("option");first.value="";first.textContent=placeholder;el.appendChild(first);items.forEach(item=>{const o=document.createElement("option");o.value=item.id;o.textContent=item.name;el.appendChild(o)});if(items.some(i=>i.id===prior))el.value=prior;el.disabled=false;}
- function fillRoleSelects(){const roles=(serverResources.roles||[]).map(r=>({id:r.id,name:r.name}));document.querySelectorAll('select[aria-label="Cargo entregue"],select[aria-label="Cargo que recebe o bônus"]').forEach(el=>fillSelect(el,roles,"Selecione um cargo"));}
+ function fillRoleSelects(){const roles=(serverResources.roles||[]).map(r=>({id:r.id,name:r.name}));document.querySelectorAll('select[aria-label="Cargo entregue"],select[aria-label="Cargo que recebe o bônus"]').forEach(el=>fillSelect(el,roles,roles.length?"Selecione um cargo":"Nenhum cargo carregado — verifique a conexão"));}
  function collectRules(containerId,label){return Array.from(document.querySelectorAll("#"+containerId+" .rule-row")).map(row=>{const inputs=Array.from(row.querySelectorAll("input,select"));const keys=label==="XP por nível"?["level","role"]:label==="Hierarquia temporal"?["days","role"]:["role","multiplier"];const rule={};inputs.slice(0,keys.length).forEach((el,i)=>{if(el.value!=="")rule[keys[i]]=el.type==="number"?Number(el.value):el.value});return rule}).filter(rule=>Object.keys(rule).length);}
  function renderRules(containerId,rules,label){const container=document.getElementById(containerId);if(!container)return;container.replaceChildren();const fields=label==="XP por nível"?xpFields:label==="Hierarquia temporal"?timeFields:multiplierFields;(rules.length?rules:[{}]).forEach(rule=>{addRule(containerId,fields,rule);const inputs=container.lastElementChild.querySelectorAll("input,select");const keys=label==="XP por nível"?["level","role"]:label==="Hierarquia temporal"?["days","role"]:["role","multiplier"];inputs.forEach((el,i)=>{if(rule[keys[i]]!==undefined)el.value=rule[keys[i]]})});}
  function updateDrawerServer(g){
