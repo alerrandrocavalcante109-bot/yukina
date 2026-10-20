@@ -215,7 +215,6 @@ body .pill, body button:not(.server-item) {
  }
  if(menuToggle){
    menuToggle.onclick=function(ev){ev.preventDefault();ev.stopPropagation();setMenu(!document.body.classList.contains("menu-open"));};
-   menuToggle.addEventListener("pointerup",function(ev){if(ev.pointerType!=="mouse"){ev.preventDefault();setMenu(!document.body.classList.contains("menu-open"));}},{passive:false});
  }
  if(backdrop)backdrop.addEventListener("click",()=>setMenu(false));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
