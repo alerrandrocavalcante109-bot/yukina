@@ -22,6 +22,12 @@
 #sideDrawer{z-index:1301!important;pointer-events:auto}
 #drawerBackdrop{z-index:1300!important;touch-action:pan-y}
 body.menu-open #sideDrawer{visibility:visible;pointer-events:auto}
+/* Correção de interação do menu no navegador móvel */
+#menuToggle.menu-toggle{display:flex!important;position:fixed!important;top:calc(12px + env(safe-area-inset-top))!important;left:12px!important;z-index:99999!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;touch-action:manipulation!important}
+#drawerBackdrop.drawer-backdrop{z-index:99997!important;pointer-events:none}
+#sideDrawer.side-drawer{z-index:99998!important;visibility:visible;pointer-events:none}
+body.menu-open #sideDrawer.side-drawer{pointer-events:auto;transform:translateX(0)!important}
+body.menu-open #drawerBackdrop.drawer-backdrop{pointer-events:auto;opacity:1;visibility:visible}
 /* Menu lateral deslizante */
 .menu-toggle{position:fixed;z-index:1200;top:14px;left:14px;width:46px;height:46px;border-radius:14px;background:#111d31eF;border:1px solid #8edcff80;color:#d8f3ff;font-size:1.35rem;box-shadow:0 8px 28px #0006;cursor:pointer}
 .drawer-backdrop{position:fixed;inset:0;z-index:1190;background:#05030bb8;opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s}
@@ -196,13 +202,22 @@ body .pill, body button:not(.server-item) {
  document.getElementById("reload").addEventListener("click",loadGuilds);
  lock(true);loadGuilds();
 
- // Menu deslizante: botão, clique fora e gestos de borda/tela.
+ // Menu lateral robusto: inicialização independente e suporte a toque/ponteiro.
  const menuToggle=document.getElementById("menuToggle");
  const backdrop=document.getElementById("drawerBackdrop");
+ const drawer=document.getElementById("sideDrawer");
  let touchStartX=0,touchStartY=0;
- function setMenu(open){document.body.classList.toggle("menu-open",open);menuToggle.setAttribute("aria-expanded",String(open));menuToggle.setAttribute("aria-label",open?"Fechar menu":"Abrir menu");menuToggle.textContent=open?"×":"☰";}
- menuToggle.addEventListener("click",()=>setMenu(!document.body.classList.contains("menu-open")));
- backdrop.addEventListener("click",()=>setMenu(false));
+ function setMenu(open){
+   document.body.classList.toggle("menu-open",open);
+   if(menuToggle){menuToggle.setAttribute("aria-expanded",String(open));menuToggle.setAttribute("aria-label",open?"Fechar menu":"Abrir menu");menuToggle.textContent=open?"×":"☰";}
+   if(drawer){drawer.setAttribute("aria-hidden",String(!open));}
+   if(backdrop){backdrop.setAttribute("aria-hidden",String(!open));}
+ }
+ if(menuToggle){
+   menuToggle.onclick=function(ev){ev.preventDefault();ev.stopPropagation();setMenu(!document.body.classList.contains("menu-open"));};
+   menuToggle.addEventListener("pointerup",function(ev){if(ev.pointerType!=="mouse"){ev.preventDefault();setMenu(!document.body.classList.contains("menu-open"));}},{passive:false});
+ }
+ if(backdrop)backdrop.addEventListener("click",()=>setMenu(false));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
  document.querySelectorAll("[data-panel]").forEach(link=>link.addEventListener("click",()=>{
    document.querySelectorAll(".progress-panel").forEach(p=>p.classList.toggle("active",p.id===link.dataset.panel));
@@ -210,19 +225,16 @@ body .pill, body button:not(.server-item) {
    setMenu(false);
    const target=document.getElementById(link.dataset.panel);
    if(target){window.scrollTo({top:0,behavior:"smooth"});target.setAttribute("tabindex","-1");target.focus({preventScroll:true});}
-
  }));
- document.addEventListener("touchstart",e=>{if(!e.touches.length)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;},{passive:true});
+ document.addEventListener("touchstart",e=>{if(e.touches.length){touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;}},{passive:true});
  document.addEventListener("touchend",e=>{
-   if(!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-touchStartX;const dy=e.changedTouches[0].clientY-touchStartY;
-   if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;
+   if(!e.changedTouches.length)return;
+   const dx=e.changedTouches[0].clientX-touchStartX,dy=e.changedTouches[0].clientY-touchStartY;
+   if(Math.abs(dx)<55||Math.abs(dx)<Math.abs(dy))return;
    const open=document.body.classList.contains("menu-open");
-   /* Abrir com deslize para a direita começando na borda ou no corpo da tela. */
-   if(!open&&dx>0&&touchStartX<Math.min(180,window.innerWidth*0.35))setMenu(true);
+   if(!open&&dx>0&&touchStartX<window.innerWidth*0.6)setMenu(true);
    else if(open&&dx<0)setMenu(false);
  },{passive:true});
-
-
  // Construtor visual dos três sistemas; nesta etapa os dados são apenas rascunhos de interface.
  const rolePlaceholder = '<option value="">Selecione um cargo (integração pendente)</option>';
  function addRule(containerId, fields, defaults={}) {
