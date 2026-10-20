@@ -9,7 +9,7 @@ function formatDate(date) {
   return "<t:" + unix + ":F>\n<t:" + unix + ":R>";
 }
 
-function buildServerInfo(guild) {
+function buildServerInfo(guild, owner) {
   const channels = guild.channels.cache;
   const textChannels = channels.filter(channel =>
     channel.type === ChannelType.GuildText ||
@@ -29,7 +29,7 @@ function buildServerInfo(guild) {
     .addFields(
       { name: "🆔 ID do servidor", value: "`" + guild.id + "`", inline: true },
       { name: "🌌 Shard ID", value: String(guild.shardId ?? 0), inline: true },
-      { name: "👑 Dono", value: "<@" + guild.ownerId + ">\n`" + guild.ownerId + "`", inline: false },
+      { name: "👑 Dono", value: owner.toString() + "\n`" + owner.id + "`", inline: false },
       { name: "📚 Canais no total", value: String(channels.size), inline: true },
       { name: "💬 Canais de texto", value: String(textChannels), inline: true },
       { name: "🔊 Canais de voz", value: String(voiceChannels), inline: true },
@@ -56,9 +56,10 @@ async function replyWithInfo(interaction) {
   try {
     await guild.fetch();
     await guild.channels.fetch();
+    const owner = await guild.fetchOwner();
     return interaction.reply({
-      embeds: [buildServerInfo(guild)],
-      allowedMentions: { parse: [] }
+      embeds: [buildServerInfo(guild, owner)],
+      allowedMentions: { users: [owner.id], parse: [] }
     });
   } catch (error) {
     console.error("[Yukina /infoserver]", error);
