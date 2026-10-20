@@ -12,6 +12,8 @@ if (!token || !clientId) {
   process.exit(1);
 }
 
+const removedModerationCommands = new Set(["cargo", "clear", "deletar", "limpar", "lock", "log", "moderar", "promover", "unlock"]);
+
 const commandsDir = path.join(__dirname, "commands");
 const commands = [];
 function collect(directory) {
@@ -32,7 +34,7 @@ const rest = new REST({ version: "10" }).setToken(token);
   try {
     const route = guildId ? Routes.applicationGuildCommands(clientId, guildId) : Routes.applicationCommands(clientId);
     const existing = await rest.get(route);
-    const merged = new Map((Array.isArray(existing) ? existing : []).map((command) => [command.name, command]));
+    const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => !removedModerationCommands.has(command.name)).map((command) => [command.name, command]));
     for (const command of commands) merged.set(command.name, command);
     const result = await rest.put(route, { body: [...merged.values()] });
     console.log("Yukina: " + commands.length + " comando(s) local(is) sincronizado(s); " + result.length +
