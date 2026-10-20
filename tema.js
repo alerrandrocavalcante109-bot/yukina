@@ -218,35 +218,64 @@
 })();
 
 
-/* Link da página Configurações do Sistema no menu principal. */
+/* Menu principal da Yukina: garante que os sistemas apareçam mesmo se o menu vier vazio. */
 (function () {
-  const URL = "./configuracoes.html";
-  function addSystemSettingsLink() {
-    if (document.querySelector('a[href="./configuracoes.html"],a[href="configuracoes.html"]')) return true;
-    const selectors = [".site-menu", ".dropdown-menu", ".nav-menu", "[role='menu']", ".menu"];
-    for (const selector of selectors) {
-      const menus = Array.from(document.querySelectorAll(selector));
-      const menu = menus.find(el => {
-        const text = (el.innerText || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const ITEMS = [
+    ["⌂ Início", "./index.html"],
+    ["❄️ Comandos", "./comandos.html"],
+    ["⚙️ Configurações do Sistema", "./configuracoes.html"],
+    ["✨ VIP", "./vip.html"],
+    ["📖 Wiki", "./wiki.html"],
+    ["🔐 Entrar com Discord", "./login.html"]
+  ];
+  const SELECTORS = [".site-menu", ".dropdown-menu", ".nav-menu", "[role='menu']", ".menu"];
+  function visible(el) {
+    const s = getComputedStyle(el);
+    return s.display !== "none" && s.visibility !== "hidden";
+  }
+  function findMenu() {
+    for (const selector of SELECTORS) {
+      const candidates = Array.from(document.querySelectorAll(selector)).filter(visible);
+      const menu = candidates.find(el => {
+        const text = (el.innerText || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLowerCase();
         return text.includes("comandos") || text.includes("wiki") || text.includes("painel") || el.querySelector("a,button");
-      });
-      if (!menu) continue;
-      const link = document.createElement("a");
-      link.href = URL;
-      link.textContent = "Configurações do Sistema";
-      link.setAttribute("aria-label", "Abrir Configurações do Sistema da Yukina");
-      link.style.cssText = "display:flex;align-items:center;gap:8px;padding:10px 14px;color:inherit;text-decoration:none;cursor:pointer;";
-      menu.appendChild(link);
-      return true;
+      }) || candidates.find(el => el.getAttribute("role") === "menu" || el.classList.contains("site-menu"));
+      if (menu) return menu;
     }
-    return false;
+    return null;
+  }
+  function ensureMenuItems() {
+    const menu = findMenu();
+    if (!menu) return false;
+    menu.style.setProperty("min-width", "220px");
+    menu.style.setProperty("padding", "8px");
+    menu.style.setProperty("gap", "5px");
+    menu.style.setProperty("flex-direction", "column");
+    for (const [label, href] of ITEMS) {
+      const exists = Array.from(menu.querySelectorAll("a")).some(a => {
+        try { return new URL(a.href, location.href).pathname === new URL(href, location.href).pathname; }
+        catch (_) { return false; }
+      });
+      if (exists) continue;
+      const link = document.createElement("a");
+      link.href = href;
+      link.textContent = label;
+      link.setAttribute("role", "menuitem");
+      link.style.cssText = "display:flex;align-items:center;gap:9px;width:100%;padding:12px 14px;border-radius:11px;color:#fff;background:rgba(25,14,42,.96);text-decoration:none;box-sizing:border-box;white-space:normal;";
+      link.addEventListener("mouseenter", () => { link.style.background = "rgba(167,216,240,.18)"; });
+      link.addEventListener("mouseleave", () => { link.style.background = "rgba(25,14,42,.96)"; });
+      menu.appendChild(link);
+    }
+    return true;
   }
   function start() {
-    if (addSystemSettingsLink()) return;
-    const observer = new MutationObserver(() => { if (addSystemSettingsLink()) observer.disconnect(); });
-    observer.observe(document.documentElement, {childList:true,subtree:true});
+    if (ensureMenuItems()) return;
+    const observer = new MutationObserver(() => {
+      if (ensureMenuItems()) observer.disconnect();
+    });
+    observer.observe(document.documentElement, { childList: true, subtree: true });
     setTimeout(() => observer.disconnect(), 20000);
   }
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, { once: true });
   else start();
 })();
