@@ -393,8 +393,6 @@ function loadYukinaSystems() {
   require("./rank-system")(client);
   require("./xp-level-system")(client);
   require("./interaction")(client);
-  require("./log-system")(client);
-  require("./temporary-role-system").start(client);
 }
 
 
@@ -434,6 +432,8 @@ process.on("uncaughtException", (error) => {
   process.exit(1);
 });
 
+const removedModerationCommands = new Set(["cargo", "clear", "deletar", "limpar", "lock", "log", "moderar", "promover", "unlock"]);
+
 async function registerSlashCommands() {
   const commandsDir = path.join(__dirname, "commands");
   const commands = [];
@@ -471,7 +471,7 @@ async function registerSlashCommands() {
 
   try {
     const existing = await rest.get(route);
-    const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => command.name !== "boasvindas").map((command) => [command.name, command]));
+    const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => command.name !== "boasvindas" && !removedModerationCommands.has(command.name)).map((command) => [command.name, command]));
     for (const command of commands) merged.set(command.name, command);
     const result = await rest.put(route, { body: [...merged.values()] });
     // Registro concluído silenciosamente para manter o log de inicialização limpo.
