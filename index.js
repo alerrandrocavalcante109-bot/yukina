@@ -11,6 +11,7 @@ const {
   Routes,
 } = require("discord.js");
 const http = require("node:http");
+const { MongoClient } = require("mongodb");
 const fs = require("node:fs");
 const path = require("node:path");
 const memberData = require("./member-data");
@@ -768,17 +769,116 @@ client.on("messageCreate", async (message) => {
   }
 });
 
-const port = Number(process.env.PORT || 10000);
-const server = http.createServer((req, res) => {
-  if (req.url === "/" || req.url === "/api/health") {
-    res.writeHead(200, { "content-type": "application/json; charset=utf-8" });
-    res.end(JSON.stringify({ ok: true, service: "Yukina Bot" }));
-  } else {
-    res.writeHead(404);
-    res.end("Not found");
+// API do painel: OAuth do Discord + permissões do servidor + persistência no MongoDB.
+const PANEL_ORIGINS = (process.env.PANEL_ORIGINS || "https://yukina-6uo.pages.dev").split(",").map(v => v.trim()).filter(Boolean);
+const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
+const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
+let settingsMongoClient = null;
+let settingsCollection = null;
+
+async function getSettingsCollection() {
+  if (settingsCollection) return settingsCollection;
+  if (!MONGODB_URI) throw new Error("MONGODB_URI não está configurada no Render.");
+  settingsMongoClient = settingsMongoClient || new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+  await settingsMongoClient.connect();
+  settingsCollection = settingsMongoClient.db(MONGODB_DB).collection("guild_settings");
+  await settingsCollection.createIndex({ guildId: 1 }, { unique: true });
+  return settingsCollection;
+}
+function sendJson(res, status, data) {
+  res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+  res.end(JSON.stringify(data));
+}
+function readBody(req) {
+  return new Promise((resolve, reject) => {
+    let body = "";
+    req.on("data", chunk => { body += chunk; if (body.length > 100000) reject(new Error("Corpo da requisição muito grande.")); });
+    req.on("end", () => { try { resolve(body ? JSON.parse(body) : {}); } catch { reject(new Error("JSON inválido.")); } });
+    req.on("error", reject);
+  });
+}
+async function authorizePanel(req, guildId) {
+  const auth = String(req.headers.authorization || "");
+  const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!accessToken) throw Object.assign(new Error("Entre com o Discord novamente."), { status: 401 });
+  const [userRes, guildsRes] = await Promise.all([
+    fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken } }),
+    fetch("https://discord.com/api/users/@me/guilds", { headers: { Authorization: "Bearer " + accessToken } })
+  ]);
+  if (!userRes.ok || !guildsRes.ok) throw Object.assign(new Error("Sua sessão do Discord expirou. Entre novamente."), { status: 401 });
+  const user = await userRes.json();
+  const guilds = await guildsRes.json();
+  const guild = Array.isArray(guilds) ? guilds.find(g => g.id === guildId) : null;
+  if (!guild) throw Object.assign(new Error("Você não tem acesso a este servidor."), { status: 403 });
+  const permissions = BigInt(guild.permissions || "0");
+  if ((permissions & 8n) === 0n && (permissions & 32n) === 0n && guild.owner !== true) {
+    throw Object.assign(new Error("É necessário ter Administrador ou Gerenciar servidor."), { status: 403 });
   }
-});
-server.listen(port, "0.0.0.0", () => console.log(`Health endpoint ativo na porta ${port}`));
+  const botGuild = client.guilds.cache.get(guildId);
+  if (!botGuild) throw Object.assign(new Error("A Yukina ainda não está neste servidor. Adicione o bot e tente novamente."), { status: 409 });
+  return { user, guild: botGuild };
+}
+async function panelApi(req, res, url) {
+  const origin = String(req.headers.origin || "");
+  if (origin && PANEL_ORIGINS.includes(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS");
+  if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
+  if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
+  const match = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})(?:\/(resources|settings))?$/);
+  if (!match) return sendJson(res, 404, { detail: "Rota não encontrada." });
+  const guildId = match[1], section = match[2] || "resources";
+  try {
+    const { guild } = await authorizePanel(req, guildId);
+    if (section === "resources" && req.method === "GET") {
+      await guild.roles.fetch();
+      await guild.channels.fetch();
+      return sendJson(res, 200, {
+        guild: { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }) },
+        roles: [...guild.roles.cache.values()].filter(r => r.id !== guild.id && !r.managed).sort((a,b) => b.position-a.position).map(r => ({ id:r.id, name:r.name, color:r.hexColor, position:r.position })),
+        channels: [...guild.channels.cache.values()].filter(ch => ch.type !== ChannelType.GuildCategory).sort((a,b) => (a.rawPosition||0)-(b.rawPosition||0)).map(ch => ({ id:ch.id, name:ch.name, type:ch.type, parentId:ch.parentId, parentName:ch.parent?.name || null })),
+        categories: [...guild.channels.cache.values()].filter(ch => ch.type === ChannelType.GuildCategory).sort((a,b)=>a.rawPosition-b.rawPosition).map(ch=>({id:ch.id,name:ch.name}))
+      });
+    }
+    if (section !== "settings") return sendJson(res, 404, { detail: "Rota não encontrada." });
+    const collection = await getSettingsCollection();
+    if (req.method === "GET") {
+      const doc = await collection.findOne({ guildId });
+      return sendJson(res, 200, { settings: doc?.settings || {}, updatedAt: doc?.updatedAt || null });
+    }
+    if (req.method === "PUT") {
+      const body = await readBody(req);
+      const settings = body && body.settings && typeof body.settings === "object" && !Array.isArray(body.settings) ? body.settings : body;
+      const clean = {};
+      for (const [key, value] of Object.entries(settings)) {
+        if (!/^[a-zA-Z0-9_-]{1,80}$/.test(key)) continue;
+        if (typeof value === "string") clean[key] = value.slice(0, 2000);
+        else if (typeof value === "number" && Number.isFinite(value)) clean[key] = value;
+        else if (typeof value === "boolean" || value === null) clean[key] = value;
+        else if (Array.isArray(value)) clean[key] = value.slice(0, 100);
+        else if (value && typeof value === "object") clean[key] = value;
+      }
+      const updatedAt = new Date();
+      await collection.updateOne({ guildId }, { $set: { guildId, guildName: guild.name, settings: clean, updatedAt, updatedBy: null } }, { upsert: true });
+      return sendJson(res, 200, { ok: true, guildId, settings: clean, updatedAt });
+    }
+    if (req.method === "DELETE") {
+      await collection.deleteOne({ guildId });
+      return sendJson(res, 200, { ok: true, reset: true });
+    }
+    return sendJson(res, 405, { detail: "Método não permitido." });
+  } catch (error) {
+    console.error("[API painel]", error.message || error);
+    return sendJson(res, error.status || (String(error.message).includes("MONGODB_URI") ? 503 : 500), { detail: error.message || "Erro interno da API." });
+  }
+}
+const port = Number(process.env.PORT || 10000);
+const server = http.createServer((req, res) => panelApi(req, res, new URL(req.url, "http://localhost")).catch(error => {
+  console.error("[API painel]", error);
+  if (!res.headersSent) sendJson(res, 500, { detail: "Erro interno da API." }); else res.end();
+}));
+server.listen(port, "0.0.0.0", () => console.log(`API do painel e health endpoint ativos na porta ${port}`));
 
 // Inicialização centralizada do cliente Discord.
 let discordReady = false;
