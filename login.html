@@ -21,6 +21,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
 .note{border-top:1px solid #d7eaff16;margin-top:25px;padding-top:17px;font-size:11px;line-height:1.65;color:#8194ae}.spark{color:#c9c9ff;font-size:14px}
 @media(prefers-reduced-motion:no-preference){.card{animation:rise .55s ease-out both}@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}}
 </style>
+<script src="./api-config.js"></script>
 <script src="./tema.js" defer></script>
 </head>
 <body>
@@ -37,6 +38,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
 (() => {
   // Configure o Client ID público no portal de desenvolvedores do Discord.
   const CLIENT_ID = "1561485997277970514";
+  const API_BASE = String(window.YUKINA_API_URL || "").replace(/\\/$/, "");
   const REDIRECT_URI = "https://yukina-6uo.pages.dev/login.html";
   const status = document.getElementById("status");
   const button = document.getElementById("loginButton");
@@ -102,19 +104,14 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
     button.disabled = true;
     status.textContent = "Validando sua conta…";
     try {
-      const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+      if (!API_BASE) throw new Error("A URL da API do Render não está configurada no painel.");
+      const tokenResponse = await fetch(API_BASE + "/api/oauth/token", {
         method: "POST",
-        headers: {"Content-Type":"application/x-www-form-urlencoded"},
-        body: new URLSearchParams({
-          client_id: CLIENT_ID,
-          grant_type: "authorization_code",
-          code,
-          redirect_uri: REDIRECT_URI,
-          code_verifier: verifier
-        })
+        headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({ code, code_verifier: verifier, redirect_uri: REDIRECT_URI })
       });
-      const tokenData = await tokenResponse.json();
-      if (!tokenResponse.ok || !tokenData.access_token) throw new Error("O Discord não autorizou o acesso. Confira o Client ID e a URL de redirecionamento.");
+      const tokenData = await tokenResponse.json().catch(() => ({}));
+      if (!tokenResponse.ok || !tokenData.access_token) throw new Error(tokenData.detail || ("A API do Render recusou o login (HTTP " + tokenResponse.status + ")."));
       const userResponse = await fetch("https://discord.com/api/users/@me", {
         headers: {Authorization: "Bearer " + tokenData.access_token}
       });
