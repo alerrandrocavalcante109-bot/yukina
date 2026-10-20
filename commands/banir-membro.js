@@ -56,11 +56,11 @@ async function createRequest({ guild, moderator, targetId, reason, durationValue
   });
 }
 module.exports = {
-  data: new SlashCommandBuilder().setName("banir-membro").setDescription("Solicita confirmação antes de banir um membro.").setDMPermission(false)
+  data: new SlashCommandBuilder().setName("banirmembro").setDescription("Solicita confirmação antes de banir um membro.").setDMPermission(false)
     .addUserOption(o => o.setName("usuario").setDescription("Usuário que será banido").setRequired(true))
     .addStringOption(o => o.setName("motivo").setDescription("Motivo do banimento").setRequired(false).setMaxLength(400))
     .addStringOption(o => o.setName("duracao").setDescription("Opcional: 30m, 2h, 3d, 1semana; vazio = permanente").setRequired(false).setMaxLength(20)),
-  aliases: ["banir", "ban"],
+  aliases: ["banir", "ban", "membro", "banirmembro"],
   async execute(interaction) {
     return createRequest({ guild: interaction.guild, moderator: interaction.member, targetId: interaction.options.getUser("usuario", true).id,
       reason: interaction.options.getString("motivo") || "", durationValue: interaction.options.getString("duracao"), reply: payload => interaction.reply(payload) });
@@ -68,7 +68,7 @@ module.exports = {
   async prefixExecute(message) {
     if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
     const target = message.mentions.users.first();
-    if (!target) return message.reply("Uso: Ybanir-membro @usuario [duração opcional] [motivo]. Exemplo: Ybanir-membro @usuario 2d spam. Sem duração, o banimento é permanente.");
+    if (!target) return message.reply("Uso: Ybanirmembro @usuario [duração opcional] [motivo]. Exemplo: Ybanir-membro @usuario 2d spam. Sem duração, o banimento é permanente.");
     const content = message.content.replace(/^\s*[Yy](?:banir-membro|banir|ban)\b/i, "").trim();
     const withoutMention = content.replace(new RegExp("<@!?" + target.id + ">"), "").trim();
     const first = withoutMention.match(/^(\S+)/)?.[1] || "";
