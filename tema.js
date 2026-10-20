@@ -278,7 +278,17 @@
   const style = document.createElement("style");
   style.id = "yukina-functional-drawer-style";
   style.textContent = `
-    #yukina-drawer-toggle{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;flex:0 0 46px;border-radius:14px;border:1px solid #f4b8e8;background:linear-gradient(135deg,#ff8dcc,#b79aff);color:#251633;font-size:25px;font-weight:900;cursor:pointer;box-shadow:0 5px 18px #c56bff35;z-index:10002}
+    header.nav, header, .nav { position: relative; }
+    #yukina-drawer-toggle{
+      position:relative !important;
+      inset:auto !important;
+      margin:0 12px 0 0 !important;
+      order:-999 !important;
+      align-self:flex-start !important;
+      transform:none !important;
+    }
+    header.nav, header { display:flex; align-items:center; }
+        #yukina-drawer-toggle{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;flex:0 0 46px;border-radius:14px;border:1px solid #f4b8e8;background:linear-gradient(135deg,#ff8dcc,#b79aff);color:#251633;font-size:25px;font-weight:900;cursor:pointer;box-shadow:0 5px 18px #c56bff35;z-index:10002}
     #yukina-drawer-shade{position:fixed;inset:0;background:rgba(7,5,16,.58);backdrop-filter:blur(3px);z-index:10000;opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s}
     #yukina-drawer{position:fixed;z-index:10001;left:0;top:0;bottom:0;width:min(320px,86vw);padding:22px 14px calc(22px + env(safe-area-inset-bottom));overflow-y:auto;background:linear-gradient(180deg,#171029,#0d0a1b);border-right:1px solid #d7a8ff66;box-shadow:18px 0 55px #0006;transform:translateX(-105%);visibility:hidden;transition:transform .25s ease,visibility .25s;display:flex;flex-direction:column;gap:8px}
     body.yukina-drawer-open #yukina-drawer{transform:translateX(0);visibility:visible}
