@@ -46,6 +46,7 @@ function buildServerInfo(guild, owner) {
 
 async function replyWithInfo(interaction) {
   const guild = interaction.guild;
+  const invoker = interaction.user || interaction.author;
   if (!guild) {
     return interaction.reply({
       content: "❄️ Este comando só funciona dentro de um servidor.",
@@ -58,9 +59,9 @@ async function replyWithInfo(interaction) {
     await guild.channels.fetch();
     const owner = await guild.fetchOwner();
     return interaction.reply({
-      content: "👑 Dono do servidor: <@" + owner.id + ">",
+      content: "❄️ Informações solicitadas por <@" + invoker.id + ">.",
       embeds: [buildServerInfo(guild, owner)],
-      allowedMentions: { users: [owner.id], parse: [] }
+      allowedMentions: { users: [invoker.id], parse: [] }
     });
   } catch (error) {
     console.error("[Yukina /infoserver]", error);
@@ -86,6 +87,7 @@ module.exports = {
     if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
     const interactionLike = {
       guild: message.guild,
+      author: message.author,
       reply: payload => message.channel.send(payload),
       followUp: payload => message.channel.send(payload),
       deferred: false,
