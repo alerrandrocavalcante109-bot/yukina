@@ -92,8 +92,8 @@ module.exports = {
     const interactionLike = {
       guild: message.guild,
       author: message.author,
-      reply: payload => message.channel.send(payload),
-      followUp: payload => message.channel.send(payload),
+      reply: payload => message.reply(payload),
+      followUp: payload => message.reply(payload),
       deferred: false,
       replied: false
     };
