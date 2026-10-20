@@ -22,6 +22,12 @@
 #sideDrawer{z-index:1301!important;pointer-events:auto}
 #drawerBackdrop{z-index:1300!important;touch-action:pan-y}
 body.menu-open #sideDrawer{visibility:visible;pointer-events:auto}
+/* Cartão quadrado de servidor no topo do menu lateral */
+.drawer-server{display:flex;align-items:center;gap:12px;padding:12px;margin:4px 0 12px;border:1px solid rgba(167,216,240,.28);border-radius:14px;background:rgba(167,216,240,.08);min-width:0}
+.drawer-server img{display:block;width:56px;height:56px;flex:0 0 56px;object-fit:cover;border-radius:12px;background:#a7d8f0;border:1px solid rgba(255,255,255,.2)}
+.drawer-server-info{display:flex;flex-direction:column;gap:5px;min-width:0;color:#fff}
+.drawer-server-info strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.drawer-server-info span{font-size:11px;color:#c9c0d9}
 /* Correção de interação do menu no navegador móvel */
 #menuToggle.menu-toggle{display:flex!important;position:fixed!important;top:calc(12px + env(safe-area-inset-top))!important;left:12px!important;z-index:99999!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;touch-action:manipulation!important}
 #drawerBackdrop.drawer-backdrop{z-index:99997!important;pointer-events:none}
@@ -101,6 +107,10 @@ body .pill, body button:not(.server-item) {
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="side-drawer" id="sideDrawer" aria-label="Menu de sistemas">
  <div class="drawer-title">✦ Yukina · Sistemas</div>
+ <div class="drawer-server" id="drawerServer" aria-label="Servidor selecionado">
+   <img id="drawerServerIcon" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E">
+   <div class="drawer-server-info"><strong id="drawerServerName">Escolha um servidor</strong><span>Servidor selecionado</span></div>
+ </div>
  <button class="drawer-link" type="button" data-panel="xpRolesPanel"><span>❄️</span><span>Cargos por nível de XP</span></button>
  <button class="drawer-link" type="button" data-panel="timeRolesPanel"><span>🌙</span><span>Hierarquia temporal</span></button>
  <button class="drawer-link" type="button" data-panel="xpMultiplierPanel"><span>✨</span><span>Multiplicador de XP</span></button>
@@ -170,6 +180,14 @@ body .pill, body button:not(.server-item) {
  function key(id){return "yukina-system-settings:"+id}
  function lock(on){checks.forEach(c=>c.disabled=on);save.disabled=on;reset.disabled=on}
  async function api(path, options={}) { if(!API_BASE) throw new Error("A API ainda não foi configurada. Defina YUKINA_API_URL em api-config.js após publicar o serviço."); const access=token(); if(!access) throw new Error("Entre com o Discord primeiro."); const response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||("Falha na API (HTTP "+response.status+").")); return data; }\n async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));lock(false);notice.textContent="Yukina está presente no servidor e as configurações foram carregadas pela API.";}catch(e){notice.textContent=e.message;lock(true);}}
+ function updateDrawerServer(g){
+   const img=document.getElementById("drawerServerIcon"),name=document.getElementById("drawerServerName");
+   if(!img||!name)return;
+   if(!g){name.textContent="Escolha um servidor";img.alt="Ícone padrão";img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";return;}
+   name.textContent=g.name;img.alt="Ícone de "+g.name;
+   img.src=g.icon?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";
+   img.onerror=()=>{img.onerror=null;img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";};
+ }
  function selected(){return guilds.find(g=>g.id===select.value)||null}
  async function loadGuilds(){
    const access=token();
@@ -179,7 +197,7 @@ body .pill, body button:not(.server-item) {
      const res=await fetch("https://discord.com/api/users/@me/guilds",{headers:{Authorization:"Bearer "+access}});
      if(res.status===401||res.status===403)throw new Error("A autorização atual não permite listar servidores. Entre novamente para autorizar a permissão de servidores.");
      if(!res.ok)throw new Error("O Discord não conseguiu carregar os servidores (HTTP "+res.status+").");
-     const all=await res.json();guilds=all.filter(canManage);
+     const all=await res.json();guilds=all.filter(canManage);\n     updateDrawerServer(null);
      select.innerHTML='<option value="">Selecione um servidor…</option>';
      guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});const params=new URLSearchParams(location.search);const requested=params.get("guild");if(requested&&guilds.some(g=>g.id===requested)){select.value=requested;select.dispatchEvent(new Event("change"));}
      status.textContent=guilds.length?guilds.length+" servidor(es) com permissão administrativa encontrados.":"Nenhum servidor com permissão de administrador ou Gerenciar servidor foi encontrado.";
