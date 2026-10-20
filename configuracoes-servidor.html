@@ -15,7 +15,7 @@
 .rule-field{display:grid;gap:7px;min-width:0}.rule-field label{font-size:.84rem;color:#c8dff3}.rule-field input,.rule-field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px;background:#111d31;color:white;font:inherit}
 .rule-row .remove-rule{background:#321b35;border-color:#70416f;cursor:pointer}.save-draft{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:#1c1931;color:#e4dcff;font:inherit;cursor:pointer}
 .rule-note{font-size:.82rem;color:#a9bad0;margin:0}.section-intro{color:#c3d3e7}
-#yukinaToast{position:fixed;right:18px;bottom:18px;z-index:200000;max-width:min(420px,calc(100vw - 36px));padding:14px 18px;border:1px solid #39b86a;border-radius:14px;background:#123d27;color:#d8ffe5;box-shadow:0 12px 34px #0004;font-weight:750;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}#yukinaToast.show{opacity:1;transform:translateY(0)}#yukinaToast.error{border-color:#d86c78;background:#4b1d2a;color:#ffe1e5}
+#yukinaToast{position:fixed;left:50%;top:60%;right:auto;bottom:auto;z-index:200000;width:max-content;max-width:min(420px,calc(100vw - 32px));box-sizing:border-box;padding:14px 18px;border:1px solid #39b86a;border-radius:14px;background:#123d27;color:#d8ffe5;box-shadow:0 12px 34px #0004;font-weight:750;text-align:center;opacity:0;transform:translate(-50%,12px);pointer-events:none;transition:opacity .2s,transform .2s}#yukinaToast.show{opacity:1;transform:translate(-50%,0)}#yukinaToast.error{border-color:#d86c78;background:#4b1d2a;color:#ffe1e5}
 @media(max-width:620px){.rule-row{grid-template-columns:1fr}.rule-row .remove-rule{width:100%}}
 
 /* Garantir que o menu lateral fique acima do conteúdo e possa receber toques no celular. */
