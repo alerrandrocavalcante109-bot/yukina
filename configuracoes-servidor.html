@@ -28,6 +28,9 @@ body.menu-open #sideDrawer{visibility:visible;pointer-events:auto}
 .drawer-server-info{display:flex;flex-direction:column;gap:5px;min-width:0;color:#fff}
 .drawer-server-info strong{font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .drawer-server-info span{font-size:11px;color:#c9c0d9}
+.server-picker-toggle{display:flex;justify-content:space-between;align-items:center;width:100%;padding:12px 14px;margin:0 0 10px;border:1px solid #8edcff80;border-radius:12px;background:linear-gradient(120deg,#a7d8f0,#c8c4ff);color:#20142e;font-weight:800;cursor:pointer;touch-action:manipulation}
+.server-picker{margin:0 0 14px;padding:10px;border:1px solid #8edcff55;border-radius:14px;background:#0c1020;max-height:260px;overflow:auto}
+.server-picker[hidden]{display:none!important}.server-picker-heading{padding:4px 6px 9px;color:#a7d8f0;font-size:.75rem;font-weight:800;text-transform:uppercase}.server-picker-list{display:grid;gap:6px}.server-picker-item{display:flex;align-items:center;gap:10px;width:100%;padding:9px;border:1px solid #8edcff30;border-radius:10px;background:#17152a;color:#fff;text-align:left;cursor:pointer}.server-picker-item[aria-selected="true"]{border-color:#a7d8f0;background:#a7d8f022}.server-picker-item img{width:40px;height:40px;flex:0 0 40px;object-fit:cover;border-radius:8px}.server-picker-item span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.server-picker-empty{padding:10px;color:#c9c0d9;font-size:.85rem}
 /* Correção de interação do menu no navegador móvel */
 #menuToggle.menu-toggle{display:flex!important;position:fixed!important;top:calc(12px + env(safe-area-inset-top))!important;left:12px!important;z-index:99999!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important;touch-action:manipulation!important}
 #drawerBackdrop.drawer-backdrop{z-index:99997!important;pointer-events:none}
@@ -111,6 +114,8 @@ body .pill, body button:not(.server-item) {
    <img id="drawerServerIcon" alt="" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E">
    <div class="drawer-server-info"><strong id="drawerServerName">Escolha um servidor</strong><span>Servidor selecionado</span></div>
  </div>
+ <button class="server-picker-toggle" id="serverPickerToggle" type="button" aria-expanded="false" aria-controls="serverPicker"><span>Selecionar servidor</span><span id="serverPickerChevron">⌄</span></button>
+ <div class="server-picker" id="serverPicker" hidden><div class="server-picker-heading">Seus servidores</div><div class="server-picker-list" id="serverPickerList"><div class="server-picker-empty">Carregando servidores…</div></div></div>
  <button class="drawer-link" type="button" data-panel="xpRolesPanel"><span>❄️</span><span>Cargos por nível de XP</span></button>
  <button class="drawer-link" type="button" data-panel="timeRolesPanel"><span>🌙</span><span>Hierarquia temporal</span></button>
  <button class="drawer-link" type="button" data-panel="xpMultiplierPanel"><span>✨</span><span>Multiplicador de XP</span></button>
@@ -190,6 +195,17 @@ body .pill, body button:not(.server-item) {
    img.onerror=()=>{img.onerror=null;img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";};
  }
  function selected(){return guilds.find(g=>g.id===select.value)||null}
+ function renderServerPicker(){
+  const list=document.getElementById("serverPickerList");if(!list)return;list.replaceChildren();
+  if(!guilds.length){const empty=document.createElement("div");empty.className="server-picker-empty";empty.textContent="Nenhum servidor disponível. Entre com o Discord e atualize a lista.";list.appendChild(empty);return;}
+  guilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-picker-item";b.setAttribute("aria-selected",String(select.value===g.id));
+   const img=document.createElement("img");img.alt="";img.src=g.icon?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=96":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";
+   img.onerror=()=>{img.onerror=null;img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";};
+   const name=document.createElement("span");name.textContent=g.name;b.append(img,name);b.addEventListener("click",()=>{select.value=g.id;select.dispatchEvent(new Event("change"));setServerPicker(false);});list.appendChild(b);
+  });
+ }
+ function setServerPicker(open){const box=document.getElementById("serverPicker"),btn=document.getElementById("serverPickerToggle"),ch=document.getElementById("serverPickerChevron");if(!box||!btn)return;box.hidden=!open;btn.setAttribute("aria-expanded",String(open));if(ch)ch.textContent=open?"⌃":"⌄";if(open)renderServerPicker();}
+
  async function loadGuilds(){
    const access=token();
    if(!access){select.innerHTML='<option value="">Entre com o Discord primeiro</option>';status.textContent="Você ainda não entrou pelo Discord nesta aba.";notice.textContent="Faça login e autorize o acesso à lista de servidores (escopo guilds).";lock(true);return}
@@ -201,7 +217,8 @@ body .pill, body button:not(.server-item) {
      const all=await res.json();guilds=all.filter(canManage);
      updateDrawerServer(null);
      select.innerHTML='<option value="">Selecione um servidor…</option>';
-     guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});const params=new URLSearchParams(location.search);const requested=params.get("guild");if(requested&&guilds.some(g=>g.id===requested)){select.value=requested;select.dispatchEvent(new Event("change"));}
+     guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});
+     renderServerPicker();const params=new URLSearchParams(location.search);const requested=params.get("guild");if(requested&&guilds.some(g=>g.id===requested)){select.value=requested;select.dispatchEvent(new Event("change"));}
      status.textContent=guilds.length?guilds.length+" servidor(es) com permissão administrativa encontrados.":"Nenhum servidor com permissão de administrador ou Gerenciar servidor foi encontrado.";
      notice.textContent="A presença da Yukina precisa ser confirmada pelo serviço do bot. Esta página não finge que essa verificação ocorreu.";
    }catch(e){select.innerHTML='<option value="">Não foi possível carregar</option>';status.textContent=e.message||"Erro ao consultar o Discord.";notice.textContent="Se você acabou de alterar as permissões, entre novamente pelo Discord."}
@@ -209,6 +226,7 @@ body .pill, body button:not(.server-item) {
  select.addEventListener("change",()=>{
    const g=selected();
    updateDrawerServer(g);
+   renderServerPicker();
    if(!g){selectedName.textContent="As opções ficam bloqueadas até selecionar um servidor válido.";notice.textContent="Selecione um servidor.";lock(true);return}
    selectedName.textContent="Servidor selecionado: "+g.name;
    notice.textContent="Verificando permissões, presença da Yukina e configurações no backend…";
@@ -223,6 +241,8 @@ body .pill, body button:not(.server-item) {
  document.getElementById("reload").addEventListener("click",loadGuilds);
  lock(true);loadGuilds();
 
+ const pickerToggle=document.getElementById("serverPickerToggle");
+ if(pickerToggle)pickerToggle.addEventListener("click",()=>setServerPicker(pickerToggle.getAttribute("aria-expanded")!=="true"));
  // Menu lateral robusto: inicialização independente e suporte a toque/ponteiro.
  const menuToggle=document.getElementById("menuToggle");
  const backdrop=document.getElementById("drawerBackdrop");
