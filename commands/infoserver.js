@@ -87,6 +87,8 @@ module.exports = {
   },
   async prefixExecute(message) {
     if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
+    // Mostra o indicador nativo de digitação enquanto a Yukina consulta os dados.
+    await message.channel.sendTyping().catch(() => {});
     const interactionLike = {
       guild: message.guild,
       author: message.author,
