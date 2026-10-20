@@ -36,6 +36,39 @@ body textarea {
 body .pill, body button:not(.server-item) {
   text-shadow: none !important;
 }
+
+/* Yukina — seleção de servidores com identidade própria */
+:root{color-scheme:light;--line:rgba(177,143,235,.32);--pink:#ff8dcc;--purple:#b79aff;--ink:#30213f;--muted:#786984}
+body{
+  background:
+    radial-gradient(ellipse at 8% 2%,rgba(167,216,240,.55),transparent 36%),
+    radial-gradient(ellipse at 92% 12%,rgba(255,141,204,.28),transparent 34%),
+    linear-gradient(145deg,#f8f4ff 0%,#eee7ff 52%,#f4faff 100%) !important;
+  color:var(--ink)!important;
+}
+.wrap{width:min(760px,calc(100% - 28px));padding-bottom:38px}
+.top{border-bottom:1px solid rgba(177,143,235,.25);padding:18px 0}
+.brand{color:#30213f!important;display:inline-flex;align-items:center;gap:8px;text-shadow:none!important}
+.pill{background:rgba(255,255,255,.82)!important;color:#30213f!important;border:1px solid var(--line)!important;border-radius:999px!important;box-shadow:0 5px 18px rgba(103,78,137,.08)}
+.hero{margin:22px 0 18px;padding:26px 24px;border:1px solid rgba(177,143,235,.23);border-radius:24px;background:linear-gradient(130deg,rgba(255,255,255,.96),rgba(248,240,255,.92))!important;box-shadow:0 14px 38px rgba(103,78,137,.09)}
+.eyebrow{color:#8a67bd!important;letter-spacing:.17em}
+h1{color:#30213f!important;font-size:clamp(2rem,7vw,3rem);text-shadow:none!important}
+p{color:#756582!important;text-shadow:none!important}
+.panel{padding:22px!important;border:1px solid rgba(177,143,235,.35)!important;border-radius:26px!important;background:rgba(255,255,255,.88)!important;box-shadow:0 18px 46px rgba(103,78,137,.12)!important}
+.field{background:transparent!important;margin:0 0 18px!important}
+.field>label{font-weight:800;color:#514064!important}
+.server-list{background:transparent!important;gap:12px!important;margin:12px 0!important}
+.server-item{min-height:70px;display:flex;align-items:center;gap:12px;padding:17px 18px!important;border:1px solid rgba(177,143,235,.28)!important;border-radius:18px!important;background:linear-gradient(110deg,#fff,#f8f1ff)!important;color:#30213f!important;box-shadow:0 7px 20px rgba(103,78,137,.07)!important}
+.server-item:before{content:"❄";display:grid;place-items:center;flex:0 0 38px;width:38px;height:38px;border-radius:13px;background:linear-gradient(135deg,#d9f2ff,#f7d9f0);color:#7253a5;font-size:19px}
+.server-name{color:#30213f!important;font-weight:800!important}
+.server-action{color:#9b5fba!important;font-weight:800}
+.server-item:hover{transform:translateY(-2px);border-color:#d6a5e8!important;box-shadow:0 11px 25px rgba(160,105,191,.15)!important}
+button#reload{background:linear-gradient(115deg,#ff8dcc,#b79aff)!important;color:#2b183a!important;border:0!important;border-radius:14px!important;font-weight:850;box-shadow:0 8px 20px rgba(208,128,210,.22)}
+.row{gap:10px}
+.row .pill{display:inline-flex;align-items:center;justify-content:center;background:#30213f!important;color:#fff!important;border-color:#30213f!important;border-radius:14px!important}
+.status{color:#705780!important}
+.muted{color:#83738e!important}
+@media(max-width:600px){.hero{padding:23px 19px;border-radius:21px}.panel{padding:17px!important}.server-item{padding:14px!important}.top{align-items:center}}
 </style></head><body><div class="wrap"><header class="top"><a class="brand" href="./index.html">✦ YUKINA</a><a class="pill" href="./index.html">← Página inicial</a></header>
 <section class="hero"><div class="eyebrow">Painel administrativo</div><h1>Selecionar servidor</h1><p>Escolha um servidor para abrir a página de configurações exclusiva dele.</p></section>
 <section class="panel"><div class="field"><label>Seus servidores com permissão de gerenciamento</label><div id="serverList" class="server-list" aria-live="polite"><p class="muted">Carregando servidores…</p></div></div><div class="row"><button id="reload" type="button">Atualizar lista</button><a class="pill" href="./login.html?return=./configuracoes.html">Entrar / atualizar permissões</a></div><p id="status" class="status" role="status" aria-live="polite"></p><p class="muted">A lista mostra somente servidores em que sua conta tem permissão de administrador ou “Gerenciar servidor”.</p></section></div>
