@@ -9,6 +9,13 @@
 :root{color-scheme:dark;--bg:#0b0712;--panel:#171020;--line:#8edcff45;--pink:#a7d8f0;--purple:#c8c4ff;--muted:#cbbdd8}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 10% 0%,#173d5b 0,transparent 36%),radial-gradient(ellipse at 90% 15%,#29244f 0,transparent 30%),var(--bg);font-family:Inter,system-ui,sans-serif;color:#fff}
 .wrap{width:min(960px,calc(100% - 28px));margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:20px 0;border-bottom:1px solid var(--line)}a{color:#c8eaff;text-decoration:none}.brand{font-weight:900;letter-spacing:.12em}.pill,button,select{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:#111d31;color:white;font:inherit}.hero{padding:36px 0 22px}.eyebrow{color:#a7d8f0;text-transform:uppercase;letter-spacing:.16em;font-size:.75rem;font-weight:800}h1{font-size:clamp(2rem,7vw,3.4rem);letter-spacing:-.05em;margin:9px 0}p{color:#c3d3e7;line-height:1.65}.panel{background:#130c20;border:1px solid var(--line);border-radius:20px;padding:22px;margin:16px 0;box-shadow:0 18px 50px #0003}.field{display:grid;gap:8px;margin:16px 0}select{width:100%;background:#211431}.btn{cursor:pointer;background:linear-gradient(115deg,var(--pink),var(--purple));color:#24102e;font-weight:850;border:0}.btn:disabled{opacity:.45;cursor:not-allowed}.status{font-size:.9rem;color:#e9d5ff;min-height:24px}.muted{font-size:.85rem;color:var(--muted)}.setting{display:flex;gap:12px;align-items:flex-start;padding:14px 0;border-bottom:1px solid #ffffff15}.setting input{margin-top:5px;accent-color:#c084fc;width:18px;height:18px}.setting strong{display:block}.setting span{display:block;color:#a9bad0;font-size:.88rem;margin-top:4px}.empty{padding:14px;border:1px dashed #c084fc66;border-radius:12px;color:#d9cce6}.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}@media(max-width:600px){.panel{padding:16px}.top{align-items:flex-start}}
+
+.rule-list{display:grid;gap:12px;margin:18px 0}
+.rule-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:10px;align-items:end;padding:14px;border:1px solid #8edcff35;border-radius:14px;background:#0b1020}
+.rule-field{display:grid;gap:7px;min-width:0}.rule-field label{font-size:.84rem;color:#c8dff3}.rule-field input,.rule-field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px;background:#111d31;color:white;font:inherit}
+.rule-row .remove-rule{background:#321b35;border-color:#70416f;cursor:pointer}.save-draft{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:#1c1931;color:#e4dcff;font:inherit;cursor:pointer}
+.rule-note{font-size:.82rem;color:#a9bad0;margin:0}.section-intro{color:#c3d3e7}
+@media(max-width:620px){.rule-row{grid-template-columns:1fr}.rule-row .remove-rule{width:100%}}
 </style>
 </head>
 <body><div class="wrap">
@@ -31,7 +38,29 @@
 <div class="row"><button class="btn" id="save" type="button" disabled>Salvar preferências</button><button id="reset" type="button" disabled>Restaurar padrão</button></div>
 <p class="muted">As preferências são salvas pela API da Yukina no servidor, por servidor Discord. A aplicação efetiva dessas opções aos comandos do bot precisa ser implementada separadamente.</p>
 </section>
-<footer class="muted" style="padding:12px 0 36px">Yukina • Acesso limitado por permissões do Discord</footer>
+
+<section class="panel" id="xpRolesPanel">
+ <div class="eyebrow">Progressão • 01</div><h2>❄️ Cargos por nível de XP</h2>
+ <p>Defina qual cargo a Yukina deverá entregar quando um membro alcançar cada nível. Cada regra é independente por servidor.</p>
+ <div id="xpRules" class="rule-list"></div>
+ <div class="row"><button type="button" class="btn" id="addXpRule">＋ Adicionar regra de nível</button><button type="button" class="save-draft" data-system="XP por nível">Salvar configuração</button></div>
+ <p class="muted">Interface em preparação: as regras ainda não são enviadas nem aplicadas pelo bot.</p>
+</section>
+<section class="panel" id="timeRolesPanel">
+ <div class="eyebrow">Permanência • 02</div><h2>🌙 Hierarquia temporal</h2>
+ <p>Configure cargos por tempo de permanência no servidor. Exemplo: 3 dias, 15 dias, 30 dias ou 6 meses.</p>
+ <div id="timeRules" class="rule-list"></div>
+ <div class="row"><button type="button" class="btn" id="addTimeRule">＋ Adicionar tempo</button><button type="button" class="save-draft" data-system="Hierarquia temporal">Salvar configuração</button></div>
+ <p class="muted">O tempo será contado a partir da entrada do membro no servidor, separado dos níveis de XP.</p>
+</section>
+<section class="panel" id="xpMultiplierPanel">
+ <div class="eyebrow">Personalização • 03</div><h2>✨ Multiplicador de XP por cargo</h2>
+ <p>Faça cargos específicos receberem mais XP por mensagem. O multiplicador será aplicado ao ganho normal de XP.</p>
+ <div id="multiplierRules" class="rule-list"></div>
+ <div class="row"><button type="button" class="btn" id="addMultiplierRule">＋ Adicionar multiplicador</button><button type="button" class="save-draft" data-system="Multiplicador de XP por cargo">Salvar configuração</button></div>
+ <p class="muted">Exemplos: apoiador ×1,5; booster ×2; equipe ×1,2. O limite e a aplicação real serão definidos na etapa de integração.</p>
+</section>
+\n<footer class="muted" style="padding:12px 0 36px">Yukina • Acesso limitado por permissões do Discord</footer>
 </div>
 <script>
 (() => {
