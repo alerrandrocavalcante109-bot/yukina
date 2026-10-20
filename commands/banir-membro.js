@@ -68,7 +68,7 @@ module.exports = {
   async prefixExecute(message) {
     if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
     const target = message.mentions.users.first();
-    if (!target) return message.reply("Uso: Ybanirmembro @usuario [duração opcional] [motivo]. Exemplo: Ybanir-membro @usuario 2d spam. Sem duração, o banimento é permanente.");
+    if (!target) return message.reply("Uso: Ymembro @usuario [duração opcional] [motivo]. Exemplo: Ymembro @usuario 2d spam. Sem duração, o banimento é permanente.");
     const content = message.content.replace(/^\s*[Yy](?:banir-membro|banir|ban)\b/i, "").trim();
     const withoutMention = content.replace(new RegExp("<@!?" + target.id + ">"), "").trim();
     const first = withoutMention.match(/^(\S+)/)?.[1] || "";
