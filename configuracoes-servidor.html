@@ -28,7 +28,7 @@ body.menu-open .side-drawer{transform:translateX(0)}body.menu-open .drawer-backd
 .drawer-link span:first-child{font-size:1.2rem;width:26px;text-align:center}
 .drawer-divider{height:1px;background:#8edcff2e;margin:16px 4px}
 body.menu-open{overflow:hidden}
-.progress-panel{display:none}.progress-panel.active{display:block;animation:panel-in .22s ease-out}
+.progress-panel{display:none!important}.progress-panel.active{display:block!important;animation:panel-in .22s ease-out}
 @keyframes panel-in{from{opacity:.3;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 .top{padding-left:52px}
 @media(prefers-reduced-motion:reduce){.side-drawer,.drawer-backdrop,.progress-panel.active{transition:none;animation:none}}
@@ -152,7 +152,9 @@ body.menu-open{overflow:hidden}
    document.querySelectorAll(".progress-panel").forEach(p=>p.classList.toggle("active",p.id===link.dataset.panel));
    document.querySelectorAll(".drawer-link[data-panel]").forEach(a=>a.classList.toggle("active",a===link));
    setMenu(false);
-   const target=document.getElementById(link.dataset.panel);if(target)window.scrollTo({top:Math.max(0,target.getBoundingClientRect().top+window.scrollY-18),behavior:"smooth"});
+   const target=document.getElementById(link.dataset.panel);
+   if(target){window.scrollTo({top:0,behavior:"smooth"});target.setAttribute("tabindex","-1");target.focus({preventScroll:true});}
+
  }));
  document.addEventListener("touchstart",e=>{if(!e.touches.length)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;},{passive:true});
  document.addEventListener("touchend",e=>{
