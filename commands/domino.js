@@ -26,7 +26,7 @@ async function start(channel, starterId, mentions) {
   const hands={};
   const perPlayer=ids.length===2?7:ids.length===3?6:5;
   ids.forEach((id,i)=>hands[id]=shuffled.slice(i*perPlayer,(i+1)*perPlayer));
-  const game={id:Math.random().toString(36).slice(2,9),guildId:channel.guild.id,channelId:channel.id,players:ids,hands,board:[],turn:ids[0],turnIndex:0,passes:0,startedBy:starterId};
+  const game={id:Math.random().toString(36).slice(2,9),guildId:channel.guild.id,channelId:channel.id,players:ids,hands,board:[],turn:ids[0],turnIndex:0,passes:0,startedBy:starterId,messageId:null};
   games.set(game.id,game);
   const msg=await channel.send({content:ids.map(id=>`<@${id}>`).join(" ")+" — a partida começou!",embeds:[boardEmbed(game)],components:[controls(game)],allowedMentions:{users:ids}});
   game.messageId=msg.id;
@@ -61,7 +61,7 @@ async function playTile(interaction,game,tileId) {
     return;
   }
   game.turnIndex=(game.turnIndex+1)%game.players.length;game.turn=game.players[game.turnIndex];
-  await interaction.update({content:`🁫 <@${interaction.user.id}> jogou ${tileText(placed)}.`,embeds:[boardEmbed(game)],components:[controls(game)]});
+  await interaction.deferUpdate();\n  const channel=await interaction.client.channels.fetch(game.channelId);\n  const boardMessage=await channel.messages.fetch(game.messageId);\n  await boardMessage.edit({content:`🁫 <@${interaction.user.id}> jogou ${tileText(placed)}.`,embeds:[boardEmbed(game)],components:[controls(game)]});\n  await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,ephemeral:true}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
   const id=interaction.customId||"";
