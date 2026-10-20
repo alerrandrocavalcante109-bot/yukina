@@ -881,13 +881,45 @@ async function panelApi(req, res, url) {
   try {
     const { guild } = await authorizePanel(req, guildId);
     if (section === "resources" && req.method === "GET") {
-      await guild.roles.fetch();
-      await guild.channels.fetch();
+      // Buscar cargos e canais separadamente: uma falha ao listar canais não deve
+      // impedir o painel de receber os cargos do servidor.
+      let rolesFetchError = null;
+      let channelsFetchError = null;
+      try {
+        await guild.roles.fetch();
+      } catch (error) {
+        rolesFetchError = error;
+        console.error("[API painel] Falha ao buscar cargos do Discord:", { guildId, code: error.code, message: error.message });
+      }
+      try {
+        await guild.channels.fetch();
+      } catch (error) {
+        channelsFetchError = error;
+        console.error("[API painel] Falha ao buscar canais do Discord:", { guildId, code: error.code, message: error.message });
+      }
+      const roles = [...guild.roles.cache.values()]
+        .filter(role => role.id !== guild.id && !role.managed)
+        .sort((a, b) => b.position - a.position)
+        .map(role => ({ id: role.id, name: role.name, color: role.hexColor, position: role.position }));
+      const channels = [...guild.channels.cache.values()]
+        .filter(channel => channel.type !== ChannelType.GuildCategory)
+        .sort((a, b) => (a.rawPosition || 0) - (b.rawPosition || 0))
+        .map(channel => ({ id: channel.id, name: channel.name, type: channel.type, parentId: channel.parentId, parentName: channel.parent?.name || null }));
+      const categories = [...guild.channels.cache.values()]
+        .filter(channel => channel.type === ChannelType.GuildCategory)
+        .sort((a, b) => a.rawPosition - b.rawPosition)
+        .map(channel => ({ id: channel.id, name: channel.name }));
       return sendJson(res, 200, {
         guild: { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }) },
-        roles: [...guild.roles.cache.values()].filter(r => r.id !== guild.id && !r.managed).sort((a,b) => b.position-a.position).map(r => ({ id:r.id, name:r.name, color:r.hexColor, position:r.position })),
-        channels: [...guild.channels.cache.values()].filter(ch => ch.type !== ChannelType.GuildCategory).sort((a,b) => (a.rawPosition||0)-(b.rawPosition||0)).map(ch => ({ id:ch.id, name:ch.name, type:ch.type, parentId:ch.parentId, parentName:ch.parent?.name || null })),
-        categories: [...guild.channels.cache.values()].filter(ch => ch.type === ChannelType.GuildCategory).sort((a,b)=>a.rawPosition-b.rawPosition).map(ch=>({id:ch.id,name:ch.name}))
+        roles,
+        channels,
+        categories,
+        diagnostics: {
+          rolesFetchFailed: Boolean(rolesFetchError),
+          channelsFetchFailed: Boolean(channelsFetchError),
+          roleCount: roles.length,
+          channelCount: channels.length
+        }
       });
     }
     if (section !== "settings") return sendJson(res, 404, { detail: "Rota não encontrada." });
