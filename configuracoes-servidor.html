@@ -356,7 +356,7 @@ body .pill, body button:not(.server-item) {
      else {input=document.createElement("input");input.type=field.type||"number";if(field.min!==undefined)input.min=field.min;if(field.step!==undefined)input.step=field.step;if(field.placeholder)input.placeholder=field.placeholder;if(defaults[field.key]!==undefined)input.value=defaults[field.key];}
      input.setAttribute("aria-label",field.label);wrap.appendChild(input);row.appendChild(wrap);
    });
-   const remove=document.createElement("button");remove.type="button";remove.className="remove-rule";remove.textContent="Remover";remove.addEventListener("click",()=>row.remove());row.appendChild(remove);container.appendChild(row);if(typeof fillRoleSelects==="function")fillRoleSelects();
+   if(containerId!=="multiplierRules"){const remove=document.createElement("button");remove.type="button";remove.className="remove-rule";remove.textContent="Remover";remove.addEventListener("click",()=>row.remove());row.appendChild(remove);}container.appendChild(row);if(typeof fillRoleSelects==="function")fillRoleSelects();
  }
  const xpFields=[{key:"level",label:"Nível necessário",type:"number",min:1,step:1,placeholder:"Ex.: 10"},{key:"role",label:"Cargo entregue",type:"role"}];
  const timeFields=[{key:"days",label:"Tempo de permanência (dias)",type:"number",min:1,step:1,placeholder:"Ex.: 30"},{key:"role",label:"Cargo entregue",type:"role"}];
