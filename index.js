@@ -574,27 +574,32 @@ async function handleCountingMessage(message) {
       );
       const config = doc?.settings?.countingSystem;
       if (!config?.enabled || !config.channelId || config.channelId !== message.channel.id) return;
+
       const raw = String(message.content || "").trim();
       const expected = Math.max(0, Number(config.currentNumber) || 0) + 1;
-      const numeric = /^\d+$/.test(raw) ? Number(raw) : NaN;
+      const numeric = /^\\d+$/.test(raw) ? Number(raw) : NaN;
+      const repeatedUser = String(message.author.id) === String(config.lastUserId || "");
 
-      if (String(message.author.id) === String(config.lastUserId || "")) {
-        await message.delete().catch(() => {});
-        return;
-      }
-      if (!Number.isSafeInteger(numeric) || numeric !== expected) {
-        await message.delete().catch(() => {});
+      if (repeatedUser || !Number.isSafeInteger(numeric) || numeric !== expected) {
+        await message.react("❌").catch(() => {});
         await collection.updateOne(
           { guildId: message.guild.id },
           { $set: { "settings.countingSystem.currentNumber": 0, "settings.countingSystem.lastUserId": "" } }
         );
-        await message.channel.send({ content: "❌ Contagem incorreta! A sequência voltou ao início. O próximo número é **1**.", allowedMentions: { parse: [] } }).catch(() => {});
+        await message.channel.send({
+          content: repeatedUser
+            ? "❌ Você não pode contar duas vezes seguidas! A sequência voltou ao início. O próximo número é **1**."
+            : "❌ Contagem incorreta! A sequência voltou ao início. O próximo número é **1**.",
+          allowedMentions: { parse: [] }
+        }).catch(() => {});
         return;
       }
+
       await collection.updateOne(
         { guildId: message.guild.id },
         { $set: { "settings.countingSystem.currentNumber": numeric, "settings.countingSystem.lastUserId": message.author.id } }
       );
+      await message.react("✅").catch(() => {});
     } catch (error) {
       console.error("[Contagem] Não foi possível processar a mensagem:", error.message || error);
     }
