@@ -90,11 +90,13 @@ module.exports = {
         return interaction.editReply("❄️ Arquivo enviado! (" + buffer.length.toLocaleString("pt-BR") + " bytes)");
       }
 
-      await interaction.channel.send(
-        useEmbed
-          ? { embeds: [yukinaEmbed(text.slice(0, 4096))], allowedMentions: { parse: [] } }
-          : { content: text, allowedMentions: { parse: [] } }
-      );
+      if (useEmbed) {
+        await interaction.channel.send({ embeds: [yukinaEmbed(text.slice(0, 4096))], allowedMentions: { parse: [] } });
+      } else {
+        for (let offset = 0; offset < text.length; offset += 2000) {
+          await interaction.channel.send({ content: text.slice(offset, offset + 2000), allowedMentions: { parse: [] } });
+        }
+      }
       return interaction.reply({
         content: useEmbed && text.length > 4096
           ? "❄️ Embed enviado; o texto foi limitado a 4.096 caracteres pelo limite do Discord."
