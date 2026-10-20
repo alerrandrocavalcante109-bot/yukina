@@ -32,6 +32,40 @@ body.menu-open{overflow:hidden}
 @keyframes panel-in{from{opacity:.3;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
 .top{padding-left:52px}
 @media(prefers-reduced-motion:reduce){.side-drawer,.drawer-backdrop,.progress-panel.active{transition:none;animation:none}}
+
+/* Identidade clara do painel: remove os blocos pretos aplicados pelo tema global. */
+body .hero,
+body section.hero,
+body .panel,
+body section.panel,
+body .card,
+body .field,
+body .server-list {
+  background: rgba(255,255,255,.88) !important;
+  background-color: rgba(255,255,255,.88) !important;
+  color: #251633 !important;
+  border-color: rgba(167,216,240,.72) !important;
+  box-shadow: 0 12px 34px rgba(50,35,80,.10) !important;
+}
+body .hero h1, body .hero p, body .hero .eyebrow,
+body .panel h2, body .panel h3, body .panel p,
+body .panel label, body .field label,
+body .muted, body .status {
+  color: #342442 !important;
+  text-shadow: none !important;
+}
+body .server-item,
+body select,
+body input,
+body textarea {
+  background: #f7f2ff !important;
+  background-color: #f7f2ff !important;
+  color: #251633 !important;
+  border-color: #d8c5eb !important;
+}
+body .pill, body button:not(.server-item) {
+  text-shadow: none !important;
+}
 </style>
 </head>
 <body>
