@@ -13,7 +13,14 @@
 .rule-list{display:grid;gap:12px;margin:18px 0}
 .rule-row{display:grid;grid-template-columns:repeat(2,minmax(0,1fr)) auto;gap:10px;align-items:end;padding:14px;border:1px solid #8edcff35;border-radius:14px;background:#0b1020}
 /* O formulário de Cargos por nível de XP usa cartões claros. */
-#xpRules .rule-row{background:#fff;border-color:#d8dce5;color:#30213f}
+#xpRules .rule-row{background:transparent;border:0;border-radius:0;padding:0;color:#30213f;box-shadow:none}
+#xpRolesPanel{background:#e2e2e2}
+#xpRolesPanel #xpRules .rule-field label{color:#5d526b}
+#xpRolesPanel #xpRules .rule-field input,#xpRolesPanel #xpRules .rule-field select{background:#f7f2ff;color:#30213f;border-color:#d7cbe8}
+#xpRolesPanel #savedXpRules .rule-row{background:transparent;border:0;border-bottom:1px solid #30213f20;border-radius:0;padding:12px 0;box-shadow:none}
+#xpRolesPanel #xpUnsaved{background:transparent!important;border:0!important;padding:0!important;box-shadow:none!important}
+#xpRolesPanel #xpUnsaved .row{margin-top:10px}
+#xpRolesPanel #xpRules .rule-field input,#xpRolesPanel #xpRules .rule-field select{box-shadow:none}
 #xpRules .rule-field label{color:#5d526b}
 #xpRules .rule-field input,#xpRules .rule-field select{background:#f7f2ff;color:#30213f;border-color:#d7cbe8}
 #xpRules .rule-field select option{background:#fff;color:#30213f}
