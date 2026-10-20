@@ -210,9 +210,12 @@ body .pill, body button:not(.server-item) {
  <div class="eyebrow">Progressão • 01</div><h2>❄️ Cargos por nível de XP</h2>
  <p>Escolha o nível necessário e o cargo que será entregue quando um membro alcançar esse nível. Adicione as regras desejadas e salve a configuração.</p>
  <div id="xpRules" class="rule-list"></div>
- <div class="row"><button type="button" class="btn" id="addXpRule">＋ Adicionar regra de nível</button><button type="button" class="save-draft" data-system="XP por nível">Salvar configuração</button></div>
- <h3>Cargos por nível adicionados</h3>
- <p class="muted">Confira as regras acima antes de salvar. Cada regra define um nível e o cargo correspondente.</p>
+ <div class="row"><button type="button" class="btn" id="addXpRule">＋ Adicionar regra de nível</button></div>
+ <div id="xpUnsaved" class="panel" hidden style="margin:14px 0;padding:14px;border-color:#e7bd75!important">
+  <strong id="xpWarningText">⚠️ Você tem alterações não salvas.</strong>
+  <div class="row" style="margin-top:10px"><button type="button" id="resetXpRules">Redefinir</button><button type="button" class="btn" id="saveXpRules">Salvar</button></div>
+ </div>
+ <h3>Cargos por nível adicionados</h3><div id="savedXpRules" class="rule-list"></div>
  <p class="muted">A entrega automática dos cargos depende da integração efetiva desse sistema com o bot.</p>
 </section>
 <section class="panel progress-panel" id="timeRolesPanel">
@@ -248,6 +251,8 @@ body .pill, body button:not(.server-item) {
  const checks = Array.from(document.querySelectorAll("[data-setting]"));
  let guilds = [];
  let serverResources = { roles: [], channels: [], categories: [] };
+ let xpSaved = [];
+ let xpOriginal = [];
  let multiplierSaved = [];
  let multiplierOriginal = [];
  let editingMultiplierIndex = -1;
@@ -259,7 +264,7 @@ body .pill, body button:not(.server-item) {
  function key(id){return "yukina-system-settings:"+id}
  function lock(on){checks.forEach(c=>c.disabled=on);save.disabled=on;reset.disabled=on}
  async function api(path, options={}) { if(!API_BASE) throw new Error("A API ainda não foi configurada. Defina YUKINA_API_URL em api-config.js após publicar o serviço."); let access=token(); if(!access) throw new Error("Entre com o Discord primeiro."); let response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}}); if(response.status===401 && await refreshDiscordToken()){access=token();response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}});} const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||("Falha na API (HTTP "+response.status+").")); return data; }
- async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));Object.entries(systemKeys).forEach(([label,containerId])=>{if(label==="Multiplicador de XP por cargo"){multiplierSaved=Array.isArray(data.settings?.[containerId])?JSON.parse(JSON.stringify(data.settings[containerId])):[];multiplierOriginal=JSON.parse(JSON.stringify(multiplierSaved));renderSavedMultipliers();updateMultiplierDirty();}else renderRules(containerId,data.settings?.[containerId]||[],label)});fillRoleSelects();lock(false);notice.textContent="Configurações carregadas do MongoDB para este servidor.";}catch(e){notice.textContent=e.message;lock(true);}}
+ async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));Object.entries(systemKeys).forEach(([label,containerId])=>{if(label==="XP por nível"){xpSaved=Array.isArray(data.settings?.[containerId])?JSON.parse(JSON.stringify(data.settings[containerId])):[];xpOriginal=JSON.parse(JSON.stringify(xpSaved));renderRules(containerId,[{}],"XP por nível");renderSavedXpRules();updateXpDirty();}else if(label==="Multiplicador de XP por cargo"){multiplierSaved=Array.isArray(data.settings?.[containerId])?JSON.parse(JSON.stringify(data.settings[containerId])):[];multiplierOriginal=JSON.parse(JSON.stringify(multiplierSaved));renderSavedMultipliers();updateMultiplierDirty();}else renderRules(containerId,data.settings?.[containerId]||[],label)});fillRoleSelects();lock(false);notice.textContent="Configurações carregadas do MongoDB para este servidor.";}catch(e){notice.textContent=e.message;lock(true);}}
  async function loadResources(id){
   const summary=document.getElementById("resourceSummary"),cs=document.getElementById("channelSelect"),cats=document.getElementById("categorySelect");summary.textContent="Carregando cargos, canais e categorias…";
   try{serverResources=await api("/api/guilds/"+encodeURIComponent(id)+"/resources");fillSelect(cs,serverResources.channels.map(x=>({id:x.id,name:(x.parentName?"# "+x.parentName+" / ":"")+x.name})),"Selecione um canal");fillSelect(cats,serverResources.categories.map(x=>({id:x.id,name:x.name})),"Selecione uma categoria");summary.textContent=serverResources.roles.length+" cargos · "+serverResources.channels.length+" canais · "+serverResources.categories.length+" categorias carregados do Discord.";fillRoleSelects();}catch(e){summary.textContent=e.message;serverResources={roles:[],channels:[],categories:[]};}
@@ -382,7 +387,18 @@ body .pill, body button:not(.server-item) {
  const xpFields=[{key:"level",label:"Nível necessário",type:"number",min:1,step:1,placeholder:"Ex.: 10"},{key:"role",label:"Cargo entregue",type:"role"}];
  const timeFields=[{key:"days",label:"Tempo de permanência (dias)",type:"number",min:1,step:1,placeholder:"Ex.: 30"},{key:"role",label:"Cargo entregue",type:"role"}];
  const multiplierFields=[{key:"role",label:"Cargo que recebe o bônus",type:"role"},{key:"multiplier",label:"Multiplicador de XP",type:"number",min:0.1,step:0.1,placeholder:"Ex.: 2"}];
- document.getElementById("addXpRule").addEventListener("click",()=>addRule("xpRules",xpFields));
+ document.getElementById("addXpRule").addEventListener("click",()=>{
+   const row=document.querySelector("#xpRules .rule-row");if(!row){status.textContent="O formulário de cargos por nível não está disponível.";return;}
+   const level=Number(row.querySelector('input[aria-label="Nível necessário"]')?.value||0);
+   const role=row.querySelector('select[aria-label="Cargo entregue"]')?.value||"";
+   if(!Number.isInteger(level)||level<1||!role){status.textContent="Informe um nível válido e escolha o cargo que será entregue.";showToast("Informe o nível e selecione um cargo.",true);return;}
+   const item={level,role};const at=xpSaved.findIndex(x=>Number(x.level)===level);
+   if(at>=0)xpSaved[at]=item;else xpSaved.push(item);
+   xpSaved.sort((a,b)=>Number(a.level)-Number(b.level));
+   row.querySelector('input[aria-label="Nível necessário"]').value="";
+   row.querySelector('select[aria-label="Cargo entregue"]').value="";
+   renderSavedXpRules();updateXpDirty();status.textContent="Regra adicionada à lista. As alterações ainda não foram salvas.";
+ });
  document.getElementById("addTimeRule").addEventListener("click",()=>addRule("timeRules",timeFields));
  addRule("xpRules",xpFields,{level:5});addRule("timeRules",timeFields,{days:30});addRule("multiplierRules",multiplierFields,{multiplier:2});
  document.getElementById("addMultiplierRule").addEventListener("click",()=>{
@@ -394,6 +410,11 @@ body .pill, body button:not(.server-item) {
    if(editingMultiplierIndex>=0)multiplierSaved[editingMultiplierIndex]=item;else multiplierSaved.push(item);
    editingMultiplierIndex=-1;row.querySelector('select[aria-label="Cargo que recebe o bônus"]').value="";row.querySelector('input[aria-label="Multiplicador de XP"]').value="";document.getElementById("addMultiplierRule").textContent="＋ Adicionar multiplicador";renderSavedMultipliers();updateMultiplierDirty();status.textContent="Multiplicador adicionado à lista. As alterações ainda não foram salvas.";
  });
+ function xpIsDirty(){return JSON.stringify(xpSaved)!==JSON.stringify(xpOriginal);}
+ function updateXpDirty(){const box=document.getElementById("xpUnsaved");if(box)box.hidden=!xpIsDirty();}
+ function renderSavedXpRules(){const list=document.getElementById("savedXpRules");if(!list)return;list.replaceChildren();if(!xpSaved.length){const empty=document.createElement("p");empty.className="muted";empty.textContent="Nenhum cargo por nível adicionado ainda.";list.appendChild(empty);return;}xpSaved.forEach((item,index)=>{const card=document.createElement("div");card.className="rule-row";const info=document.createElement("div");info.className="rule-field";const label=document.createElement("strong");const role=(serverResources.roles||[]).find(r=>r.id===item.role);label.textContent="Nível "+item.level+" · "+(role?.name||"Cargo selecionado");info.appendChild(label);card.appendChild(info);const edit=document.createElement("button");edit.type="button";edit.className="btn";edit.textContent="Editar";edit.addEventListener("click",()=>{const row=document.querySelector("#xpRules .rule-row");if(!row)return;row.querySelector('input[aria-label="Nível necessário"]').value=item.level;row.querySelector('select[aria-label="Cargo entregue"]').value=item.role;xpSaved.splice(index,1);renderSavedXpRules();updateXpDirty();});card.appendChild(edit);const remove=document.createElement("button");remove.type="button";remove.className="remove-rule";remove.textContent="Remover";remove.addEventListener("click",()=>{xpSaved=xpSaved.filter((_,i)=>i!==index);renderSavedXpRules();updateXpDirty();});card.appendChild(remove);list.appendChild(card);});}
+ document.getElementById("saveXpRules").addEventListener("click",async()=>{const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}const button=document.getElementById("saveXpRules");button.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({xpRules:xpSaved})});xpOriginal=JSON.parse(JSON.stringify(xpSaved));updateXpDirty();status.textContent="Cargos por nível salvos para "+g.name+".";showToast("Alterações salvas com sucesso!");}catch(e){status.textContent="Não foi possível salvar: "+e.message;showToast("Não foi possível salvar as alterações.",true);}finally{button.disabled=false;}});
+ document.getElementById("resetXpRules").addEventListener("click",async()=>{const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}const button=document.getElementById("resetXpRules");button.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({xpRules:[]})});xpSaved=[];xpOriginal=[];renderSavedXpRules();updateXpDirty();status.textContent="Cargos por nível redefinidos para "+g.name+".";showToast("Sistema redefinido. As regras de nível foram apagadas do servidor.");}catch(e){status.textContent="Não foi possível redefinir: "+e.message;showToast("Não foi possível redefinir as regras.",true);}finally{button.disabled=false;}});
  function multiplierIsDirty(){return JSON.stringify(multiplierSaved)!==JSON.stringify(multiplierOriginal);}
  function updateMultiplierDirty(){const box=document.getElementById("multiplierUnsaved");if(box)box.hidden=!multiplierIsDirty();}
  let toastTimer;function showToast(message,error=false){const toast=document.getElementById("yukinaToast");if(!toast)return;toast.textContent=message;toast.classList.toggle("error",error);toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),4000);}
