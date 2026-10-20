@@ -179,7 +179,8 @@ body .pill, body button:not(.server-item) {
  function canManage(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n}catch(_){return false}}
  function key(id){return "yukina-system-settings:"+id}
  function lock(on){checks.forEach(c=>c.disabled=on);save.disabled=on;reset.disabled=on}
- async function api(path, options={}) { if(!API_BASE) throw new Error("A API ainda não foi configurada. Defina YUKINA_API_URL em api-config.js após publicar o serviço."); const access=token(); if(!access) throw new Error("Entre com o Discord primeiro."); const response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||("Falha na API (HTTP "+response.status+").")); return data; }\n async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));lock(false);notice.textContent="Yukina está presente no servidor e as configurações foram carregadas pela API.";}catch(e){notice.textContent=e.message;lock(true);}}
+ async function api(path, options={}) { if(!API_BASE) throw new Error("A API ainda não foi configurada. Defina YUKINA_API_URL em api-config.js após publicar o serviço."); const access=token(); if(!access) throw new Error("Entre com o Discord primeiro."); const response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||("Falha na API (HTTP "+response.status+").")); return data; }
+ async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));lock(false);notice.textContent="Yukina está presente no servidor e as configurações foram carregadas pela API.";}catch(e){notice.textContent=e.message;lock(true);}}
  function updateDrawerServer(g){
    const img=document.getElementById("drawerServerIcon"),name=document.getElementById("drawerServerName");
    if(!img||!name)return;
@@ -198,7 +199,7 @@ body .pill, body button:not(.server-item) {
      if(res.status===401||res.status===403)throw new Error("A autorização atual não permite listar servidores. Entre novamente para autorizar a permissão de servidores.");
      if(!res.ok)throw new Error("O Discord não conseguiu carregar os servidores (HTTP "+res.status+").");
      const all=await res.json();guilds=all.filter(canManage);
-     updateDrawerServer(null);\n     updateDrawerServer(null);
+     updateDrawerServer(null);
      select.innerHTML='<option value="">Selecione um servidor…</option>';
      guilds.forEach(g=>{const o=document.createElement("option");o.value=g.id;o.textContent=g.name;select.appendChild(o)});const params=new URLSearchParams(location.search);const requested=params.get("guild");if(requested&&guilds.some(g=>g.id===requested)){select.value=requested;select.dispatchEvent(new Event("change"));}
      status.textContent=guilds.length?guilds.length+" servidor(es) com permissão administrativa encontrados.":"Nenhum servidor com permissão de administrador ou Gerenciar servidor foi encontrado.";
