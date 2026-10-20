@@ -38,7 +38,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
 (() => {
   // Configure o Client ID público no portal de desenvolvedores do Discord.
   const CLIENT_ID = "1561485997277970514";
-  const API_BASE = String(window.YUKINA_API_URL || "").replace(/\\/$/, "");
+  const API_BASE = String(window.YUKINA_API_URL || "").replace(/\/$/, "");
   const REDIRECT_URI = "https://yukina-6uo.pages.dev/login.html";
   const status = document.getElementById("status");
   const button = document.getElementById("loginButton");
@@ -48,10 +48,6 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
   function safeReturnTarget(value) {
     try { const url = new URL(value, window.location.href); if (url.origin !== window.location.origin || value.startsWith("//") || (!value.startsWith("./") && !value.startsWith("/"))) return "./index.html"; return url.pathname + url.search; } catch (_) { return "./index.html"; }
   }
-  const random = (length=64) => {
-    const bytes = crypto.getRandomValues(new Uint8Array(length));
-    return Array.from(bytes, b => String.fromCharCode(b)).join("");
-  };
   const base64url = bytes => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
   const sha256 = async text => crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
 
@@ -60,25 +56,35 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
       status.textContent = "Falta configurar o Client ID do aplicativo Discord.";
       return;
     }
-    sessionStorage.setItem("yukina_login_return", safeReturnTarget(requestedReturn));
     button.disabled = true;
-    status.textContent = "Preparando uma conexão segura com o Discord…";
-    const verifier = base64url(new TextEncoder().encode(random(64)));
-    const challenge = base64url(await sha256(verifier));
-    const state = base64url(new TextEncoder().encode(random(32)));
-    sessionStorage.setItem("yukina_oauth_verifier", verifier);
-    sessionStorage.setItem("yukina_oauth_state", state);
-    const url = new URL("https://discord.com/oauth2/authorize");
-    url.search = new URLSearchParams({
-      client_id: CLIENT_ID,
-      response_type: "code",
-      redirect_uri: REDIRECT_URI,
-      scope: "identify guilds",
-      code_challenge: challenge,
-      code_challenge_method: "S256",
-      state
-    }).toString();
-    window.location.assign(url.toString());
+    try {
+      if (!window.crypto?.getRandomValues || !window.crypto?.subtle) {
+        throw new Error("Este navegador não oferece suporte à conexão segura. Abra o painel no Chrome atualizado.");
+      }
+      sessionStorage.setItem("yukina_login_return", safeReturnTarget(requestedReturn));
+      status.textContent = "Preparando uma conexão segura com o Discord…";
+      // Bytes aleatórios codificados diretamente: verifier PKCE válido (86 caracteres).
+      const verifier = base64url(crypto.getRandomValues(new Uint8Array(64)));
+      const challenge = base64url(await sha256(verifier));
+      const state = base64url(crypto.getRandomValues(new Uint8Array(32)));
+      sessionStorage.setItem("yukina_oauth_verifier", verifier);
+      sessionStorage.setItem("yukina_oauth_state", state);
+      const url = new URL("https://discord.com/oauth2/authorize");
+      url.search = new URLSearchParams({
+        client_id: CLIENT_ID,
+        response_type: "code",
+        redirect_uri: REDIRECT_URI,
+        scope: "identify guilds",
+        code_challenge: challenge,
+        code_challenge_method: "S256",
+        state
+      }).toString();
+      status.textContent = "Abrindo a autorização oficial do Discord…";
+      window.location.assign(url.toString());
+    } catch (error) {
+      status.textContent = error.message || "Não foi possível iniciar o login. Tente novamente.";
+      button.disabled = false;
+    }
   }
 
   async function finishLogin() {
