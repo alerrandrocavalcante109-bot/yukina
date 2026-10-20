@@ -865,6 +865,7 @@ async function panelApi(req, res, url) {
       }
       return sendJson(res, 200, {
         access_token: tokenData.access_token,
+        refresh_token: tokenData.refresh_token,
         token_type: tokenData.token_type,
         expires_in: tokenData.expires_in,
         scope: tokenData.scope
@@ -872,6 +873,33 @@ async function panelApi(req, res, url) {
     } catch (error) {
       console.error("[OAuth painel] Falha na troca do código:", error.message || error);
       return sendJson(res, 502, { detail: "A API do Render não conseguiu concluir o login com o Discord. Tente novamente." });
+    }
+  }
+
+  if (url.pathname === "/api/oauth/refresh") {
+    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para renovar a sessão." });
+    try {
+      const body = await readBody(req);
+      const refreshToken = String(body.refresh_token || "").trim();
+      const clientId = (process.env.DISCORD_CLIENT_ID || "1561485997277970514").trim();
+      const clientSecret = (process.env.DISCORD_CLIENT_SECRET || "").trim();
+      if (!clientSecret) return sendJson(res, 503, { detail: "A renovação OAuth não está configurada no Render." });
+      if (!refreshToken) return sendJson(res, 400, { detail: "Não há token de renovação. Entre novamente com o Discord." });
+      const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({ client_id: clientId, client_secret: clientSecret, grant_type: "refresh_token", refresh_token: refreshToken }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const tokenData = await tokenResponse.json().catch(() => ({}));
+      if (!tokenResponse.ok || !tokenData.access_token) {
+        console.warn("[OAuth painel] Renovação recusada pelo Discord:", tokenResponse.status, tokenData.error || "unknown_error");
+        return sendJson(res, 401, { detail: "Sua sessão expirou. Entre novamente com o Discord." });
+      }
+      return sendJson(res, 200, { access_token: tokenData.access_token, refresh_token: tokenData.refresh_token || refreshToken, token_type: tokenData.token_type, expires_in: tokenData.expires_in, scope: tokenData.scope });
+    } catch (error) {
+      console.error("[OAuth painel] Falha ao renovar sessão:", error.message || error);
+      return sendJson(res, 502, { detail: "Não foi possível renovar a sessão do Discord. Tente entrar novamente." });
     }
   }
 
