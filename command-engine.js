@@ -35,6 +35,30 @@ function loadCommands(client) {
     }
   }
 }
+function startInteractionEngine(client) {
+  if (client.__yukinaInteractionEngine) return;
+  client.__yukinaInteractionEngine = true;
+  client.on("interactionCreate", async interaction => {
+    try {
+      if (interaction.isChatInputCommand()) {
+        const command = client.commands?.get(interaction.commandName);
+        if (command && typeof command.execute === "function") await command.execute(interaction, client);
+        return;
+      }
+      for (const command of client.commands?.values() || []) {
+        if (typeof command.handleInteraction === "function") {
+          await command.handleInteraction(interaction);
+          if (interaction.replied || interaction.deferred) return;
+        }
+      }
+    } catch (error) {
+      console.error("[Motor] Falha ao processar interação:", error);
+      const payload = { content: "❄️ Não consegui concluir essa ação. Tente novamente.", ephemeral: true };
+      if (interaction.deferred || interaction.replied) await interaction.followUp(payload).catch(() => {});
+      else if (interaction.isRepliable()) await interaction.reply(payload).catch(() => {});
+    }
+  });
+}
 function startPrefixEngine(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
@@ -95,6 +119,7 @@ function startPrefixEngine(client) {
 }
 module.exports = function startCommandEngine(client) {
   loadCommands(client);
+  startInteractionEngine(client);
   startPrefixEngine(client);
   const all = [...client.commands.entries()];
   const slash = all.filter(([, c]) => c?.data?.name).map(([, c]) => `/${c.data.name}`);
