@@ -33,6 +33,23 @@ body.menu-open{overflow:hidden}
 .top{padding-left:52px}
 @media(prefers-reduced-motion:reduce){.side-drawer,.drawer-backdrop,.progress-panel.active{transition:none;animation:none}}
 
+
+/* Página inicial do servidor: somente boas-vindas e menu até escolher um sistema. */
+body .wrap > header.top,
+body .wrap > section.hero,
+body .wrap > section.panel:not(.progress-panel){display:none!important}
+body .wrap{width:min(960px,calc(100% - 28px));padding-top:92px}
+body .wrap::before{
+ content:"Bem-vindo ao painel da Yukina! ❄️";
+ display:block;max-width:760px;margin:28px auto;padding:34px 24px;
+ text-align:center;font-size:clamp(1.65rem,5vw,2.5rem);font-weight:850;letter-spacing:-.035em;line-height:1.35;
+ color:#30213f;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(244,236,255,.94));
+ border:1px solid rgba(177,143,235,.4);border-radius:26px;box-shadow:0 18px 48px rgba(103,78,137,.14);
+}
+html[data-theme="dark"] body .wrap::before{
+ color:#f4edff;background:linear-gradient(135deg,rgba(21,31,52,.96),rgba(30,17,48,.96));
+ border-color:rgba(167,216,240,.35);
+}
 /* Identidade clara do painel: remove os blocos pretos aplicados pelo tema global. */
 body .hero,
 body section.hero,
