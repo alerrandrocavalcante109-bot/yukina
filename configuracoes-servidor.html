@@ -110,6 +110,33 @@
  reset.addEventListener("click",async()=>{const g=selected();if(!g)return;reset.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"DELETE"});checks.forEach(c=>c.checked=false);status.textContent="Preferências padrão restauradas para "+g.name+".";}catch(e){status.textContent=e.message;}finally{reset.disabled=false;}});
  document.getElementById("reload").addEventListener("click",loadGuilds);
  lock(true);loadGuilds();
+
+ // Construtor visual dos três sistemas; nesta etapa os dados são apenas rascunhos de interface.
+ const rolePlaceholder = '<option value="">Selecione um cargo (integração pendente)</option>';
+ function addRule(containerId, fields, defaults={}) {
+   const container=document.getElementById(containerId); if(!container)return;
+   const row=document.createElement("div"); row.className="rule-row";
+   fields.forEach(field=>{
+     const wrap=document.createElement("div");wrap.className="rule-field";
+     const label=document.createElement("label");label.textContent=field.label;wrap.appendChild(label);
+     let input;
+     if(field.type==="role"){input=document.createElement("select");input.innerHTML=rolePlaceholder;}
+     else {input=document.createElement("input");input.type=field.type||"number";if(field.min!==undefined)input.min=field.min;if(field.step!==undefined)input.step=field.step;if(field.placeholder)input.placeholder=field.placeholder;if(defaults[field.key]!==undefined)input.value=defaults[field.key];}
+     input.setAttribute("aria-label",field.label);wrap.appendChild(input);row.appendChild(wrap);
+   });
+   const remove=document.createElement("button");remove.type="button";remove.className="remove-rule";remove.textContent="Remover";remove.addEventListener("click",()=>row.remove());row.appendChild(remove);container.appendChild(row);
+ }
+ const xpFields=[{key:"level",label:"Nível necessário",type:"number",min:1,step:1,placeholder:"Ex.: 10"},{key:"role",label:"Cargo entregue",type:"role"}];
+ const timeFields=[{key:"days",label:"Tempo de permanência (dias)",type:"number",min:1,step:1,placeholder:"Ex.: 30"},{key:"role",label:"Cargo entregue",type:"role"}];
+ const multiplierFields=[{key:"role",label:"Cargo que recebe o bônus",type:"role"},{key:"multiplier",label:"Multiplicador de XP",type:"number",min:0.1,step:0.1,placeholder:"Ex.: 2"}];
+ document.getElementById("addXpRule").addEventListener("click",()=>addRule("xpRules",xpFields));
+ document.getElementById("addTimeRule").addEventListener("click",()=>addRule("timeRules",timeFields));
+ document.getElementById("addMultiplierRule").addEventListener("click",()=>addRule("multiplierRules",multiplierFields));
+ addRule("xpRules",xpFields,{level:5});addRule("timeRules",timeFields,{days:30});addRule("multiplierRules",multiplierFields,{multiplier:2});
+ document.querySelectorAll(".save-draft").forEach(button=>button.addEventListener("click",()=>{
+   status.textContent=button.dataset.system+": a interface está pronta, mas salvar e aplicar será implementado na próxima etapa.";
+ }));
+
 })();
 </script>
 </body></html>
