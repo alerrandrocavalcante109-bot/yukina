@@ -77,7 +77,7 @@ function startPrefixEngine(client) {
         payload.reply = { messageReference: message.id, failIfNotExists: false };
         payload.allowedMentions = {
           ...(payload.allowedMentions || {}),
-          repliedUser: false
+          repliedUser: true
         };
       }
       return originalChannelSend(payload);
