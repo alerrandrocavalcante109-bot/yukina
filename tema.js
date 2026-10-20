@@ -216,3 +216,50 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start, {once:true});
   else start();
 })();
+
+
+/* Correção persistente do menu principal da página inicial. */
+(function () {
+  const styleId = "yukina-home-menu-fix";
+  if (!document.getElementById(styleId)) {
+    const style = document.createElement("style");
+    style.id = styleId;
+    style.textContent = `
+      body .nav-right { position:relative; display:flex; align-items:center; gap:10px; }
+      body #menuToggle { display:inline-flex; align-items:center; justify-content:center; width:44px; height:44px; flex:0 0 44px; cursor:pointer; font-size:1.35rem; color:#fff; background:#211331; border:1px solid rgba(255,141,204,.6); border-radius:13px; }
+      body #siteMenu.site-menu { position:absolute; z-index:9999; top:calc(100% + 10px); right:0; display:none; flex-direction:column; align-items:stretch; gap:5px; width:min(290px, calc(100vw - 28px)); max-height:min(72vh, 560px); overflow-y:auto; padding:10px; border:1px solid rgba(255,141,204,.5); border-radius:17px; background:rgba(14,8,26,.98); box-shadow:0 18px 55px rgba(0,0,0,.55); }
+      body #siteMenu.site-menu.is-open { display:flex !important; }
+      body #siteMenu.site-menu a, body #siteMenu.site-menu button { display:flex; align-items:center; justify-content:flex-start; width:100%; min-height:42px; padding:10px 12px; margin:0; box-sizing:border-box; border:1px solid rgba(255,255,255,.08); border-radius:10px; background:rgba(35,20,51,.98); color:#fff; text-align:left; text-decoration:none; white-space:normal; font:inherit; font-size:.94rem; line-height:1.35; }
+      body #siteMenu.site-menu .menu-heading { padding:7px 10px 9px; color:#ffb7df; font-size:.74rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; }
+      body #siteMenu.site-menu a:hover, body #siteMenu.site-menu button:hover { background:rgba(167,216,240,.18); border-color:rgba(167,216,240,.5); }
+      @media(max-width:760px) { body .nav-right { width:100%; justify-content:space-between; } body #siteMenu.site-menu { right:0; } body header.nav { position:relative; z-index:1000; } }
+    `;
+    document.head.appendChild(style);
+  }
+  function bindMenu() {
+    const button = document.getElementById("menuToggle");
+    const menu = document.getElementById("siteMenu");
+    if (!button || !menu || button.dataset.yukinaMenuBound === "1") return;
+    button.dataset.yukinaMenuBound = "1";
+    const close = () => {
+      menu.classList.remove("is-open");
+      button.setAttribute("aria-expanded", "false");
+      button.setAttribute("aria-label", "Abrir menu");
+    };
+    button.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      const open = !menu.classList.contains("is-open");
+      menu.classList.toggle("is-open", open);
+      button.setAttribute("aria-expanded", String(open));
+      button.setAttribute("aria-label", open ? "Fechar menu" : "Abrir menu");
+    });
+    document.addEventListener("click", event => {
+      if (!menu.contains(event.target) && !button.contains(event.target)) close();
+    });
+    document.addEventListener("keydown", event => { if (event.key === "Escape") close(); });
+    menu.querySelectorAll("a").forEach(link => link.addEventListener("click", close));
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindMenu, {once:true});
+  else bindMenu();
+})();
