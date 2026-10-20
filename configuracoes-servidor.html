@@ -16,9 +16,38 @@
 .rule-row .remove-rule{background:#321b35;border-color:#70416f;cursor:pointer}.save-draft{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:#1c1931;color:#e4dcff;font:inherit;cursor:pointer}
 .rule-note{font-size:.82rem;color:#a9bad0;margin:0}.section-intro{color:#c3d3e7}
 @media(max-width:620px){.rule-row{grid-template-columns:1fr}.rule-row .remove-rule{width:100%}}
+
+/* Menu lateral deslizante */
+.menu-toggle{position:fixed;z-index:1200;top:14px;left:14px;width:46px;height:46px;border-radius:14px;background:#111d31eF;border:1px solid #8edcff80;color:#d8f3ff;font-size:1.35rem;box-shadow:0 8px 28px #0006;cursor:pointer}
+.drawer-backdrop{position:fixed;inset:0;z-index:1190;background:#05030bb8;opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s}
+.side-drawer{position:fixed;z-index:1201;inset:0 auto 0 0;width:min(310px,86vw);padding:78px 18px 24px;background:linear-gradient(160deg,#14273d,#160d24 65%,#0b0712);border-right:1px solid #8edcff65;box-shadow:18px 0 55px #0007;transform:translateX(-105%);transition:transform .28s cubic-bezier(.2,.8,.2,1);overflow-y:auto}
+body.menu-open .side-drawer{transform:translateX(0)}body.menu-open .drawer-backdrop{opacity:1;visibility:visible}
+.drawer-title{font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:#a7d8f0;margin:0 8px 14px}
+.drawer-link{display:flex;align-items:center;gap:12px;width:100%;padding:14px 12px;margin:6px 0;border:1px solid transparent;border-radius:13px;background:transparent;color:#e8e9ff;text-align:left;font:inherit;cursor:pointer}
+.drawer-link:hover,.drawer-link.active{background:#a7d8f01c;border-color:#8edcff55;color:#fff}
+.drawer-link span:first-child{font-size:1.2rem;width:26px;text-align:center}
+.drawer-divider{height:1px;background:#8edcff2e;margin:16px 4px}
+body.menu-open{overflow:hidden}
+.progress-panel{display:none}.progress-panel.active{display:block;animation:panel-in .22s ease-out}
+@keyframes panel-in{from{opacity:.3;transform:translateY(7px)}to{opacity:1;transform:translateY(0)}}
+.top{padding-left:52px}
+@media(prefers-reduced-motion:reduce){.side-drawer,.drawer-backdrop,.progress-panel.active{transition:none;animation:none}}
 </style>
 </head>
-<body><div class="wrap">
+<body>
+<button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sideDrawer">☰</button>
+<div class="drawer-backdrop" id="drawerBackdrop"></div>
+<aside class="side-drawer" id="sideDrawer" aria-label="Menu de sistemas">
+ <div class="drawer-title">✦ Yukina · Sistemas</div>
+ <button class="drawer-link" type="button" data-panel="xpRolesPanel"><span>❄️</span><span>Cargos por nível de XP</span></button>
+ <button class="drawer-link" type="button" data-panel="timeRolesPanel"><span>🌙</span><span>Hierarquia temporal</span></button>
+ <button class="drawer-link" type="button" data-panel="xpMultiplierPanel"><span>✨</span><span>Multiplicador de XP</span></button>
+ <div class="drawer-divider"></div>
+ <button class="drawer-link" type="button" data-panel="settingsPanel"><span>⚙️</span><span>Preferências do servidor</span></button>
+ <a class="drawer-link" href="./index.html"><span>⌂</span><span>Página inicial</span></a>
+ <p class="muted">Abra deslizando da borda esquerda para a direita. Feche deslizando para a esquerda.</p>
+</aside>
+<div class="wrap">
 <header class="top"><a class="brand" href="./index.html">✦ YUKINA</a><a class="pill" href="./index.html">← Página inicial</a></header>
 <section class="hero"><div class="eyebrow">Painel administrativo</div><h1>Configurações do Servidor</h1><p>Preferências exclusivas do servidor selecionado.</p></section>
 <section class="panel">
@@ -28,7 +57,7 @@
 <div id="status" class="status" role="status" aria-live="polite"></div>
 <div id="botNotice" class="empty">Selecione um servidor para verificar a disponibilidade das configurações.</div>
 </section>
-<section class="panel" id="settingsPanel" aria-live="polite">
+<section class="panel progress-panel" id="settingsPanel" aria-live="polite">
 <h2>2. Preferências do servidor</h2><p id="selectedName" class="muted">As opções ficam bloqueadas até selecionar um servidor válido.</p>
 <div id="settings">
 <label class="setting"><input type="checkbox" data-setting="welcome"><div><strong>Mensagens de boas-vindas</strong><span>Ativar a preferência de boas-vindas para este servidor.</span></div></label>
@@ -39,21 +68,21 @@
 <p class="muted">As preferências são salvas pela API da Yukina no servidor, por servidor Discord. A aplicação efetiva dessas opções aos comandos do bot precisa ser implementada separadamente.</p>
 </section>
 
-<section class="panel" id="xpRolesPanel">
+<section class="panel progress-panel" id="xpRolesPanel">
  <div class="eyebrow">Progressão • 01</div><h2>❄️ Cargos por nível de XP</h2>
  <p>Defina qual cargo a Yukina deverá entregar quando um membro alcançar cada nível. Cada regra é independente por servidor.</p>
  <div id="xpRules" class="rule-list"></div>
  <div class="row"><button type="button" class="btn" id="addXpRule">＋ Adicionar regra de nível</button><button type="button" class="save-draft" data-system="XP por nível">Salvar configuração</button></div>
  <p class="muted">Interface em preparação: as regras ainda não são enviadas nem aplicadas pelo bot.</p>
 </section>
-<section class="panel" id="timeRolesPanel">
+<section class="panel progress-panel" id="timeRolesPanel">
  <div class="eyebrow">Permanência • 02</div><h2>🌙 Hierarquia temporal</h2>
  <p>Configure cargos por tempo de permanência no servidor. Exemplo: 3 dias, 15 dias, 30 dias ou 6 meses.</p>
  <div id="timeRules" class="rule-list"></div>
  <div class="row"><button type="button" class="btn" id="addTimeRule">＋ Adicionar tempo</button><button type="button" class="save-draft" data-system="Hierarquia temporal">Salvar configuração</button></div>
  <p class="muted">O tempo será contado a partir da entrada do membro no servidor, separado dos níveis de XP.</p>
 </section>
-<section class="panel" id="xpMultiplierPanel">
+<section class="panel progress-panel" id="xpMultiplierPanel">
  <div class="eyebrow">Personalização • 03</div><h2>✨ Multiplicador de XP por cargo</h2>
  <p>Faça cargos específicos receberem mais XP por mensagem. O multiplicador será aplicado ao ganho normal de XP.</p>
  <div id="multiplierRules" class="rule-list"></div>
@@ -110,6 +139,30 @@
  reset.addEventListener("click",async()=>{const g=selected();if(!g)return;reset.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"DELETE"});checks.forEach(c=>c.checked=false);status.textContent="Preferências padrão restauradas para "+g.name+".";}catch(e){status.textContent=e.message;}finally{reset.disabled=false;}});
  document.getElementById("reload").addEventListener("click",loadGuilds);
  lock(true);loadGuilds();
+
+ // Menu deslizante: botão, clique fora e gestos de borda/tela.
+ const menuToggle=document.getElementById("menuToggle");
+ const backdrop=document.getElementById("drawerBackdrop");
+ let touchStartX=0,touchStartY=0;
+ function setMenu(open){document.body.classList.toggle("menu-open",open);menuToggle.setAttribute("aria-expanded",String(open));menuToggle.setAttribute("aria-label",open?"Fechar menu":"Abrir menu");menuToggle.textContent=open?"×":"☰";}
+ menuToggle.addEventListener("click",()=>setMenu(!document.body.classList.contains("menu-open")));
+ backdrop.addEventListener("click",()=>setMenu(false));
+ document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
+ document.querySelectorAll("[data-panel]").forEach(link=>link.addEventListener("click",()=>{
+   document.querySelectorAll(".progress-panel").forEach(p=>p.classList.toggle("active",p.id===link.dataset.panel));
+   document.querySelectorAll(".drawer-link[data-panel]").forEach(a=>a.classList.toggle("active",a===link));
+   setMenu(false);
+   const target=document.getElementById(link.dataset.panel);if(target)window.scrollTo({top:Math.max(0,target.getBoundingClientRect().top+window.scrollY-18),behavior:"smooth"});
+ }));
+ document.addEventListener("touchstart",e=>{if(!e.touches.length)return;touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;},{passive:true});
+ document.addEventListener("touchend",e=>{
+   if(!e.changedTouches.length)return;const dx=e.changedTouches[0].clientX-touchStartX;const dy=e.changedTouches[0].clientY-touchStartY;
+   if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;
+   const open=document.body.classList.contains("menu-open");
+   if(!open&&touchStartX<38&&dx>0)setMenu(true);
+   else if(open&&dx<0)setMenu(false);
+ },{passive:true});
+
 
  // Construtor visual dos três sistemas; nesta etapa os dados são apenas rascunhos de interface.
  const rolePlaceholder = '<option value="">Selecione um cargo (integração pendente)</option>';
