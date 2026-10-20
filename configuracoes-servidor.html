@@ -78,6 +78,8 @@ body.menu-open #drawerBackdrop.drawer-backdrop{pointer-events:auto;opacity:1;vis
 }
 #sideDrawer .server-picker-empty{color:#c2c7d0!important}
 #sideDrawer .drawer-divider{background:#ffffff14!important}
+.drawer-category{margin:18px 8px 8px;padding:0 8px;color:#aebdca;font-size:.68rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}
+#sideDrawer .drawer-category{color:#bfc9d5!important}
 /* Menu lateral deslizante */
 .menu-toggle{position:fixed;z-index:1200;top:14px;left:14px;width:46px;height:46px;border-radius:14px;background:#111d31eF;border:1px solid #8edcff80;color:#d8f3ff;font-size:1.35rem;box-shadow:0 8px 28px #0006;cursor:pointer}
 .drawer-backdrop{position:fixed;inset:0;z-index:1190;background:#05030bb8;opacity:0;visibility:hidden;transition:opacity .24s,visibility .24s}
@@ -171,10 +173,13 @@ body .pill, body button:not(.server-item) {
  </div>
  <button class="server-picker-toggle" id="serverPickerToggle" type="button" aria-expanded="false" aria-controls="serverPicker"><span>Selecionar servidor</span><span id="serverPickerChevron">⌄</span></button>
  <div class="server-picker" id="serverPicker" hidden><div class="server-picker-heading">Seus servidores</div><div class="server-picker-list" id="serverPickerList"><div class="server-picker-empty">Carregando servidores…</div></div></div>
- <button class="drawer-link" type="button" data-panel="xpRolesPanel"><span>❄️</span><span>Cargos por nível de XP</span></button>
- <button class="drawer-link" type="button" data-panel="timeRolesPanel"><span>🌙</span><span>Hierarquia temporal</span></button>
+ <div class="drawer-category">❄️ EXPERIÊNCIA (XP)</div>
+ <button class="drawer-link" type="button" data-panel="xpRolesPanel"><span>🏆</span><span>Cargos por nível</span></button>
  <button class="drawer-link" type="button" data-panel="xpMultiplierPanel"><span>✨</span><span>Multiplicador de XP</span></button>
+ <div class="drawer-category">🌙 CARGOS E PERMANÊNCIA</div>
+ <button class="drawer-link" type="button" data-panel="timeRolesPanel"><span>🌙</span><span>Hierarquia temporal</span></button>
  <div class="drawer-divider"></div>
+ <div class="drawer-category">⚙️ CONFIGURAÇÕES</div>
  <button class="drawer-link" type="button" data-panel="settingsPanel"><span>⚙️</span><span>Preferências do servidor</span></button>
  <a class="drawer-link" href="./index.html"><span>⌂</span><span>Página inicial</span></a>
  <p class="muted">Abra deslizando da borda esquerda para a direita. Feche deslizando para a esquerda.</p>
