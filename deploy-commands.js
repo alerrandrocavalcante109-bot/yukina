@@ -4,11 +4,11 @@ const path = require("node:path");
 const { REST, Routes } = require("discord.js");
 
 const token = (process.env.DISCORD_TOKEN || "").trim();
-const clientId = (process.env.DISCORD_CLIENT_ID || process.env.CLIENT_ID || "").trim();
+const clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
 const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || "").trim();
 
 if (!token || !clientId) {
-  console.error("Defina DISCORD_TOKEN e DISCORD_CLIENT_ID (ou CLIENT_ID) antes de registrar os comandos.");
+  console.error("Defina DISCORD_TOKEN e DISCORD_CLIENT_ID antes de registrar os comandos.");
   process.exit(1);
 }
 
