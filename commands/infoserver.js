@@ -46,7 +46,8 @@ function buildServerInfo(guild, owner) {
 
 async function replyWithInfo(interaction) {
   const guild = interaction.guild;
-  const invoker = interaction.user || interaction.author;
+  const invoker = interaction.author || interaction.user;
+  const isPrefixCommand = Boolean(interaction.author);
   if (!guild) {
     return interaction.reply({
       content: "❄️ Este comando só funciona dentro de um servidor.",
@@ -58,11 +59,12 @@ async function replyWithInfo(interaction) {
     await guild.fetch();
     await guild.channels.fetch();
     const owner = await guild.fetchOwner();
-    return interaction.reply({
-      content: "❄️ Informações solicitadas por <@" + invoker.id + ">.",
-      embeds: [buildServerInfo(guild, owner)],
-      allowedMentions: { users: [invoker.id], parse: [] }
-    });
+    const payload = { embeds: [buildServerInfo(guild, owner)] };
+    if (isPrefixCommand) {
+      payload.content = "❄️ Informações solicitadas por <@" + invoker.id + ">.";
+      payload.allowedMentions = { users: [invoker.id], parse: [] };
+    }
+    return interaction.reply(payload);
   } catch (error) {
     console.error("[Yukina /infoserver]", error);
     const payload = {
