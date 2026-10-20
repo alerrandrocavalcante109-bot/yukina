@@ -860,7 +860,9 @@ async function panelApi(req, res, url) {
         else if (value && typeof value === "object") clean[key] = value;
       }
       const updatedAt = new Date();
-      await collection.updateOne({ guildId }, { $set: { guildId, guildName: guild.name, settings: clean, updatedAt, updatedBy: null } }, { upsert: true });
+      const patch = { guildId, guildName: guild.name, updatedAt };
+      for (const [key, value] of Object.entries(clean)) patch["settings." + key] = value;
+      await collection.updateOne({ guildId }, { $set: patch }, { upsert: true });
       return sendJson(res, 200, { ok: true, guildId, settings: clean, updatedAt });
     }
     if (req.method === "DELETE") {
