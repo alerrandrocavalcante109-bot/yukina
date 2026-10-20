@@ -173,6 +173,7 @@ body .pill, body button:not(.server-item) {
 <div class="row"><button class="btn" id="reload" type="button">Carregar servidores</button><a class="pill" href="./login.html?return=./configuracoes-servidor.html">Entrar / atualizar permissões</a></div>
 <div id="status" class="status" role="status" aria-live="polite"></div>
 <div id="botNotice" class="empty">Selecione um servidor para verificar a disponibilidade das configurações.</div>
+<div class="panel" style="margin-top:14px"><h3>Recursos reais do Discord</h3><p class="muted">Canais, categorias e cargos carregados diretamente do servidor selecionado.</p><div id="resourceSummary" class="muted">Selecione um servidor para carregar os recursos.</div><div class="field"><label for="channelSelect">Canal de referência</label><select id="channelSelect" disabled><option value="">Selecione um servidor primeiro</option></select></div><div class="field"><label for="categorySelect">Categoria</label><select id="categorySelect" disabled><option value="">Selecione um servidor primeiro</option></select></div></div>
 </section>
 <section class="panel progress-panel" id="settingsPanel" aria-live="polite">
 <h2>2. Preferências do servidor</h2><p id="selectedName" class="muted">As opções ficam bloqueadas até selecionar um servidor válido.</p>
@@ -219,13 +220,22 @@ body .pill, body button:not(.server-item) {
  const selectedName = document.getElementById("selectedName");
  const checks = Array.from(document.querySelectorAll("[data-setting]"));
  let guilds = [];
+ let serverResources = { roles: [], channels: [], categories: [] };
+ const systemKeys = { "XP por nível":"xpRules", "Hierarquia temporal":"timeRules", "Multiplicador de XP por cargo":"multiplierRules" };
  const ADMIN = 0x8n, MANAGE_GUILD = 0x20n;
  function token(){try{const expires=Number(localStorage.getItem("yukina_discord_token_expires_at")||"0");if(!expires||Date.now()>=expires){localStorage.removeItem("yukina_discord_token");localStorage.removeItem("yukina_discord_token_expires_at");return null}return localStorage.getItem("yukina_discord_token")}catch(_){return null}}
  function canManage(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n}catch(_){return false}}
  function key(id){return "yukina-system-settings:"+id}
  function lock(on){checks.forEach(c=>c.disabled=on);save.disabled=on;reset.disabled=on}
  async function api(path, options={}) { if(!API_BASE) throw new Error("A API ainda não foi configurada. Defina YUKINA_API_URL em api-config.js após publicar o serviço."); const access=token(); if(!access) throw new Error("Entre com o Discord primeiro."); const response=await fetch(API_BASE+path,{...options,headers:{"Authorization":"Bearer "+access,"Content-Type":"application/json",...(options.headers||{})}}); const data=await response.json().catch(()=>({})); if(!response.ok) throw new Error(data.detail||("Falha na API (HTTP "+response.status+").")); return data; }
- async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));lock(false);notice.textContent="Yukina está presente no servidor e as configurações foram carregadas pela API.";}catch(e){notice.textContent=e.message;lock(true);}}
+ async function loadSaved(id){lock(true);try{const data=await api("/api/guilds/"+encodeURIComponent(id)+"/settings");checks.forEach(c=>c.checked=Boolean(data.settings?.[c.dataset.setting]));Object.entries(systemKeys).forEach(([label,containerId])=>renderRules(containerId,data.settings?.[containerId]||[],label));lock(false);notice.textContent="Configurações carregadas do MongoDB para este servidor.";}catch(e){notice.textContent=e.message;lock(true);}}
+ async function loadResources(id){
+  const summary=document.getElementById("resourceSummary"),cs=document.getElementById("channelSelect"),cats=document.getElementById("categorySelect");summary.textContent="Carregando cargos, canais e categorias…";
+  try{serverResources=await api("/api/guilds/"+encodeURIComponent(id)+"/resources");fillSelect(cs,serverResources.channels.map(x=>({id:x.id,name:(x.parentName?"# "+x.parentName+" / ":"")+x.name})),"Selecione um canal");fillSelect(cats,serverResources.categories.map(x=>({id:x.id,name:x.name})),"Selecione uma categoria");summary.textContent=serverResources.roles.length+" cargos · "+serverResources.channels.length+" canais · "+serverResources.categories.length+" categorias carregados do Discord.";document.querySelectorAll('select[aria-label="Cargo entregue"],select[aria-label="Cargo que recebe o bônus"]').forEach(el=>fillSelect(el,serverResources.roles.map(r=>({id:r.id,name:r.name})),"Selecione um cargo"));}catch(e){summary.textContent=e.message;serverResources={roles:[],channels:[],categories:[]};}
+ }
+ function fillSelect(el,items,placeholder){if(!el)return;const prior=el.value;el.replaceChildren();const first=document.createElement("option");first.value="";first.textContent=placeholder;el.appendChild(first);items.forEach(item=>{const o=document.createElement("option");o.value=item.id;o.textContent=item.name;el.appendChild(o)});if(items.some(i=>i.id===prior))el.value=prior;el.disabled=false;}
+ function collectRules(containerId,label){return Array.from(document.querySelectorAll("#"+containerId+" .rule-row")).map(row=>{const inputs=Array.from(row.querySelectorAll("input,select"));const keys=label==="XP por nível"?["level","role"]:label==="Hierarquia temporal"?["days","role"]:["role","multiplier"];const rule={};inputs.slice(0,keys.length).forEach((el,i)=>{if(el.value!=="")rule[keys[i]]=el.type==="number"?Number(el.value):el.value});return rule}).filter(rule=>Object.keys(rule).length);}
+ function renderRules(containerId,rules,label){const container=document.getElementById(containerId);if(!container)return;container.replaceChildren();const fields=label==="XP por nível"?xpFields:label==="Hierarquia temporal"?timeFields:multiplierFields;(rules.length?rules:[{}]).forEach(rule=>{addRule(containerId,fields,rule);const inputs=container.lastElementChild.querySelectorAll("input,select");const keys=label==="XP por nível"?["level","role"]:label==="Hierarquia temporal"?["days","role"]:["role","multiplier"];inputs.forEach((el,i)=>{if(rule[keys[i]]!==undefined)el.value=rule[keys[i]]})});}
  function updateDrawerServer(g){
    const img=document.getElementById("drawerServerIcon"),name=document.getElementById("drawerServerName");
    if(!img||!name)return;
@@ -270,7 +280,7 @@ body .pill, body button:not(.server-item) {
    if(!g){selectedName.textContent="As opções ficam bloqueadas até selecionar um servidor válido.";notice.textContent="Selecione um servidor.";lock(true);return}
    selectedName.textContent="Servidor selecionado: "+g.name;
    notice.textContent="Verificando permissões, presença da Yukina e configurações no backend…";
-   loadSaved(g.id);
+   loadResources(g.id);loadSaved(g.id);
  });
  save.addEventListener("click",async()=>{
    const g=selected();if(!g){status.textContent="Selecione um servidor antes de salvar.";lock(true);return}
@@ -316,7 +326,7 @@ body .pill, body button:not(.server-item) {
    else if(open&&dx<0)setMenu(false);
  },{passive:true});
  // Construtor visual dos três sistemas; nesta etapa os dados são apenas rascunhos de interface.
- const rolePlaceholder = '<option value="">Selecione um cargo (integração pendente)</option>';
+ const rolePlaceholder = '<option value="">Carregando cargos do Discord…</option>';
  function addRule(containerId, fields, defaults={}) {
    const container=document.getElementById(containerId); if(!container)return;
    const row=document.createElement("div"); row.className="rule-row";
@@ -337,8 +347,10 @@ body .pill, body button:not(.server-item) {
  document.getElementById("addTimeRule").addEventListener("click",()=>addRule("timeRules",timeFields));
  document.getElementById("addMultiplierRule").addEventListener("click",()=>addRule("multiplierRules",multiplierFields));
  addRule("xpRules",xpFields,{level:5});addRule("timeRules",timeFields,{days:30});addRule("multiplierRules",multiplierFields,{multiplier:2});
- document.querySelectorAll(".save-draft").forEach(button=>button.addEventListener("click",()=>{
-   status.textContent=button.dataset.system+": a interface está pronta, mas salvar e aplicar será implementado na próxima etapa.";
+ document.querySelectorAll(".save-draft").forEach(button=>button.addEventListener("click",async()=>{
+   const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}
+   const containerId=systemKeys[button.dataset.system],rules=collectRules(containerId,button.dataset.system);button.disabled=true;
+   try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({[containerId]:rules})});status.textContent=button.dataset.system+" salvo no MongoDB para "+g.name+".";}catch(e){status.textContent=e.message;}finally{button.disabled=false;}
  }));
 
 })();
