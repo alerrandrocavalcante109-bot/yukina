@@ -823,10 +823,59 @@ async function panelApi(req, res, url) {
   if (origin && PANEL_ORIGINS.includes(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
   res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET, PUT, DELETE, OPTIONS");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
-  const match = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})(?:\/(resources|settings))?$/);
+  if (url.pathname === "/api/oauth/token") {
+    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para concluir o login." });
+    try {
+      const body = await readBody(req);
+      const code = String(body.code || "").trim();
+      const codeVerifier = String(body.code_verifier || "").trim();
+      const redirectUri = String(body.redirect_uri || "").trim();
+      const clientId = (process.env.DISCORD_CLIENT_ID || "1561485997277970514").trim();
+      const clientSecret = (process.env.DISCORD_CLIENT_SECRET || "").trim();
+      const expectedRedirect = "https://yukina-6uo.pages.dev/login.html";
+      if (!clientSecret) return sendJson(res, 503, { detail: "Falta configurar DISCORD_CLIENT_SECRET nas variáveis do Render." });
+      if (!code || !codeVerifier) return sendJson(res, 400, { detail: "O Discord não enviou o código/verificador de login. Tente entrar novamente." });
+      if (redirectUri !== expectedRedirect) return sendJson(res, 400, { detail: "URL de retorno inválida. Confira OAuth2 → Redirects no Discord Developer Portal." });
+      const tokenResponse = await fetch("https://discord.com/api/oauth2/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          grant_type: "authorization_code",
+          code,
+          redirect_uri: expectedRedirect,
+          code_verifier: codeVerifier
+        }),
+        signal: AbortSignal.timeout(15000)
+      });
+      const tokenData = await tokenResponse.json().catch(() => ({}));
+      if (!tokenResponse.ok || !tokenData.access_token) {
+        console.error("[OAuth painel] Discord recusou a troca do código:", tokenResponse.status, tokenData.error || "unknown_error", tokenData.error_description || "");
+        return sendJson(res, tokenResponse.status === 400 ? 400 : 502, {
+          detail: tokenData.error === "invalid_grant"
+            ? "O código de login expirou ou não corresponde a esta sessão. Volte ao login e tente novamente."
+            : tokenData.error === "invalid_client"
+              ? "O Discord recusou as credenciais OAuth. Confira DISCORD_CLIENT_ID e DISCORD_CLIENT_SECRET no Render."
+              : "O Discord recusou a autenticação (" + String(tokenData.error || tokenResponse.status) + "). Confira Client ID, Client Secret e Redirect URI."
+        });
+      }
+      return sendJson(res, 200, {
+        access_token: tokenData.access_token,
+        token_type: tokenData.token_type,
+        expires_in: tokenData.expires_in,
+        scope: tokenData.scope
+      });
+    } catch (error) {
+      console.error("[OAuth painel] Falha na troca do código:", error.message || error);
+      return sendJson(res, 502, { detail: "A API do Render não conseguiu concluir o login com o Discord. Tente novamente." });
+    }
+  }
+
+  const match = url.pathname.match(/^\\/api\\/guilds\\/([0-9]{17,20})(?:\\/(resources|settings))?$/);  const match = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})(?:\/(resources|settings))?$/);
   if (!match) return sendJson(res, 404, { detail: "Rota não encontrada." });
   const guildId = match[1], section = match[2] || "resources";
   try {
