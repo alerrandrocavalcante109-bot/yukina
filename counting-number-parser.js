@@ -140,6 +140,7 @@ function parseCountingValue(raw) {
   // Accept an expression at the start, preserving the existing "1 oi" style.
   const candidates=[];
   const numericPrefix=input.match(/^[0-9\s.+*\/^×÷✕·−π√()²³,，-]+/u);
+  if(numericPrefix && numericPrefix[0].trim()) candidates.push(numericPrefix[0].trim().replace(/[，,]$/,""));
   const words=input.match(/^[\p{L}\p{N}\s.+\-*/^×÷✕·−π√()²³,，]+/u);
   if(words) {
     const candidate=words[0].trim().replace(/[，,]\s*$/,"").trim();
