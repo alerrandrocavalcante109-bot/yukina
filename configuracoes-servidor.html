@@ -184,7 +184,7 @@ body .pill, body button:not(.server-item) {
  function updateDrawerServer(g){
    const img=document.getElementById("drawerServerIcon"),name=document.getElementById("drawerServerName");
    if(!img||!name)return;
-   if(!g){name.textContent="Escolha um servidor";img.alt="Ícone padrão";img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";return;}
+   if(!g){name.textContent="";img.alt="Foto do servidor";img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='8' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";return;}
    name.textContent=g.name;img.alt="Ícone de "+g.name;
    img.src=g.icon?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";
    img.onerror=()=>{img.onerror=null;img.src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23a7d8f0'/%3E%3Ctext x='32' y='42' font-size='34' text-anchor='middle' fill='%2330213f'%3E%E2%9D%84%3C/text%3E%3C/svg%3E";};
