@@ -128,7 +128,8 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
         avatar:user.avatar ? "https://cdn.discordapp.com/avatars/" + user.id + "/" + user.avatar + ".png?size=128" : null
       }));
       localStorage.setItem("yukina_discord_token", tokenData.access_token);
-      localStorage.setItem("yukina_discord_token_expires_at", String(Date.now() + Math.min(Number(tokenData.expires_in || 604800) * 1000, SESSION_MS)));
+      if (tokenData.refresh_token) localStorage.setItem("yukina_discord_refresh_token", tokenData.refresh_token);
+      localStorage.setItem("yukina_discord_token_expires_at", String(Date.now() + Math.max(60000, Number(tokenData.expires_in || 604800) * 1000 - 60000)));
       sessionStorage.removeItem("yukina_oauth_verifier");
       sessionStorage.removeItem("yukina_oauth_state");
       status.textContent = "Login concluído! Abrindo a seleção de servidores…";
