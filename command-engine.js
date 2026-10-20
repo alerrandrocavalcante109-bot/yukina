@@ -54,11 +54,18 @@ function startPrefixEngine(client) {
       await message.reply("🌙 Este comando ainda não possui execução por prefixo.");
       return;
     }
+    // Indicador nativo de digitação para todos os comandos de prefixo.
+    await message.channel.sendTyping().catch(() => {});
+    const typingInterval = setInterval(() => {
+      message.channel.sendTyping().catch(() => {});
+    }, 8000);
     try {
       await executePrefix(message, args, client);
     } catch (error) {
       console.error(`❄️ [Motor] Erro em ${prefix}${commandName}:`, error);
       await message.reply("🫧 Não consegui executar esse comando. Confira as permissões e tente novamente.").catch(() => {});
+    } finally {
+      clearInterval(typingInterval);
     }
   });
 }
