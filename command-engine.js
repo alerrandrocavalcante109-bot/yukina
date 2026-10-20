@@ -59,12 +59,24 @@ function startPrefixEngine(client) {
     const typingInterval = setInterval(() => {
       message.channel.sendTyping().catch(() => {});
     }, 8000);
+    // Faz respostas simples via message.channel.send também ficarem vinculadas
+    // à mensagem que chamou o comando, sem afetar mensagens em outros canais.
+    const originalChannelSend = message.channel.send.bind(message.channel);
+    message.channel.send = (options) => originalChannelSend({
+      ...(typeof options === "string" ? { content: options } : options),
+      reply: { messageReference: message.id, failIfNotExists: false },
+      allowedMentions: {
+        ...(typeof options === "object" && options?.allowedMentions ? options.allowedMentions : {}),
+        repliedUser: false
+      }
+    });
     try {
       await executePrefix(message, args, client);
     } catch (error) {
       console.error(`❄️ [Motor] Erro em ${prefix}${commandName}:`, error);
       await message.reply("🫧 Não consegui executar esse comando. Confira as permissões e tente novamente.").catch(() => {});
     } finally {
+      message.channel.send = originalChannelSend;
       clearInterval(typingInterval);
     }
   });
