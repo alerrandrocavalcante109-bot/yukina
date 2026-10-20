@@ -263,3 +263,77 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", bindMenu, {once:true});
   else bindMenu();
 })();
+
+/* Menu funcional da página inicial: cria os controles caso o HTML não os tenha. */
+(function () {
+  const ITEMS = [
+    ["⌂", "Início", "./index.html"],
+    ["❄", "Comandos", "./comandos.html"],
+    ["⚙", "Configurações do Sistema", "./configuracoes.html"],
+    ["✦", "VIP e Planos", "./vip.html"],
+    ["📖", "Wiki", "./wiki.html"],
+    ["◉", "Perfil Discord", "./login.html"],
+    ["☾", "Tema: claro/escuro", "#tema"]
+  ];
+  const style = document.createElement("style");
+  style.id = "yukina-functional-drawer-style";
+  style.textContent = `
+    #yukina-drawer-toggle{display:inline-flex;align-items:center;justify-content:center;width:46px;height:46px;flex:0 0 46px;border-radius:14px;border:1px solid #f4b8e8;background:linear-gradient(135deg,#ff8dcc,#b79aff);color:#251633;font-size:25px;font-weight:900;cursor:pointer;box-shadow:0 5px 18px #c56bff35;z-index:10002}
+    #yukina-drawer-shade{position:fixed;inset:0;background:rgba(7,5,16,.58);backdrop-filter:blur(3px);z-index:10000;opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s}
+    #yukina-drawer{position:fixed;z-index:10001;left:0;top:0;bottom:0;width:min(320px,86vw);padding:22px 14px calc(22px + env(safe-area-inset-bottom));overflow-y:auto;background:linear-gradient(180deg,#171029,#0d0a1b);border-right:1px solid #d7a8ff66;box-shadow:18px 0 55px #0006;transform:translateX(-105%);visibility:hidden;transition:transform .25s ease,visibility .25s;display:flex;flex-direction:column;gap:8px}
+    body.yukina-drawer-open #yukina-drawer{transform:translateX(0);visibility:visible}
+    body.yukina-drawer-open #yukina-drawer-shade{opacity:1;visibility:visible}
+    #yukina-drawer .yd-head{display:flex;align-items:center;justify-content:space-between;padding:8px 8px 18px;margin-bottom:8px;border-bottom:1px solid #ffffff20;color:#fff;font-weight:900;letter-spacing:.12em}
+    #yukina-drawer .yd-close{border:0;background:transparent;color:#fff;font-size:28px;padding:4px 10px;cursor:pointer}
+    #yukina-drawer a,#yukina-drawer button.yd-item{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:12px 14px;border:1px solid #ffffff12;border-radius:12px;background:#ffffff09;color:#fff;text-decoration:none;text-align:left;font:inherit;font-size:15px;box-sizing:border-box;cursor:pointer}
+    #yukina-drawer a:active,#yukina-drawer a:hover,#yukina-drawer button.yd-item:hover{background:#a7d8f025;border-color:#a7d8f077}
+    #yukina-drawer .yd-icon{width:24px;text-align:center;color:#ffb8e4;font-size:18px}
+    #yukina-drawer .yd-foot{margin-top:auto;padding:18px 8px 0;color:#c8b8dc;font-size:12px}
+    @media(min-width:761px){#yukina-drawer-toggle{margin-right:8px}}
+  `;
+  (document.head || document.documentElement).appendChild(style);
+  function setup(){
+    if(document.getElementById("yukina-drawer")) return;
+    const header=document.querySelector("header.nav, header, .nav");
+    if(!header) return;
+    const brand=header.querySelector(".brand, a[href='./index.html']");
+    const toggle=document.createElement("button");
+    toggle.id="yukina-drawer-toggle";toggle.type="button";toggle.textContent="☰";
+    toggle.setAttribute("aria-label","Abrir menu");toggle.setAttribute("aria-expanded","false");toggle.setAttribute("aria-controls","yukina-drawer");
+    const shade=document.createElement("div");shade.id="yukina-drawer-shade";
+    const drawer=document.createElement("nav");drawer.id="yukina-drawer";drawer.setAttribute("aria-label","Menu principal da Yukina");
+    const head=document.createElement("div");head.className="yd-head";
+    const title=document.createElement("span");title.textContent="✦ YUKINA";
+    const closeButton=document.createElement("button");closeButton.className="yd-close";closeButton.type="button";closeButton.textContent="×";closeButton.setAttribute("aria-label","Fechar menu");
+    head.append(title,closeButton);drawer.appendChild(head);
+    for(const [symbol,label,href] of ITEMS){
+      if(href==="#tema"){
+        const b=document.createElement("button");b.type="button";b.className="yd-item";
+        const ico=document.createElement("span");ico.className="yd-icon";ico.textContent=symbol;
+        const txt=document.createElement("span");txt.textContent=label;b.append(ico,txt);
+        b.addEventListener("click",()=>{const themeButton=document.getElementById("themeToggle");if(themeButton)themeButton.click();else document.documentElement.dataset.theme=document.documentElement.dataset.theme==="light"?"dark":"light";});
+        drawer.appendChild(b);
+      } else {
+        const a=document.createElement("a");a.href=href;
+        const ico=document.createElement("span");ico.className="yd-icon";ico.textContent=symbol;
+        const txt=document.createElement("span");txt.textContent=label;a.append(ico,txt);drawer.appendChild(a);
+      }
+    }
+    const foot=document.createElement("div");foot.className="yd-foot";foot.textContent="Yukina · Cuidando deste cantinho";drawer.appendChild(foot);
+    const open=()=>{document.body.classList.add("yukina-drawer-open");toggle.setAttribute("aria-expanded","true");toggle.setAttribute("aria-label","Fechar menu");};
+    const close=()=>{document.body.classList.remove("yukina-drawer-open");toggle.setAttribute("aria-expanded","false");toggle.setAttribute("aria-label","Abrir menu");};
+    toggle.addEventListener("click",e=>{e.preventDefault();document.body.classList.contains("yukina-drawer-open")?close():open();});
+    closeButton.addEventListener("click",close);shade.addEventListener("click",close);
+    drawer.querySelectorAll("a").forEach(a=>a.addEventListener("click",close));
+    document.addEventListener("keydown",e=>{if(e.key==="Escape")close();});
+    let startX=null;
+    document.addEventListener("touchstart",e=>{if(e.touches.length===1)startX=e.touches[0].clientX;},{passive:true});
+    document.addEventListener("touchend",e=>{if(startX===null)return;const dx=e.changedTouches[0].clientX-startX;if(!document.body.classList.contains("yukina-drawer-open")&&startX<28&&dx>75)open();else if(document.body.classList.contains("yukina-drawer-open")&&dx< -75)close();startX=null;},{passive:true});
+    header.insertBefore(toggle,brand||header.firstChild);
+    document.body.append(shade,drawer);
+  }
+  if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup,{once:true});else setup();
+  const observer=new MutationObserver(()=>{if(!document.getElementById("yukina-drawer"))setup();});
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  setTimeout(()=>observer.disconnect(),15000);
+})();
