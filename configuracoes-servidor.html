@@ -107,6 +107,19 @@ body .wrap::before{
  color:#30213f;background:linear-gradient(135deg,rgba(255,255,255,.96),rgba(244,236,255,.94));
  border:1px solid rgba(177,143,235,.4);border-radius:26px;box-shadow:0 18px 48px rgba(103,78,137,.14);
 }
+
+body[data-active-system="xpRolesPanel"] .wrap::before{
+ content:"❄️ Cargos por nível de XP\\A Defina em qual nível cada membro receberá um cargo automaticamente. Adicione uma regra, informe o nível necessário e escolha o cargo correspondente. Você pode criar várias regras para diferentes níveis e salvar a configuração quando terminar.";
+}
+body[data-active-system="timeRolesPanel"] .wrap::before{
+ content:"🌙 Hierarquia temporal\\A Organize os cargos de acordo com o tempo que cada pessoa permanece no servidor. Adicione uma regra, informe o número de dias e escolha o cargo correspondente. Crie etapas para diferentes períodos e salve a configuração.";
+}
+body[data-active-system="settingsPanel"] .wrap::before{
+ content:"⚙️ Preferências do servidor\\A Ajuste as opções disponíveis para este servidor, como boas-vindas, ferramentas de moderação e notificações. Marque ou desmarque as preferências desejadas e use “Salvar preferências”. Para voltar ao padrão, escolha “Restaurar padrão”.";
+}
+body[data-active-system="xpMultiplierPanel"] .wrap::before{
+ content:"✨ Multiplicador de XP por cargo\\A Escolha um cargo do servidor e defina quantas vezes mais XP ele receberá por mensagem. Toque em “Adicionar multiplicador” para incluir a regra e, depois, salve as alterações. As regras salvas aparecem em “Multiplicadores adicionados” e podem ser editadas.";
+}
 html[data-theme="dark"] body .wrap::before{
  color:#f4edff;background:linear-gradient(135deg,rgba(21,31,52,.96),rgba(30,17,48,.96));
  border-color:rgba(167,216,240,.35);
@@ -329,6 +342,7 @@ body .pill, body button:not(.server-item) {
      status.textContent="Salve ou redefina os multiplicadores antes de sair deste sistema.";return;
    }
    document.querySelectorAll(".progress-panel").forEach(p=>p.classList.toggle("active",p.id===link.dataset.panel));
+   document.body.dataset.activeSystem=link.dataset.panel;
    document.querySelectorAll(".drawer-link[data-panel]").forEach(a=>a.classList.toggle("active",a===link));
    setMenu(false);
    const target=document.getElementById(link.dataset.panel);
