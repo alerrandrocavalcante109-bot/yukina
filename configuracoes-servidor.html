@@ -15,6 +15,7 @@
 .rule-field{display:grid;gap:7px;min-width:0}.rule-field label{font-size:.84rem;color:#c8dff3}.rule-field input,.rule-field select{width:100%;min-width:0;border:1px solid var(--line);border-radius:10px;padding:11px;background:#111d31;color:white;font:inherit}
 .rule-row .remove-rule{background:#321b35;border-color:#70416f;cursor:pointer}.save-draft{border:1px solid var(--line);border-radius:12px;padding:11px 14px;background:#1c1931;color:#e4dcff;font:inherit;cursor:pointer}
 .rule-note{font-size:.82rem;color:#a9bad0;margin:0}.section-intro{color:#c3d3e7}
+#yukinaToast{position:fixed;right:18px;bottom:18px;z-index:200000;max-width:min(420px,calc(100vw - 36px));padding:14px 18px;border:1px solid #39b86a;border-radius:14px;background:#123d27;color:#d8ffe5;box-shadow:0 12px 34px #0004;font-weight:750;opacity:0;transform:translateY(12px);pointer-events:none;transition:opacity .2s,transform .2s}#yukinaToast.show{opacity:1;transform:translateY(0)}#yukinaToast.error{border-color:#d86c78;background:#4b1d2a;color:#ffe1e5}
 @media(max-width:620px){.rule-row{grid-template-columns:1fr}.rule-row .remove-rule{width:100%}}
 
 /* Garantir que o menu lateral fique acima do conteúdo e possa receber toques no celular. */
@@ -146,6 +147,7 @@ body .pill, body button:not(.server-item) {
 </style>
 </head>
 <body>
+<div id="yukinaToast" role="status" aria-live="polite"></div>
 <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="sideDrawer">☰</button>
 <div class="drawer-backdrop" id="drawerBackdrop"></div>
 <aside class="side-drawer" id="sideDrawer" aria-label="Menu de sistemas">
@@ -206,7 +208,7 @@ body .pill, body button:not(.server-item) {
  <div id="multiplierRules" class="rule-list"></div>
  <div class="row"><button type="button" class="btn" id="addMultiplierRule">＋ Adicionar multiplicador</button></div>
  <div id="multiplierUnsaved" class="panel" hidden style="margin:14px 0;padding:14px;border-color:#e7bd75!important">
-  <strong>⚠️ Você tem alterações não salvas.</strong>
+  <strong id="multiplierWarningText">⚠️ Você tem alterações não salvas.</strong>
   <div class="row" style="margin-top:10px"><button type="button" id="resetMultipliers">Redefinir</button><button type="button" class="btn" id="saveMultipliers">Salvar</button></div>
  </div>
  <h3>Multiplicadores adicionados</h3><div id="savedMultipliers" class="rule-list"></div>
@@ -320,6 +322,12 @@ body .pill, body button:not(.server-item) {
  if(backdrop)backdrop.addEventListener("click",()=>setMenu(false));
  document.addEventListener("keydown",e=>{if(e.key==="Escape")setMenu(false)});
  document.querySelectorAll("[data-panel]").forEach(link=>link.addEventListener("click",()=>{
+   const activePanel=document.querySelector(".progress-panel.active");
+   if(activePanel?.id==="xpMultiplierPanel"&&link.dataset.panel!=="xpMultiplierPanel"&&multiplierIsDirty()){
+     const warning=document.getElementById("multiplierUnsaved");if(warning)warning.hidden=false;
+     const text=document.getElementById("multiplierWarningText");if(text)text.textContent="⚠️ Você tem alterações não salvas. Redefina ou salve agora, ou você perderá as alterações.";
+     status.textContent="Salve ou redefina os multiplicadores antes de sair deste sistema.";return;
+   }
    document.querySelectorAll(".progress-panel").forEach(p=>p.classList.toggle("active",p.id===link.dataset.panel));
    document.querySelectorAll(".drawer-link[data-panel]").forEach(a=>a.classList.toggle("active",a===link));
    setMenu(false);
@@ -365,10 +373,12 @@ body .pill, body button:not(.server-item) {
    if(editingMultiplierIndex>=0)multiplierSaved[editingMultiplierIndex]=item;else multiplierSaved.push(item);
    editingMultiplierIndex=-1;row.querySelector('select[aria-label="Cargo que recebe o bônus"]').value="";row.querySelector('input[aria-label="Multiplicador de XP"]').value="";document.getElementById("addMultiplierRule").textContent="＋ Adicionar multiplicador";renderSavedMultipliers();updateMultiplierDirty();status.textContent="Multiplicador adicionado à lista. As alterações ainda não foram salvas.";
  });
- function updateMultiplierDirty(){const box=document.getElementById("multiplierUnsaved");if(box)box.hidden=JSON.stringify(multiplierSaved)===JSON.stringify(multiplierOriginal);}
+ function multiplierIsDirty(){return JSON.stringify(multiplierSaved)!==JSON.stringify(multiplierOriginal);}
+ function updateMultiplierDirty(){const box=document.getElementById("multiplierUnsaved");if(box)box.hidden=!multiplierIsDirty();}
+ let toastTimer;function showToast(message,error=false){const toast=document.getElementById("yukinaToast");if(!toast)return;toast.textContent=message;toast.classList.toggle("error",error);toast.classList.add("show");clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove("show"),4000);}
  function renderSavedMultipliers(){const list=document.getElementById("savedMultipliers");if(!list)return;list.replaceChildren();if(!multiplierSaved.length){const empty=document.createElement("p");empty.className="muted";empty.textContent="Nenhum multiplicador adicionado ainda.";list.appendChild(empty);return;}multiplierSaved.forEach((item,index)=>{const card=document.createElement("div");card.className="rule-row";const info=document.createElement("div");info.className="rule-field";const label=document.createElement("strong");const role=(serverResources.roles||[]).find(r=>r.id===item.role);label.textContent=(role?.name||"Cargo selecionado")+" · ×"+String(item.multiplier).replace(".",",");info.appendChild(label);card.appendChild(info);const edit=document.createElement("button");edit.type="button";edit.className="btn";edit.textContent="Editar";edit.addEventListener("click",()=>{const editor=document.querySelector("#multiplierRules .rule-row");if(!editor)return;editor.querySelector('select[aria-label="Cargo que recebe o bônus"]').value=item.role;editor.querySelector('input[aria-label="Multiplicador de XP"]').value=item.multiplier;editingMultiplierIndex=index;document.getElementById("addMultiplierRule").textContent="Salvar edição";document.getElementById("multiplierRules").scrollIntoView({behavior:"smooth",block:"center"});});card.appendChild(edit);const remove=document.createElement("button");remove.type="button";remove.className="remove-rule";remove.textContent="Remover";remove.addEventListener("click",()=>{multiplierSaved=multiplierSaved.filter((_,i)=>i!==index);if(editingMultiplierIndex===index)editingMultiplierIndex=-1;else if(editingMultiplierIndex>index)editingMultiplierIndex--;renderSavedMultipliers();updateMultiplierDirty();status.textContent="Multiplicador removido da lista. As alterações ainda não foram salvas.";});card.appendChild(remove);list.appendChild(card);});}
- document.getElementById("resetMultipliers").addEventListener("click",async()=>{const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}const button=document.getElementById("resetMultipliers");button.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({multiplierRules:[]})});multiplierSaved=[];multiplierOriginal=[];editingMultiplierIndex=-1;const row=document.querySelector("#multiplierRules .rule-row");if(row){row.querySelector('select[aria-label="Cargo que recebe o bônus"]').value="";row.querySelector('input[aria-label="Multiplicador de XP"]').value="";}document.getElementById("addMultiplierRule").textContent="＋ Adicionar multiplicador";renderSavedMultipliers();updateMultiplierDirty();status.textContent="Sistema de multiplicadores redefinido: todos os multiplicadores salvos foram apagados do banco de dados de "+g.name+".";}catch(e){status.textContent="Não foi possível redefinir os multiplicadores: "+e.message;}finally{button.disabled=false;}});
- document.getElementById("saveMultipliers").addEventListener("click",async()=>{const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}const button=document.getElementById("saveMultipliers");button.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({multiplierRules:multiplierSaved})});multiplierOriginal=JSON.parse(JSON.stringify(multiplierSaved));updateMultiplierDirty();status.textContent="Multiplicadores salvos para "+g.name+".";}catch(e){status.textContent="Não foi possível salvar: "+e.message;}finally{button.disabled=false;}});
+ document.getElementById("resetMultipliers").addEventListener("click",async()=>{const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}const button=document.getElementById("resetMultipliers");button.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({multiplierRules:[]})});multiplierSaved=[];multiplierOriginal=[];editingMultiplierIndex=-1;const row=document.querySelector("#multiplierRules .rule-row");if(row){row.querySelector('select[aria-label="Cargo que recebe o bônus"]').value="";row.querySelector('input[aria-label="Multiplicador de XP"]').value="";}document.getElementById("addMultiplierRule").textContent="＋ Adicionar multiplicador";renderSavedMultipliers();updateMultiplierDirty();status.textContent="Sistema de multiplicadores redefinido para "+g.name+".";showToast("Sistema redefinido. Os multiplicadores foram apagados do servidor.");}catch(e){status.textContent="Não foi possível redefinir os multiplicadores: "+e.message;}finally{button.disabled=false;}});
+ document.getElementById("saveMultipliers").addEventListener("click",async()=>{const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}const button=document.getElementById("saveMultipliers");button.disabled=true;try{await api("/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",body:JSON.stringify({multiplierRules:multiplierSaved})});multiplierOriginal=JSON.parse(JSON.stringify(multiplierSaved));updateMultiplierDirty();status.textContent="Multiplicadores salvos para "+g.name+".";showToast("Alterações salvas com sucesso!");}catch(e){status.textContent="Não foi possível salvar: "+e.message;showToast("Não foi possível salvar as alterações.",true);}finally{button.disabled=false;}});
  document.querySelectorAll(".save-draft").forEach(button=>button.addEventListener("click",async()=>{
    const g=selected();if(!g){status.textContent="Selecione um servidor primeiro.";return;}
    const containerId=systemKeys[button.dataset.system],rules=collectRules(containerId,button.dataset.system);button.disabled=true;
