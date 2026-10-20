@@ -29,7 +29,7 @@ function buildServerInfo(guild, owner) {
     .addFields(
       { name: "🆔 ID do servidor", value: "`" + guild.id + "`", inline: true },
       { name: "🌌 Shard ID", value: String(guild.shardId ?? 0), inline: true },
-      { name: "👑 Dono", value: owner.toString() + "\n`" + owner.id + "`", inline: false },
+      { name: "👑 Dono", value: owner.user.tag + "\n`" + owner.id + "`", inline: false },
       { name: "📚 Canais no total", value: String(channels.size), inline: true },
       { name: "💬 Canais de texto", value: String(textChannels), inline: true },
       { name: "🔊 Canais de voz", value: String(voiceChannels), inline: true },
@@ -58,6 +58,7 @@ async function replyWithInfo(interaction) {
     await guild.channels.fetch();
     const owner = await guild.fetchOwner();
     return interaction.reply({
+      content: "👑 Dono do servidor: <@" + owner.id + ">",
       embeds: [buildServerInfo(guild, owner)],
       allowedMentions: { users: [owner.id], parse: [] }
     });
