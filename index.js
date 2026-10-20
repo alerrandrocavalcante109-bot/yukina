@@ -576,7 +576,7 @@ async function handleCountingMessage(message) {
       if (!config?.enabled || !config.channelId || config.channelId !== message.channel.id) return;
       const raw = String(message.content || "").trim();
       const expected = Math.max(0, Number(config.currentNumber) || 0) + 1;
-      const numeric = /^\\d+$/.test(raw) ? Number(raw) : NaN;
+      const numeric = /^\d+$/.test(raw) ? Number(raw) : NaN;
 
       if (String(message.author.id) === String(config.lastUserId || "")) {
         await message.delete().catch(() => {});
