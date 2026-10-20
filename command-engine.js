@@ -59,17 +59,29 @@ function startPrefixEngine(client) {
     const typingInterval = setInterval(() => {
       message.channel.sendTyping().catch(() => {});
     }, 8000);
-    // Faz respostas simples via message.channel.send também ficarem vinculadas
-    // à mensagem que chamou o comando, sem afetar mensagens em outros canais.
+    // Vincula envios feitos com texto/opções simples à mensagem do comando.
+    // Não converte objetos internos MessagePayload do discord.js, pois isso os esvazia.
     const originalChannelSend = message.channel.send.bind(message.channel);
-    message.channel.send = (options) => originalChannelSend({
-      ...(typeof options === "string" ? { content: options } : options),
-      reply: { messageReference: message.id, failIfNotExists: false },
-      allowedMentions: {
-        ...(typeof options === "object" && options?.allowedMentions ? options.allowedMentions : {}),
-        repliedUser: false
+    message.channel.send = (options) => {
+      let payload = options;
+      if (typeof options === "string") {
+        payload = { content: options };
+      } else if (options && typeof options === "object" && !Array.isArray(options)) {
+        // MessagePayload possui a configuração real em .options; preserva embeds/anexos.
+        const source = options.options && typeof options.options === "object"
+          ? options.options
+          : options;
+        payload = { ...source };
       }
-    });
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        payload.reply = { messageReference: message.id, failIfNotExists: false };
+        payload.allowedMentions = {
+          ...(payload.allowedMentions || {}),
+          repliedUser: false
+        };
+      }
+      return originalChannelSend(payload);
+    };
     try {
       await executePrefix(message, args, client);
     } catch (error) {
