@@ -41,7 +41,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
   const status = document.getElementById("status");
   const button = document.getElementById("loginButton");
   const params = new URLSearchParams(window.location.search);
-  const requestedReturn = params.get("return") || "./index.html";
+  const requestedReturn = params.get("return") || "./configuracoes.html";
   function safeReturnTarget(value) {
     try { const url = new URL(value, window.location.href); if (url.origin !== window.location.origin || value.startsWith("//") || (!value.startsWith("./") && !value.startsWith("/"))) return "./index.html"; return url.pathname + url.search; } catch (_) { return "./index.html"; }
   }
@@ -126,7 +126,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
       sessionStorage.setItem("yukina_discord_token", tokenData.access_token);
       sessionStorage.removeItem("yukina_oauth_verifier");
       sessionStorage.removeItem("yukina_oauth_state");
-      status.textContent = "Login concluído! Voltando para a página inicial…";
+      status.textContent = "Login concluído! Abrindo a seleção de servidores…";
       const returnTo = safeReturnTarget(sessionStorage.getItem("yukina_login_return") || "./index.html");
       sessionStorage.removeItem("yukina_login_return");
       window.location.replace(returnTo + (returnTo.includes("?") ? "&" : "?") + "login=success");
