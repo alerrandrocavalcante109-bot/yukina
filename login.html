@@ -42,7 +42,7 @@ h1{margin:0;font-size:clamp(27px,7vw,35px);letter-spacing:-1.1px;line-height:1.1
   const button = document.getElementById("loginButton");
   const params = new URLSearchParams(window.location.search);
   const requestedReturn = params.get("return") || "./configuracoes.html";
-  const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
+  const SESSION_MS = 24 * 60 * 60 * 1000; // Sessão local do painel válida por 24 horas.
   function safeReturnTarget(value) {
     try { const url = new URL(value, window.location.href); if (url.origin !== window.location.origin || value.startsWith("//") || (!value.startsWith("./") && !value.startsWith("/"))) return "./index.html"; return url.pathname + url.search; } catch (_) { return "./index.html"; }
   }
