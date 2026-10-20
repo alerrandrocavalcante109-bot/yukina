@@ -1,7 +1,7 @@
 /**
  * Armazenamento compartilhado dos dados de membros.
- * Se MONGODB_URI estiver configurada, o Atlas é obrigatório: falhas não são ocultadas
- * por um fallback local. Sem URI, o modo local continua disponível para desenvolvimento.
+ * O MongoDB pode ser pausado temporariamente com MONGODB_ENABLED=false.
+ * Nesse modo, os dados são guardados em JSON local até a conexão com o Atlas ser reativada.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -9,6 +9,7 @@ const { MongoClient } = require("mongodb");
 
 const DATA_DIR = path.join(__dirname, "data");
 const DATA_FILE = path.join(DATA_DIR, "member-ranks.json");
+const MONGODB_ENABLED = (process.env.MONGODB_ENABLED || "false").trim().toLowerCase() === "true";
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DATABASE_NAME = (process.env.MONGODB_DB || "yukina").trim();
 const COLLECTION_NAME = "member_ranks";
@@ -56,9 +57,6 @@ async function persistRecord(key) {
   if (!record) return;
 
   if (!collection) {
-    if (MONGODB_URI) {
-      throw new Error("[MongoDB] URI configurada, mas a coleção não está conectada; o registro não foi salvo localmente.");
-    }
     saveLocal();
     return;
   }
@@ -104,8 +102,12 @@ async function initialize() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     loadLocal();
+    if (!MONGODB_ENABLED) {
+      console.warn("[Banco de membros] MongoDB temporariamente desativado (MONGODB_ENABLED=false); usando armazenamento JSON local. Dados novos podem não persistir entre reinicializações do Render.");
+      return;
+    }
     if (!MONGODB_URI) {
-      console.warn("[Banco de membros] MONGODB_URI não configurada; usando armazenamento local. Os dados podem não persistir entre reinicializações.");
+      console.warn("[Banco de membros] MONGODB_ENABLED=true, mas MONGODB_URI não está configurada; usando armazenamento local.");
       return;
     }
 
