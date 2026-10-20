@@ -562,8 +562,53 @@ client.once("clientReady", async () => {
   console.log("");
 });
 
+const countingQueues = new Map();
+async function handleCountingMessage(message) {
+  if (message.author.bot || !message.guild || !message.channel?.isTextBased()) return;
+  const task = async () => {
+    try {
+      const collection = await getSettingsCollection();
+      const doc = await collection.findOne(
+        { guildId: message.guild.id },
+        { projection: { "settings.countingSystem": 1 } }
+      );
+      const config = doc?.settings?.countingSystem;
+      if (!config?.enabled || !config.channelId || config.channelId !== message.channel.id) return;
+      const raw = String(message.content || "").trim();
+      const expected = Math.max(0, Number(config.currentNumber) || 0) + 1;
+      const numeric = /^\\d+$/.test(raw) ? Number(raw) : NaN;
+
+      if (String(message.author.id) === String(config.lastUserId || "")) {
+        await message.delete().catch(() => {});
+        return;
+      }
+      if (!Number.isSafeInteger(numeric) || numeric !== expected) {
+        await message.delete().catch(() => {});
+        await collection.updateOne(
+          { guildId: message.guild.id },
+          { $set: { "settings.countingSystem.currentNumber": 0, "settings.countingSystem.lastUserId": "" } }
+        );
+        await message.channel.send({ content: "❌ Contagem incorreta! A sequência voltou ao início. O próximo número é **1**.", allowedMentions: { parse: [] } }).catch(() => {});
+        return;
+      }
+      await collection.updateOne(
+        { guildId: message.guild.id },
+        { $set: { "settings.countingSystem.currentNumber": numeric, "settings.countingSystem.lastUserId": message.author.id } }
+      );
+    } catch (error) {
+      console.error("[Contagem] Não foi possível processar a mensagem:", error.message || error);
+    }
+  };
+  const previous = countingQueues.get(message.guild.id) || Promise.resolve();
+  const next = previous.then(task, task);
+  countingQueues.set(message.guild.id, next);
+  try { await next; } finally { if (countingQueues.get(message.guild.id) === next) countingQueues.delete(message.guild.id); }
+}
+
 client.on("messageCreate", async (message) => {
-  if (message.author.bot || !message.guild || !client.user || !message.mentions.has(client.user)) return;
+  if (message.author.bot || !message.guild) return;
+  await handleCountingMessage(message);
+  if (!client.user || !message.mentions.has(client.user)) return;
 
   if (!message.member.permissions.has(PermissionFlagsBits.ManageGuild) &&
       !message.member.permissions.has(PermissionFlagsBits.Administrator)) {
