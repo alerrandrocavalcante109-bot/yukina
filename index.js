@@ -394,6 +394,7 @@ function loadYukinaSystems() {
   require("./xp-level-system")(client);
   require("./interaction")(client);
   require("./log-system")(client);
+  require("./temporary-role-system").start(client);
 }
 
 
