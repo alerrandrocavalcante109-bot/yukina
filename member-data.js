@@ -1,6 +1,7 @@
 /**
  * Armazenamento compartilhado dos dados de membros.
- * MongoDB Atlas é usado quando MONGODB_URI está configurada; JSON local é fallback.
+ * Se MONGODB_URI estiver configurada, o Atlas é obrigatório: falhas não são ocultadas
+ * por um fallback local. Sem URI, o modo local continua disponível para desenvolvimento.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -51,20 +52,51 @@ function getRecord(guildId, userId) {
 }
 
 async function persistRecord(key) {
+  const record = store.members[key];
+  if (!record) return;
+
   if (!collection) {
+    if (MONGODB_URI) {
+      throw new Error("[MongoDB] URI configurada, mas a coleção não está conectada; o registro não foi salvo localmente.");
+    }
     saveLocal();
     return;
   }
-  const record = store.members[key];
-  if (!record) return;
+
   try {
     await collection.updateOne(
       { _id: key },
-      { $set: { xp: Number(record.xp) || 0, joinedAt: record.joinedAt || null, rank: record.rank || null, updatedAt: new Date() } },
+      {
+        $set: {
+          xp: Math.max(0, Number(record.xp) || 0),
+          joinedAt: record.joinedAt || null,
+          rank: record.rank || null,
+          updatedAt: new Date(),
+        },
+      },
       { upsert: true }
     );
   } catch (error) {
-    console.error("[MongoDB] Falha ao salvar progresso de membro:", error.message);
+    console.error("[MongoDB] Falha ao persistir membro " + key + ":", error.message);
+    throw error;
+  }
+}
+
+function logConnectionFailure(error) {
+  const message = String(error?.message || error || "erro desconhecido");
+  console.error("[MongoDB] Falha na conexão/verificação:", {
+    name: error?.name || "Error",
+    code: error?.code || error?.codeName || "sem código",
+    message: message.slice(0, 700),
+  });
+  if (/authentication failed|bad auth|auth failed/i.test(message)) {
+    console.error("[MongoDB] Confira usuário, senha e permissões do Database User no Atlas.");
+  } else if (/not whitelisted|ip access list|current ip/i.test(message)) {
+    console.error("[MongoDB] Confira Network Access no Atlas e autorize o IP de saída do ambiente onde a Yukina está rodando.");
+  } else if (/tls|ssl|certificate|alert number 80/i.test(message)) {
+    console.error("[MongoDB] Falha TLS. Use Node.js LTS atualizado, mantenha TLS habilitado e confira rede/DNS; não desative a validação de certificados.");
+  } else if (/querySrv|ENOTFOUND|ECONNREFUSED|ETIMEDOUT|EAI_AGAIN/i.test(message)) {
+    console.error("[MongoDB] Confira DNS, conexão de rede e se o cluster Atlas está ativo.");
   }
 }
 
@@ -73,17 +105,22 @@ async function initialize() {
   initPromise = (async () => {
     loadLocal();
     if (!MONGODB_URI) {
-      console.warn("[Banco de membros] MONGODB_URI não configurada; usando armazenamento local.");
+      console.warn("[Banco de membros] MONGODB_URI não configurada; usando armazenamento local. Os dados podem não persistir entre reinicializações.");
       return;
     }
 
     try {
       mongoClient = new MongoClient(MONGODB_URI, {
-        serverSelectionTimeoutMS: 10000,
-        connectTimeoutMS: 10000,
+        appName: "Yukina",
+        serverSelectionTimeoutMS: 15000,
+        connectTimeoutMS: 15000,
+        socketTimeoutMS: 45000,
+        maxPoolSize: 10,
       });
       await mongoClient.connect();
+
       const db = mongoClient.db(DATABASE_NAME);
+      await db.command({ ping: 1 });
       collection = db.collection(COLLECTION_NAME);
 
       const documents = await collection.find({}).toArray();
@@ -99,26 +136,35 @@ async function initialize() {
         };
       }
 
-      // Migra registros locais que ainda não existem no MongoDB, sem sobrescrever os do banco.
-      for (const [key, record] of Object.entries(store.members)) {
-        if (!mongoKeys.has(key)) {
-          await collection.updateOne(
-            { _id: key },
-            { $set: { xp: Math.max(0, Number(record.xp) || 0), joinedAt: record.joinedAt || null, rank: record.rank || null, updatedAt: new Date() } },
-            { upsert: true }
-          );
-        }
+      // Migra registros locais ausentes no Atlas, sem sobrescrever dados já existentes no banco.
+      const localRecords = Object.entries(store.members);
+      for (const [key, record] of localRecords) {
+        if (mongoKeys.has(key)) continue;
+        await collection.updateOne(
+          { _id: key },
+          {
+            $set: {
+              xp: Math.max(0, Number(record.xp) || 0),
+              joinedAt: record.joinedAt || null,
+              rank: record.rank || null,
+              updatedAt: new Date(),
+            },
+          },
+          { upsert: true }
+        );
       }
 
       saveLocal();
-      console.log("[MongoDB] Conectado. Dados de XP em " + DATABASE_NAME + "." + COLLECTION_NAME + ".");
+      console.log("[MongoDB] Conexão verificada com ping. Banco: " + DATABASE_NAME + "; coleção: " + COLLECTION_NAME + ".");
     } catch (error) {
       collection = null;
       if (mongoClient) await mongoClient.close().catch(() => {});
       mongoClient = null;
-      console.error("[MongoDB] Conexão falhou; usando fallback local:", error.message);
+      logConnectionFailure(error);
+      throw new Error("A Yukina não pode iniciar com MONGODB_URI configurada porque não conseguiu conectar ao Atlas. Corrija as configurações do MongoDB e reinicie o serviço.");
     }
   })();
+
   return initPromise;
 }
 
