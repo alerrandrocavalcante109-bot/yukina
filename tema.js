@@ -303,6 +303,8 @@
   `;
   (document.head || document.documentElement).appendChild(style);
   function setup(){
+    /* Algumas páginas administrativas já possuem seu próprio menu lateral. */
+    if(document.getElementById("menuToggle")) return;
     if(document.getElementById("yukina-drawer")) return;
     const header=document.querySelector("header.nav, header, .nav");
     if(!header) return;
