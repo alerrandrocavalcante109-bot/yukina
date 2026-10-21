@@ -86,7 +86,13 @@ module.exports = {
       new ButtonBuilder().setCustomId(`vip:approve:${interaction.user.id}:${planKey}:${period}`).setLabel("Compra feita com sucesso").setStyle(ButtonStyle.Success),
       new ButtonBuilder().setCustomId(`vip:cancel:${interaction.user.id}:${planKey}:${period}`).setLabel("Compra cancelada").setStyle(ButtonStyle.Danger),
     );
-    await channel.send({ content: `<@${interaction.user.id}> <@${admin.id}>`, embeds: [embed], components: [row], allowedMentions: { users: [interaction.user.id, admin.id] } });
+    const mentionedUsers = [...new Set([interaction.user.id, admin.id])];
+    await channel.send({
+      content: mentionedUsers.map(id => `<@${id}>`).join(" "),
+      embeds: [embed],
+      components: [row],
+      allowedMentions: { users: mentionedUsers },
+    });
     await interaction.editReply(`Atendimento privado criado: ${channel}. Faça o pagamento somente após conferir o plano e o valor no canal.`);
   },
 };
