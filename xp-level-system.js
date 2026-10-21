@@ -4,6 +4,7 @@
  */
 const { PermissionFlagsBits } = require("discord.js");
 const memberData = require("./member-data");
+const { getGuildSettings } = require("./guild-settings-store");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const roleCache = new Map();
 const updateLocks = new Set();
@@ -29,6 +30,37 @@ function getLevelRole(xp) {
     if (xp >= item.xp) selected = item;
   }
   return selected;
+}
+
+function getCurrentLevel(xp) {
+  return getLevelRole(xp).level;
+}
+
+const knownConfiguredRoleIds = new Map();
+
+async function resolveXpRoles(guild) {
+  const settings = await getGuildSettings(guild.id);
+  // Se xpRules já existe no painel, essa configuração é a fonte de verdade,
+  // inclusive quando a lista estiver vazia. Sem configuração salva, mantém o padrão antigo.
+  if (Array.isArray(settings.xpRules)) {
+    const validRules = settings.xpRules
+      .map((rule) => ({ level: Number(rule?.level), roleId: String(rule?.role || "") }))
+      .filter((rule) => Number.isInteger(rule.level) && rule.level >= 1 && rule.roleId);
+    const roles = new Map();
+    const remembered = knownConfiguredRoleIds.get(guild.id) || new Set();
+    for (const rule of validRules) {
+      const role = guild.roles.cache.get(rule.roleId);
+      if (role && !role.managed) {
+        roles.set(rule.level, role);
+        remembered.add(role.id);
+      }
+    }
+    knownConfiguredRoleIds.set(guild.id, remembered);
+    return { configured: true, roles, managedIds: new Set([...remembered, ...validRules.map(rule => rule.roleId)]) };
+  }
+
+  const roles = await ensureLevelRoles(guild);
+  return { configured: false, roles: roles || new Map(), managedIds: new Set([...(roles || new Map()).values()].map(role => role.id)) };
 }
 
 async function ensureLevelRoles(guild) {
@@ -69,31 +101,33 @@ async function ensureLevelRoles(guild) {
 
 async function updateLevel(member, announce = false) {
   if (!member || member.user.bot || !member.guild) return;
-  const roles = await ensureLevelRoles(member.guild);
-  if (!roles) return;
+  const resolved = await resolveXpRoles(member.guild);
+  if (!resolved) return;
 
   const record = memberData.getRecord(member.guild.id, member.id);
   const xp = Math.max(0, Number(record.xp) || 0);
-  const selected = getLevelRole(xp);
-  const selectedRole = roles.get(selected.level);
-  if (!selectedRole) return;
-
-  const levelRoleIds = new Set([...roles.values()].map((role) => role.id));
-  const current = member.roles.cache.filter((role) => levelRoleIds.has(role.id));
-  const hadSelected = current.has(selectedRole.id);
-  const removeIds = current.filter((role) => role.id !== selectedRole.id).map((role) => role.id);
+  const currentLevel = getCurrentLevel(xp);
+  let selected = null;
+  for (const [level, role] of [...resolved.roles.entries()].sort((a, b) => a[0] - b[0])) {
+    if (currentLevel >= level) selected = { level, role };
+  }
+  const managedIds = resolved.managedIds;
+  const current = member.roles.cache.filter((role) => managedIds.has(role.id));
+  const selectedRole = selected?.role || null;
+  const hadSelected = selectedRole ? current.has(selectedRole.id) : false;
+  const removeIds = current.filter((role) => !selectedRole || role.id !== selectedRole.id).map((role) => role.id);
 
   try {
     if (removeIds.length) await member.roles.remove(removeIds, "Atualização de cargo por nível de XP");
-    if (!hadSelected) await member.roles.add(selectedRole, "Cargo automático por nível de XP da Yukina");
+    if (selectedRole && !hadSelected) await member.roles.add(selectedRole, "Cargo automático por nível de XP da Yukina");
 
-    if (announce && !hadSelected) {
+    if (announce && selectedRole && !hadSelected) {
       const channel = member.guild.systemChannel;
       if (channel && channel.viewable &&
           channel.permissionsFor(member.guild.members.me)?.has(PermissionFlagsBits.SendMessages)) {
         await channel.send({
-          content: "✨ Parabéns, " + member.toString() + "! Você alcançou **" + selected.name +
-            "** com **" + xp.toLocaleString("pt-BR") + " XP**!",
+          content: "✨ Parabéns, " + member.toString() + "! Você alcançou o nível **" + selected.level +
+            "** e recebeu o cargo **" + selectedRole.name + "** com **" + xp.toLocaleString("pt-BR") + " XP**!",
           allowedMentions: { users: [member.id] },
         }).catch(() => {});
       }
@@ -110,21 +144,22 @@ function startXpLevelSystem(client) {
     await updateLevel(member, false);
   });
 
-  client.on("messageCreate", async (message) => {
-    if (!message.guild || message.author.bot || !message.member) return;
+  // O sistema de XP emite esse evento depois de persistir o XP novo.
+  client.on("yukinaXpUpdated", async (member) => {
     await memberData.initialize();
-    await updateLevel(message.member, true);
+    await updateLevel(member, true);
   });
 
   const initializeXpLevels = async () => {
     await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
-      await ensureLevelRoles(guild);
+      const settings = await getGuildSettings(guild.id);
+      if (!Array.isArray(settings.xpRules)) await ensureLevelRoles(guild);
       for (const member of guild.members.cache.values()) {
         if (!member.user.bot) await updateLevel(member, false);
       }
     }
-    console.log("[Níveis XP] 12 cargos automáticos de nível ativados.");
+    console.log("[Níveis XP] Cargos automáticos integrados ao painel por nível de XP.");
   };
   if (client.isReady()) void initializeXpLevels();
   else client.once("clientReady", initializeXpLevels);
