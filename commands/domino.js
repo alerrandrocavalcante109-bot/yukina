@@ -1,19 +1,71 @@
 "use strict";
-const { SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder, MessageFlags, ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder } = require("discord.js");
+const {
+  SlashCommandBuilder, ContainerBuilder, TextDisplayBuilder, SeparatorBuilder,
+  MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags, AttachmentBuilder,
+  ActionRowBuilder, ButtonBuilder, ButtonStyle, StringSelectMenuBuilder
+} = require("discord.js");
+const { createCanvas } = require("@napi-rs/canvas");
 
 const games = new Map();
 const dominoes = [];
 for (let a = 0; a <= 6; a++) for (let b = a; b <= 6; b++) dominoes.push({ a, b, id: `${a}-${b}` });
-const dots = ["⚪","⚫","🔵","🔴","🟢","🟣","🟡"];
-const tileText = t => `[${dots[t.a]} ${t.a} │ ${t.b} ${dots[t.b]}]`;
+const tileText = t => `[${t.a} | ${t.b}]`;
 const shuffle = arr => { const out=[...arr]; for(let i=out.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[out[i],out[j]]=[out[j],out[i]];} return out; };
+
+function drawHalf(ctx, value, x, y, size) {
+  const p = size / 4;
+  const spots = {
+    0: [],
+    1: [[2,2]],
+    2: [[1,1],[3,3]],
+    3: [[1,1],[2,2],[3,3]],
+    4: [[1,1],[1,3],[3,1],[3,3]],
+    5: [[1,1],[1,3],[2,2],[3,1],[3,3]],
+    6: [[1,1],[1,2],[1,3],[3,1],[3,2],[3,3]]
+  };
+  ctx.fillStyle = "#182235";
+  for (const [cx, cy] of spots[value]) {
+    ctx.beginPath();
+    ctx.arc(x + cx * p, y + cy * p, Math.max(3, size * 0.055), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function renderTiles(tiles, title = "YUKINA • DOMINÓ") {
+  const perRow = 6, tileW = 126, tileH = 58, gap = 14, pad = 28, header = 62;
+  const rows = Math.max(1, Math.ceil(tiles.length / perRow));
+  const width = pad * 2 + perRow * tileW + (perRow - 1) * gap;
+  const height = header + pad + rows * tileH + (rows - 1) * gap + pad;
+  const canvas = createCanvas(width, height), ctx = canvas.getContext("2d");
+  const bg = ctx.createLinearGradient(0, 0, width, height);
+  bg.addColorStop(0, "#101827"); bg.addColorStop(1, "#24334a");
+  ctx.fillStyle = bg; ctx.fillRect(0, 0, width, height);
+  ctx.fillStyle = "#9edfff"; ctx.font = "bold 25px sans-serif"; ctx.fillText(title, pad, 40);
+  if (!tiles.length) {
+    ctx.fillStyle = "#e7edf5"; ctx.font = "20px sans-serif";
+    ctx.fillText("A mesa ainda está vazia — jogue a primeira peça!", pad, header + 40);
+  }
+  tiles.forEach((tile, i) => {
+    const col = i % perRow, row = Math.floor(i / perRow);
+    const x = pad + col * (tileW + gap), y = header + row * (tileH + gap);
+    ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
+    ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.roundRect(x, y, tileW, tileH, 9); ctx.fill();
+    ctx.shadowColor = "transparent"; ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+    ctx.strokeStyle = "#cbd5e1"; ctx.lineWidth = 1.5; ctx.stroke();
+    ctx.strokeStyle = "#64748b"; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.moveTo(x + tileW / 2, y + 8); ctx.lineTo(x + tileW / 2, y + tileH - 8); ctx.stroke();
+    drawHalf(ctx, tile.a, x + 4, y + 2, tileH - 4);
+    drawHalf(ctx, tile.b, x + tileW / 2 + 4, y + 2, tileH - 4);
+  });
+  return canvas.toBuffer("image/png");
+}
+
 function boardContainer(game, notice = "") {
-  const board = game.board.length ? game.board.map(t => tileText(t)).join("  ") : "_A mesa ainda está vazia. Jogue qualquer peça para começar._";
   const body = [
     "# 🎲 Domino • Yukina",
     notice,
-    "**Mesa**",
-    board,
+    "**Mesa gráfica**",
+    `**Peças na mesa:** ${game.board.length}`,
     "",
     `**Vez:** <@${game.players[game.turn]}>`,
     "**Peças restantes:**",
@@ -24,6 +76,9 @@ function boardContainer(game, notice = "") {
   return new ContainerBuilder()
     .setAccentColor(0x9edfff)
     .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
+    .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
+      new MediaGalleryItemBuilder().setURL("attachment://domino-board.png").setDescription("Peças gráficas da mesa de dominó")
+    ))
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents(controls(game));
 }
@@ -36,13 +91,13 @@ function controls(game) {
 async function start(channel, starterId, mentions) {
   const ids=[...new Set([starterId,...mentions])].slice(0,4);
   if(ids.length<1||ids.length>4) throw new Error("O Domino precisa de 1 a 4 pessoas.");
-  const shuffled=shuffle(dominoes);
-  const hands={};
+  const shuffled=shuffle(dominoes), hands={};
   const perPlayer=ids.length===2?7:ids.length===3?6:5;
   ids.forEach((id,i)=>hands[id]=shuffled.slice(i*perPlayer,(i+1)*perPlayer));
   const game={id:Math.random().toString(36).slice(2,9),guildId:channel.guild.id,channelId:channel.id,players:ids,hands,board:[],turn:ids[0],turnIndex:0,passes:0,startedBy:starterId,messageId:null};
   games.set(game.id,game);
-  const msg=await channel.send({components:[boardContainer(game, ids.map(id=>`<@${id}>`).join(" ")+" — a partida começou!")],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:ids}});
+  const attachment = new AttachmentBuilder(renderTiles(game.board), { name:"domino-board.png" });
+  const msg=await channel.send({components:[boardContainer(game, ids.map(id=>`<@${id}>`).join(" ")+ " — a partida começou!")],files:[attachment],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:ids}});
   game.messageId=msg.id;
   return game;
 }
@@ -51,38 +106,36 @@ async function showHand(interaction,game) {
   if(!hand) return interaction.reply({content:"Você não está nesta partida.",flags:MessageFlags.Ephemeral});
   const menu=new StringSelectMenuBuilder().setCustomId(`domino:tile:${game.id}`).setPlaceholder("Escolha uma peça para jogar").setMinValues(1).setMaxValues(1)
     .addOptions(hand.map(t=>({label:`${t.a} | ${t.b}`,description:`Peça ${t.a} e ${t.b}`,value:t.id,emoji:"🎲"})));
-  return interaction.reply({content:`🀄 **Suas peças — apenas você pode ver**\n${hand.map(tileText).join("   ")}\n\nEscolha uma peça no menu para tentar jogá-la na mesa.`,components:[new ActionRowBuilder().addComponents(menu)],flags:MessageFlags.Ephemeral});
+  const image = new AttachmentBuilder(renderTiles(hand, "YUKINA • SUA MÃO"), { name:"domino-hand.png" });
+  return interaction.reply({content:"🀄 **Suas peças — apenas você pode ver**\nEscolha uma peça no menu para tentar jogá-la na mesa.",files:[image],components:[new ActionRowBuilder().addComponents(menu)],flags:MessageFlags.Ephemeral});
 }
 async function playTile(interaction,game,tileId) {
   if(!game.players.includes(interaction.user.id)) return interaction.reply({content:"Você não está nesta partida.",flags:MessageFlags.Ephemeral});
   if(game.turn!==interaction.user.id) return interaction.reply({content:"Ainda não é sua vez.",flags:MessageFlags.Ephemeral});
-  const hand=game.hands[interaction.user.id];
-  const index=hand.findIndex(t=>t.id===tileId);
+  const hand=game.hands[interaction.user.id], index=hand.findIndex(t=>t.id===tileId);
   if(index<0) return interaction.reply({content:"Essa peça não está mais na sua mão.",flags:MessageFlags.Ephemeral});
   const tile=hand[index], left=game.board[0]?.a, right=game.board.at(-1)?.b;
   let placed={...tile};
   if(game.board.length) {
     if(tile.a!==left&&tile.b!==left&&tile.a!==right&&tile.b!==right) return interaction.reply({content:`Essa peça não encaixa. As pontas abertas são **${left}** e **${right}**.`,flags:MessageFlags.Ephemeral});
-    if(tile.a===left) { game.board.unshift(placed); }
+    if(tile.a===left) game.board.unshift(placed);
     else if(tile.b===left) { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.unshift(placed); }
     else if(tile.a===right) game.board.push(placed);
     else { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.push(placed); }
   } else game.board.push(placed);
   hand.splice(index,1); game.passes=0;
-  if(!hand.length) {
-    games.delete(game.id);
-    await interaction.deferUpdate();
-    const channel=await interaction.client.channels.fetch(game.channelId);
-    const boardMessage=await channel.messages.fetch(game.messageId);
-    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(`# 🏆 Domino • Yukina\n<@${interaction.user.id}> venceu o Domino!\n\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\n")}`))],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
-    await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",flags:MessageFlags.Ephemeral}).catch(()=>{});
-    return;
-  }
-  game.turnIndex=(game.turnIndex+1)%game.players.length;game.turn=game.players[game.turnIndex];
   await interaction.deferUpdate();
   const channel=await interaction.client.channels.fetch(game.channelId);
   const boardMessage=await channel.messages.fetch(game.messageId);
-  await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+  if(!hand.length) {
+    games.delete(game.id);
+    const winnerBody = `# 🏆 Domino • Yukina\n<@${interaction.user.id}> venceu o Domino!\n\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\n")}`;
+    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(winnerBody)).addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL("attachment://domino-board.png").setDescription("Mesa final do dominó")))],files:[new AttachmentBuilder(renderTiles(game.board, "YUKINA • MESA FINAL"), {name:"domino-board.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+    await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",flags:MessageFlags.Ephemeral}).catch(()=>{});
+    return;
+  }
+  game.turnIndex=(game.turnIndex+1)%game.players.length; game.turn=game.players[game.turnIndex];
+  await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],files:[new AttachmentBuilder(renderTiles(game.board), {name:"domino-board.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
   await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,flags:MessageFlags.Ephemeral}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
