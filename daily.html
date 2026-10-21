@@ -102,6 +102,7 @@
                 return;
               }
               status.textContent = 'Verificação concluída! Você já pode girar a roleta.';
+              document.querySelector('.auth-check').hidden = true;
               button.hidden = false;
             } catch (_) {
               status.textContent = 'Não foi possível validar com o servidor. Tente novamente.';
