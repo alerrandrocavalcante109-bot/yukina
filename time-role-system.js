@@ -4,6 +4,7 @@
  */
 const { PermissionFlagsBits } = require("discord.js");
 const { getGuildSettings } = require("./guild-settings-store");
+const temporalStorage = require("./system-storage").forSystem("temporal-hierarchy");
 
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const knownConfiguredRoleIds = new Map();
@@ -21,13 +22,28 @@ async function updateTimedRoles(member) {
   memberLocks.add(lockKey);
 
   try {
-    const settings = await getGuildSettings(member.guild.id);
-    const rules = Array.isArray(settings.timeRules)
-      ? settings.timeRules
+    let config = await temporalStorage.get(member.guild.id, "config", null);
+    if (!config) {
+      // Compatibilidade e migração segura de configurações anteriores.
+      const legacy = await getGuildSettings(member.guild.id);
+      if (Array.isArray(legacy.timeRules) || Array.isArray(legacy.timeManagedRoleIds)) {
+        config = {
+          timeRules: Array.isArray(legacy.timeRules) ? legacy.timeRules : [],
+          timeManagedRoleIds: Array.isArray(legacy.timeManagedRoleIds) ? legacy.timeManagedRoleIds : [],
+        };
+        await temporalStorage.set(member.guild.id, "config", config);
+        console.log("[Cargos temporais] Configuração antiga migrada para system-storage em " + member.guild.id + ".");
+      } else {
+        config = {};
+      }
+    }
+    const rules = Array.isArray(config.timeRules)
+      ? config.timeRules
           .map((rule) => ({ days: Number(rule?.days), roleId: String(rule?.role || "") }))
           .filter((rule) => Number.isInteger(rule.days) && rule.days >= 1 && rule.roleId)
           .sort((a, b) => a.days - b.days)
       : [];
+    const settings = config;
 
     // Só gerencia cargos que o painel definiu para o sistema temporal.
     const remembered = knownConfiguredRoleIds.get(member.guild.id) || new Set();
