@@ -17,10 +17,10 @@ function boardContainer(game, notice = "") {
     "",
     `**Vez:** <@${game.players[game.turn]}>`,
     "**Peças restantes:**",
-    game.players.map(id => `<@${id}> — ${game.hands[id].length} peça(s)`).join("\\n"),
+    game.players.map(id => `<@${id}> — ${game.hands[id].length} peça(s)`).join("\n"),
     "",
     "_Use “Ver minhas peças” para abrir sua mão privada._"
-  ].filter(Boolean).join("\\n");
+  ].filter(Boolean).join("\n");
   return new ContainerBuilder()
     .setAccentColor(0x9edfff)
     .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
@@ -74,7 +74,7 @@ async function playTile(interaction,game,tileId) {
     await interaction.deferUpdate();
     const channel=await interaction.client.channels.fetch(game.channelId);
     const boardMessage=await channel.messages.fetch(game.messageId);
-    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(`# 🏆 Domino • Yukina\\n<@${interaction.user.id}> venceu o Domino!\\n\\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\\n")}`))],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(`# 🏆 Domino • Yukina\n<@${interaction.user.id}> venceu o Domino!\n\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\n")}`))],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
     await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",ephemeral:true}).catch(()=>{});
     return;
   }
