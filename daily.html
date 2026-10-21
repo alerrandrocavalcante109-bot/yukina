@@ -76,12 +76,12 @@
         <div class="roulette-slot">❄️</div><div class="roulette-slot">🌸</div><div class="roulette-slot">✨</div><div class="roulette-slot">💜</div><div class="roulette-slot">⭐</div><div class="roulette-slot">☁️</div>
       </div>
       <div class="roulette-prizes" aria-label="Probabilidades e ganhos">
-        <div class="roulette-prize">❄️ <strong>Neve mágica</strong> — 35% · 10 flocos</div>
-        <div class="roulette-prize">🌸 <strong>Flor da sorte</strong> — 25% · 20 flocos</div>
-        <div class="roulette-prize">☁️ <strong>Nuvem doce</strong> — 20% · 30 flocos</div>
-        <div class="roulette-prize">✨ <strong>Brilho raro</strong> — 12% · 50 flocos</div>
-        <div class="roulette-prize">💜 <strong>Coração violeta</strong> — 7% · 100 flocos</div>
-        <div class="roulette-prize">⭐ <strong>Estrela lendária</strong> — 1% · 500 flocos</div>
+        <div class="roulette-prize">❄️ <strong>Neve mágica</strong> — 35% · 10 Kizunas</div>
+        <div class="roulette-prize">🌸 <strong>Flor da sorte</strong> — 25% · 20 Kizunas</div>
+        <div class="roulette-prize">☁️ <strong>Nuvem doce</strong> — 20% · 30 Kizunas</div>
+        <div class="roulette-prize">✨ <strong>Brilho raro</strong> — 12% · 50 Kizunas</div>
+        <div class="roulette-prize">💜 <strong>Coração violeta</strong> — 7% · 100 Kizunas</div>
+        <div class="roulette-prize">⭐ <strong>Estrela lendária</strong> — 1% · 500 Kizunas</div>
       </div>
       <button class="roulette-button" id="spin-roulette" type="button" hidden>Girar a roleta</button>
       <p class="roulette-result" id="roulette-result" aria-live="polite">Será que a sorte está do seu lado?</p>
@@ -176,7 +176,7 @@
               slot.textContent = index === chosen ? winner.emoji : outcomes[index].emoji;
             });
             slots[chosen].classList.add('active');
-            result.textContent = winner.message + ' Ganho anunciado: ' + winner.prize + ' flocos.';
+            result.textContent = winner.message + ' Ganho anunciado: ' + winner.prize + ' Kizunas.';
             button.disabled = false;
             button.textContent = 'Girar novamente';
             return;
