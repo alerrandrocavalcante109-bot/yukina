@@ -64,7 +64,7 @@ function boardContainer(game, notice = "") {
   const body = [
     "# 🎲 Domino • Yukina",
     notice,
-    "**Mesa gráfica**",
+    "**Última peça jogada**",
     `**Peças na mesa:** ${game.board.length}`,
     "",
     `**Vez:** <@${game.players[game.turn]}>`,
@@ -77,7 +77,7 @@ function boardContainer(game, notice = "") {
     .setAccentColor(0x9edfff)
     .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
     .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
-      new MediaGalleryItemBuilder().setURL("attachment://domino-board.png").setDescription("Peças gráficas da mesa de dominó")
+      new MediaGalleryItemBuilder().setURL("attachment://domino-last-played.png").setDescription(game.lastPlayed ? `Última peça jogada: ${game.lastPlayed.a} e ${game.lastPlayed.b}` : "Aguardando a primeira peça")
     ))
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents(controls(game));
@@ -94,9 +94,9 @@ async function start(channel, starterId, mentions) {
   const shuffled=shuffle(dominoes), hands={};
   const perPlayer=ids.length===2?7:ids.length===3?6:5;
   ids.forEach((id,i)=>hands[id]=shuffled.slice(i*perPlayer,(i+1)*perPlayer));
-  const game={id:Math.random().toString(36).slice(2,9),guildId:channel.guild.id,channelId:channel.id,players:ids,hands,board:[],turn:ids[0],turnIndex:0,passes:0,startedBy:starterId,messageId:null};
+  const game={id:Math.random().toString(36).slice(2,9),guildId:channel.guild.id,channelId:channel.id,players:ids,hands,board:[],lastPlayed:null,turn:ids[0],turnIndex:0,passes:0,startedBy:starterId,messageId:null};
   games.set(game.id,game);
-  const attachment = new AttachmentBuilder(renderTiles(game.board), { name:"domino-board.png" });
+  const attachment = new AttachmentBuilder(renderTiles([], "YUKINA • AGUARDANDO JOGADA"), { name:"domino-last-played.png" });
   const msg=await channel.send({components:[boardContainer(game, ids.map(id=>`<@${id}>`).join(" ")+ " — a partida começou!")],files:[attachment],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:ids}});
   game.messageId=msg.id;
   return game;
@@ -123,19 +123,19 @@ async function playTile(interaction,game,tileId) {
     else if(tile.a===right) game.board.push(placed);
     else { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.push(placed); }
   } else game.board.push(placed);
-  hand.splice(index,1); game.passes=0;
+  hand.splice(index,1); game.passes=0; game.lastPlayed={...placed};
   await interaction.deferUpdate();
   const channel=await interaction.client.channels.fetch(game.channelId);
   const boardMessage=await channel.messages.fetch(game.messageId);
   if(!hand.length) {
     games.delete(game.id);
     const winnerBody = `# 🏆 Domino • Yukina\n<@${interaction.user.id}> venceu o Domino!\n\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\n")}`;
-    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(winnerBody)).addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL("attachment://domino-board.png").setDescription("Mesa final do dominó")))],files:[new AttachmentBuilder(renderTiles(game.board, "YUKINA • MESA FINAL"), {name:"domino-board.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(winnerBody)).addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL("attachment://domino-last-played.png").setDescription(`Última peça jogada: ${game.lastPlayed.a} e ${game.lastPlayed.b}`)))],files:[new AttachmentBuilder(renderTiles([game.lastPlayed], "YUKINA • ÚLTIMA PEÇA"), {name:"domino-last-played.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
     await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",flags:MessageFlags.Ephemeral}).catch(()=>{});
     return;
   }
   game.turnIndex=(game.turnIndex+1)%game.players.length; game.turn=game.players[game.turnIndex];
-  await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],files:[new AttachmentBuilder(renderTiles(game.board), {name:"domino-board.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+  await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],files:[new AttachmentBuilder(renderTiles([game.lastPlayed], "YUKINA • ÚLTIMA PEÇA JOGADA"), {name:"domino-last-played.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
   await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,flags:MessageFlags.Ephemeral}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
