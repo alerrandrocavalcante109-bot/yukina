@@ -51,6 +51,13 @@
     .auth-dot{width:9px;height:9px;border-radius:50%;background:#f3c969;box-shadow:0 0 12px currentColor}
     .auth-status.ok .auth-dot{background:#74e2ad}
     .auth-status.fail .auth-dot{background:#ff819c}
+    .daily-rules{width:min(100%,900px);margin:8px auto 0;padding:clamp(24px,5vw,38px);border:1px solid rgba(255,192,229,.35);border-radius:26px;background:linear-gradient(145deg,rgba(36,13,52,.9),rgba(19,10,35,.9));box-shadow:0 18px 55px rgba(0,0,0,.28);text-align:left}
+    .daily-rules h2{margin:0 0 14px;text-align:center;font-size:clamp(28px,5vw,38px);color:#ffc0e5}
+    .daily-rules .rules-intro{margin:0 0 22px;text-align:center;color:#f5e8f6;font-size:clamp(17px,2.5vw,21px);line-height:1.85}
+    .rules-list{display:grid;gap:16px;margin:0;padding:0;list-style:none}
+    .rules-list li{padding:16px 18px;border:1px solid rgba(255,192,229,.16);border-radius:16px;background:rgba(255,255,255,.045);color:#f3e6f5;font-size:clamp(16px,2.3vw,19px);line-height:1.8}
+    .rules-list strong{color:#ffc0e5}
+    .rules-warning{margin:22px 0 0;padding:16px;border-left:4px solid #ff9ed8;border-radius:8px;background:rgba(255,112,183,.09);color:#ffe8f7;font-size:clamp(16px,2.3vw,19px);line-height:1.8}
   </style>
 </head>
 <body>
@@ -80,6 +87,18 @@
       <p>Confirme que você não é um robô para continuar no Daily.</p>
       <div class="captcha-widget"><div id="yukina-recaptcha"></div></div>
       <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Carregando verificação do Google...</p>
+    </section>
+    <section class="daily-rules" aria-labelledby="daily-rules-title">
+      <h2 id="daily-rules-title">📜 Regras do Yukina Daily</h2>
+      <p class="rules-intro">Para manter o Daily justo, seguro e divertido para todo mundo, leia estas regras antes de participar. Ao usar a roleta, você concorda em respeitar as orientações abaixo.</p>
+      <ul class="rules-list">
+        <li>🚫 <strong>Não use VPN, proxy ou métodos para mascarar sua conexão.</strong> Isso pode acionar os sistemas de segurança e impedir a validação do seu Daily. Se a verificação falhar, desative esses serviços e tente novamente pela sua conexão normal.</li>
+        <li>👤 <strong>Não tente obter recompensas de forma abusiva.</strong> Não use automações, scripts, contas alternativas ou qualquer método para contornar os limites e as verificações do sistema.</li>
+        <li>🔐 <strong>Faça a verificação de segurança corretamente.</strong> A roleta só será liberada depois que o servidor confirmar a validação. Nunca compartilhe tokens, códigos ou dados de acesso com outras pessoas.</li>
+        <li>⏳ <strong>Respeite o limite diário.</strong> Não tente repetir a participação explorando falhas, recarregando a página ou manipulando requisições para conseguir giros extras.</li>
+        <li>🛠️ <strong>Não explore bugs.</strong> Se encontrar erro, recompensa incorreta ou comportamento inesperado, avise a equipe da Yukina em vez de tentar tirar vantagem da falha.</li>
+      </ul>
+      <p class="rules-warning">⚠️ <strong>Importante:</strong> a verificação pode bloquear conexões consideradas suspeitas, e o uso de VPN pode causar esse problema — mas isso não significa que toda VPN será necessariamente bloqueada. Se tiver dificuldades, desligue a VPN/proxy, atualize a página e tente novamente. Tentativas de burlar as proteções podem resultar na restrição do acesso ao Daily.</p>
     </section>
   </main>
   <script>
