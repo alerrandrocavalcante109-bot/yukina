@@ -15,6 +15,7 @@ const { MongoClient } = require("mongodb");
 const fs = require("node:fs");
 const path = require("node:path");
 const memberData = require("./member-data");
+const temporalStorage = require("./system-storage").forSystem("temporal-hierarchy");
 const { parseCountingValue } = require("./counting-number-parser");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
@@ -1153,7 +1154,22 @@ async function panelApi(req, res, url) {
     const collection = await getSettingsCollection();
     if (req.method === "GET") {
       const doc = await collection.findOne({ guildId });
-      return sendJson(res, 200, { settings: doc?.settings || {}, updatedAt: doc?.updatedAt || null });
+      const settings = { ...(doc?.settings || {}) };
+      let temporalConfig = await temporalStorage.get(guildId, "config", null);
+      // Migra a hierarquia temporal existente sem perder as regras salvas anteriormente no painel.
+      if (!temporalConfig && (Array.isArray(settings.timeRules) || Array.isArray(settings.timeManagedRoleIds))) {
+        temporalConfig = {
+          timeRules: Array.isArray(settings.timeRules) ? settings.timeRules : [],
+          timeManagedRoleIds: Array.isArray(settings.timeManagedRoleIds) ? settings.timeManagedRoleIds : [],
+        };
+        await temporalStorage.set(guildId, "config", temporalConfig);
+        console.log("[Armazenamento] Hierarquia temporal migrada para system-storage no servidor " + guildId + ".");
+      }
+      if (temporalConfig && typeof temporalConfig === "object") {
+        if (Array.isArray(temporalConfig.timeRules)) settings.timeRules = temporalConfig.timeRules;
+        if (Array.isArray(temporalConfig.timeManagedRoleIds)) settings.timeManagedRoleIds = temporalConfig.timeManagedRoleIds;
+      }
+      return sendJson(res, 200, { settings, updatedAt: doc?.updatedAt || null });
     }
     if (req.method === "PUT") {
       const body = await readBody(req);
@@ -1171,6 +1187,16 @@ async function panelApi(req, res, url) {
       const patch = { guildId, guildName: guild.name, updatedAt };
       for (const [key, value] of Object.entries(clean)) patch["settings." + key] = value;
       await collection.updateOne({ guildId }, { $set: patch }, { upsert: true });
+      // Mantém o endpoint antigo do painel compatível e grava a hierarquia temporal no armazenamento universal.
+      if (Object.prototype.hasOwnProperty.call(clean, "timeRules") ||
+          Object.prototype.hasOwnProperty.call(clean, "timeManagedRoleIds")) {
+        const existingTemporal = await temporalStorage.get(guildId, "config", {});
+        await temporalStorage.set(guildId, "config", {
+          ...(existingTemporal && typeof existingTemporal === "object" ? existingTemporal : {}),
+          ...(Array.isArray(clean.timeRules) ? { timeRules: clean.timeRules } : {}),
+          ...(Array.isArray(clean.timeManagedRoleIds) ? { timeManagedRoleIds: clean.timeManagedRoleIds } : {}),
+        });
+      }
       return sendJson(res, 200, { ok: true, guildId, settings: clean, updatedAt });
     }
     if (req.method === "DELETE") {
