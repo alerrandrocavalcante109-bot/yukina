@@ -22,10 +22,10 @@
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:image" content="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
 </head>
-<body style="margin:0;min-height:100vh;background:#080510;overflow:hidden">
-<main aria-label="Tela inicial da Yukina" style="position:relative;width:100vw;height:100vh;margin:0;padding:0">
-  <img src="./assets/yukina-bg.png" alt="" aria-hidden="true" style="position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center center">
-  <section aria-label="Apresentação da Yukina" style="position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:24px;pointer-events:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+<body style="margin:0;min-height:100vh;background:#080510;overflow-x:hidden;overflow-y:auto">
+<main aria-label="Tela inicial da Yukina" style="position:relative;width:100%;min-height:100vh;margin:0;padding:0">
+  <img src="./assets/yukina-bg.png" alt="" aria-hidden="true" style="position:fixed;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center center">
+  <section aria-label="Apresentação da Yukina" style="position:relative;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;box-sizing:border-box;min-height:100vh;padding:100px 24px 56px;pointer-events:none;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
     <h1 style="margin:0;font-size:clamp(52px,11vw,112px);font-weight:900;letter-spacing:clamp(1px,.5vw,5px);line-height:1.05;color:#ff9ed8;background:linear-gradient(100deg,#ffb0df 0%,#f06fc8 55%,#b68aff 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;filter:drop-shadow(0 3px 22px rgba(232,92,186,.55))">Yumina</h1>
     <p style="max-width:650px;margin:18px 0 0;color:#fff0fb;font-size:clamp(22px,3.2vw,32px);font-weight:600;line-height:1.55;letter-spacing:.45px;text-shadow:0 2px 14px rgba(10,4,25,.95),0 0 22px rgba(181,103,224,.45)">Onde a neve encontra a magia, uma nova história começa.</p>
     <p style="max-width:760px;margin:12px 0 0;color:#f3d9ff;font-size:clamp(16px,2vw,22px);font-weight:500;line-height:1.6;letter-spacing:.25px;text-shadow:0 2px 12px rgba(10,4,25,.95),0 0 18px rgba(181,103,224,.38)">Explore um universo de possibilidades, feito para transformar cada momento em algo especial.</p>
@@ -39,6 +39,21 @@
       </div>
       <a href="./login.html" style="display:inline-flex;align-items:center;justify-content:center;gap:10px;padding:15px 28px;border:1px solid rgba(255,255,255,.45);border-radius:16px;color:#fff;text-decoration:none;font-size:16px;font-weight:750;letter-spacing:.2px;background:linear-gradient(110deg,#ff70b7 0%,#e85cba 55%,#9462d9 100%);box-shadow:0 8px 30px rgba(220,77,174,.32);text-shadow:0 1px 4px rgba(65,15,65,.35);transition:transform .2s ease,box-shadow .2s ease" onmouseover="this.style.transform='translateY(-2px)';this.style.boxShadow='0 12px 34px rgba(220,77,174,.46)'" onmouseout="this.style.transform='';this.style.boxShadow='0 8px 30px rgba(220,77,174,.32)'"><span aria-hidden="true">◈</span> Entrar com Discord</a>
     </div>
+    <article aria-labelledby="yukina-recursos-titulo" style="pointer-events:auto;box-sizing:border-box;width:min(920px,100%);margin-top:76px;padding:clamp(22px,4vw,36px);border:1px solid rgba(255,177,226,.34);border-radius:26px;text-align:left;background:linear-gradient(135deg,rgba(35,16,45,.88),rgba(24,17,48,.86));box-shadow:0 18px 55px rgba(0,0,0,.35),0 0 35px rgba(224,91,187,.12);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)">
+      <div style="text-align:center;margin-bottom:26px">
+        <p style="margin:0 0 8px;color:#ffaddf;font-size:12px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase">Explore o universo</p>
+        <h2 id="yukina-recursos-titulo" style="margin:0;color:#fff0fb;font-size:clamp(25px,4vw,36px);font-weight:850;line-height:1.2">O que você encontra na Yukina?</h2>
+        <p style="max-width:650px;margin:12px auto 0;color:#e8d7f4;font-size:15px;line-height:1.7">Ferramentas, diversão e recursos para deixar sua comunidade do Discord com a sua cara.</p>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,230px),1fr));gap:14px">
+        <div style="padding:19px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.045)"><div aria-hidden="true" style="font-size:25px;margin-bottom:10px">⚙️</div><h3 style="margin:0 0 7px;color:#ffc0e5;font-size:17px">Painel de configurações</h3><p style="margin:0;color:#e8dff0;font-size:14px;line-height:1.65">Organize as opções e personalize os sistemas do seu servidor em um só lugar.</p></div>
+        <div style="padding:19px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.045)"><div aria-hidden="true" style="font-size:25px;margin-bottom:10px">🏆</div><h3 style="margin:0 0 7px;color:#ffc0e5;font-size:17px">XP e cargos temporais</h3><p style="margin:0;color:#e8dff0;font-size:14px;line-height:1.65">Recursos de progressão e hierarquia para incentivar a participação da comunidade.</p></div>
+        <div style="padding:19px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.045)"><div aria-hidden="true" style="font-size:25px;margin-bottom:10px">🎵</div><h3 style="margin:0 0 7px;color:#ffc0e5;font-size:17px">Música e diversão</h3><p style="margin:0;color:#e8dff0;font-size:14px;line-height:1.65">Uma experiência pensada para acompanhar a rotina e os momentos da sua comunidade.</p></div>
+        <div style="padding:19px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.045)"><div aria-hidden="true" style="font-size:25px;margin-bottom:10px">💎</div><h3 style="margin:0 0 7px;color:#ffc0e5;font-size:17px">Planos e benefícios</h3><p style="margin:0;color:#e8dff0;font-size:14px;line-height:1.65">Conheça as opções de apoio e os benefícios disponíveis para a Yukina.</p></div>
+        <div style="padding:19px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.045)"><div aria-hidden="true" style="font-size:25px;margin-bottom:10px">🤝</div><h3 style="margin:0 0 7px;color:#ffc0e5;font-size:17px">Comunidade</h3><p style="margin:0;color:#e8dff0;font-size:14px;line-height:1.65">Entre no servidor oficial, encontre novidades e fique por dentro do projeto.</p></div>
+        <div style="padding:19px;border:1px solid rgba(255,255,255,.12);border-radius:18px;background:rgba(255,255,255,.045)"><div aria-hidden="true" style="font-size:25px;margin-bottom:10px">❄️</div><h3 style="margin:0 0 7px;color:#ffc0e5;font-size:17px">Universo Yukina</h3><p style="margin:0;color:#e8dff0;font-size:14px;line-height:1.65">Explore os sistemas e descubra os recursos reunidos para sua experiência.</p></div>
+      </div>
+    </article>
   </section>
   <div style="position:fixed;top:20px;left:20px;z-index:10;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
     <div style="display:flex;align-items:center;gap:13px">
