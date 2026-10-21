@@ -467,9 +467,11 @@ async function registerSlashCommands() {
     return;
   }
 
-  const clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
+  // O ID da aplicação pode ser obtido do próprio cliente já conectado.
+  // Assim, a ausência opcional de DISCORD_CLIENT_ID não impede o registro dos slash commands.
+  const clientId = (process.env.DISCORD_CLIENT_ID || client.user?.id || "").trim();
   if (!clientId) {
-    console.error("[Slash] DISCORD_CLIENT_ID não está configurada; os comandos slash não foram registrados.");
+    console.error("[Slash] Não foi possível identificar o ID da aplicação; comandos slash não registrados.");
     return;
   }
   const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || "").trim();
@@ -483,9 +485,14 @@ async function registerSlashCommands() {
     const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => command.name !== "boasvindas" && !removedModerationCommands.has(command.name)).map((command) => [command.name, command]));
     for (const command of commands) merged.set(command.name, command);
     const result = await rest.put(route, { body: [...merged.values()] });
-    // Registro concluído silenciosamente para manter o log de inicialização limpo.
+    console.log(`[Slash] ${commands.length} comando(s) local(is) sincronizado(s); ${result.length} comando(s) disponíveis ${guildId ? "no servidor " + guildId : "globalmente"}.`);
+    console.log(`[Slash] Comando /painel ${commands.some(command => command.name === "painel") ? "incluído na sincronização" : "NÃO encontrado na pasta commands"}.`);
   } catch (error) {
-    console.error("[Slash] Falha no registro automático dos comandos:", error);
+    console.error("[Slash] Falha no registro automático dos comandos:", {
+      code: error?.code,
+      status: error?.status,
+      message: error?.message,
+    });
   }
 }
 
