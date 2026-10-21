@@ -16,6 +16,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const memberData = require("./member-data");
 const temporalStorage = require("./system-storage").forSystem("temporal-hierarchy");
+const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const { parseCountingValue } = require("./counting-number-parser");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
@@ -1169,6 +1170,20 @@ async function panelApi(req, res, url) {
         if (Array.isArray(temporalConfig.timeRules)) settings.timeRules = temporalConfig.timeRules;
         if (Array.isArray(temporalConfig.timeManagedRoleIds)) settings.timeManagedRoleIds = temporalConfig.timeManagedRoleIds;
       }
+      let xpConfig = await xpStorage.get(guildId, "config", null);
+      // Migra as regras de XP antigas uma única vez para o armazenamento compartilhado.
+      if (!xpConfig && (Array.isArray(settings.xpRules) || Array.isArray(settings.xpManagedRoleIds))) {
+        xpConfig = {
+          xpRules: Array.isArray(settings.xpRules) ? settings.xpRules : [],
+          xpManagedRoleIds: Array.isArray(settings.xpManagedRoleIds) ? settings.xpManagedRoleIds : [],
+        };
+        await xpStorage.set(guildId, "config", xpConfig);
+        console.log("[Armazenamento] Cargos por XP migrados para system-storage no servidor " + guildId + ".");
+      }
+      if (xpConfig && typeof xpConfig === "object") {
+        if (Array.isArray(xpConfig.xpRules)) settings.xpRules = xpConfig.xpRules;
+        if (Array.isArray(xpConfig.xpManagedRoleIds)) settings.xpManagedRoleIds = xpConfig.xpManagedRoleIds;
+      }
       return sendJson(res, 200, { settings, updatedAt: doc?.updatedAt || null });
     }
     if (req.method === "PUT") {
@@ -1195,6 +1210,15 @@ async function panelApi(req, res, url) {
           ...(existingTemporal && typeof existingTemporal === "object" ? existingTemporal : {}),
           ...(Array.isArray(clean.timeRules) ? { timeRules: clean.timeRules } : {}),
           ...(Array.isArray(clean.timeManagedRoleIds) ? { timeManagedRoleIds: clean.timeManagedRoleIds } : {}),
+        });
+      }
+      if (Object.prototype.hasOwnProperty.call(clean, "xpRules") ||
+          Object.prototype.hasOwnProperty.call(clean, "xpManagedRoleIds")) {
+        const existingXp = await xpStorage.get(guildId, "config", {});
+        await xpStorage.set(guildId, "config", {
+          ...(existingXp && typeof existingXp === "object" ? existingXp : {}),
+          ...(Array.isArray(clean.xpRules) ? { xpRules: clean.xpRules } : {}),
+          ...(Array.isArray(clean.xpManagedRoleIds) ? { xpManagedRoleIds: clean.xpManagedRoleIds } : {}),
         });
       }
       return sendJson(res, 200, { ok: true, guildId, settings: clean, updatedAt });
