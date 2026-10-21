@@ -63,7 +63,6 @@ module.exports = {
       }
     }
   },
-,
   async prefixExecute(message) {
     try {
       console.log("[Painel] Ypainel solicitado por " + message.author.id + " no servidor " + (message.guildId || "DM") + ".");
