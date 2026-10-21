@@ -43,10 +43,12 @@ function renderTiles(tiles, title = "YUKINA • DOMINÓ") {
   ctx.fillStyle = "#9edfff"; ctx.font = "bold 25px sans-serif"; ctx.fillText(title, pad, 40);
   if (!tiles.length) {
     ctx.fillStyle = "#e7edf5"; ctx.font = "20px sans-serif";
-    ctx.fillText("A mesa ainda está vazia — jogue a primeira peça!", pad, header + 40);
+    ctx.fillText("A mesa está vazia — aguardando a primeira peça!", pad, header + 40);
   }
   tiles.forEach((tile, i) => {
-    const col = i % perRow, row = Math.floor(i / perRow);
+    const row = Math.floor(i / perRow), pos = i % perRow;
+    // Linhas alternadas em zigue-zague mantêm a sequência conectada visualmente.
+    const col = row % 2 ? perRow - 1 - pos : pos;
     const x = pad + col * (tileW + gap), y = header + row * (tileH + gap);
     ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
     ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.roundRect(x, y, tileW, tileH, 9); ctx.fill();
@@ -56,10 +58,19 @@ function renderTiles(tiles, title = "YUKINA • DOMINÓ") {
     ctx.beginPath(); ctx.moveTo(x + tileW / 2, y + 8); ctx.lineTo(x + tileW / 2, y + tileH - 8); ctx.stroke();
     drawHalf(ctx, tile.a, x + 4, y + 2, tileH - 4);
     drawHalf(ctx, tile.b, x + tileW / 2 + 4, y + 2, tileH - 4);
+    if (i < tiles.length - 1) {
+      ctx.strokeStyle = "#9edfff"; ctx.lineWidth = 3;
+      const nextRow = Math.floor((i + 1) / perRow);
+      if (nextRow === row) {
+        const edgeX = row % 2 ? x - 5 : x + tileW + 5;
+        ctx.beginPath(); ctx.moveTo(edgeX, y + tileH / 2); ctx.lineTo(edgeX + (row % 2 ? -gap + 4 : gap - 4), y + tileH / 2); ctx.stroke();
+      } else {
+        ctx.beginPath(); ctx.moveTo(x + tileW / 2, y + tileH + 2); ctx.lineTo(x + tileW / 2, y + tileH + gap - 2); ctx.stroke();
+      }
+    }
   });
   return canvas.toBuffer("image/png");
 }
-
 function boardContainer(game, notice = "") {
   const body = [
     "# 🎲 Domino • Yukina",
@@ -77,7 +88,7 @@ function boardContainer(game, notice = "") {
     .setAccentColor(0x9edfff)
     .addTextDisplayComponents(new TextDisplayBuilder().setContent(body))
     .addMediaGalleryComponents(new MediaGalleryBuilder().addItems(
-      new MediaGalleryItemBuilder().setURL("attachment://domino-last-played.png").setDescription(game.lastPlayed ? `Última peça jogada: ${game.lastPlayed.a} e ${game.lastPlayed.b}` : "Aguardando a primeira peça")
+      new MediaGalleryItemBuilder().setURL("attachment://domino-board.png").setDescription(game.lastPlayed ? `Mesa completa; última peça: ${game.lastPlayed.a} e ${game.lastPlayed.b}` : "Mesa de dominó — aguardando a primeira peça")
     ))
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents(controls(game));
@@ -96,7 +107,7 @@ async function start(channel, starterId, mentions) {
   ids.forEach((id,i)=>hands[id]=shuffled.slice(i*perPlayer,(i+1)*perPlayer));
   const game={id:Math.random().toString(36).slice(2,9),guildId:channel.guild.id,channelId:channel.id,players:ids,hands,board:[],lastPlayed:null,turn:ids[0],turnIndex:0,passes:0,startedBy:starterId,messageId:null};
   games.set(game.id,game);
-  const attachment = new AttachmentBuilder(renderTiles([], "YUKINA • AGUARDANDO JOGADA"), { name:"domino-last-played.png" });
+  const attachment = new AttachmentBuilder(renderTiles([], "YUKINA • MESA DE DOMINÓ"), { name:"domino-board.png" });
   const msg=await channel.send({components:[boardContainer(game, ids.map(id=>`<@${id}>`).join(" ")+ " — a partida começou!")],files:[attachment],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:ids}});
   game.messageId=msg.id;
   return game;
@@ -118,8 +129,8 @@ async function playTile(interaction,game,tileId) {
   let placed={...tile};
   if(game.board.length) {
     if(tile.a!==left&&tile.b!==left&&tile.a!==right&&tile.b!==right) return interaction.reply({content:`Essa peça não encaixa. As pontas abertas são **${left}** e **${right}**.`,flags:MessageFlags.Ephemeral});
-    if(tile.a===left) game.board.unshift(placed);
-    else if(tile.b===left) { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.unshift(placed); }
+    if(tile.a===left) { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.unshift(placed); }
+    else if(tile.b===left) game.board.unshift(placed);
     else if(tile.a===right) game.board.push(placed);
     else { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.push(placed); }
   } else game.board.push(placed);
@@ -130,12 +141,12 @@ async function playTile(interaction,game,tileId) {
   if(!hand.length) {
     games.delete(game.id);
     const winnerBody = `# 🏆 Domino • Yukina\n<@${interaction.user.id}> venceu o Domino!\n\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\n")}`;
-    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(winnerBody)).addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL("attachment://domino-last-played.png").setDescription(`Última peça jogada: ${game.lastPlayed.a} e ${game.lastPlayed.b}`)))],files:[new AttachmentBuilder(renderTiles([game.lastPlayed], "YUKINA • ÚLTIMA PEÇA"), {name:"domino-last-played.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+    await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(winnerBody)).addMediaGalleryComponents(new MediaGalleryBuilder().addItems(new MediaGalleryItemBuilder().setURL("attachment://domino-board.png").setDescription(`Mesa completa; última peça: ${game.lastPlayed.a} e ${game.lastPlayed.b}`)))],files:[new AttachmentBuilder(renderTiles(game.board, "YUKINA • MESA FINAL"), {name:"domino-board.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
     await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",flags:MessageFlags.Ephemeral}).catch(()=>{});
     return;
   }
   game.turnIndex=(game.turnIndex+1)%game.players.length; game.turn=game.players[game.turnIndex];
-  await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],files:[new AttachmentBuilder(renderTiles([game.lastPlayed], "YUKINA • ÚLTIMA PEÇA JOGADA"), {name:"domino-last-played.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
+  await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],files:[new AttachmentBuilder(renderTiles(game.board, "YUKINA • MESA DE DOMINÓ"), {name:"domino-board.png"})],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
   await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,flags:MessageFlags.Ephemeral}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
