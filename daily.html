@@ -69,7 +69,7 @@
       <div class="roulette-slots" aria-label="Seis possibilidades">
         <div class="roulette-slot">❄️</div><div class="roulette-slot">🌸</div><div class="roulette-slot">✨</div><div class="roulette-slot">💜</div><div class="roulette-slot">⭐</div><div class="roulette-slot">☁️</div>
       </div>
-      <button class="roulette-button" id="spin-roulette" type="button">Girar a roleta</button>
+      <button class="roulette-button" id="spin-roulette" type="button" hidden>Girar a roleta</button>
       <p class="roulette-result" id="roulette-result" aria-live="polite">Será que a sorte está do seu lado?</p>
     </section>
     <section class="auth-check" aria-labelledby="auth-title">
@@ -86,9 +86,35 @@
       try {
         window.grecaptcha.render('yukina-recaptcha', {
           sitekey: '6LfWjvotAAAAAIdGEcR2eRCc5K61ZjRE73HALFAS',
-          callback: function () { status.textContent = 'Verificação concluída neste navegador. A API ainda precisa validar o token para liberar o prêmio.'; },
-          'expired-callback': function () { status.textContent = 'A verificação expirou. Marque a caixa novamente.'; },
-          'error-callback': function () { status.textContent = 'Não foi possível carregar a verificação. Tente novamente.'; }
+          callback: async function (token) {
+            status.textContent = 'Verificando sua resposta com o servidor...';
+            const button = document.getElementById('spin-roulette');
+            button.hidden = true;
+            try {
+              const response = await fetch('https://yukina.onrender.com/api/recaptcha/verify', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ token })
+              });
+              const data = await response.json().catch(() => ({}));
+              if (!response.ok || data.ok !== true || data.verified !== true) {
+                status.textContent = data.detail || 'O servidor não confirmou a verificação. Tente novamente.';
+                return;
+              }
+              status.textContent = 'Verificação concluída! Você já pode girar a roleta.';
+              button.hidden = false;
+            } catch (_) {
+              status.textContent = 'Não foi possível validar com o servidor. Tente novamente.';
+            }
+          },
+          'expired-callback': function () {
+            document.getElementById('spin-roulette').hidden = true;
+            status.textContent = 'A verificação expirou. Marque a caixa novamente.';
+          },
+          'error-callback': function () {
+            document.getElementById('spin-roulette').hidden = true;
+            status.textContent = 'Não foi possível carregar a verificação. Tente novamente.';
+          }
         });
         status.textContent = 'Marque a caixa “Não sou um robô” para verificar.';
       } catch (_) { status.textContent = 'Falha ao iniciar o reCAPTCHA. Atualize a página e tente novamente.'; }
