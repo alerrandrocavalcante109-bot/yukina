@@ -348,8 +348,9 @@ body .pill, body button:not(.server-item) {
  function setServerPicker(open){const box=document.getElementById("serverPicker"),btn=document.getElementById("serverPickerToggle"),ch=document.getElementById("serverPickerChevron");if(!box||!btn)return;box.hidden=!open;btn.setAttribute("aria-expanded",String(open));if(ch)ch.textContent=open?"⌃":"⌄";if(open)renderServerPicker();}
 
  async function loadGuilds(){
-   const access=token();
-   if(!access){select.innerHTML='<option value="">Entre com o Discord primeiro</option>';status.textContent="Você ainda não entrou pelo Discord nesta aba.";notice.textContent="Faça login e autorize o acesso à lista de servidores (escopo guilds).";lock(true);return}
+   let access=token();
+   if(!access&&localStorage.getItem("yukina_discord_refresh_token")){await refreshDiscordToken();access=token();}
+   if(!access){select.innerHTML='<option value="">Entre com o Discord primeiro</option>';status.textContent="Você ainda não entrou pelo Discord nesta aba.";notice.textContent="Faça login com o Discord para continuar. Se a sessão anterior expirou, entre novamente.";lock(true);return}
    status.textContent="Buscando servidores e verificando permissões…";select.innerHTML='<option value="">Carregando…</option>';lock(true);
    try{
      const expiresAt=Number(localStorage.getItem("yukina_discord_token_expires_at")||0);
