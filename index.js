@@ -395,6 +395,7 @@ function loadYukinaSystems() {
   require("./rank-system")(client);
   require("./xp-level-system")(client);
   require("./time-role-system")(client);
+  require("./staff-promotion-announcements")(client);
   require("./interaction")(client);
 }
 
