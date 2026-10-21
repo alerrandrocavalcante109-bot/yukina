@@ -45,7 +45,7 @@
         <h2 id="yukina-recursos-titulo" style="margin:0;color:#fff0fb;font-size:clamp(28px,4.5vw,40px);font-weight:900;line-height:1.25;text-wrap:balance;text-shadow:0 2px 12px rgba(10,4,25,.8)">O que você encontra na Yukina?</h2>
         <p style="max-width:720px;margin:14px auto 0;color:#f0e3f8;font-size:clamp(17px,2vw,20px);line-height:1.85;text-wrap:pretty;text-shadow:0 2px 10px rgba(10,4,25,.85)">Conheça os recursos da Yukina: ferramentas para configurar seu servidor, incentivar a participação da comunidade e deixar cada experiência mais divertida e personalizada.</p>
       </div>
-      <div class="yukina-recursos-grid" style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:26px 32px">
+      <div class="yukina-recursos-grid" style="display:grid;grid-template-columns:1fr;gap:0">
         <div style="min-width:0;padding:20px 22px;border:1px solid rgba(255,210,240,.22);border-radius:18px;background:transparent">
           <div aria-hidden="true" style="font-size:29px;margin-bottom:12px">⚙️</div>
           <h3 style="margin:0;color:#ffc0e5;font-size:clamp(19px,2.2vw,23px);font-weight:850;line-height:1.4;text-wrap:balance;text-shadow:0 2px 8px rgba(10,4,25,.8)">Painel de configurações</h3>
@@ -78,11 +78,15 @@
         </div>
       </div>
       <style>
+        article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid > div{border:0!important;border-bottom:1px solid rgba(255,210,240,.22)!important;border-radius:0!important;padding:24px 12px!important}
+        article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid > div:last-child{border-bottom:0!important}
         @media(max-width:640px){
           #yukina-recursos-titulo{font-size:28px}
           article[aria-labelledby="yukina-recursos-titulo"]{padding:20px 16px!important;margin-top:48px!important}
-          article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid{grid-template-columns:minmax(0,1fr)!important;gap:18px!important}
-          article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid > div{padding:18px!important}
+          article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:0 16px!important}
+          article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid > div{padding:18px 8px!important;border-bottom:1px solid rgba(255,210,240,.22)!important}
+          article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid > div:nth-child(2n){border-left:1px solid rgba(255,210,240,.22)!important;padding-left:14px!important}
+          article[aria-labelledby="yukina-recursos-titulo"] .yukina-recursos-grid > div:nth-last-child(-n+2){border-bottom:0!important}
         }
       </style>
     </article>
