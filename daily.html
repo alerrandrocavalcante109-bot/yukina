@@ -187,11 +187,62 @@
           console.warn('Não foi possível reproduzir o som de vitória:', error);
         }
       };
+      let spinAudio = null;
+      let spinOscillator = null;
+      let spinGain = null;
+      let spinPulseTimer = null;
+      const startSpinSound = () => {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          spinAudio = new AudioContextClass();
+          if (spinAudio.state === 'suspended') spinAudio.resume().catch(() => {});
+          spinOscillator = spinAudio.createOscillator();
+          spinGain = spinAudio.createGain();
+          spinOscillator.type = 'triangle';
+          spinOscillator.frequency.setValueAtTime(180, spinAudio.currentTime);
+          spinGain.gain.setValueAtTime(0.0001, spinAudio.currentTime);
+          spinGain.gain.exponentialRampToValueAtTime(0.045, spinAudio.currentTime + 0.04);
+          spinOscillator.connect(spinGain);
+          spinGain.connect(spinAudio.destination);
+          spinOscillator.start();
+          let tick = 0;
+          spinPulseTimer = window.setInterval(() => {
+            if (!spinAudio || !spinOscillator || !spinGain) return;
+            const now = spinAudio.currentTime;
+            // Pequenos pulsos ascendentes lembram uma roleta mecânica girando.
+            spinOscillator.frequency.setTargetAtTime(170 + (tick % 7) * 24, now, 0.025);
+            spinGain.gain.cancelScheduledValues(now);
+            spinGain.gain.setTargetAtTime(tick % 2 ? 0.025 : 0.055, now, 0.012);
+            tick++;
+          }, 95);
+        } catch (error) {
+          console.warn('Não foi possível reproduzir o som da roleta:', error);
+        }
+      };
+      const stopSpinSound = () => {
+        if (spinPulseTimer !== null) window.clearInterval(spinPulseTimer);
+        spinPulseTimer = null;
+        if (spinGain && spinAudio) {
+          const now = spinAudio.currentTime;
+          spinGain.gain.cancelScheduledValues(now);
+          spinGain.gain.setTargetAtTime(0.0001, now, 0.025);
+        }
+        if (spinOscillator) {
+          try { spinOscillator.stop(spinAudio.currentTime + 0.12); } catch (_) {}
+        }
+        const audioToClose = spinAudio;
+        window.setTimeout(() => { if (audioToClose) audioToClose.close().catch(() => {}); }, 250);
+        spinAudio = null;
+        spinOscillator = null;
+        spinGain = null;
+      };
       button.addEventListener('click', () => {
         if (button.disabled) return;
         button.disabled = true;
         button.textContent = 'Girando...';
         result.textContent = 'Os emojis estão caindo...';
+        startSpinSound();
         slots.forEach(slot => slot.classList.remove('active', 'falling'));
         const finalEmojis = slots.map(() => randomEmoji());
         let stopped = 0;
@@ -217,6 +268,7 @@
             const matches = Math.max(...Object.values(counts));
             const range = rewardRanges[matches === 1 ? 1 : matches];
             const reward = randomReward(range);
+            stopSpinSound();
             result.textContent = range.message + ' Você ganhou ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
             playWinSound();
             button.disabled = false;
