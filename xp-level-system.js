@@ -67,7 +67,7 @@ async function resolveXpRoles(guild) {
       .filter(role => LEVEL_ROLES.some(item => item.name === role.name))
       .map(role => role.id);
     knownConfiguredRoleIds.set(guild.id, remembered);
-    return { configured: true, roles, managedIds: new Set([...remembered, ...legacyRoleIds, ...validRules.map(rule => rule.roleId)]) };
+    return { configured: true, roles, managedIds: new Set([...remembered, ...legacyRoleIds, ...validRules.map(rule => rule.roleId), ...(Array.isArray(settings.xpManagedRoleIds) ? settings.xpManagedRoleIds.map(String) : [])]) };
   }
 
   const roles = await ensureLevelRoles(guild);
