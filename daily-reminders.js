@@ -50,7 +50,7 @@ async function runDailyReminders(client) {
             color: 0xe85cba,
             title: item.title,
             description: item.phrase,
-            fields: [{ name: "❄️ Seu Daily", value: "[Abrir o painel e coletar]( " + DAILY_URL + " )" }],
+            fields: [{ name: "❄️ Seu Daily", value: "[Abrir o painel e coletar](" + DAILY_URL + ")" }],
             footer: { text: "Yukina • Lembrete diário de Kizunas" },
             timestamp: now.toISOString()
           }],
