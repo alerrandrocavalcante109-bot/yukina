@@ -42,7 +42,8 @@
     @keyframes emoji-fall{from{transform:translateY(-160%) scale(.8);opacity:.2}to{transform:translateY(0) scale(1);opacity:1}}
     .roulette-button{border:0;border-radius:14px;padding:13px 24px;background:linear-gradient(105deg,#ff70b7,#9462d9);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
     .roulette-result{min-height:28px;margin-top:14px!important;color:#ffc0e5!important;font-weight:700}
-    @media(max-width:520px){.roulette{padding:18px 14px}.roulette-slots{gap:6px}.roulette-slot{border-radius:10px}}\n    .auth-check{width:min(100%,680px);margin-top:4px;padding:22px;border:1px solid rgba(255,192,229,.24);border-radius:20px;background:rgba(20,8,34,.72);backdrop-filter:blur(10px);text-align:center}
+    @media(max-width:520px){.roulette{padding:18px 14px}.roulette-slots{gap:6px}.roulette-slot{border-radius:10px}}
+    .auth-check{width:min(100%,680px);margin-top:4px;padding:22px;border:1px solid rgba(255,192,229,.24);border-radius:20px;background:rgba(20,8,34,.72);backdrop-filter:blur(10px);text-align:center}
     .auth-check h2{margin:0 0 8px;color:#ffc0e5;font-size:clamp(22px,4vw,30px)}
     .auth-check p{margin:0 0 16px;color:#e9dced;line-height:1.7}
     .captcha-widget{display:flex;justify-content:center;min-height:78px;overflow-x:auto}
@@ -91,7 +92,8 @@
       <h2 id="auth-title">Verificação de segurança 🔐</h2>
       <p>Confirme que você não é um robô para continuar no Daily.</p>
       <div class="captcha-widget"><div id="yukina-turnstile"></div></div>
-      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Preparando verificação de segurança...</p>\n      <div class="verification-loader visible" id="verification-loader" role="status" aria-live="polite"><span class="verification-spinner" aria-hidden="true"></span><span id="verification-message">Verificando sua conexão...</span></div>
+      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Preparando verificação de segurança...</p>
+      <div class="verification-loader visible" id="verification-loader" role="status" aria-live="polite"><span class="verification-spinner" aria-hidden="true"></span><span id="verification-message">Verificando sua conexão...</span></div>
     </section>
     <section class="daily-rules" aria-labelledby="daily-rules-title">
       <h2 id="daily-rules-title">📜 Regras do Yukina Daily</h2>
@@ -140,18 +142,21 @@
           },
           'expired-callback': function () {
             document.getElementById('spin-roulette').hidden = true;
-            status.textContent = 'A verificação expirou. Tente novamente.';\n            loader.classList.remove('visible');
+            status.textContent = 'A verificação expirou. Tente novamente.';
+            loader.classList.remove('visible');
           },
           'error-callback': function () {
             document.getElementById('spin-roulette').hidden = true;
-            status.textContent = 'Não foi possível carregar a verificação. Atualize a página e tente novamente.';\n            loader.classList.remove('visible');
+            status.textContent = 'Não foi possível carregar a verificação. Atualize a página e tente novamente.';
+            loader.classList.remove('visible');
           },
           theme: 'dark',
           size: 'invisible'
         });
         status.textContent = 'Validando sua conexão com segurança...';
       } catch (_) {
-        status.textContent = 'Falha ao iniciar a verificação. Atualize a página e tente novamente.';\n        loader.classList.remove('visible');
+        status.textContent = 'Falha ao iniciar a verificação. Atualize a página e tente novamente.';
+        loader.classList.remove('visible');
       }
     };
     (() => {
