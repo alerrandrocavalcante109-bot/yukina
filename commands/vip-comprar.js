@@ -26,7 +26,7 @@ module.exports = {
       return interaction.reply({ content: "Use este comando dentro do servidor da Yukina.", ephemeral: true });
     }
     const expectedGuild = (process.env.VIP_GUILD_ID || "").trim();
-    if (expectedGuild && interaction.guildId !== expectedGuild) {
+    if (interaction.guildId !== expectedGuild) {
       return interaction.reply({ content: "Este fluxo de compra só está habilitado no servidor oficial da Yukina.", ephemeral: true });
     }
     const pixKey = (process.env.VIP_PIX_KEY || "").trim();
