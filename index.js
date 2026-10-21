@@ -19,6 +19,7 @@ const temporalStorage = require("./system-storage").forSystem("temporal-hierarch
 const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const xpMultiplierStorage = require("./system-storage").forSystem("xp-multipliers");
 const { parseCountingValue } = require("./counting-number-parser");
+const { getVipCollection } = require("./vip-store");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
@@ -976,6 +977,47 @@ async function panelApi(req, res, url) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
+  if (url.pathname === "/api/vip/daily") {
+    if (req.method !== "GET") return sendJson(res, 405, { ok: false, detail: "Use GET para consultar o multiplicador VIP." });
+    try {
+      const auth = String(req.headers.authorization || "");
+      const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!accessToken) return sendJson(res, 401, { ok: false, detail: "Entre com o Discord para consultar seu plano VIP." });
+      const userResponse = await fetch("https://discord.com/api/users/@me", {
+        headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000)
+      });
+      const user = userResponse.ok ? await userResponse.json() : null;
+      if (!user || !/^\\d{17,20}$/.test(String(user.id || ""))) {
+        return sendJson(res, 401, { ok: false, detail: "Sua sessão do Discord expirou. Entre novamente." });
+      }
+      const guildId = (process.env.VIP_GUILD_ID || "").trim();
+      if (!/^\\d{17,20}$/.test(guildId)) {
+        return sendJson(res, 503, { ok: false, detail: "O servidor VIP ainda não está configurado na API." });
+      }
+      const subscriptions = await getVipCollection();
+      const subscription = await subscriptions.findOne({
+        guildId, userId: String(user.id), status: "active", expiresAt: { $gt: new Date() }
+      });
+      const planMultipliers = {
+        starter: { name: "Starter", multiplier: 1.25 },
+        plus: { name: "Plus", multiplier: 1.5 },
+        premium: { name: "Premium", multiplier: 2 },
+        ultra: { name: "Ultra", multiplier: 2.5 },
+        infinity: { name: "Infinity", multiplier: 3 }
+      };
+      const plan = subscription ? planMultipliers[String(subscription.planKey || "").toLowerCase()] : null;
+      return sendJson(res, 200, {
+        ok: true,
+        hasVip: Boolean(plan),
+        plan: plan ? plan.name : "Sem VIP",
+        multiplier: plan ? plan.multiplier : 1,
+        expiresAt: plan ? subscription.expiresAt : null
+      });
+    } catch (error) {
+      console.error("[Daily VIP] Falha ao consultar assinatura:", error.message || error);
+      return sendJson(res, 500, { ok: false, detail: "Não foi possível consultar seu plano VIP agora." });
+    }
+  }
   if (url.pathname === "/api/turnstile/verify") {
     if (req.method !== "POST") return sendJson(res, 405, { ok: false, detail: "Use POST para validar o Turnstile." });
     const secret = String(process.env.TURNSTILE_SECRET_KEY || "").trim();
