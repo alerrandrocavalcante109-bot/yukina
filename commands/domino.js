@@ -45,10 +45,12 @@ function renderTiles(tiles, title = "YUKINA • DOMINÓ") {
     ctx.fillStyle = "#e7edf5"; ctx.font = "20px sans-serif";
     ctx.fillText("A mesa está vazia — aguardando a primeira peça!", pad, header + 40);
   }
+  // Desenha a sequência inteira em zigue-zague, com a primeira peça no centro.
+  const cols = Math.min(perRow, Math.max(1, tiles.length));
+  const startCol = Math.floor((perRow - cols) / 2);
   tiles.forEach((tile, i) => {
     const row = Math.floor(i / perRow), pos = i % perRow;
-    // Linhas alternadas em zigue-zague mantêm a sequência conectada visualmente.
-    const col = row % 2 ? perRow - 1 - pos : pos;
+    const col = startCol + (row % 2 ? cols - 1 - pos : pos);
     const x = pad + col * (tileW + gap), y = header + row * (tileH + gap);
     ctx.shadowColor = "rgba(0,0,0,0.35)"; ctx.shadowBlur = 8; ctx.shadowOffsetY = 3;
     ctx.fillStyle = "#f8fafc"; ctx.beginPath(); ctx.roundRect(x, y, tileW, tileH, 9); ctx.fill();
@@ -62,10 +64,13 @@ function renderTiles(tiles, title = "YUKINA • DOMINÓ") {
       ctx.strokeStyle = "#9edfff"; ctx.lineWidth = 3;
       const nextRow = Math.floor((i + 1) / perRow);
       if (nextRow === row) {
-        const edgeX = row % 2 ? x - 5 : x + tileW + 5;
-        ctx.beginPath(); ctx.moveTo(edgeX, y + tileH / 2); ctx.lineTo(edgeX + (row % 2 ? -gap + 4 : gap - 4), y + tileH / 2); ctx.stroke();
+        const dir = row % 2 ? -1 : 1;
+        const edgeX = dir > 0 ? x + tileW + 3 : x - 3;
+        ctx.beginPath(); ctx.moveTo(edgeX, y + tileH / 2); ctx.lineTo(edgeX + dir * (gap - 6), y + tileH / 2); ctx.stroke();
       } else {
-        ctx.beginPath(); ctx.moveTo(x + tileW / 2, y + tileH + 2); ctx.lineTo(x + tileW / 2, y + tileH + gap - 2); ctx.stroke();
+        const nextRowCol = startCol + ((row + 1) % 2 ? cols - 1 : 0) * 1;
+        const targetX = pad + nextRowCol * (tileW + gap) + tileW / 2;
+        ctx.beginPath(); ctx.moveTo(x + tileW / 2, y + tileH + 2); ctx.lineTo(targetX, y + tileH + gap - 2); ctx.stroke();
       }
     }
   });
