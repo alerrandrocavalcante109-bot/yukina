@@ -41,7 +41,7 @@
     .roulette-slot.falling{animation:emoji-fall .42s cubic-bezier(.22,.8,.3,1) both}
     @keyframes emoji-fall{from{transform:translateY(-160%) scale(.8);opacity:.2}to{transform:translateY(0) scale(1);opacity:1}}
     .roulette-button{border:0;border-radius:14px;padding:13px 24px;background:linear-gradient(105deg,#ff70b7,#9462d9);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
-    .roulette-result{min-height:28px;margin-top:14px!important;color:#ffc0e5!important;font-weight:700}
+    .roulette-result{min-height:28px;margin-top:14px!important;color:#ffc0e5!important;font-weight:700}.daily-plan{margin:10px 0 0!important;color:#f5dff0!important;font-size:14px}.daily-login{display:inline-block;margin-top:8px;color:#ffc0e5;text-decoration:underline}.daily-reward-total{display:block;margin-top:6px;font-size:clamp(20px,4vw,27px);color:#fff;font-weight:900}
     @media(max-width:520px){.roulette{padding:24px 14px}.roulette-slots{gap:8px}.roulette-slot{border-radius:12px}}
     .auth-check{width:min(100%,680px);margin-top:4px;padding:22px;border:1px solid rgba(255,192,229,.24);border-radius:20px;background:rgba(20,8,34,.72);backdrop-filter:blur(10px);text-align:center}
     .auth-check h2{margin:0 0 8px;color:#ffc0e5;font-size:clamp(22px,4vw,30px)}
@@ -87,6 +87,8 @@
 
       <button class="roulette-button" id="spin-roulette" type="button" hidden>Girar a roleta</button>
       <p class="roulette-result" id="roulette-result" aria-live="polite">Será que a sorte está do seu lado?</p>
+      <p class="daily-plan" id="daily-plan-status" aria-live="polite">Consultando seu plano VIP…</p>
+      <a class="daily-login" id="daily-login" href="./login.html?return=daily.html" hidden>Entrar com Discord para consultar meu plano</a>
     </section>
     <section class="auth-check" aria-labelledby="auth-title">
       <h2 id="auth-title">Verificação de segurança 🔐</h2>
@@ -171,6 +173,39 @@
         4: { min: 20000, max: 25000, message: 'JACKPOT! Todos os emojis iguais!' }
       };
       const randomEmoji = () => emojis[Math.floor(Math.random() * emojis.length)];
+      const planStatus = document.getElementById('daily-plan-status');
+      const loginLink = document.getElementById('daily-login');
+      let dailyMultiplier = 1;
+      let dailyPlanName = 'Sem VIP';
+      const loadDailyPlan = async () => {
+        const token = localStorage.getItem('yukina_discord_token');
+        if (!token) {
+          planStatus.textContent = 'Multiplicador atual: ×1 (sem VIP). Entre com Discord para consultar sua assinatura.';
+          loginLink.hidden = false;
+          return;
+        }
+        try {
+          const response = await fetch('https://yukina.onrender.com/api/vip/daily', {
+            headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
+          });
+          const data = await response.json().catch(() => ({}));
+          if (response.status === 401) {
+            localStorage.removeItem('yukina_discord_token');
+            planStatus.textContent = 'Sua sessão do Discord expirou. Entre novamente para consultar seu plano.';
+            loginLink.hidden = false;
+            return;
+          }
+          if (!response.ok || data.ok !== true) throw new Error(data.detail || 'Não foi possível consultar o plano.');
+          dailyMultiplier = Number(data.multiplier) || 1;
+          dailyPlanName = data.plan || 'Sem VIP';
+          planStatus.textContent = 'Plano: ' + dailyPlanName + ' · Multiplicador de Kizunas: ×' + String(dailyMultiplier).replace('.', ',');
+          loginLink.hidden = true;
+        } catch (_) {
+          planStatus.textContent = 'Não foi possível consultar o VIP agora. A roleta usará ×1 até a consulta ser concluída.';
+          dailyMultiplier = 1; dailyPlanName = 'Sem VIP';
+        }
+      };
+      loadDailyPlan();
       const randomReward = range => Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
       // Cria um pequeno jingle de vitória sem depender de arquivos externos.
       // O áudio só é iniciado após o clique do usuário, conforme as regras do navegador.
@@ -285,9 +320,16 @@
             finalEmojis.forEach(emoji => counts[emoji] = (counts[emoji] || 0) + 1);
             const matches = Math.max(...Object.values(counts));
             const range = rewardRanges[matches === 1 ? 1 : matches];
-            const reward = randomReward(range);
+            const baseReward = randomReward(range);
+            const reward = Math.floor(baseReward * dailyMultiplier);
             stopSpinSound();
-            result.textContent = 'Você ganhou ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
+            result.textContent = '';
+            const winLine = document.createElement('span');
+            winLine.textContent = 'Multiplicador ' + dailyPlanName + ': ×' + String(dailyMultiplier).replace('.', ',');
+            const totalLine = document.createElement('strong');
+            totalLine.className = 'daily-reward-total';
+            totalLine.textContent = 'Total ganho: ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
+            result.append(winLine, totalLine);
             playWinSound();
             button.hidden = true;
           };
