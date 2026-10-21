@@ -17,6 +17,7 @@ const path = require("node:path");
 const memberData = require("./member-data");
 const temporalStorage = require("./system-storage").forSystem("temporal-hierarchy");
 const xpStorage = require("./system-storage").forSystem("xp-level-roles");
+const xpMultiplierStorage = require("./system-storage").forSystem("xp-multipliers");
 const { parseCountingValue } = require("./counting-number-parser");
 
 const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
@@ -1184,6 +1185,15 @@ async function panelApi(req, res, url) {
         if (Array.isArray(xpConfig.xpRules)) settings.xpRules = xpConfig.xpRules;
         if (Array.isArray(xpConfig.xpManagedRoleIds)) settings.xpManagedRoleIds = xpConfig.xpManagedRoleIds;
       }
+      let multiplierConfig = await xpMultiplierStorage.get(guildId, "config", null);
+      if (!multiplierConfig && Array.isArray(settings.multiplierRules)) {
+        multiplierConfig = { multiplierRules: settings.multiplierRules };
+        await xpMultiplierStorage.set(guildId, "config", multiplierConfig);
+        console.log("[Armazenamento] Multiplicadores de XP migrados para system-storage no servidor " + guildId + ".");
+      }
+      if (multiplierConfig && typeof multiplierConfig === "object" && Array.isArray(multiplierConfig.multiplierRules)) {
+        settings.multiplierRules = multiplierConfig.multiplierRules;
+      }
       return sendJson(res, 200, { settings, updatedAt: doc?.updatedAt || null });
     }
     if (req.method === "PUT") {
@@ -1219,6 +1229,13 @@ async function panelApi(req, res, url) {
           ...(existingXp && typeof existingXp === "object" ? existingXp : {}),
           ...(Array.isArray(clean.xpRules) ? { xpRules: clean.xpRules } : {}),
           ...(Array.isArray(clean.xpManagedRoleIds) ? { xpManagedRoleIds: clean.xpManagedRoleIds } : {}),
+        });
+      }
+      if (Object.prototype.hasOwnProperty.call(clean, "multiplierRules")) {
+        const existingMultipliers = await xpMultiplierStorage.get(guildId, "config", {});
+        await xpMultiplierStorage.set(guildId, "config", {
+          ...(existingMultipliers && typeof existingMultipliers === "object" ? existingMultipliers : {}),
+          multiplierRules: Array.isArray(clean.multiplierRules) ? clean.multiplierRules : [],
         });
       }
       return sendJson(res, 200, { ok: true, guildId, settings: clean, updatedAt });
