@@ -1000,7 +1000,7 @@ async function panelApi(req, res, url) {
       if (!buyer) return sendJson(res, 409, {
         code: "JOIN_SERVER_FIRST",
         detail: "Entre no servidor oficial do Discord e depois volte ao painel para confirmar a compra.",
-        inviteUrl: "https://discord.gg/ppQGY8bPV"
+        inviteUrl: "https://discord.gg/NJR3YNd2G"
       });
       const admin = await guild.members.fetch(adminId).catch(() => null);
       if (!admin) return sendJson(res, 503, { detail: "O administrador VIP não foi encontrado no servidor." });
