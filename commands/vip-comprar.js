@@ -31,7 +31,7 @@ module.exports = {
     }
     const pixKey = (process.env.VIP_PIX_KEY || "").trim();
     const adminId = (process.env.VIP_ADMIN_ID || "").trim();
-    if (!pixKey || !/^\d{17,20}$/.test(adminId)) {
+    if (!pixKey || !/^\d{17,20}$/.test(adminId) || !/^\d{17,20}$/.test(expectedGuild)) {
       return interaction.reply({ content: "As compras VIP ainda não estão configuradas pela equipe. Tente novamente mais tarde.", ephemeral: true });
     }
     const planKey = interaction.options.getString("plano", true);
