@@ -127,51 +127,51 @@
       const slots = Array.from(document.querySelectorAll('.roulette-slot'));
       const button = document.getElementById('spin-roulette');
       const result = document.getElementById('roulette-result');
-      const outcomes = [
-        { emoji: '🌸', weight: 25, prize: 20, message: 'Flor da sorte: uma recompensa delicada!' },
-        { emoji: '✨', weight: 12, prize: 50, message: 'Você encontrou um brilho raro!' },
-        { emoji: '💜', weight: 7, prize: 100, message: 'Coração violeta: uma grande surpresa!' },
-        { emoji: '⭐', weight: 1, prize: 500, message: 'ESTRELA LENDÁRIA! Prêmio máximo!' }
-      ];
-      function chooseOutcome() {
-        const roll = Math.random() * outcomes.reduce((sum, item) => sum + item.weight, 0);
-        let cumulative = 0;
-        return outcomes.find(item => (cumulative += item.weight) > roll) || outcomes[0];
-      }
+      const emojis = ['🌸', '✨', '💜', '⭐'];
+      const rewardRanges = {
+        1: { min: 5000, max: 10000, message: 'Emojis diferentes!' },
+        2: { min: 10000, max: 15000, message: 'Par formado!' },
+        3: { min: 10000, max: 20000, message: 'Trinca! Boa combinação!' },
+        4: { min: 20000, max: 25000, message: 'JACKPOT! Todos os emojis iguais!' }
+      };
+      const randomEmoji = () => emojis[Math.floor(Math.random() * emojis.length)];
+      const randomReward = range => Math.floor(Math.random() * (range.max - range.min + 1)) + range.min;
       button.addEventListener('click', () => {
         if (button.disabled) return;
         button.disabled = true;
         button.textContent = 'Girando...';
-        slots.forEach(slot => slot.classList.remove('active', 'falling'));
         result.textContent = 'Os emojis estão caindo...';
-        const winner = chooseOutcome();
-        const chosen = outcomes.findIndex(item => item.emoji === winner.emoji);
-        let tick = 0;
-        const totalTicks = 22 + chosen * 3;
-        const spin = () => {
-          slots.forEach((slot, index) => {
-            slot.classList.remove('active', 'falling');
-            slot.textContent = outcomes[index].emoji;
-          });
-          const current = tick < totalTicks - 1 ? Math.floor(Math.random() * slots.length) : chosen;
-          slots[current].classList.add('falling');
-          tick++;
-          if (tick >= totalTicks) {
-            slots.forEach((slot, index) => {
-              slot.classList.remove('falling', 'active');
-              slot.textContent = outcomes[index].emoji;
-            });
-            slots[chosen].textContent = winner.emoji;
-            slots[chosen].classList.add('active');
-            result.textContent = winner.message + ' Ganho anunciado: ' + winner.prize + ' Kizunas.';
+        slots.forEach(slot => slot.classList.remove('active', 'falling'));
+        const finalEmojis = slots.map(() => randomEmoji());
+        let stopped = 0;
+        slots.forEach((slot, index) => {
+          let ticks = 0;
+          const totalTicks = 14 + index * 5;
+          const spin = () => {
+            slot.classList.remove('falling');
+            slot.textContent = randomEmoji();
+            slot.classList.add('falling');
+            ticks++;
+            if (ticks < totalTicks) {
+              setTimeout(spin, 55 + Math.floor((ticks / totalTicks) ** 2 * 180));
+              return;
+            }
+            slot.classList.remove('falling');
+            slot.textContent = finalEmojis[index];
+            slot.classList.add('active');
+            stopped++;
+            if (stopped !== slots.length) return;
+            const counts = {};
+            finalEmojis.forEach(emoji => counts[emoji] = (counts[emoji] || 0) + 1);
+            const matches = Math.max(...Object.values(counts));
+            const range = rewardRanges[matches === 1 ? 1 : matches];
+            const reward = randomReward(range);
+            result.textContent = range.message + ' Você ganhou ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
             button.disabled = false;
             button.textContent = 'Girar novamente';
-            return;
-          }
-          const progress = tick / totalTicks;
-          setTimeout(spin, 65 + Math.floor(progress * progress * 150));
-        };
-        spin();
+          };
+          setTimeout(spin, index * 180);
+        });
       });
     })();
   </script>
