@@ -394,6 +394,7 @@ function loadYukinaSystems() {
   require("./command-engine")(client);
   require("./rank-system")(client);
   require("./xp-level-system")(client);
+  require("./time-role-system")(client);
   require("./interaction")(client);
 }
 
