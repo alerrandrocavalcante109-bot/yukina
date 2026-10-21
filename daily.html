@@ -111,44 +111,90 @@
     </section>
   </main>
   <script>
-    window.yukinaTurnstileReady = function () {
+    window.yukinaTurnstileReady = async function () {
       const status = document.getElementById('captcha-status');
       const container = document.getElementById('yukina-turnstile');
-      if (!window.turnstile || !container) return;
+      const authSection = document.querySelector('.auth-check');
+      const loader = document.getElementById('verification-loader');
+      const button = document.getElementById('spin-roulette');
+      const token = localStorage.getItem('yukina_discord_token');
+      button.hidden = true;
+      if (!token) {
+        status.textContent = 'Entre com sua conta Discord para verificar se você já coletou o Daily.';
+        loader.classList.remove('visible');
+        return;
+      }
       try {
-        window.turnstile.render(container, {
+        const response = await fetch('https://yukina.onrender.com/api/daily/status', {
+          headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
+        });
+        const data = await response.json().catch(() => ({}));
+        if (response.status === 401) {
+          localStorage.removeItem('yukina_discord_token');
+          status.textContent = 'Sua sessão expirou. Entre novamente com o Discord para continuar.';
+          loader.classList.remove('visible');
+          return;
+        }
+        if (!response.ok || data.ok !== true) throw new Error(data.detail || 'Não foi possível consultar seu Daily.');
+        if (data.claimed) {
+          status.textContent = 'Você já coletou seu Daily hoje! Volte amanhã para coletar novamente. ❄️';
+          loader.classList.remove('visible');
+          const widget = document.querySelector('.captcha-widget');
+          if (widget) widget.hidden = true;
+          return;
+        }
+      } catch (error) {
+        status.textContent = error.message || 'Não foi possível verificar sua coleta. Atualize a página e tente novamente.';
+        loader.classList.remove('visible');
+        return;
+      }
+      if (!window.turnstile || !container) {
+        status.textContent = 'A verificação de segurança ainda está carregando. Aguarde um instante.';
+        return;
+      }
+      try {
+        const widgetId = window.turnstile.render(container, {
           sitekey: '0x4AAAAAAFf2LLuggOobaiFH',
-          callback: async function (token) {
-            status.textContent = 'Verificando sua resposta com o servidor...';
-            const button = document.getElementById('spin-roulette');
-            button.hidden = true;
+          callback: async function (captchaToken) {
+            status.textContent = 'Confirmando sua coleta diária...';
             try {
-              const response = await fetch('https://yukina.onrender.com/api/turnstile/verify', {
+              const response = await fetch('https://yukina.onrender.com/api/daily/claim', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token })
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ token: captchaToken })
               });
               const data = await response.json().catch(() => ({}));
-              if (!response.ok || data.ok !== true || data.verified !== true) {
-                status.textContent = data.detail || 'O servidor não confirmou a verificação. Tente novamente.';
-                if (window.turnstile) window.turnstile.reset(container);
+              if (response.status === 409 && data.claimed) {
+                status.textContent = 'Você já coletou seu Daily hoje! Volte amanhã para coletar novamente. ❄️';
+                const widget = document.querySelector('.captcha-widget');
+                if (widget) widget.hidden = true;
+                loader.classList.remove('visible');
                 return;
               }
-              status.textContent = 'Verificação concluída! Você já pode girar a roleta.';
-              document.querySelector('.auth-check').hidden = true;
-              button.hidden = false;
-            } catch (_) {
-              status.textContent = 'Não foi possível validar com o servidor. Tente novamente.';
-              if (window.turnstile) window.turnstile.reset(container);
+              if (!response.ok || data.ok !== true) throw new Error(data.detail || 'Não foi possível registrar sua coleta.');
+              status.textContent = 'Daily coletado! Sua recompensa foi registrada para hoje. ❄️';
+              authSection.hidden = true;
+              const result = document.getElementById('roulette-result');
+              result.textContent = '';
+              const winLine = document.createElement('span');
+              winLine.textContent = 'Multiplicador ' + data.plan + ': ×' + String(data.multiplier).replace('.', ',');
+              const totalLine = document.createElement('strong');
+              totalLine.className = 'daily-reward-total';
+              totalLine.textContent = 'Total ganho: ' + Number(data.reward).toLocaleString('pt-BR') + ' Kizunas!';
+              result.append(winLine, totalLine);
+              document.getElementById('daily-plan-status').textContent = 'Recompensa diária já coletada. Próxima coleta após a virada do dia UTC.';
+            } catch (error) {
+              status.textContent = error.message || 'Falha ao registrar o Daily. Tente novamente.';
+              if (window.turnstile) window.turnstile.reset(widgetId);
+            } finally {
+              loader.classList.remove('visible');
             }
           },
           'expired-callback': function () {
-            document.getElementById('spin-roulette').hidden = true;
             status.textContent = 'A verificação expirou. Tente novamente.';
             loader.classList.remove('visible');
           },
           'error-callback': function () {
-            document.getElementById('spin-roulette').hidden = true;
             status.textContent = 'Não foi possível carregar a verificação. Atualize a página e tente novamente.';
             loader.classList.remove('visible');
           },
@@ -156,6 +202,7 @@
           size: 'invisible'
         });
         status.textContent = 'Validando sua conexão com segurança...';
+        window.turnstile.execute(widgetId);
       } catch (_) {
         status.textContent = 'Falha ao iniciar a verificação. Atualize a página e tente novamente.';
         loader.classList.remove('visible');
@@ -289,53 +336,8 @@
         spinOscillator = null;
         spinGain = null;
       };
-      button.addEventListener('click', () => {
-        if (button.disabled) return;
-        button.disabled = true;
-        button.hidden = true;
-        button.textContent = 'Girando...';
-        result.textContent = 'Os emojis estão caindo...';
-        startSpinSound();
-        slots.forEach(slot => slot.classList.remove('active', 'falling'));
-        const finalEmojis = slots.map(() => randomEmoji());
-        let stopped = 0;
-        slots.forEach((slot, index) => {
-          let ticks = 0;
-          const totalTicks = 14 + index * 5;
-          const spin = () => {
-            slot.classList.remove('falling');
-            slot.textContent = randomEmoji();
-            slot.classList.add('falling');
-            ticks++;
-            if (ticks < totalTicks) {
-              setTimeout(spin, 55 + Math.floor((ticks / totalTicks) ** 2 * 180));
-              return;
-            }
-            slot.classList.remove('falling');
-            slot.textContent = finalEmojis[index];
-            slot.classList.add('active');
-            stopped++;
-            if (stopped !== slots.length) return;
-            const counts = {};
-            finalEmojis.forEach(emoji => counts[emoji] = (counts[emoji] || 0) + 1);
-            const matches = Math.max(...Object.values(counts));
-            const range = rewardRanges[matches === 1 ? 1 : matches];
-            const baseReward = randomReward(range);
-            const reward = Math.floor(baseReward * dailyMultiplier);
-            stopSpinSound();
-            result.textContent = '';
-            const winLine = document.createElement('span');
-            winLine.textContent = 'Multiplicador ' + dailyPlanName + ': ×' + String(dailyMultiplier).replace('.', ',');
-            const totalLine = document.createElement('strong');
-            totalLine.className = 'daily-reward-total';
-            totalLine.textContent = 'Total ganho: ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
-            result.append(winLine, totalLine);
-            playWinSound();
-            button.hidden = true;
-          };
-          setTimeout(spin, index * 180);
-        });
-      });
+      // A coleta diária é registrada pela API após a verificação; não existe botão de giro.
+      button.hidden = true;
     })();
   </script>
 </body>
