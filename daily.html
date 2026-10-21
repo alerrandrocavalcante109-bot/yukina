@@ -257,6 +257,7 @@
       button.addEventListener('click', () => {
         if (button.disabled) return;
         button.disabled = true;
+        button.hidden = true;
         button.textContent = 'Girando...';
         result.textContent = 'Os emojis estão caindo...';
         startSpinSound();
@@ -286,10 +287,9 @@
             const range = rewardRanges[matches === 1 ? 1 : matches];
             const reward = randomReward(range);
             stopSpinSound();
-            result.textContent = range.message + ' Você ganhou ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
+            result.textContent = 'Você ganhou ' + reward.toLocaleString('pt-BR') + ' Kizunas!';
             playWinSound();
-            button.disabled = false;
-            button.textContent = 'Girar novamente';
+            button.hidden = true;
           };
           setTimeout(spin, index * 180);
         });
