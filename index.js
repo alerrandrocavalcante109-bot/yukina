@@ -538,6 +538,7 @@ client.once("clientReady", async () => {
   console.log("");
   startupLog("🩵 Conexão com o Discord estabelecida!");
   loadYukinaSystems();
+  require("./vip-reminders")(client);
   startupLog(`🌸 Identidade: ${client.user.tag}`);
   startupLog(`🏠 Servidores conectados: ${client.guilds.cache.size}`);
   startupLog("⚙️ Preparando os sistemas da Yukina...");
