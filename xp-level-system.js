@@ -5,6 +5,7 @@
 const { PermissionFlagsBits } = require("discord.js");
 const memberData = require("./member-data");
 const { getGuildSettings } = require("./guild-settings-store");
+const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const roleCache = new Map();
 const updateLocks = new Set();
@@ -39,9 +40,21 @@ function getCurrentLevel(xp) {
 const knownConfiguredRoleIds = new Map();
 
 async function resolveXpRoles(guild) {
-  const settings = await getGuildSettings(guild.id);
-  // Se xpRules já existe no painel, essa configuração é a fonte de verdade,
-  // inclusive quando a lista estiver vazia. Sem configuração salva, mantém o padrão antigo.
+  let settings = await xpStorage.get(guild.id, "config", null);
+  if (!settings) {
+    const legacy = await getGuildSettings(guild.id);
+    if (Array.isArray(legacy.xpRules) || Array.isArray(legacy.xpManagedRoleIds)) {
+      settings = {
+        xpRules: Array.isArray(legacy.xpRules) ? legacy.xpRules : [],
+        xpManagedRoleIds: Array.isArray(legacy.xpManagedRoleIds) ? legacy.xpManagedRoleIds : [],
+      };
+      await xpStorage.set(guild.id, "config", settings);
+      console.log("[Níveis XP] Configuração antiga migrada para system-storage em " + guild.id + ".");
+    } else {
+      settings = legacy;
+    }
+  }
+  // Uma lista vazia também é uma configuração explícita do painel.
   if (Array.isArray(settings.xpRules)) {
     const validRules = settings.xpRules
       .map((rule) => ({ level: Number(rule?.level), roleId: String(rule?.role || "") }))
@@ -164,7 +177,7 @@ function startXpLevelSystem(client) {
   const initializeXpLevels = async () => {
     await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
-      const settings = await getGuildSettings(guild.id);
+      const settings = await xpStorage.get(guild.id, "config", null) || await getGuildSettings(guild.id);
       if (!Array.isArray(settings.xpRules)) await ensureLevelRoles(guild);
       for (const member of guild.members.cache.values()) {
         if (!member.user.bot) await updateLevel(member, false);
