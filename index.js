@@ -976,38 +976,32 @@ async function panelApi(req, res, url) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
-  if (url.pathname === "/api/recaptcha/verify") {
-    if (req.method !== "POST") return sendJson(res, 405, { ok: false, detail: "Use POST para validar o reCAPTCHA." });
-    const secret = String(
-      process.env.RECAPTCHA_SECRET_KEY ||
-      process.env.SECRET_KEY ||
-      process.env.RECAPTCHA_SECRET ||
-      process.env.GOOGLE_RECAPTCHA_SECRET ||
-      ""
-    ).trim();
-    if (!secret) return sendJson(res, 503, { ok: false, detail: "Configure a Secret Key do Google no Render (RECAPTCHA_SECRET_KEY ou SECRET_KEY)." });
+  if (url.pathname === "/api/turnstile/verify") {
+    if (req.method !== "POST") return sendJson(res, 405, { ok: false, detail: "Use POST para validar o Turnstile." });
+    const secret = String(process.env.TURNSTILE_SECRET_KEY || "").trim();
+    if (!secret) return sendJson(res, 503, { ok: false, detail: "Configure TURNSTILE_SECRET_KEY nas variáveis de ambiente do Render." });
     try {
       const body = await readBody(req);
-      const token = String(body.token || body["g-recaptcha-response"] || "").trim();
-      if (!token) return sendJson(res, 400, { ok: false, detail: "Token reCAPTCHA ausente." });
+      const token = String(body.token || "").trim();
+      if (!token) return sendJson(res, 400, { ok: false, detail: "Token Turnstile ausente." });
       const params = new URLSearchParams({ secret, response: token });
       const forwardedFor = String(req.headers["x-forwarded-for"] || "").split(",")[0].trim();
       if (forwardedFor) params.set("remoteip", forwardedFor);
-      const verifyResponse = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      const verifyResponse = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded" },
         body: params,
         signal: AbortSignal.timeout(10000)
       });
       const verification = await verifyResponse.json().catch(() => ({}));
-      if (!verifyResponse.ok) return sendJson(res, 502, { ok: false, detail: "Não foi possível consultar o Google reCAPTCHA." });
+      if (!verifyResponse.ok) return sendJson(res, 502, { ok: false, detail: "Não foi possível consultar o Cloudflare Turnstile." });
       if (verification.success !== true) {
-        return sendJson(res, 403, { ok: false, detail: "O Google não confirmou a verificação.", errors: verification["error-codes"] || [] });
+        return sendJson(res, 403, { ok: false, detail: "O Cloudflare não confirmou a verificação. Tente novamente.", errors: verification["error-codes"] || [] });
       }
       return sendJson(res, 200, { ok: true, verified: true });
     } catch (error) {
-      console.error("[reCAPTCHA] Falha na validação:", error.message || error);
-      return sendJson(res, 502, { ok: false, detail: "Falha ao validar o reCAPTCHA. Tente novamente." });
+      console.error("[Turnstile] Falha na validação:", error.message || error);
+      return sendJson(res, 502, { ok: false, detail: "Erro ao validar a verificação de segurança." });
     }
   }
   if (url.pathname === "/api/oauth/token") {
