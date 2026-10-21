@@ -47,6 +47,11 @@
     .auth-check p{margin:0 0 16px;color:#e9dced;line-height:1.7}
     .captcha-widget{display:flex;justify-content:center;min-height:78px;overflow-x:auto}
     .captcha-status{margin-top:12px;color:#e9dced;font-size:14px;line-height:1.6}
+    .verification-loader{display:none;align-items:center;justify-content:center;gap:12px;margin:18px auto 4px;color:#ffc0e5;font-weight:700;font-size:clamp(15px,2.5vw,18px)}
+    .verification-loader.visible{display:flex}
+    .verification-spinner{width:22px;height:22px;flex:0 0 22px;border:3px solid rgba(255,192,229,.22);border-top-color:#ffc0e5;border-right-color:#e85cba;border-radius:50%;animation:verification-spin .8s linear infinite;box-shadow:0 0 14px rgba(232,92,186,.22)}
+    @keyframes verification-spin{to{transform:rotate(360deg)}}
+    @media(prefers-reduced-motion:reduce){.verification-spinner{animation-duration:2.5s}}
     .auth-status{display:inline-flex;align-items:center;gap:9px;margin-top:14px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.07);color:#f5dff0;font-size:14px}
     .auth-dot{width:9px;height:9px;border-radius:50%;background:#f3c969;box-shadow:0 0 12px currentColor}
     .auth-status.ok .auth-dot{background:#74e2ad}
@@ -86,7 +91,7 @@
       <h2 id="auth-title">Verificação de segurança 🔐</h2>
       <p>Confirme que você não é um robô para continuar no Daily.</p>
       <div class="captcha-widget"><div id="yukina-turnstile"></div></div>
-      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Carregando verificação de segurança...</p>
+      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Preparando verificação de segurança...</p>\n      <div class="verification-loader visible" id="verification-loader" role="status" aria-live="polite"><span class="verification-spinner" aria-hidden="true"></span><span id="verification-message">Verificando sua conexão...</span></div>
     </section>
     <section class="daily-rules" aria-labelledby="daily-rules-title">
       <h2 id="daily-rules-title">📜 Regras do Yukina Daily</h2>
@@ -135,18 +140,18 @@
           },
           'expired-callback': function () {
             document.getElementById('spin-roulette').hidden = true;
-            status.textContent = 'A verificação expirou. Tente novamente.';
+            status.textContent = 'A verificação expirou. Tente novamente.';\n            loader.classList.remove('visible');
           },
           'error-callback': function () {
             document.getElementById('spin-roulette').hidden = true;
-            status.textContent = 'Não foi possível carregar a verificação. Atualize a página e tente novamente.';
+            status.textContent = 'Não foi possível carregar a verificação. Atualize a página e tente novamente.';\n            loader.classList.remove('visible');
           },
           theme: 'dark',
           size: 'invisible'
         });
         status.textContent = 'Validando sua conexão com segurança...';
       } catch (_) {
-        status.textContent = 'Falha ao iniciar a verificação. Atualize a página e tente novamente.';
+        status.textContent = 'Falha ao iniciar a verificação. Atualize a página e tente novamente.';\n        loader.classList.remove('visible');
       }
     };
     (() => {
