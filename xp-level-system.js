@@ -48,15 +48,26 @@ async function resolveXpRoles(guild) {
       .filter((rule) => Number.isInteger(rule.level) && rule.level >= 1 && rule.roleId);
     const roles = new Map();
     const remembered = knownConfiguredRoleIds.get(guild.id) || new Set();
+    const me = guild.members.me;
     for (const rule of validRules) {
       const role = guild.roles.cache.get(rule.roleId);
-      if (role && !role.managed) {
+      if (role && !role.managed && me?.permissions.has(PermissionFlagsBits.ManageRoles) &&
+          role.position < me.roles.highest.position) {
         roles.set(rule.level, role);
         remembered.add(role.id);
+      } else if (role && (role.managed || !me?.permissions.has(PermissionFlagsBits.ManageRoles) ||
+          role.position >= me.roles.highest.position)) {
+        console.warn("[Níveis XP] O cargo configurado para o nível " + rule.level +
+          " não pode ser gerenciado pela Yukina. Confira permissões e hierarquia.");
       }
     }
+    // Também limpa cargos padrão antigos, caso o servidor tenha migrado do modo automático
+    // para regras personalizadas no painel.
+    const legacyRoleIds = guild.roles.cache
+      .filter(role => LEVEL_ROLES.some(item => item.name === role.name))
+      .map(role => role.id);
     knownConfiguredRoleIds.set(guild.id, remembered);
-    return { configured: true, roles, managedIds: new Set([...remembered, ...validRules.map(rule => rule.roleId)]) };
+    return { configured: true, roles, managedIds: new Set([...remembered, ...legacyRoleIds, ...validRules.map(rule => rule.roleId)]) };
   }
 
   const roles = await ensureLevelRoles(guild);
