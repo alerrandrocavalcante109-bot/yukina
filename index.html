@@ -23,8 +23,54 @@
 <meta name="twitter:image" content="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
 </head>
 <body style="margin:0;min-height:100vh;background:#080510;overflow:hidden">
-<main aria-label="Imagem de fundo da tela inicial" style="width:100vw;height:100vh;margin:0;padding:0">
-<img src="./assets/yukina-bg.png" alt="" aria-hidden="true" style="display:block;width:100%;height:100%;object-fit:cover;object-position:center center">
+<main aria-label="Tela inicial da Yukina" style="position:relative;width:100vw;height:100vh;margin:0;padding:0">
+  <img src="./assets/yukina-bg.png" alt="" aria-hidden="true" style="position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover;object-position:center center">
+  <div style="position:fixed;top:20px;left:20px;z-index:10;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif">
+    <button id="yukina-menu-toggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="yukina-menu" style="display:flex;align-items:center;justify-content:center;gap:9px;width:54px;height:54px;border:1px solid rgba(255,255,255,.42);border-radius:17px;color:white;background:linear-gradient(135deg,#ff70b7 0%,#e85cba 55%,#9462d9 100%);box-shadow:0 8px 28px rgba(220,77,174,.32);cursor:pointer;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);transition:transform .2s ease,box-shadow .2s ease">
+      <span aria-hidden="true" style="display:flex;flex-direction:column;gap:5px;width:22px">
+        <span style="display:block;height:2px;width:22px;border-radius:2px;background:#fff"></span>
+        <span style="display:block;height:2px;width:16px;border-radius:2px;background:#fff"></span>
+        <span style="display:block;height:2px;width:22px;border-radius:2px;background:#fff"></span>
+      </span>
+    </button>
+    <nav id="yukina-menu" aria-label="Menu principal" hidden style="position:absolute;top:65px;left:0;width:220px;padding:10px;border:1px solid rgba(255,180,226,.35);border-radius:18px;background:linear-gradient(145deg,rgba(46,18,47,.96),rgba(28,20,54,.96));box-shadow:0 16px 45px rgba(0,0,0,.42),0 0 25px rgba(231,91,183,.13);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)">
+      <div style="padding:10px 12px 12px;color:#ffb4df;font-size:11px;font-weight:800;letter-spacing:2px;text-transform:uppercase">Yukina</div>
+      <a href="./index.html" style="display:block;padding:12px;border-radius:11px;color:#fff;text-decoration:none;font-size:14px;font-weight:600;background:rgba(255,112,183,.12)">⌂　Início</a>
+      <a href="./configuracoes.html?modo=interface" style="display:block;margin-top:4px;padding:12px;border-radius:11px;color:#f8eaf7;text-decoration:none;font-size:14px;font-weight:500">⚙　Painel de configurações</a>
+      <a href="./login.html" style="display:block;margin-top:4px;padding:12px;border-radius:11px;color:#f8eaf7;text-decoration:none;font-size:14px;font-weight:500">❄　Acessar Yukina</a>
+    </nav>
+  </div>
 </main>
+<script>
+(() => {
+  const toggle = document.getElementById('yukina-menu-toggle');
+  const menu = document.getElementById('yukina-menu');
+  if (!toggle || !menu) return;
+  toggle.addEventListener('click', () => {
+    const opening = menu.hidden;
+    menu.hidden = !opening;
+    toggle.setAttribute('aria-expanded', String(opening));
+    toggle.setAttribute('aria-label', opening ? 'Fechar menu' : 'Abrir menu');
+  });
+  document.addEventListener('click', (event) => {
+    if (!menu.hidden && !menu.parentElement.contains(event.target)) {
+      menu.hidden = true;
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Abrir menu');
+    }
+  });
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') {
+      menu.hidden = true;
+      toggle.setAttribute('aria-expanded', 'false');
+      toggle.setAttribute('aria-label', 'Abrir menu');
+    }
+  });
+  menu.querySelectorAll('a').forEach((link) => {
+    link.addEventListener('mouseenter', () => { link.style.background = 'linear-gradient(90deg,rgba(255,112,183,.22),rgba(148,98,217,.18))'; });
+    link.addEventListener('mouseleave', () => { link.style.background = ''; });
+  });
+})();
+</script>
 </body>
 </html>
