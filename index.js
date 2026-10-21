@@ -882,7 +882,23 @@ async function authorizePanel(req, guildId) {
     fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken } }),
     fetch("https://discord.com/api/users/@me/guilds", { headers: { Authorization: "Bearer " + accessToken } })
   ]);
-  if (!userRes.ok || !guildsRes.ok) throw Object.assign(new Error("Sua sessão do Discord expirou. Entre novamente."), { status: 401 });
+  if (!userRes.ok || !guildsRes.ok) {
+    console.warn("[API painel] Discord recusou a validação OAuth:", JSON.stringify({
+      userStatus: userRes.status,
+      guildsStatus: guildsRes.status
+    }));
+    const status = userRes.status === 401 || guildsRes.status === 401
+      ? 401
+      : userRes.status === 403 || guildsRes.status === 403
+        ? 403
+        : 502;
+    const message = status === 401
+      ? "Sua sessão do Discord expirou. Entre novamente."
+      : status === 403
+        ? "O Discord recusou as permissões OAuth da sessão. Entre novamente e autorize identify e guilds."
+        : "O Discord está temporariamente indisponível para validar a sessão. Tente novamente.";
+    throw Object.assign(new Error(message), { status });
+  }
   const user = await userRes.json();
   const guilds = await guildsRes.json();
   const guild = Array.isArray(guilds) ? guilds.find(g => g.id === guildId) : null;
