@@ -63,4 +63,27 @@ module.exports = {
       }
     }
   },
+,
+  async prefixExecute(message) {
+    try {
+      console.log("[Painel] Ypainel solicitado por " + message.author.id + " no servidor " + (message.guildId || "DM") + ".");
+      if (!message.guild || !message.guildId) {
+        return message.reply("❄️ Use este comando dentro de um servidor Discord.");
+      }
+      const permissions = message.member?.permissions;
+      if (!permissions?.has(PermissionFlagsBits.ManageGuild) && !permissions?.has(PermissionFlagsBits.Administrator)) {
+        return message.reply("🔒 Você precisa da permissão **Gerenciar servidor** para abrir este painel.");
+      }
+      const url = new URL(PANEL_URL);
+      url.searchParams.set("guild", message.guildId);
+      url.searchParams.set("name", message.guild.name || "Servidor");
+      return message.reply({
+        content: "❄️ **Painel de Configurações da Yukina**\nAbra o painel para gerenciar as configurações deste servidor:\n\n🔗 " + url.toString(),
+        allowedMentions: { parse: [] },
+      });
+    } catch (error) {
+      console.error("[Painel] Falha em Ypainel:", error);
+      return message.reply("🫧 Não consegui abrir o painel agora. Tente novamente em instantes.").catch(() => {});
+    }
+  },
 };
