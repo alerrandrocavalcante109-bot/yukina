@@ -650,9 +650,17 @@ client.on("messageCreate", async (message) => {
   }
 
   if (!request) {
-    await message.channel.send({ content: "Oi! Me marque e diga o que você quer montar. Exemplo: @Yukina crie um servidor gamer com categorias, canais de texto/voz e cargos coloridos.", allowedMentions: { repliedUser: false } });
+    await message.channel.send({ content: "Oi! Como posso ajudar?", allowedMentions: { repliedUser: false } });
     return;
   }
+
+  // Construtor de servidores com IA temporariamente desativado.
+  // A movimentação de canais por menção continua funcionando acima.
+  await message.channel.send({
+    content: "❄️ O construtor de servidores da Yukina está temporariamente desativado. Os demais sistemas continuam funcionando normalmente.",
+    allowedMentions: { repliedUser: false }
+  });
+  return;
 
   try {
     await message.channel.sendTyping();
