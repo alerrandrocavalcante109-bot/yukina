@@ -35,15 +35,11 @@
     .roulette{width:min(100%,680px);margin-top:12px;padding:24px;border:1px solid rgba(255,192,229,.28);border-radius:24px;background:rgba(20,8,34,.72);box-shadow:0 14px 50px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
     .roulette h2{margin:0 0 8px;color:#ffc0e5;font-size:clamp(25px,5vw,36px)}
     .roulette p{margin:0;color:#e9dced;line-height:1.6}
-    .roulette-slots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:20px 0;overflow:hidden}
+    .roulette-slots{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:20px 0;overflow:hidden}
     .roulette-slot{display:grid;place-items:center;aspect-ratio:1;border:1px solid rgba(255,192,229,.28);border-radius:14px;background:rgba(255,255,255,.06);font-size:clamp(22px,5vw,32px);will-change:transform}
     .roulette-slot.active{background:rgba(232,92,186,.32);border-color:#ffc0e5;box-shadow:0 0 22px rgba(232,92,186,.35)}
-    .roulette-slot.falling{animation:emoji-fall .18s ease-in both}
-    @keyframes emoji-fall{from{transform:translateY(-125%) scale(.85);opacity:.25}to{transform:translateY(0) scale(1);opacity:1}}
-    .roulette-prizes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 0;text-align:left}
-    .roulette-prize{padding:10px 12px;border:1px solid rgba(255,192,229,.16);border-radius:12px;background:rgba(255,255,255,.04);font-size:13px;color:#f0e5f5}
-    .roulette-prize strong{color:#ffc0e5}
-    @media(max-width:420px){.roulette-prizes{grid-template-columns:1fr}}
+    .roulette-slot.falling{animation:emoji-fall .42s cubic-bezier(.22,.8,.3,1) both}
+    @keyframes emoji-fall{from{transform:translateY(-160%) scale(.8);opacity:.2}to{transform:translateY(0) scale(1);opacity:1}}
     .roulette-button{border:0;border-radius:14px;padding:13px 24px;background:linear-gradient(105deg,#ff70b7,#9462d9);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
     .roulette-result{min-height:28px;margin-top:14px!important;color:#ffc0e5!important;font-weight:700}
     @media(max-width:520px){.roulette{padding:18px 14px}.roulette-slots{gap:6px}.roulette-slot{border-radius:10px}}\n    .auth-check{width:min(100%,680px);margin-top:4px;padding:22px;border:1px solid rgba(255,192,229,.24);border-radius:20px;background:rgba(20,8,34,.72);backdrop-filter:blur(10px);text-align:center}
@@ -73,16 +69,9 @@
       <h2 id="roulette-title">Roleta Russa da Yukina ❄</h2>
       <p>Teste sua sorte nesta versão fictícia e inofensiva — apenas surpresas aleatórias, sem armas ou violência.</p>
       <div class="roulette-slots" aria-label="Seis possibilidades">
-        <div class="roulette-slot">❄️</div><div class="roulette-slot">🌸</div><div class="roulette-slot">✨</div><div class="roulette-slot">💜</div><div class="roulette-slot">⭐</div><div class="roulette-slot">☁️</div>
+        <div class="roulette-slot">🌸</div><div class="roulette-slot">✨</div><div class="roulette-slot">💜</div><div class="roulette-slot">⭐</div>
       </div>
-      <div class="roulette-prizes" aria-label="Probabilidades e ganhos">
-        <div class="roulette-prize">❄️ <strong>Neve mágica</strong> — 35% · 10 Kizunas</div>
-        <div class="roulette-prize">🌸 <strong>Flor da sorte</strong> — 25% · 20 Kizunas</div>
-        <div class="roulette-prize">☁️ <strong>Nuvem doce</strong> — 20% · 30 Kizunas</div>
-        <div class="roulette-prize">✨ <strong>Brilho raro</strong> — 12% · 50 Kizunas</div>
-        <div class="roulette-prize">💜 <strong>Coração violeta</strong> — 7% · 100 Kizunas</div>
-        <div class="roulette-prize">⭐ <strong>Estrela lendária</strong> — 1% · 500 Kizunas</div>
-      </div>
+
       <button class="roulette-button" id="spin-roulette" type="button" hidden>Girar a roleta</button>
       <p class="roulette-result" id="roulette-result" aria-live="polite">Será que a sorte está do seu lado?</p>
     </section>
@@ -139,12 +128,10 @@
       const button = document.getElementById('spin-roulette');
       const result = document.getElementById('roulette-result');
       const outcomes = [
-        { emoji: '❄️', weight: 35, prize: 10, message: 'A Yukina cobriu você de neve mágica!' },
         { emoji: '🌸', weight: 25, prize: 20, message: 'Flor da sorte: uma recompensa delicada!' },
         { emoji: '✨', weight: 12, prize: 50, message: 'Você encontrou um brilho raro!' },
         { emoji: '💜', weight: 7, prize: 100, message: 'Coração violeta: uma grande surpresa!' },
-        { emoji: '⭐', weight: 1, prize: 500, message: 'ESTRELA LENDÁRIA! Prêmio máximo!' },
-        { emoji: '☁️', weight: 20, prize: 30, message: 'Uma nuvem doce trouxe uma recompensa!' }
+        { emoji: '⭐', weight: 1, prize: 500, message: 'ESTRELA LENDÁRIA! Prêmio máximo!' }
       ];
       function chooseOutcome() {
         const roll = Math.random() * outcomes.reduce((sum, item) => sum + item.weight, 0);
@@ -162,19 +149,19 @@
         let tick = 0;
         const totalTicks = 22 + chosen * 3;
         const spin = () => {
-          slots.forEach(slot => {
+          slots.forEach((slot, index) => {
             slot.classList.remove('active', 'falling');
-            slot.textContent = outcomes[Math.floor(Math.random() * outcomes.length)].emoji;
+            slot.textContent = outcomes[index].emoji;
           });
           const current = tick < totalTicks - 1 ? Math.floor(Math.random() * slots.length) : chosen;
-          slots[current].textContent = tick === totalTicks - 1 ? winner.emoji : outcomes[Math.floor(Math.random() * outcomes.length)].emoji;
-          slots[current].classList.add('active', 'falling');
+          slots[current].classList.add('falling');
           tick++;
           if (tick >= totalTicks) {
             slots.forEach((slot, index) => {
               slot.classList.remove('falling', 'active');
-              slot.textContent = index === chosen ? winner.emoji : outcomes[index].emoji;
+              slot.textContent = outcomes[index].emoji;
             });
+            slots[chosen].textContent = winner.emoji;
             slots[chosen].classList.add('active');
             result.textContent = winner.message + ' Ganho anunciado: ' + winner.prize + ' Kizunas.';
             button.disabled = false;
