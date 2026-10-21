@@ -42,7 +42,9 @@
     .roulette-result{min-height:28px;margin-top:14px!important;color:#ffc0e5!important;font-weight:700}
     @media(max-width:520px){.roulette{padding:18px 14px}.roulette-slots{gap:6px}.roulette-slot{border-radius:10px}}\n    .auth-check{width:min(100%,680px);margin-top:4px;padding:22px;border:1px solid rgba(255,192,229,.24);border-radius:20px;background:rgba(20,8,34,.72);backdrop-filter:blur(10px);text-align:center}
     .auth-check h2{margin:0 0 8px;color:#ffc0e5;font-size:clamp(22px,4vw,30px)}
-    .auth-check p{margin:0;color:#e9dced;line-height:1.7}
+    .auth-check p{margin:0 0 16px;color:#e9dced;line-height:1.7}
+    .captcha-widget{display:flex;justify-content:center;min-height:78px;overflow-x:auto}
+    .captcha-status{margin-top:12px;color:#e9dced;font-size:14px;line-height:1.6}
     .auth-status{display:inline-flex;align-items:center;gap:9px;margin-top:14px;padding:10px 14px;border-radius:999px;background:rgba(255,255,255,.07);color:#f5dff0;font-size:14px}
     .auth-dot{width:9px;height:9px;border-radius:50%;background:#f3c969;box-shadow:0 0 12px currentColor}
     .auth-status.ok .auth-dot{background:#74e2ad}
@@ -50,6 +52,7 @@
   </style>
 </head>
 <body>
+  <script src="https://www.google.com/recaptcha/api.js?onload=yukinaRecaptchaReady&render=explicit" async defer></script>
   <img class="backdrop" src="./assets/yukina-bg.png" alt="" aria-hidden="true">
   <div class="shade" aria-hidden="true"></div>
   <main style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center">
@@ -70,49 +73,26 @@
       <p class="roulette-result" id="roulette-result" aria-live="polite">Será que a sorte está do seu lado?</p>
     </section>
     <section class="auth-check" aria-labelledby="auth-title">
-      <h2 id="auth-title">Verificação de autenticação 🔐</h2>
-      <p>Ao abrir esta página, verificamos automaticamente se existe uma sessão do Discord válida neste navegador.</p>
-      <div class="auth-status" id="auth-status" role="status" aria-live="polite"><span class="auth-dot" aria-hidden="true"></span><span id="auth-status-text">Verificando sessão...</span></div>
+      <h2 id="auth-title">Verificação de segurança 🔐</h2>
+      <p>Confirme que você não é um robô para continuar no Daily.</p>
+      <div class="captcha-widget"><div id="yukina-recaptcha"></div></div>
+      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Carregando verificação do Google...</p>
     </section>
   </main>
   <script>
-    (() => {
-      const status = document.getElementById('auth-status');
-      const statusText = document.getElementById('auth-status-text');
-      async function verifySession() {
-        let accessToken = null;
-        try {
-          const expiresAt = Number(localStorage.getItem('yukina_discord_token_expires_at') || '0');
-          const sessionExpiresAt = Number(localStorage.getItem('yukina_panel_session_expires_at') || '0');
-          if ((expiresAt && Date.now() >= expiresAt) || (sessionExpiresAt && Date.now() >= sessionExpiresAt)) {
-            localStorage.removeItem('yukina_discord_token');
-            localStorage.removeItem('yukina_discord_refresh_token');
-            localStorage.removeItem('yukina_discord_token_expires_at');
-            localStorage.removeItem('yukina_panel_session_expires_at');
-          } else {
-            accessToken = localStorage.getItem('yukina_discord_token');
-          }
-        } catch (_) {}
-        if (!accessToken) {
-          status.classList.add('fail');
-          statusText.textContent = 'Nenhuma sessão do Discord encontrada neste navegador.';
-          return;
-        }
-        try {
-          const response = await fetch('https://discord.com/api/users/@me', {
-            headers: { Authorization: 'Bearer ' + accessToken }
-          });
-          if (!response.ok) throw new Error('Sessão inválida');
-          const user = await response.json();
-          status.classList.add('ok');
-          statusText.textContent = 'Autenticado como ' + (user.global_name || user.username) + '.';
-        } catch (_) {
-          status.classList.add('fail');
-          statusText.textContent = 'Não foi possível validar a sessão. Entre novamente pelo Discord.';
-        }
-      }
-      verifySession();
-    })();
+    window.yukinaRecaptchaReady = function () {
+      const status = document.getElementById('captcha-status');
+      if (!window.grecaptcha || !document.getElementById('yukina-recaptcha')) return;
+      try {
+        window.grecaptcha.render('yukina-recaptcha', {
+          sitekey: '6LfWjvotAAAAAIdGEcR2eRCc5K61ZjRE73HALFAS',
+          callback: function () { status.textContent = 'Verificação concluída neste navegador. A API ainda precisa validar o token para liberar o prêmio.'; },
+          'expired-callback': function () { status.textContent = 'A verificação expirou. Marque a caixa novamente.'; },
+          'error-callback': function () { status.textContent = 'Não foi possível carregar a verificação. Tente novamente.'; }
+        });
+        status.textContent = 'Marque a caixa “Não sou um robô” para verificar.';
+      } catch (_) { status.textContent = 'Falha ao iniciar o reCAPTCHA. Atualize a página e tente novamente.'; }
+    };
     (() => {
       const slots = Array.from(document.querySelectorAll('.roulette-slot'));
       const button = document.getElementById('spin-roulette');
