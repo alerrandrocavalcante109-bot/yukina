@@ -35,9 +35,15 @@
     .roulette{width:min(100%,680px);margin-top:12px;padding:24px;border:1px solid rgba(255,192,229,.28);border-radius:24px;background:rgba(20,8,34,.72);box-shadow:0 14px 50px rgba(0,0,0,.24);backdrop-filter:blur(10px)}
     .roulette h2{margin:0 0 8px;color:#ffc0e5;font-size:clamp(25px,5vw,36px)}
     .roulette p{margin:0;color:#e9dced;line-height:1.6}
-    .roulette-slots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:20px 0}
-    .roulette-slot{display:grid;place-items:center;aspect-ratio:1;border:1px solid rgba(255,192,229,.28);border-radius:14px;background:rgba(255,255,255,.06);font-size:clamp(22px,5vw,32px);transition:transform .2s,background .2s}
-    .roulette-slot.active{background:rgba(232,92,186,.32);transform:scale(1.08);border-color:#ffc0e5}
+    .roulette-slots{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin:20px 0;overflow:hidden}
+    .roulette-slot{display:grid;place-items:center;aspect-ratio:1;border:1px solid rgba(255,192,229,.28);border-radius:14px;background:rgba(255,255,255,.06);font-size:clamp(22px,5vw,32px);will-change:transform}
+    .roulette-slot.active{background:rgba(232,92,186,.32);border-color:#ffc0e5;box-shadow:0 0 22px rgba(232,92,186,.35)}
+    .roulette-slot.falling{animation:emoji-fall .18s ease-in both}
+    @keyframes emoji-fall{from{transform:translateY(-125%) scale(.85);opacity:.25}to{transform:translateY(0) scale(1);opacity:1}}
+    .roulette-prizes{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:16px 0 0;text-align:left}
+    .roulette-prize{padding:10px 12px;border:1px solid rgba(255,192,229,.16);border-radius:12px;background:rgba(255,255,255,.04);font-size:13px;color:#f0e5f5}
+    .roulette-prize strong{color:#ffc0e5}
+    @media(max-width:420px){.roulette-prizes{grid-template-columns:1fr}}
     .roulette-button{border:0;border-radius:14px;padding:13px 24px;background:linear-gradient(105deg,#ff70b7,#9462d9);color:#fff;font-size:16px;font-weight:800;cursor:pointer}
     .roulette-result{min-height:28px;margin-top:14px!important;color:#ffc0e5!important;font-weight:700}
     @media(max-width:520px){.roulette{padding:18px 14px}.roulette-slots{gap:6px}.roulette-slot{border-radius:10px}}\n    .auth-check{width:min(100%,680px);margin-top:4px;padding:22px;border:1px solid rgba(255,192,229,.24);border-radius:20px;background:rgba(20,8,34,.72);backdrop-filter:blur(10px);text-align:center}
@@ -68,6 +74,14 @@
       <p>Teste sua sorte nesta versão fictícia e inofensiva — apenas surpresas aleatórias, sem armas ou violência.</p>
       <div class="roulette-slots" aria-label="Seis possibilidades">
         <div class="roulette-slot">❄️</div><div class="roulette-slot">🌸</div><div class="roulette-slot">✨</div><div class="roulette-slot">💜</div><div class="roulette-slot">⭐</div><div class="roulette-slot">☁️</div>
+      </div>
+      <div class="roulette-prizes" aria-label="Probabilidades e ganhos">
+        <div class="roulette-prize">❄️ <strong>Neve mágica</strong> — 35% · 10 flocos</div>
+        <div class="roulette-prize">🌸 <strong>Flor da sorte</strong> — 25% · 20 flocos</div>
+        <div class="roulette-prize">☁️ <strong>Nuvem doce</strong> — 20% · 30 flocos</div>
+        <div class="roulette-prize">✨ <strong>Brilho raro</strong> — 12% · 50 flocos</div>
+        <div class="roulette-prize">💜 <strong>Coração violeta</strong> — 7% · 100 flocos</div>
+        <div class="roulette-prize">⭐ <strong>Estrela lendária</strong> — 1% · 500 flocos</div>
       </div>
       <button class="roulette-button" id="spin-roulette" type="button" hidden>Girar a roleta</button>
       <p class="roulette-result" id="roulette-result" aria-live="polite">Será que a sorte está do seu lado?</p>
@@ -125,33 +139,52 @@
       const button = document.getElementById('spin-roulette');
       const result = document.getElementById('roulette-result');
       const outcomes = [
-        '❄️ A Yukina cobriu você de neve mágica!',
-        '🌸 Sorte delicada: hoje é seu dia!',
-        '✨ Você encontrou uma surpresa brilhante!',
-        '💜 Proteção da Yukina ativada. Você está em segurança!',
-        '⭐ Estrela da sorte! Tente mais uma vez quando quiser.',
-        '☁️ Escapou por pouco de uma nuvem de algodão-doce!'
+        { emoji: '❄️', weight: 35, prize: 10, message: 'A Yukina cobriu você de neve mágica!' },
+        { emoji: '🌸', weight: 25, prize: 20, message: 'Flor da sorte: uma recompensa delicada!' },
+        { emoji: '✨', weight: 12, prize: 50, message: 'Você encontrou um brilho raro!' },
+        { emoji: '💜', weight: 7, prize: 100, message: 'Coração violeta: uma grande surpresa!' },
+        { emoji: '⭐', weight: 1, prize: 500, message: 'ESTRELA LENDÁRIA! Prêmio máximo!' },
+        { emoji: '☁️', weight: 20, prize: 30, message: 'Uma nuvem doce trouxe uma recompensa!' }
       ];
+      function chooseOutcome() {
+        const roll = Math.random() * outcomes.reduce((sum, item) => sum + item.weight, 0);
+        let cumulative = 0;
+        return outcomes.find(item => (cumulative += item.weight) > roll) || outcomes[0];
+      }
       button.addEventListener('click', () => {
+        if (button.disabled) return;
         button.disabled = true;
         button.textContent = 'Girando...';
-        slots.forEach(slot => slot.classList.remove('active'));
-        result.textContent = 'A roleta está decidindo seu destino...';
-        let ticks = 0;
-        const chosen = Math.floor(Math.random() * slots.length);
-        const timer = setInterval(() => {
-          slots.forEach(slot => slot.classList.remove('active'));
-          slots[ticks % slots.length].classList.add('active');
-          ticks++;
-          if (ticks >= 12 + chosen) {
-            clearInterval(timer);
-            slots.forEach(slot => slot.classList.remove('active'));
+        slots.forEach(slot => slot.classList.remove('active', 'falling'));
+        result.textContent = 'Os emojis estão caindo...';
+        const winner = chooseOutcome();
+        const chosen = outcomes.findIndex(item => item.emoji === winner.emoji);
+        let tick = 0;
+        const totalTicks = 22 + chosen * 3;
+        const spin = () => {
+          slots.forEach(slot => {
+            slot.classList.remove('active', 'falling');
+            slot.textContent = outcomes[Math.floor(Math.random() * outcomes.length)].emoji;
+          });
+          const current = tick < totalTicks - 1 ? Math.floor(Math.random() * slots.length) : chosen;
+          slots[current].textContent = tick === totalTicks - 1 ? winner.emoji : outcomes[Math.floor(Math.random() * outcomes.length)].emoji;
+          slots[current].classList.add('active', 'falling');
+          tick++;
+          if (tick >= totalTicks) {
+            slots.forEach((slot, index) => {
+              slot.classList.remove('falling', 'active');
+              slot.textContent = index === chosen ? winner.emoji : outcomes[index].emoji;
+            });
             slots[chosen].classList.add('active');
-            result.textContent = outcomes[chosen];
+            result.textContent = winner.message + ' Ganho anunciado: ' + winner.prize + ' flocos.';
             button.disabled = false;
             button.textContent = 'Girar novamente';
+            return;
           }
-        }, 100);
+          const progress = tick / totalTicks;
+          setTimeout(spin, 65 + Math.floor(progress * progress * 150));
+        };
+        spin();
       });
     })();
   </script>
