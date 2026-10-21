@@ -40,10 +40,23 @@ function startInteractionEngine(client) {
   client.__yukinaInteractionEngine = true;
   client.on("interactionCreate", async interaction => {
     try {
-      if (interaction.isChatInputCommand()) {
-        const command = client.commands?.get(interaction.commandName);
-        if (command && typeof command.execute === "function") await command.execute(interaction, client);
-        return;
+      // Slash commands and registered components belong to interaction.js.
+      // Handling them here too would execute slash commands twice and expire the interaction.
+      if (interaction.isChatInputCommand()) return;
+      const componentType = interaction.isButton() ? "button"
+        : interaction.isAnySelectMenu() ? "select"
+        : interaction.isModalSubmit() ? "modal" : null;
+      if (componentType) {
+        const handlers = client.components?.[componentType] || [];
+        const matched = handlers.some(handler => {
+          if (typeof handler.customId === "string") return handler.customId === interaction.customId;
+          if (handler.customId instanceof RegExp) {
+            handler.customId.lastIndex = 0;
+            return handler.customId.test(interaction.customId);
+          }
+          return false;
+        });
+        if (matched) return;
       }
       for (const command of client.commands?.values() || []) {
         if (typeof command.handleInteraction === "function") {
