@@ -48,21 +48,21 @@ async function start(channel, starterId, mentions) {
 }
 async function showHand(interaction,game) {
   const hand=game.hands[interaction.user.id];
-  if(!hand) return interaction.reply({content:"Você não está nesta partida.",ephemeral:true});
+  if(!hand) return interaction.reply({content:"Você não está nesta partida.",flags:MessageFlags.Ephemeral});
   const menu=new StringSelectMenuBuilder().setCustomId(`domino:tile:${game.id}`).setPlaceholder("Escolha uma peça para jogar").setMinValues(1).setMaxValues(1)
     .addOptions(hand.map(t=>({label:`${t.a} | ${t.b}`,description:`Peça ${t.a} e ${t.b}`,value:t.id,emoji:"🎲"})));
-  return interaction.reply({content:`🀄 **Suas peças — apenas você pode ver**\n${hand.map(tileText).join("   ")}\n\nEscolha uma peça no menu para tentar jogá-la na mesa.`,components:[new ActionRowBuilder().addComponents(menu)],ephemeral:true});
+  return interaction.reply({content:`🀄 **Suas peças — apenas você pode ver**\n${hand.map(tileText).join("   ")}\n\nEscolha uma peça no menu para tentar jogá-la na mesa.`,components:[new ActionRowBuilder().addComponents(menu)],flags:MessageFlags.Ephemeral});
 }
 async function playTile(interaction,game,tileId) {
-  if(!game.players.includes(interaction.user.id)) return interaction.reply({content:"Você não está nesta partida.",ephemeral:true});
-  if(game.turn!==interaction.user.id) return interaction.reply({content:"Ainda não é sua vez.",ephemeral:true});
+  if(!game.players.includes(interaction.user.id)) return interaction.reply({content:"Você não está nesta partida.",flags:MessageFlags.Ephemeral});
+  if(game.turn!==interaction.user.id) return interaction.reply({content:"Ainda não é sua vez.",flags:MessageFlags.Ephemeral});
   const hand=game.hands[interaction.user.id];
   const index=hand.findIndex(t=>t.id===tileId);
-  if(index<0) return interaction.reply({content:"Essa peça não está mais na sua mão.",ephemeral:true});
+  if(index<0) return interaction.reply({content:"Essa peça não está mais na sua mão.",flags:MessageFlags.Ephemeral});
   const tile=hand[index], left=game.board[0]?.a, right=game.board.at(-1)?.b;
   let placed={...tile};
   if(game.board.length) {
-    if(tile.a!==left&&tile.b!==left&&tile.a!==right&&tile.b!==right) return interaction.reply({content:`Essa peça não encaixa. As pontas abertas são **${left}** e **${right}**.`,ephemeral:true});
+    if(tile.a!==left&&tile.b!==left&&tile.a!==right&&tile.b!==right) return interaction.reply({content:`Essa peça não encaixa. As pontas abertas são **${left}** e **${right}**.`,flags:MessageFlags.Ephemeral});
     if(tile.a===left) { game.board.unshift(placed); }
     else if(tile.b===left) { placed={a:tile.b,b:tile.a,id:tile.id}; game.board.unshift(placed); }
     else if(tile.a===right) game.board.push(placed);
@@ -75,7 +75,7 @@ async function playTile(interaction,game,tileId) {
     const channel=await interaction.client.channels.fetch(game.channelId);
     const boardMessage=await channel.messages.fetch(game.messageId);
     await boardMessage.edit({components:[new ContainerBuilder().setAccentColor(0x9edfff).addTextDisplayComponents(new TextDisplayBuilder().setContent(`# 🏆 Domino • Yukina\n<@${interaction.user.id}> venceu o Domino!\n\n${game.players.map(id=>`<@${id}> — ${game.hands[id].length} peça(s)`).join("\n")}`))],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
-    await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",ephemeral:true}).catch(()=>{});
+    await interaction.followUp({content:"🏆 Você jogou sua última peça e venceu!",flags:MessageFlags.Ephemeral}).catch(()=>{});
     return;
   }
   game.turnIndex=(game.turnIndex+1)%game.players.length;game.turn=game.players[game.turnIndex];
@@ -83,14 +83,14 @@ async function playTile(interaction,game,tileId) {
   const channel=await interaction.client.channels.fetch(game.channelId);
   const boardMessage=await channel.messages.fetch(game.messageId);
   await boardMessage.edit({components:[boardContainer(game, `🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`)],flags:MessageFlags.IsComponentsV2,allowedMentions:{users:game.players}});
-  await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,ephemeral:true}).catch(()=>{});
+  await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,flags:MessageFlags.Ephemeral}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
   const id=interaction.customId||"";
   if(!id.startsWith("domino:")) return;
   const [,action,gameId]=id.split(":");
   const game=games.get(gameId);
-  if(!game) return interaction.reply({content:"Esta partida não está mais ativa.",ephemeral:true}).catch(()=>{});
+  if(!game) return interaction.reply({content:"Esta partida não está mais ativa.",flags:MessageFlags.Ephemeral}).catch(()=>{});
   if(action==="hand"||action==="play") return showHand(interaction,game);
   if(action==="tile") return playTile(interaction,game,interaction.values?.[0]);
 }
@@ -103,7 +103,7 @@ module.exports = {
   async execute(interaction) {
     const users=[1,2,3,4].map(n=>interaction.options.getUser(n===1?"usar":`usar${n}`)).filter(Boolean).map(u=>u.id);
     const game=await start(interaction.channel,interaction.user.id,users);
-    return interaction.reply({content:`🎲 Partida de Domino criada! Código: ${game.id}`,ephemeral:true});
+    return interaction.reply({content:`🎲 Partida de Domino criada! Código: ${game.id}`,flags:MessageFlags.Ephemeral});
   },
   async prefixExecute(message,args) {
     const mentions=message.mentions.users.filter(u=>!u.bot).map(u=>u.id).filter(id=>id!==message.author.id);
