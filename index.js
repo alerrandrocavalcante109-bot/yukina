@@ -877,33 +877,87 @@ function readBody(req) {
     req.on("error", reject);
   });
 }
+const oauthGuildCache = new Map();
+const OAUTH_GUILD_CACHE_TTL_MS = 60 * 1000;
+const OAUTH_GUILD_CACHE_STALE_MS = 5 * 60 * 1000;
+
 async function authorizePanel(req, guildId) {
   const auth = String(req.headers.authorization || "");
   const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!accessToken) throw Object.assign(new Error("Entre com o Discord novamente."), { status: 401 });
-  const [userRes, guildsRes] = await Promise.all([
-    fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken } }),
-    fetch("https://discord.com/api/users/@me/guilds", { headers: { Authorization: "Bearer " + accessToken } })
-  ]);
-  if (!userRes.ok || !guildsRes.ok) {
-    console.warn("[API painel] Discord recusou a validação OAuth:", JSON.stringify({
-      userStatus: userRes.status,
-      guildsStatus: guildsRes.status
-    }));
-    const status = userRes.status === 401 || guildsRes.status === 401
-      ? 401
-      : userRes.status === 403 || guildsRes.status === 403
-        ? 403
-        : 502;
+
+  const now = Date.now();
+  let cachedGuilds = oauthGuildCache.get(accessToken);
+  if (cachedGuilds && cachedGuilds.staleUntil <= now) {
+    oauthGuildCache.delete(accessToken);
+    cachedGuilds = null;
+  }
+
+  // O endpoint de servidores tem limite próprio. Reutilizamos a resposta válida
+  // por 60 s para evitar uma chamada ao Discord em cada requisição do painel.
+  const userPromise = fetch("https://discord.com/api/users/@me", {
+    headers: { Authorization: "Bearer " + accessToken }
+  });
+  let guildsPromise = null;
+  if (!cachedGuilds || cachedGuilds.freshUntil <= now) {
+    guildsPromise = fetch("https://discord.com/api/users/@me/guilds", {
+      headers: { Authorization: "Bearer " + accessToken }
+    });
+  }
+
+  const userRes = await userPromise;
+  if (!userRes.ok) {
+    console.warn("[API painel] Discord recusou a validação do usuário OAuth:", JSON.stringify({ userStatus: userRes.status }));
+    const status = userRes.status === 401 ? 401 : userRes.status === 403 ? 403 : 502;
     const message = status === 401
       ? "Sua sessão do Discord expirou. Entre novamente."
       : status === 403
-        ? "O Discord recusou as permissões OAuth da sessão. Entre novamente e autorize identify e guilds."
+        ? "O Discord recusou as permissões OAuth da sessão. Entre novamente."
         : "O Discord está temporariamente indisponível para validar a sessão. Tente novamente.";
     throw Object.assign(new Error(message), { status });
   }
   const user = await userRes.json();
-  const guilds = await guildsRes.json();
+
+  let guilds;
+  if (!guildsPromise) {
+    guilds = cachedGuilds.guilds;
+  } else {
+    const guildsRes = await guildsPromise;
+    if (guildsRes.ok) {
+      guilds = await guildsRes.json();
+      const entry = {
+        guilds: Array.isArray(guilds) ? guilds : [],
+        freshUntil: Date.now() + OAUTH_GUILD_CACHE_TTL_MS,
+        staleUntil: Date.now() + OAUTH_GUILD_CACHE_STALE_MS
+      };
+      oauthGuildCache.set(accessToken, entry);
+      // Evita crescimento ilimitado do cache em processos de longa duração.
+      if (oauthGuildCache.size > 500) {
+        const oldestKey = oauthGuildCache.keys().next().value;
+        if (oldestKey !== undefined) oauthGuildCache.delete(oldestKey);
+      }
+    } else {
+      console.warn("[API painel] Discord recusou a validação OAuth:", JSON.stringify({
+        userStatus: userRes.status,
+        guildsStatus: guildsRes.status
+      }));
+      // Se o Discord limitar temporariamente a rota, usa apenas uma resposta
+      // previamente autenticada e ainda recente; nunca ignora 401/403.
+      if (guildsRes.status === 429 && cachedGuilds && cachedGuilds.staleUntil > Date.now()) {
+        guilds = cachedGuilds.guilds;
+        console.warn("[API painel] Usando cache recente de servidores devido ao limite 429 do Discord.");
+      } else {
+        const status = guildsRes.status === 401 ? 401 : guildsRes.status === 403 ? 403 : 502;
+        const message = status === 401
+          ? "Sua sessão do Discord expirou. Entre novamente."
+          : status === 403
+            ? "O Discord recusou as permissões OAuth da sessão. Entre novamente e autorize identify e guilds."
+            : "O Discord está temporariamente indisponível para validar a sessão. Tente novamente.";
+        throw Object.assign(new Error(message), { status });
+      }
+    }
+  }
+
   const guild = Array.isArray(guilds) ? guilds.find(g => g.id === guildId) : null;
   if (!guild) throw Object.assign(new Error("Você não tem acesso a este servidor."), { status: 403 });
   const permissions = BigInt(guild.permissions || "0");
