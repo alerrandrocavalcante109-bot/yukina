@@ -46,27 +46,13 @@ function startInteractionEngine(client) {
       const componentType = interaction.isButton() ? "button"
         : interaction.isAnySelectMenu() ? "select"
         : interaction.isModalSubmit() ? "modal" : null;
-      if (componentType) {
-        const handlers = client.components?.[componentType] || [];
-        const matched = handlers.some(handler => {
-          if (typeof handler.customId === "string") return handler.customId === interaction.customId;
-          if (handler.customId instanceof RegExp) {
-            handler.customId.lastIndex = 0;
-            return handler.customId.test(interaction.customId);
-          }
-          return false;
-        });
-        if (matched) return;
-      }
-      for (const command of client.commands?.values() || []) {
-        if (typeof command.handleInteraction === "function") {
-          await command.handleInteraction(interaction);
-          if (interaction.replied || interaction.deferred) return;
-        }
-      }
+      // Todas as interações de componentes são processadas exclusivamente por interaction.js.
+      // Não processe o mesmo botão/select/modal em dois listeners, pois ambos podem tentar responder.
+      if (componentType) return;
     } catch (error) {
       console.error("[Motor] Falha ao processar interação:", error);
-      const payload = { content: "❄️ Não consegui concluir essa ação. Tente novamente.", ephemeral: true };
+      const { MessageFlags } = require("discord.js");
+      const payload = { content: "❄️ Não consegui concluir essa ação. Tente novamente.", flags: MessageFlags.Ephemeral };
       if (interaction.deferred || interaction.replied) await interaction.followUp(payload).catch(() => {});
       else if (interaction.isRepliable()) await interaction.reply(payload).catch(() => {});
     }
