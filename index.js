@@ -977,6 +977,57 @@ async function panelApi(req, res, url) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
+  if (url.pathname === "/api/daily/status" || url.pathname === "/api/daily/claim") {
+    const isClaim = url.pathname === "/api/daily/claim";
+    if (req.method !== (isClaim ? "POST" : "GET")) return sendJson(res, 405, { ok: false, detail: isClaim ? "Use POST." : "Use GET." });
+    try {
+      const auth = String(req.headers.authorization || "");
+      const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!accessToken) return sendJson(res, 401, { ok: false, detail: "Entre com o Discord para coletar o Daily." });
+      const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
+      const user = userResponse.ok ? await userResponse.json() : null;
+      if (!user || !/^\\d{17,20}$/.test(String(user.id || ""))) return sendJson(res, 401, { ok: false, detail: "Sua sessão do Discord expirou. Entre novamente." });
+      const guildId = (process.env.VIP_GUILD_ID || "").trim();
+      if (!/^\\d{17,20}$/.test(guildId)) return sendJson(res, 503, { ok: false, detail: "O servidor Daily ainda não está configurado." });
+      if (!MONGODB_URI) return sendJson(res, 503, { ok: false, detail: "O banco de dados do Daily não está configurado." });
+      if (!settingsMongoClient) settingsMongoClient = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+      await settingsMongoClient.connect();
+      const daily = settingsMongoClient.db(MONGODB_DB).collection("daily_claims");
+      await daily.createIndex({ guildId: 1, userId: 1, day: 1 }, { unique: true });
+      const now = new Date();
+      const day = now.toISOString().slice(0, 10);
+      const previous = await daily.findOne({ guildId, userId: String(user.id), day });
+      if (!isClaim) return sendJson(res, 200, { ok: true, claimed: Boolean(previous), nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
+      if (previous) return sendJson(res, 409, { ok: false, claimed: true, detail: "Você já coletou seu Daily hoje! Volte amanhã para coletar novamente." });
+      const body = await readBody(req);
+      const captchaToken = String(body.token || "").trim();
+      if (!captchaToken) return sendJson(res, 400, { ok: false, detail: "Conclua a verificação de segurança primeiro." });
+      const secret = String(process.env.TURNSTILE_SECRET_KEY || "").trim();
+      if (!secret) return sendJson(res, 503, { ok: false, detail: "A verificação de segurança não está configurada no servidor." });
+      const verifyResponse = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ secret, response: captchaToken }), signal: AbortSignal.timeout(10000) });
+      const verification = await verifyResponse.json().catch(() => ({}));
+      if (!verifyResponse.ok || verification.success !== true) return sendJson(res, 403, { ok: false, detail: "A verificação falhou. Tente novamente." });
+      const subscriptions = await getVipCollection();
+      const subscription = await subscriptions.findOne({ guildId, userId: String(user.id), status: "active", expiresAt: { $gt: now } });
+      const multipliers = { starter: 1.25, plus: 1.5, premium: 2, ultra: 2.5, infinity: 3 };
+      const planKey = String(subscription?.planKey || "").toLowerCase();
+      const multiplier = subscription && multipliers[planKey] ? multipliers[planKey] : 1;
+      const planName = subscription && multipliers[planKey] ? planKey[0].toUpperCase() + planKey.slice(1) : "Sem VIP";
+      const ranges = [{ min: 5000, max: 10000 }, { min: 10000, max: 15000 }, { min: 10000, max: 20000 }, { min: 20000, max: 25000 }];
+      const baseReward = Math.floor(Math.random() * (ranges[0].max - ranges[0].min + 1)) + ranges[0].min;
+      const reward = Math.floor(baseReward * multiplier);
+      try {
+        await daily.insertOne({ guildId, userId: String(user.id), day, plan: planKey || null, multiplier, baseReward, reward, claimedAt: now });
+      } catch (err) {
+        if (err && err.code === 11000) return sendJson(res, 409, { ok: false, claimed: true, detail: "Você já coletou seu Daily hoje! Volte amanhã para coletar novamente." });
+        throw err;
+      }
+      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, baseReward, reward, nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
+    } catch (error) {
+      console.error("[Daily] Falha na coleta:", error.message || error);
+      return sendJson(res, 500, { ok: false, detail: "Não foi possível verificar a coleta do Daily. Tente novamente." });
+    }
+  }
   if (url.pathname === "/api/vip/daily") {
     if (req.method !== "GET") return sendJson(res, 405, { ok: false, detail: "Use GET para consultar o multiplicador VIP." });
     try {
