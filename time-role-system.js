@@ -34,7 +34,7 @@ async function updateTimedRoles(member) {
     for (const rule of rules) remembered.add(rule.roleId);
     knownConfiguredRoleIds.set(member.guild.id, remembered);
 
-    const managedIds = new Set([...remembered, ...rules.map(rule => rule.roleId)]);
+    const managedIds = new Set([...remembered, ...rules.map(rule => rule.roleId), ...(Array.isArray(settings.timeManagedRoleIds) ? settings.timeManagedRoleIds.map(String) : [])]);
     const me = member.guild.members.me;
     if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
       console.warn("[Cargos temporais] A Yukina precisa de Gerenciar cargos em " + member.guild.name + ".");
