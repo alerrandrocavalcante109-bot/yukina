@@ -12,6 +12,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const { MessageFlags } = require("discord.js");
 
 const ROOT = __dirname;
 
@@ -94,7 +95,7 @@ async function safeErrorReply(interaction, error) {
   console.error("[Interactions] Erro ao executar interação:", error);
   const payload = {
     content: "❄️ A Yukina encontrou um erro ao executar esta ação. Tente novamente; se continuar, avise a equipe.",
-    ephemeral: true,
+    flags: MessageFlags.Ephemeral,
   };
 
   try {
@@ -123,7 +124,7 @@ function registerInteractionHandlers(client) {
           if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({
               content: "Esse comando ainda não está disponível na Yukina.",
-              ephemeral: true,
+              flags: MessageFlags.Ephemeral,
             });
           }
           return;
@@ -144,10 +145,18 @@ function registerInteractionHandlers(client) {
       );
 
       if (!handler) {
+        // Compatibilidade com comandos antigos que exportam handleInteraction().
+        // Este é o único listener que os executa, evitando respostas duplicadas.
+        for (const command of client.commands.values()) {
+          if (typeof command.handleInteraction !== "function") continue;
+          await command.handleInteraction(interaction);
+          if (interaction.replied || interaction.deferred) return;
+        }
+
         if (!interaction.replied && !interaction.deferred) {
           await interaction.reply({
             content: "Esta opção ainda não está conectada à Yukina. Tente novamente mais tarde.",
-            ephemeral: true,
+            flags: MessageFlags.Ephemeral,
           });
         }
         return;
