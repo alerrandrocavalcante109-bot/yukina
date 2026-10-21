@@ -16,7 +16,7 @@ function boardEmbed(game) {
 function controls(game) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder().setCustomId(`domino:hand:${game.id}`).setLabel("Ver minhas peças").setEmoji("🀄").setStyle(ButtonStyle.Secondary),
-    new ButtonBuilder().setCustomId(`domino:play:${game.id}`).setLabel("Jogar").setEmoji("🁫").setStyle(ButtonStyle.Primary)
+    new ButtonBuilder().setCustomId(`domino:play:${game.id}`).setLabel("Jogar").setEmoji("🎲").setStyle(ButtonStyle.Primary)
   );
 }
 async function start(channel, starterId, mentions) {
@@ -36,7 +36,7 @@ async function showHand(interaction,game) {
   const hand=game.hands[interaction.user.id];
   if(!hand) return interaction.reply({content:"Você não está nesta partida.",ephemeral:true});
   const menu=new StringSelectMenuBuilder().setCustomId(`domino:tile:${game.id}`).setPlaceholder("Escolha uma peça para jogar").setMinValues(1).setMaxValues(1)
-    .addOptions(hand.map(t=>({label:`${t.a} | ${t.b}`,description:`Peça ${t.a} e ${t.b}`,value:t.id,emoji:"🁫"})));
+    .addOptions(hand.map(t=>({label:`${t.a} | ${t.b}`,description:`Peça ${t.a} e ${t.b}`,value:t.id,emoji:"🎲"})));
   return interaction.reply({content:`🀄 **Suas peças — apenas você pode ver**\n${hand.map(tileText).join("   ")}\n\nEscolha uma peça no menu para tentar jogá-la na mesa.`,components:[new ActionRowBuilder().addComponents(menu)],ephemeral:true});
 }
 async function playTile(interaction,game,tileId) {
@@ -68,7 +68,7 @@ async function playTile(interaction,game,tileId) {
   await interaction.deferUpdate();
   const channel=await interaction.client.channels.fetch(game.channelId);
   const boardMessage=await channel.messages.fetch(game.messageId);
-  await boardMessage.edit({content:`🁫 <@${interaction.user.id}> jogou ${tileText(placed)}.`,embeds:[boardEmbed(game)],components:[controls(game)]});
+  await boardMessage.edit({content:`🎲 <@${interaction.user.id}> jogou ${tileText(placed)}.`,embeds:[boardEmbed(game)],components:[controls(game)]});
   await interaction.followUp({content:`Você jogou ${tileText(placed)} na mesa.`,ephemeral:true}).catch(()=>{});
 }
 async function handleInteraction(interaction) {
