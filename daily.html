@@ -61,7 +61,7 @@
   </style>
 </head>
 <body>
-  <script src="https://www.google.com/recaptcha/api.js?onload=yukinaRecaptchaReady&render=explicit" async defer></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?onload=yukinaTurnstileReady&render=explicit" async defer></script>
   <img class="backdrop" src="./assets/yukina-bg.png" alt="" aria-hidden="true">
   <div class="shade" aria-hidden="true"></div>
   <main style="min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:24px;text-align:center">
@@ -85,8 +85,8 @@
     <section class="auth-check" aria-labelledby="auth-title">
       <h2 id="auth-title">Verificação de segurança 🔐</h2>
       <p>Confirme que você não é um robô para continuar no Daily.</p>
-      <div class="captcha-widget"><div id="yukina-recaptcha"></div></div>
-      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Carregando verificação do Google...</p>
+      <div class="captcha-widget"><div id="yukina-turnstile"></div></div>
+      <p class="captcha-status" id="captcha-status" role="status" aria-live="polite">Carregando verificação de segurança...</p>
     </section>
     <section class="daily-rules" aria-labelledby="daily-rules-title">
       <h2 id="daily-rules-title">📜 Regras do Yukina Daily</h2>
@@ -102,18 +102,19 @@
     </section>
   </main>
   <script>
-    window.yukinaRecaptchaReady = function () {
+    window.yukinaTurnstileReady = function () {
       const status = document.getElementById('captcha-status');
-      if (!window.grecaptcha || !document.getElementById('yukina-recaptcha')) return;
+      const container = document.getElementById('yukina-turnstile');
+      if (!window.turnstile || !container) return;
       try {
-        window.grecaptcha.render('yukina-recaptcha', {
-          sitekey: '6LfWjvotAAAAAIdGEcR2eRCc5K61ZjRE73HALFAS',
+        window.turnstile.render(container, {
+          sitekey: '0x4AAAAAAFf2LLuggOobaiFH',
           callback: async function (token) {
             status.textContent = 'Verificando sua resposta com o servidor...';
             const button = document.getElementById('spin-roulette');
             button.hidden = true;
             try {
-              const response = await fetch('https://yukina.onrender.com/api/recaptcha/verify', {
+              const response = await fetch('https://yukina.onrender.com/api/turnstile/verify', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ token })
@@ -121,6 +122,7 @@
               const data = await response.json().catch(() => ({}));
               if (!response.ok || data.ok !== true || data.verified !== true) {
                 status.textContent = data.detail || 'O servidor não confirmou a verificação. Tente novamente.';
+                if (window.turnstile) window.turnstile.reset(container);
                 return;
               }
               status.textContent = 'Verificação concluída! Você já pode girar a roleta.';
@@ -128,19 +130,24 @@
               button.hidden = false;
             } catch (_) {
               status.textContent = 'Não foi possível validar com o servidor. Tente novamente.';
+              if (window.turnstile) window.turnstile.reset(container);
             }
           },
           'expired-callback': function () {
             document.getElementById('spin-roulette').hidden = true;
-            status.textContent = 'A verificação expirou. Marque a caixa novamente.';
+            status.textContent = 'A verificação expirou. Tente novamente.';
           },
           'error-callback': function () {
             document.getElementById('spin-roulette').hidden = true;
-            status.textContent = 'Não foi possível carregar a verificação. Tente novamente.';
-          }
+            status.textContent = 'Não foi possível carregar a verificação. Atualize a página e tente novamente.';
+          },
+          theme: 'dark',
+          size: 'flexible'
         });
-        status.textContent = 'Marque a caixa “Não sou um robô” para verificar.';
-      } catch (_) { status.textContent = 'Falha ao iniciar o reCAPTCHA. Atualize a página e tente novamente.'; }
+        status.textContent = 'Validando sua conexão com segurança...';
+      } catch (_) {
+        status.textContent = 'Falha ao iniciar a verificação. Atualize a página e tente novamente.';
+      }
     };
     (() => {
       const slots = Array.from(document.querySelectorAll('.roulette-slot'));
