@@ -1,4 +1,5 @@
 const { PermissionFlagsBits, EmbedBuilder } = require("discord.js");
+const { activateSubscription } = require("../../vip-store");
 
 const PLANS = {
   starter: { name: "Starter" }, plus: { name: "Plus" }, premium: { name: "Premium" },
@@ -47,9 +48,23 @@ module.exports = {
       return interaction.reply({ content: "O cargo VIP está acima do cargo da Yukina. Mova o cargo do bot acima do cargo VIP e tente novamente.", ephemeral: true });
     }
     await buyer.roles.add(role, `Compra VIP aprovada manualmente por ${interaction.user.id}`);
-    await interaction.reply({ content: `Pagamento aprovado. Cargo ${role} atribuído a <@${buyerId}>. O canal será fechado em alguns segundos.`, allowedMentions: { users: [buyerId], roles: [role.id] } });
+    let expiresAt;
+    try {
+      expiresAt = await activateSubscription({
+        guildId: guild.id,
+        userId: buyerId,
+        planKey,
+        period,
+        roleId: role.id,
+      });
+    } catch (error) {
+      await buyer.roles.remove(role, "Falha ao salvar a validade da assinatura VIP").catch(() => {});
+      console.error("[VIP] Cargo removido porque não foi possível salvar a assinatura:", error.message || error);
+      return interaction.reply({ content: "Não consegui registrar a validade do VIP no banco de dados. O cargo não foi mantido; confira a conexão MongoDB antes de aprovar novamente.", ephemeral: true });
+    }
+    await interaction.reply({ content: `Pagamento aprovado. Cargo ${role} atribuído a <@${buyerId}>. Validade até <t:${Math.floor(expiresAt.getTime() / 1000)}:D>. O canal será fechado em alguns segundos.`, allowedMentions: { users: [buyerId], roles: [role.id] } });
     const user = await interaction.client.users.fetch(buyerId).catch(() => null);
-    if (user) await user.send({ embeds: [new EmbedBuilder().setColor(0x22C55E).setTitle("✨ Pagamento aprovado — Yukina VIP").setDescription([`Olá, <@${buyerId}>! Seu pagamento foi conferido e aprovado pela equipe.`, "", `**Plano:** ${PLANS[planKey].name}`, `**Duração:** ${period === "annual" ? "Anual" : "Mensal"}`, `**Cargo liberado:** ${role.name}`, "", "Seu acesso VIP já foi ativado no servidor da Yukina. Obrigado por apoiar o projeto! ❄️", "", "Se o cargo não aparecer imediatamente, aguarde um instante e confira sua lista de cargos no servidor."].join("\n")).setFooter({ text: "Yukina · Obrigado por fazer parte da nossa comunidade" }).setTimestamp()] }).catch(() => {});
+    if (user) await user.send({ embeds: [new EmbedBuilder().setColor(0x22C55E).setTitle("✨ Pagamento aprovado — Yukina VIP").setDescription([`Olá, <@${buyerId}>! Seu pagamento foi conferido e aprovado pela equipe.`, "", `**Plano:** ${PLANS[planKey].name}`, `**Duração:** ${period === "annual" ? "Anual" : "Mensal"}`, `**Cargo liberado:** ${role.name}`, `**Válido até:** <t:${Math.floor(expiresAt.getTime() / 1000)}:D>`, "", "Seu acesso VIP já foi ativado no servidor da Yukina. Obrigado por apoiar o projeto! ❄️", "", "A Yukina enviará lembretes na DM antes do vencimento, com a chave Pix para renovação."].join("\n")).setFooter({ text: "Yukina · Obrigado por fazer parte da nossa comunidade" }).setTimestamp()] }).catch(() => {});
     await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x22C55E).setTitle("Compra VIP aprovada").setDescription(`O cargo ${role} foi atribuído ao comprador. Este canal será fechado em alguns segundos.`)] });
     setTimeout(() => interaction.channel.delete("Compra VIP aprovada e cargo atribuído").catch(() => {}), 10000).unref?.();
   },
