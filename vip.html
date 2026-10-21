@@ -57,6 +57,6 @@
  document.addEventListener('click',e=>{let b=e.target.closest('[data-billing]');if(b){billingTo(b.dataset.billing);return;}let c=e.target.closest('[data-choose]');if(c){summary(c.dataset.choose,true);return;}if(e.target.closest('#confirmPurchase')){if(!selected){msg.textContent='Escolha um plano antes de continuar.';msg.classList.add('show');return;}msg.textContent='Vamos abrir o servidor oficial do Discord. Ao entrar, use /vip-comprar e selecione '+plans[selected].name+' e '+(billing==='annual'?'Anual':'Mensal')+' para criar seu atendimento privado.';msg.classList.add('show');window.open('https://discord.gg/ppQGY8bPV','_blank','noopener');}});
  const y=document.getElementById('year');if(y)y.textContent=new Date().getFullYear();billingTo('monthly');
 })();
-</script>>
+</script>
 </body>
 </html>
