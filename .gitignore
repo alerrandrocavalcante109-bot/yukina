@@ -2,11 +2,39 @@
 .env
 .env.*
 !.env.example
+!.env.production.example
 *.pem
 *.key
+
+# Dependências
+node_modules/
+.pnp
+.pnp.js
+
+# Dados locais e caches
+data/
+*.log
+logs/
+.cache/
+.npm/
+.DS_Store
+Thumbs.db
 
 # Python
 __pycache__/
 *.py[cod]
 .venv/
 venv/
+env/
+
+# Builds e artefatos
+dist/
+build/
+coverage/
+.nyc_output/
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo

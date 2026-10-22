@@ -41,7 +41,7 @@ function buildEmbed(user, record, position, total) {
       { name: "✧ Nível", value: String(current.level), inline: true },
       { name: "❄️ XP total", value: xp.toLocaleString("pt-BR"), inline: true },
       { name: "🏅 Posição", value: position ? "#" + position : "Sem posição", inline: true },
-      { name: "🌙 Progresso", value: bar + " **" + progress + "%**" + (next ? "\\n" + xp.toLocaleString("pt-BR") + " / " + next.xp.toLocaleString("pt-BR") + " XP" : "\\nNível máximo alcançado") },
+      { name: "🌙 Progresso", value: bar + " **" + progress + "%**" + (next ? "\n" + xp.toLocaleString("pt-BR") + " / " + next.xp.toLocaleString("pt-BR") + " XP" : "\nNível máximo alcançado") },
       { name: "🌸 Patamar atual", value: current.name, inline: true },
       { name: "👥 Participantes registrados", value: String(total), inline: true },
     )
@@ -86,7 +86,7 @@ module.exports = {
     let target = message.author;
     const mention = message.mentions.users.first();
     if (mention) target = mention;
-    else if (args[0] && /^\\d{17,20}$/.test(args[0])) target = await message.client.users.fetch(args[0]).catch(() => null) || message.author;
+    else if (args[0] && /^\d{17,20}$/.test(args[0])) target = await message.client.users.fetch(args[0]).catch(() => null) || message.author;
     const interactionLike = { guild: message.guild, user: message.author, reply: payload => message.channel.send({ ...payload, allowedMentions: { parse: [] } }) };
     try { return await respond(interactionLike, target); }
     catch (error) {
