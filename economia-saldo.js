@@ -2,14 +2,25 @@
 const fs = require("node:fs/promises");
 const path = require("node:path");
 const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
+const { MongoClient } = require("mongodb");
 
 const FILE = path.join(process.cwd(), "data", "economia.json");
 const COLOR = 0xA7D8F0;
 const CURRENCY = "Kizunas";
 const SYMBOL = "KZ";
+const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
+const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
+let mongoClient;
 let cache;
 let writes = Promise.resolve();
 
+async function getMongoBalance(guildId, userId) {
+  if (!MONGODB_URI) return null;
+  if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Economia", serverSelectionTimeoutMS: 10000 });
+  await mongoClient.connect();
+  const doc = await mongoClient.db(MONGODB_DB).collection("economy_balances").findOne({ guildId: String(guildId), userId: String(userId) });
+  return doc ? Math.max(0, Number(doc.balance) || 0) : null;
+}
 async function readData() {
   if (cache) return cache;
   try {
@@ -47,8 +58,16 @@ function buildEmbed(user, balance, guildName) {
 }
 async function run({ guild, user, target, reply }) {
   if (!guild) return reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor.", ephemeral: true });
-  const data = await readData();
-  const balance = getBalance(data, guild.id, target.id);
+  let balance;
+  try {
+    balance = await getMongoBalance(guild.id, target.id);
+  } catch (error) {
+    console.error("[Yukina Economia] Falha ao consultar saldo no MongoDB:", error.message);
+  }
+  if (balance === null || balance === undefined) {
+    const data = await readData();
+    balance = getBalance(data, guild.id, target.id);
+  }
   return reply({ embeds: [buildEmbed(target, balance, guild.name)] });
 }
 function makeCommand(name, description) {
