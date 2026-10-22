@@ -2,7 +2,7 @@
  * Bootstrap Yukina
  * - Abre a porta HTTP (health) IMEDIATAMENTE para o Render não matar o processo
  * - Depois valida token / carrega o app estável
- * - Não espera minutos em rate limit 429
+ * - Fecha o health temporário e deixa o app principal na PORT
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -16,18 +16,34 @@ const SOURCE =
 
 const PORT = Number(process.env.PORT || 10000);
 
-// Health server sobe primeiro — o Render exige porta aberta cedo
 const earlyServer = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ ok: true, service: "Yukina Bot", bootstrap: true, pid: process.pid }));
 });
-earlyServer.listen(PORT, "0.0.0.0", () => {
-  console.log("[Yukina] Health bootstrap na porta " + PORT + " (PID " + process.pid + ")");
-});
-earlyServer.on("error", (err) => {
-  // Se a porta já estiver em uso pelo app principal, ok
-  console.warn("[Yukina] Porta bootstrap:", err.message);
-});
+
+function listenEarly() {
+  return new Promise((resolve) => {
+    earlyServer.once("listening", () => {
+      console.log("[Yukina] Health bootstrap na porta " + PORT + " (PID " + process.pid + ")");
+      resolve();
+    });
+    earlyServer.on("error", (err) => {
+      console.warn("[Yukina] Porta bootstrap:", err.message);
+      resolve();
+    });
+    earlyServer.listen(PORT, "0.0.0.0");
+  });
+}
+
+function closeEarly() {
+  return new Promise((resolve) => {
+    try {
+      earlyServer.close(() => resolve());
+    } catch (_) {
+      resolve();
+    }
+  });
+}
 
 function download(url) {
   return new Promise((resolve, reject) => {
@@ -77,24 +93,6 @@ function httpJson(url, headers = {}) {
 function applyPatches(code) {
   let out = code;
 
-  // Não sobe segundo servidor HTTP na mesma PORT — o bootstrap já ocupa a porta.
-  // Substitui o listen do app estável por no-op se a porta já estiver em uso.
-  out = out.replace(
-    /server\.listen\(port,\s*"0\.0\.0\.0",\s*\(\)\s*=>\s*console\.log\(`API do painel e health endpoint ativos na porta \$\{port\}`\)\);/,
-    `try {
-  server.listen(port, "0.0.0.0", () => console.log("API do painel e health endpoint ativos na porta " + port));
-} catch (e) {
-  console.warn("[Yukina] server.listen:", e.message);
-}
-server.on("error", (e) => {
-  if (e && e.code === "EADDRINUSE") {
-    console.log("[Yukina] Porta " + port + " já em uso pelo bootstrap health — ok.");
-  } else {
-    console.error("[Yukina] Erro no servidor HTTP:", e);
-  }
-});`
-  );
-
   out = out.replace(
     `  console.log("[Inicialização] Validando armazenamento...");\n  await memberData.initialize();\n  console.log("[Inicialização] Armazenamento validado.");`,
     `  console.log("[Inicialização] Validando armazenamento...");\n  try {\n    await memberData.initialize();\n    console.log("[Inicialização] Armazenamento validado.");\n  } catch (storageError) {\n    console.warn("[Inicialização] Armazenamento com falha (continuando online):", storageError?.message || storageError);\n  }`
@@ -117,13 +115,7 @@ server.on("error", (e) => {
       out = out.replace(
         anchor,
         anchor +
-          `
-client.once("ready", () => {
-  if (typeof discordReady !== "undefined" && discordReady) return;
-  console.log("[Discord] Evento ready recebido (fallback).");
-  client.emit("clientReady");
-});
-`
+          `\nclient.once("ready", () => {\n  if (typeof discordReady !== "undefined" && discordReady) return;\n  console.log("[Discord] Evento ready recebido (fallback).");\n  client.emit("clientReady");\n});\n`
       );
     }
   }
@@ -133,6 +125,7 @@ client.once("ready", () => {
 
 (async () => {
   try {
+    await listenEarly();
     console.log("[Yukina] Bootstrap PID=" + process.pid + " | node " + process.version);
 
     const token = String(process.env.DISCORD_TOKEN || "").trim();
@@ -141,7 +134,6 @@ client.once("ready", () => {
       process.exit(1);
     }
 
-    // Pré-checagem rápida — SEM esperar dezenas de segundos em 429
     try {
       const me = await httpJson("https://discord.com/api/v10/users/@me", {
         Authorization: "Bot " + token,
@@ -175,10 +167,11 @@ client.once("ready", () => {
 
     code = applyPatches(code);
     fs.writeFileSync(APP, code);
-    console.log("[Yukina] Carregando index.app.js...");
 
-    // Fecha o health bootstrap só se o app for conseguir a porta;
-    // se EADDRINUSE, o bootstrap continua respondendo health.
+    // Libera a PORT para o servidor completo do app (painel + health)
+    await closeEarly();
+    console.log("[Yukina] Health bootstrap fechado; carregando index.app.js...");
+
     require(APP);
   } catch (error) {
     console.error("[Yukina] Falha ao iniciar:", error?.stack || error?.message || error);
