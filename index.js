@@ -92,74 +92,39 @@ function httpJson(url, headers = {}) {
 function applyPatches(code) {
   let out = code;
 
-  // Soft-fail storage
   out = out.replace(
-    `  console.log("[Inicialização] Validando armazenamento...");\n  await memberData.initialize();\n  console.log("[Inicialização] Armazenamento validado.");`,
-    `  console.log("[Inicialização] Validando armazenamento...");\n  try {\n    await memberData.initialize();\n    console.log("[Inicialização] Armazenamento validado.");\n  } catch (storageError) {\n    console.warn("[Inicialização] Armazenamento com falha (continuando online):", storageError?.message || storageError);\n  }`
+    '  console.log("[Inicialização] Validando armazenamento...");\n  await memberData.initialize();\n  console.log("[Inicialização] Armazenamento validado.");',
+    '  console.log("[Inicialização] Validando armazenamento...");\n  try {\n    await memberData.initialize();\n    console.log("[Inicialização] Armazenamento validado.");\n  } catch (storageError) {\n    console.warn("[Inicialização] Armazenamento com falha (continuando online):", storageError?.message || storageError);\n  }'
   );
 
-  // ready fallback
   if (!out.includes("Evento ready recebido (fallback)")) {
-    const anchor = `function loadYukinaSystems() {
-  if (systemsLoaded) return;
-  systemsLoaded = true;
-  console.log("[Yukina] Conexão estabelecida; iniciando os sistemas em seguida...");
-  require("./command-engine")(client);
-  require("./rank-system")(client);
-  require("./xp-level-system")(client);
-  require("./time-role-system")(client);
-  require("./staff-promotion-announcements")(client);
-  require("./interaction")(client);
-}
-`;
-    if (out.includes(anchor)) {
+    const needle = 'require("./interaction")(client);\n}';
+    if (out.includes(needle)) {
       out = out.replace(
-        anchor,
-        anchor +
-          `\nclient.once("ready", () => {\n  if (typeof discordReady !== "undefined" && discordReady) return;\n  console.log("[Discord] Evento ready recebido (fallback).");\n  client.emit("clientReady");\n});\n`
+        needle,
+        needle +
+          '\n\nclient.once("ready", () => {\n  if (typeof discordReady !== "undefined" && discordReady) return;\n  console.log("[Discord] Evento ready recebido (fallback).");\n  client.emit("clientReady");\n});\n'
       );
     }
   }
 
-  // Patch DENTRO de shutdown() — mais confiável que trocar só o process.on
-  const shutdownStart = `async function shutdown(signal) {
-  if (shuttingDown) return;
-  shuttingDown = true;
-  console.log(\\\[Yukina] Recebido \\[${signal}]; encerrando conexão e servidor HTTP...`);`;
-
-  // Use simple string pieces without nested template issues
-  const oldShutdownHead =
-    "async function shutdown(signal) {\n" +
-    "  if (shuttingDown) return;\n" +
-    "  shuttingDown = true;\n" +
-    "  console.log(`[Yukina] Recebido ${signal}; encerrando conexão e servidor HTTP...`);";
-
-  const newShutdownHead =
-    "async function shutdown(signal) {\n" +
-    "  if (shuttingDown) return;\n" +
-    "  const bootTs = Number(process.env.YUKINA_BOOT_TS) || 0;\n" +
-    "  const uptimeMs = bootTs ? Date.now() - bootTs : 0;\n" +
-    "  // Render manda SIGTERM em race de deploy; ignore nos primeiros 3 minutos.\n" +
-    "  if (signal === \"SIGTERM\" && bootTs && uptimeMs < 180000) {\n" +
-    "    console.warn(\"[Yukina] SIGTERM ignorado (grace 3min). uptime=\" + Math.round(uptimeMs / 1000) + \"s pid=\" + process.pid);\n" +
-    "    return;\n" +
-    "  }\n" +
-    "  shuttingDown = true;\n" +
-    "  console.log(`[Yukina] Recebido ${signal}; encerrando conexão e servidor HTTP...`);";
-
-  if (out.includes("if (shuttingDown) return;") && out.includes("Recebido ${signal}; encerrando")) {
-    if (out.includes("SIGTERM ignorado (grace")) {
-      console.log("[Bootstrap] Patch SIGTERM já presente no código.");
-    } else if (out.includes(oldShutdownHead)) {
-      out = out.replace(oldShutdownHead, newShutdownHead);
-      console.log("[Bootstrap] Patch SIGTERM aplicado dentro de shutdown().");
+  // Grace SIGTERM: injeta no início de shutdown()
+  if (!out.includes("SIGTERM ignorado (grace")) {
+    const needle = "async function shutdown(signal) {\n  if (shuttingDown) return;";
+    const inject =
+      "async function shutdown(signal) {\n" +
+      "  if (shuttingDown) return;\n" +
+      "  const bootTs = Number(process.env.YUKINA_BOOT_TS) || 0;\n" +
+      "  const uptimeMs = bootTs ? Date.now() - bootTs : 0;\n" +
+      "  if (signal === \"SIGTERM\" && bootTs && uptimeMs < 180000) {\n" +
+      "    console.warn(\"[Yukina] SIGTERM ignorado (grace 3min). uptime=\" + Math.round(uptimeMs / 1000) + \"s pid=\" + process.pid);\n" +
+      "    return;\n" +
+      "  }";
+    if (out.includes(needle)) {
+      out = out.replace(needle, inject);
+      console.log("[Bootstrap] Patch SIGTERM aplicado.");
     } else {
-      // fallback: injeta no início do body
-      out = out.replace(
-        "async function shutdown(signal) {\n  if (shuttingDown) return;",
-        "async function shutdown(signal) {\n  if (shuttingDown) return;\n  const bootTs = Number(process.env.YUKINA_BOOT_TS) || 0;\n  const uptimeMs = bootTs ? Date.now() - bootTs : 0;\n  if (signal === \"SIGTERM\" && bootTs && uptimeMs < 180000) {\n    console.warn(\"[Yukina] SIGTERM ignorado (grace 3min). uptime=\" + Math.round(uptimeMs / 1000) + \"s pid=\" + process.pid);\n    return;\n  }"
-      );
-      console.log("[Bootstrap] Patch SIGTERM aplicado (fallback)." );
+      console.warn("[Bootstrap] Não achei shutdown() para aplicar grace SIGTERM.");
     }
   }
 
@@ -188,17 +153,15 @@ function applyPatches(code) {
       }
       if (me.status === 429) {
         console.warn("[Yukina] REST 429 — seguindo para o gateway.");
-      } else if (me.status === 200 && me.json?.username) {
+      } else if (me.status === 200 && me.json && me.json.username) {
         console.log("[Yukina] Token OK. Bot: " + me.json.username + " (id " + me.json.id + ")");
       }
     } catch (e) {
-      console.warn("[Yukina] Pré-checagem REST:", e?.message || e);
+      console.warn("[Yukina] Pré-checagem REST:", e && e.message ? e.message : e);
     }
 
     let code;
-    // Sempre re-baixa se o cache for antigo demais ou se pedirmos
-    const forceRefresh = process.env.YUKINA_REFRESH_INDEX === "1";
-    if (!forceRefresh && fs.existsSync(CACHE) && fs.statSync(CACHE).size > 10000) {
+    if (fs.existsSync(CACHE) && fs.statSync(CACHE).size > 10000) {
       code = fs.readFileSync(CACHE, "utf8");
       console.log("[Yukina] Cache local do index estável.");
     } else {
@@ -211,14 +174,18 @@ function applyPatches(code) {
 
     code = applyPatches(code);
     fs.writeFileSync(APP, code);
-    console.log("[Yukina] index.app.js escrito (" + code.length + " bytes). grace SIGTERM?" +
-      (code.includes("SIGTERM ignorado (grace") ? " sim" : " NÃO"));
+    console.log(
+      "[Yukina] index.app.js escrito (" +
+        code.length +
+        " bytes). grace SIGTERM? " +
+        (code.includes("SIGTERM ignorado (grace") ? "sim" : "NÃO")
+    );
 
     await closeEarly();
     console.log("[Yukina] Carregando index.app.js...");
     require(APP);
   } catch (error) {
-    console.error("[Yukina] Falha ao iniciar:", error?.stack || error?.message || error);
+    console.error("[Yukina] Falha ao iniciar:", error && error.stack ? error.stack : error);
     process.exit(1);
   }
 })();
