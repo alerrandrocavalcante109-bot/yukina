@@ -406,9 +406,7 @@ function loadYukinaSystems() {
 
 // Diagnóstico temporário do Gateway: registra eventos de conexão sem expor token ou credenciais.
 client.on("debug", (message) => {
-  if (/gateway|identify|hello|heartbeat|session|connect|resume|websocket/i.test(message)) {
-    console.log("[Discord Gateway debug]", message);
-  }
+  console.log("[Discord debug]", message);
 });
 
 client.on("shardError", (error, shardId) => {
