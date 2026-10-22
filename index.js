@@ -1015,9 +1015,9 @@ async function panelApi(req, res, url) {
       if (!accessToken) return sendJson(res, 401, { ok: false, detail: "Entre com o Discord para coletar o Daily." });
       const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
       const user = userResponse.ok ? await userResponse.json() : null;
-      if (!user || !/^\\d{17,20}$/.test(String(user.id || ""))) return sendJson(res, 401, { ok: false, detail: "Sua sessão do Discord expirou. Entre novamente." });
+      if (!user || !/^\d{17,20}$/.test(String(user.id || ""))) return sendJson(res, 401, { ok: false, detail: "Sua sessão do Discord expirou. Entre novamente." });
       const guildId = (process.env.VIP_GUILD_ID || "").trim();
-      if (!/^\\d{17,20}$/.test(guildId)) return sendJson(res, 503, { ok: false, detail: "O servidor Daily ainda não está configurado." });
+      if (!/^\d{17,20}$/.test(guildId)) return sendJson(res, 503, { ok: false, detail: "O servidor Daily ainda não está configurado." });
       if (!MONGODB_URI) return sendJson(res, 503, { ok: false, detail: "O banco de dados do Daily não está configurado." });
       if (!settingsMongoClient) settingsMongoClient = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
       await settingsMongoClient.connect();
@@ -1077,11 +1077,11 @@ async function panelApi(req, res, url) {
         headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000)
       });
       const user = userResponse.ok ? await userResponse.json() : null;
-      if (!user || !/^\\d{17,20}$/.test(String(user.id || ""))) {
+      if (!user || !/^\d{17,20}$/.test(String(user.id || ""))) {
         return sendJson(res, 401, { ok: false, detail: "Sua sessão do Discord expirou. Entre novamente." });
       }
       const guildId = (process.env.VIP_GUILD_ID || "").trim();
-      if (!/^\\d{17,20}$/.test(guildId)) {
+      if (!/^\d{17,20}$/.test(guildId)) {
         return sendJson(res, 503, { ok: false, detail: "O servidor VIP ainda não está configurado na API." });
       }
       const subscriptions = await getVipCollection();
