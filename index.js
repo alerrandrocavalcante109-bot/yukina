@@ -1,11 +1,28 @@
-const fs = require("node:fs");
-const path = require("node:path");
-const Module = require("node:module");
-const parts = [1,2,3,4,5,6,7,8].map((i) => {
-  const b64 = fs.readFileSync(path.join(__dirname, `yukina-b64-${i}.txt`), "utf8").trim();
-  return Buffer.from(b64, "base64").toString("utf8");
+"use strict";
+
+/**
+ * Yukina — ponto de entrada.
+ * Bot Discord + API do painel. A lógica fica em src/.
+ */
+
+const { TOKEN } = require("./src/config");
+const { createClient } = require("./src/bot/client");
+const { registerEvents } = require("./src/bot/events");
+const { startApiServer } = require("./src/api/server");
+const { initializeDiscord, setupShutdown } = require("./src/bootstrap");
+
+if (!TOKEN) {
+  console.error("❌ [Yukina] Token do Discord ausente. Configure DISCORD_TOKEN nas variáveis de ambiente do Render.");
+  process.exit(1);
+}
+
+const client = createClient();
+registerEvents(client);
+const server = startApiServer(client);
+setupShutdown(client, server);
+
+initializeDiscord(client).catch((error) => {
+  console.error("[Inicialização] Falha fatal ao iniciar a Yukina:", error);
+  process.exitCode = 1;
+  setTimeout(() => process.exit(1), 1500).unref();
 });
-const m = new Module(path.join(__dirname, "index.runtime.js"));
-m.filename = path.join(__dirname, "index.runtime.js");
-m.paths = Module._nodeModulePaths(__dirname);
-m._compile(parts.join(""), m.filename);
