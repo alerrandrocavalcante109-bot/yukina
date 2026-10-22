@@ -1483,11 +1483,13 @@ async function initializeDiscord() {
   console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
   console.log("[Inicialização] Etapa 3/4: conectando ao Discord...");
 
+  // O Gateway pode demorar para responder. Não derrube o processo inteiro
+  // após 60 segundos: mantenha a API HTTP ativa e deixe o discord.js tentar
+  // estabelecer/reestabelecer a conexão, registrando o estado para diagnóstico.
   loginWatchdog = setTimeout(() => {
     if (discordReady) return;
-    console.error("❌ [Yukina] Não foi possível iniciar: a conexão com o Discord não ficou pronta em 60 segundos.");
-    process.exitCode = 1;
-    process.exit(1);
+    console.error("[Yukina] Aviso: o Discord ainda não ficou pronto após 60 segundos; processo e API permanecem ativos enquanto a conexão é investigada.");
+    console.error("[Yukina] Estado atual do Gateway:", client.ws.status);
   }, 60000);
   loginWatchdog.unref();
 
