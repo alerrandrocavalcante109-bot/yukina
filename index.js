@@ -1,182 +1,205 @@
 /**
- * Bootstrap Yukina
- * Health imediato + index estável.
- * SIGTERM é ignorado: o Render encerra de verdade com SIGKILL após o grace period.
+ * Yukina — bot mínimo
+ * Apenas: health HTTP + login Discord + comando /painel (e Ypainel)
  */
-const fs = require("node:fs");
-const path = require("node:path");
+require("dotenv").config();
+
 const http = require("node:http");
-const https = require("node:https");
+const {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  PermissionFlagsBits,
+  MessageFlags,
+  Partials,
+} = require("discord.js");
 
-const CACHE = path.join(__dirname, ".yukina-index-stable.js");
-const APP = path.join(__dirname, "index.app.js");
-const SOURCE =
-  "https://cdn.jsdelivr.net/gh/alerrandrocavalcante109-bot/yukina@538e72b099f5b7148222ac905b65f5647e420e43/index.js";
-
+const TOKEN = String(process.env.DISCORD_TOKEN || "").trim();
 const PORT = Number(process.env.PORT || 10000);
-const STARTED_AT = Date.now();
+const PANEL_URL =
+  process.env.PANEL_URL ||
+  "https://yukina-6uo.pages.dev/configuracoes-servidor.html";
+const GUILD_ID = String(
+  process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || ""
+).trim();
 
-const earlyServer = http.createServer((req, res) => {
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ ok: true, service: "Yukina Bot", bootstrap: true, pid: process.pid }));
+if (!TOKEN) {
+  console.error("[Yukina] DISCORD_TOKEN ausente.");
+  process.exit(1);
+}
+
+const client = new Client({
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent],
+  partials: [Partials.Channel],
 });
 
-function listenEarly() {
-  return new Promise((resolve) => {
-    earlyServer.once("listening", () => {
-      console.log("[Yukina] Health bootstrap na porta " + PORT + " (PID " + process.pid + ")");
-      resolve();
+const painelData = new SlashCommandBuilder()
+  .setName("painel")
+  .setDescription("Abre as configurações deste servidor no painel web da Yukina.")
+  .setDMPermission(false)
+  .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
+
+function buildPanelUrl(guildId, guildName) {
+  const url = new URL(PANEL_URL);
+  url.searchParams.set("guild", guildId);
+  url.searchParams.set("name", guildName || "Servidor");
+  return url.toString();
+}
+
+async function replyPainel(interaction) {
+  if (!interaction.inGuild() || !interaction.guildId) {
+    return interaction.reply({
+      content: "❄️ Use este comando dentro de um servidor Discord.",
+      flags: MessageFlags.Ephemeral,
     });
-    earlyServer.on("error", (err) => {
-      console.warn("[Yukina] Porta bootstrap:", err.message);
-      resolve();
+  }
+  if (
+    !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild) &&
+    !interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)
+  ) {
+    return interaction.reply({
+      content: "🔒 Você precisa da permissão **Gerenciar servidor** para abrir este painel.",
+      flags: MessageFlags.Ephemeral,
     });
-    earlyServer.listen(PORT, "0.0.0.0");
+  }
+  const link = buildPanelUrl(interaction.guildId, interaction.guild?.name);
+  return interaction.reply({
+    content: [
+      "❄️ **Painel de Configurações da Yukina**",
+      "Abra o painel para gerenciar as configurações deste servidor:",
+      "",
+      "🔗 " + link,
+    ].join("\n"),
+    flags: MessageFlags.Ephemeral,
+    allowedMentions: { parse: [] },
   });
 }
 
-function closeEarly() {
-  return new Promise((resolve) => {
-    try {
-      earlyServer.close(() => resolve());
-    } catch (_) {
-      resolve();
-    }
+async function prefixPainel(message) {
+  if (!message.guild || !message.guildId) {
+    return message.reply("❄️ Use este comando dentro de um servidor Discord.");
+  }
+  const perms = message.member?.permissions;
+  if (
+    !perms?.has(PermissionFlagsBits.ManageGuild) &&
+    !perms?.has(PermissionFlagsBits.Administrator)
+  ) {
+    return message.reply(
+      "🔒 Você precisa da permissão **Gerenciar servidor** para abrir este painel."
+    );
+  }
+  const link = buildPanelUrl(message.guildId, message.guild.name);
+  return message.reply({
+    content:
+      "❄️ **Painel de Configurações da Yukina**\nAbra o painel para gerenciar as configurações deste servidor:\n\n🔗 " +
+      link,
+    allowedMentions: { parse: [] },
   });
 }
 
-function download(url) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { "User-Agent": "Yukina-Bot" } }, (res) => {
-      if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        download(res.headers.location).then(resolve, reject);
-        return;
-      }
-      if (res.statusCode !== 200) {
-        reject(new Error("HTTP " + res.statusCode + " ao baixar index estável"));
-        return;
-      }
-      const chunks = [];
-      res.on("data", (c) => chunks.push(c));
-      res.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    });
-    req.on("error", reject);
-    req.setTimeout(60000, () => {
-      req.destroy();
-      reject(new Error("Timeout ao baixar index estável"));
-    });
-  });
-}
-
-function httpJson(url, headers = {}) {
-  return new Promise((resolve, reject) => {
-    const req = https.get(url, { headers: { "User-Agent": "Yukina-Bot", ...headers } }, (res) => {
-      const chunks = [];
-      res.on("data", (c) => chunks.push(c));
-      res.on("end", () => {
-        const body = Buffer.concat(chunks).toString("utf8");
-        let json = null;
-        try {
-          json = body ? JSON.parse(body) : null;
-        } catch (_) {}
-        resolve({ status: res.statusCode, body, json });
-      });
-    });
-    req.on("error", reject);
-    req.setTimeout(15000, () => {
-      req.destroy();
-      reject(new Error("Timeout HTTP"));
-    });
-  });
-}
-
-function applyPatches(code) {
-  let out = code;
-
-  out = out.replace(
-    '  console.log("[Inicialização] Validando armazenamento...");\n  await memberData.initialize();\n  console.log("[Inicialização] Armazenamento validado.");',
-    '  console.log("[Inicialização] Validando armazenamento...");\n  try {\n    await memberData.initialize();\n    console.log("[Inicialização] Armazenamento validado.");\n  } catch (storageError) {\n    console.warn("[Inicialização] Armazenamento com falha (continuando online):", storageError?.message || storageError);\n  }'
+// Health HTTP (Render)
+const server = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(
+    JSON.stringify({
+      ok: true,
+      service: "Yukina",
+      mode: "painel-only",
+      ready: Boolean(client.isReady()),
+      user: client.user ? client.user.tag : null,
+    })
   );
+});
+server.listen(PORT, "0.0.0.0", () => {
+  console.log("[Yukina] Health na porta " + PORT);
+});
 
-  if (!out.includes("Evento ready recebido (fallback)")) {
-    const needle = 'require("./interaction")(client);\n}';
-    if (out.includes(needle)) {
-      out = out.replace(
-        needle,
-        needle +
-          '\n\nclient.once("ready", () => {\n  if (typeof discordReady !== "undefined" && discordReady) return;\n  console.log("[Discord] Evento ready recebido (fallback).");\n  client.emit("clientReady");\n});\n'
-      );
-    }
-  }
+client.once("clientReady", async () => {
+  console.log("");
+  console.log("❄️ Yukina online: " + client.user.tag);
+  console.log("🏠 Servidores: " + client.guilds.cache.size);
+  console.log("📋 Modo: apenas /painel");
+  console.log("");
 
-  // Remove o handler que destrói o client no SIGTERM (causa dos comandos offline).
-  // O Render, quando precisa matar de verdade, envia SIGKILL depois do grace period.
-  const oldTerm = 'process.on("SIGTERM", () => shutdown("SIGTERM"));';
-  const newTerm =
-    'process.on("SIGTERM", () => {\n' +
-    '  console.warn("[Yukina] SIGTERM recebido e IGNORADO (mantém sessão Discord). pid=" + process.pid);\n' +
-    '});';
-  if (out.includes(oldTerm)) {
-    out = out.replace(oldTerm, newTerm);
-    console.log("[Bootstrap] Handler SIGTERM neutralizado.");
-  } else {
-    console.warn("[Bootstrap] Não achei process.on(SIGTERM) para neutralizar.");
-  }
-
-  return out;
-}
-
-(async () => {
   try {
-    process.env.YUKINA_BOOT_TS = String(STARTED_AT);
-    await listenEarly();
-    console.log("[Yukina] Bootstrap PID=" + process.pid + " | node " + process.version);
-
-    const token = String(process.env.DISCORD_TOKEN || "").trim();
-    if (!token) {
-      console.error("[Yukina] DISCORD_TOKEN ausente.");
-      process.exit(1);
-    }
-
-    try {
-      const me = await httpJson("https://discord.com/api/v10/users/@me", {
-        Authorization: "Bot " + token,
+    const rest = new REST({ version: "10" }).setToken(TOKEN);
+    const body = [painelData.toJSON()];
+    if (GUILD_ID) {
+      await rest.put(Routes.applicationGuildCommands(client.user.id, GUILD_ID), {
+        body,
       });
-      if (me.status === 401 || me.status === 403) {
-        console.error("[Yukina] Token rejeitado (HTTP " + me.status + ").");
-        process.exit(1);
-      }
-      if (me.status === 429) {
-        console.warn("[Yukina] REST 429 — seguindo para o gateway (sem esperar).");
-      } else if (me.status === 200 && me.json && me.json.username) {
-        console.log("[Yukina] Token OK. Bot: " + me.json.username + " (id " + me.json.id + ")");
-      }
-    } catch (e) {
-      console.warn("[Yukina] Pré-checagem REST:", e && e.message ? e.message : e);
-    }
-
-    let code;
-    if (fs.existsSync(CACHE) && fs.statSync(CACHE).size > 10000) {
-      code = fs.readFileSync(CACHE, "utf8");
-      console.log("[Yukina] Cache local do index estável.");
+      console.log("[Slash] /painel registrado no servidor " + GUILD_ID);
     } else {
-      console.log("[Yukina] Baixando index.js estável...");
-      code = await download(SOURCE);
-      if (!code || !code.includes("client.login")) throw new Error("Index baixado inválido");
-      fs.writeFileSync(CACHE, code);
-      console.log("[Yukina] Cache salvo (" + code.length + " bytes).");
+      await rest.put(Routes.applicationCommands(client.user.id), { body });
+      console.log("[Slash] /painel registrado globalmente (pode demorar até 1h)");
     }
-
-    code = applyPatches(code);
-    fs.writeFileSync(APP, code);
-    const sigOk = code.includes("SIGTERM recebido e IGNORADO");
-    console.log("[Yukina] index.app.js ok | SIGTERM ignorado? " + (sigOk ? "sim" : "NÃO"));
-
-    await closeEarly();
-    console.log("[Yukina] Carregando index.app.js...");
-    require(APP);
-  } catch (error) {
-    console.error("[Yukina] Falha ao iniciar:", error && error.stack ? error.stack : error);
-    process.exit(1);
+  } catch (err) {
+    console.error("[Slash] Falha ao registrar /painel:", err.message);
   }
-})();
+});
+
+// Fallback para versões que ainda emitem "ready"
+client.once("ready", () => {
+  if (!client.isReady()) return;
+  client.emit("clientReady");
+});
+
+client.on("interactionCreate", async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+  if (interaction.commandName !== "painel") return;
+  try {
+    await replyPainel(interaction);
+  } catch (error) {
+    console.error("[Painel] Erro:", error);
+    const payload = {
+      content: "🫧 Não consegui abrir o painel agora. Tente de novo.",
+      flags: MessageFlags.Ephemeral,
+    };
+    if (interaction.replied || interaction.deferred) {
+      await interaction.followUp(payload).catch(() => {});
+    } else {
+      await interaction.reply(payload).catch(() => {});
+    }
+  }
+});
+
+client.on("messageCreate", async (message) => {
+  if (message.author.bot || !message.guild) return;
+  const content = message.content.trim();
+  if (!/^[Yy]painel(\s|$)/.test(content)) return;
+  try {
+    await prefixPainel(message);
+  } catch (error) {
+    console.error("[Painel] Erro prefixo:", error);
+    await message.reply("🫧 Não consegui abrir o painel agora.").catch(() => {});
+  }
+});
+
+client.on("error", (err) => console.error("[Discord] Client error:", err.message));
+
+process.on("unhandledRejection", (r) =>
+  console.error("[Yukina] unhandledRejection:", r)
+);
+
+console.log("[Yukina] Iniciando (modo painel)...");
+client
+  .login(TOKEN)
+  .then(() => console.log("[Yukina] Login aceito; aguardando ready..."))
+  .catch((err) => {
+    console.error("[Yukina] Falha no login:", err.message);
+    process.exit(1);
+  });
+
+// Encerramento limpo no Render
+function shutdown(signal) {
+  console.log("[Yukina] " + signal + " — encerrando.");
+  try {
+    client.destroy();
+  } catch (_) {}
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));
