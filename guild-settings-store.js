@@ -23,7 +23,8 @@ async function getCollection() {
       return collection;
     })().catch((error) => {
       connecting = null;
-      throw error;
+      console.warn("[Configurações do painel] Mongo indisponível:", error.message);
+      return null;
     });
   }
   return connecting;

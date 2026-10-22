@@ -27,12 +27,20 @@ jobs:
         uses: actions/configure-pages@v5
         with:
           enablement: true
-      - name: Inject navigation scripts into homepage
-        run: sed -i 's#</body>#<script src="./wiki-menu.js" defer></script><script src="./vip-menu.js" defer></script></body>#i' index.html
+      - name: Build static site folder
+        run: |
+          mkdir -p _site
+          for f in index.html login.html comandos.html configuracoes.html configuracoes-servidor.html daily.html sistemas.html vip.html vip-comprovante.html wiki.html api-config.js tema.js wiki-menu.js vip-menu.js CNAME googleb04baa779fbc794f.html; do
+            [ -f "$f" ] && cp "$f" _site/
+          done
+          cp -r assets _site/assets 2>/dev/null || true
+          if [ -f _site/index.html ]; then
+            sed -i 's#</body>#<script src="./wiki-menu.js" defer></script><script src="./vip-menu.js" defer></script></body>#i' _site/index.html
+          fi
       - name: Upload site artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: .
+          path: _site
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
