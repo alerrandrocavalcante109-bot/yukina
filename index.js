@@ -420,11 +420,6 @@ client.on("shardDisconnect", (event, shardId) => {
 client.on("shardReconnecting", (shardId) => {
   console.warn("[Discord Gateway] Reconectando shard:", shardId);
 });
-// Diagnóstico temporário do Gateway: registra eventos de conexão sem expor token ou credenciais.
-client.on("debug", (message) => {
-  console.log("[Discord debug]", message);
-});
-
 client.on("shardError", (error, shardId) => {
   console.error("[Discord Gateway] Erro no shard " + shardId + ":", error?.message || error);
 });
