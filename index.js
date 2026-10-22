@@ -1,14 +1,21 @@
 /**
- * Bootstrap Yukina: baixa index estável, aplica patches de init e sobe o bot.
+ * Bootstrap Yukina
+ * 1) Valida token (com retry em 429)
+ * 2) Baixa index estável, aplica patches, grava index.app.js
+ * 3) require('./index.app.js') — evita Module._compile no gateway
  */
 const fs = require("node:fs");
 const path = require("node:path");
 const https = require("node:https");
-const Module = require("node:module");
 
 const CACHE = path.join(__dirname, ".yukina-index-stable.js");
+const APP = path.join(__dirname, "index.app.js");
 const SOURCE =
   "https://cdn.jsdelivr.net/gh/alerrandrocavalcante109-bot/yukina@538e72b099f5b7148222ac905b65f5647e420e43/index.js";
+
+function sleep(ms) {
+  return new Promise((r) => setTimeout(r, ms));
+}
 
 function download(url) {
   return new Promise((resolve, reject) => {
@@ -44,7 +51,7 @@ function httpJson(url, headers = {}) {
         try {
           json = body ? JSON.parse(body) : null;
         } catch (_) {}
-        resolve({ status: res.statusCode, body, json });
+        resolve({ status: res.statusCode, body, json, headers: res.headers });
       });
     });
     req.on("error", reject);
@@ -58,13 +65,11 @@ function httpJson(url, headers = {}) {
 function applyPatches(code) {
   let out = code;
 
-  // Soft-fail no initialize do storage (não derruba o processo)
   out = out.replace(
     `  console.log("[Inicialização] Validando armazenamento...");\n  await memberData.initialize();\n  console.log("[Inicialização] Armazenamento validado.");`,
     `  console.log("[Inicialização] Validando armazenamento...");\n  try {\n    await memberData.initialize();\n    console.log("[Inicialização] Armazenamento validado.");\n  } catch (storageError) {\n    console.warn("[Inicialização] Armazenamento com falha (continuando online):", storageError?.message || storageError);\n  }`
   );
 
-  // Fallback do evento ready + clientReady
   if (!out.includes("Evento ready recebido (fallback)")) {
     const anchor = `function loadYukinaSystems() {
   if (systemsLoaded) return;
@@ -83,7 +88,6 @@ function applyPatches(code) {
         anchor,
         anchor +
           `
-// Fallback ready / clientReady
 client.once("ready", () => {
   if (typeof discordReady !== "undefined" && discordReady) return;
   console.log("[Discord] Evento ready recebido (fallback).");
@@ -94,85 +98,102 @@ client.once("ready", () => {
     }
   }
 
-  // Watchdog um pouco mais longo e log mais claro
   out = out.replace(
     "O cliente ainda não ficou pronto após 120 segundos.",
-    "O cliente ainda não ficou pronto após 120 segundos. Verifique DISCORD_TOKEN, intents no portal e rede até o gateway."
+    "O cliente ainda não ficou pronto após 120 segundos. Verifique DISCORD_TOKEN, intents e se o processo não está recebendo SIGTERM cedo demais."
   );
 
   return out;
 }
 
-function run(code) {
-  const filename = path.join(__dirname, "index.runtime.js");
-  const m = new Module(filename);
-  m.filename = filename;
-  m.paths = Module._nodeModulePaths(__dirname);
-  m._compile(code, filename);
-}
-
 (async () => {
   try {
+    console.log("[Yukina] Bootstrap PID=" + process.pid + " | node " + process.version);
+
     const token = String(process.env.DISCORD_TOKEN || "").trim();
     if (!token) {
       console.error("[Yukina] DISCORD_TOKEN ausente nas Environment Variables do Render.");
       process.exit(1);
     }
-    if (token.startsWith("\"") || token.endsWith("\"") || token.includes(" ")) {
-      console.warn("[Yukina] DISCORD_TOKEN parece ter aspas ou espaços — confira o valor no Render.");
+
+    // Pré-checagem com retry em 429
+    let tokenOk = false;
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        const me = await httpJson("https://discord.com/api/v10/users/@me", {
+          Authorization: "Bot " + token,
+        });
+        if (me.status === 429) {
+          const retry = Number(me.json?.retry_after || me.headers?.["retry-after"] || 5);
+          console.warn("[Yukina] REST rate limit (429). Tentativa " + attempt + "/3 — aguardando " + retry + "s...");
+          await sleep(Math.min(30, Math.max(2, retry)) * 1000);
+          continue;
+        }
+        if (me.status === 401 || me.status === 403) {
+          console.error("[Yukina] Token rejeitado (HTTP " + me.status + "). Regenere o token no portal Discord e atualize no Render.");
+          process.exit(1);
+        }
+        if (me.status === 200 && me.json?.username) {
+          console.log(
+            "[Yukina] Token OK. Bot: " +
+              me.json.username +
+              (me.json.discriminator && me.json.discriminator !== "0" ? "#" + me.json.discriminator : "") +
+              " (id " +
+              me.json.id +
+              ")"
+          );
+          tokenOk = true;
+        } else {
+          console.warn("[Yukina] REST /users/@me HTTP " + me.status);
+        }
+        break;
+      } catch (e) {
+        console.warn("[Yukina] Pré-checagem falhou (tentativa " + attempt + "):", e?.message || e);
+        await sleep(2000 * attempt);
+      }
     }
 
-    // Pré-checagem do token via REST (não substitui o gateway, só diagnostica)
     try {
-      const me = await httpJson("https://discord.com/api/v10/users/@me", {
-        Authorization: "Bot " + token,
-      });
-      if (me.status === 401 || me.status === 403) {
-        console.error("[Yukina] Token rejeitado pela API Discord (HTTP " + me.status + "). Gere um token novo no portal e atualize DISCORD_TOKEN no Render.");
-        process.exit(1);
-      }
-      if (me.status === 200 && me.json?.username) {
-        console.log("[Yukina] Token OK via REST. Bot: " + me.json.username + (me.json.discriminator ? "#" + me.json.discriminator : "") + " (id " + me.json.id + ")");
-      } else {
-        console.warn("[Yukina] REST /users/@me respondeu HTTP " + me.status + " — seguindo mesmo assim.");
-      }
-
       const gw = await httpJson("https://discord.com/api/v10/gateway/bot", {
         Authorization: "Bot " + token,
       });
       if (gw.status === 200 && gw.json?.url) {
-        console.log("[Yukina] Gateway URL: " + gw.json.url + " | sessão restante: " + (gw.json.session_start_limit?.remaining ?? "?"));
-        if (Number(gw.json.session_start_limit?.remaining) === 0) {
-          console.error("[Yukina] Limite de sessões do gateway esgotado. Aguarde o reset e evite reinícios em loop.");
+        const rem = gw.json.session_start_limit?.remaining;
+        console.log("[Yukina] Gateway: " + gw.json.url + " | sessões restantes: " + (rem ?? "?"));
+        if (Number(rem) === 0) {
+          console.error("[Yukina] Sessões do gateway esgotadas. Pare os deploys e aguarde o reset.");
         }
       } else if (gw.status === 401) {
-        console.error("[Yukina] gateway/bot retornou 401 — token inválido.");
+        console.error("[Yukina] gateway/bot 401 — token inválido.");
         process.exit(1);
-      } else {
-        console.warn("[Yukina] gateway/bot HTTP " + gw.status);
+      } else if (gw.status === 429) {
+        console.warn("[Yukina] gateway/bot em rate limit (429). Aguardando 10s...");
+        await sleep(10000);
       }
-    } catch (preflightError) {
-      console.warn("[Yukina] Pré-checagem REST falhou (seguindo para login):", preflightError?.message || preflightError);
+    } catch (e) {
+      console.warn("[Yukina] gateway/bot falhou:", e?.message || e);
     }
 
-    let code = null;
+    let code;
     if (fs.existsSync(CACHE) && fs.statSync(CACHE).size > 10000) {
       code = fs.readFileSync(CACHE, "utf8");
-      console.log("[Yukina] Usando index estável em cache local.");
+      console.log("[Yukina] Cache local do index estável.");
     } else {
-      console.log("[Yukina] Baixando index.js estável do histórico...");
+      console.log("[Yukina] Baixando index.js estável...");
       code = await download(SOURCE);
-      if (!code || !code.includes("client.login")) {
-        throw new Error("Conteúdo baixado inválido (sem client.login)");
-      }
+      if (!code || !code.includes("client.login")) throw new Error("Index baixado inválido");
       fs.writeFileSync(CACHE, code);
-      console.log("[Yukina] Index estável salvo em cache (" + code.length + " bytes).");
+      console.log("[Yukina] Cache salvo (" + code.length + " bytes).");
     }
 
     code = applyPatches(code);
-    run(code);
+    fs.writeFileSync(APP, code);
+    console.log("[Yukina] App escrito em index.app.js — carregando via require...");
+
+    // Carrega como módulo real (WebSocket/discord.js mais estável que Module._compile)
+    require(APP);
   } catch (error) {
-    console.error("[Yukina] Falha ao iniciar:", error?.message || error);
+    console.error("[Yukina] Falha ao iniciar:", error?.stack || error?.message || error);
     process.exit(1);
   }
 })();
