@@ -1488,38 +1488,21 @@ async function initializeDiscord() {
   console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
   console.log("[Inicialização] Etapa 3/4: conectando ao Discord...");
 
-  // Testa a API REST do Discord separadamente para distinguir falha de autenticação/DNS/HTTP
-  // de uma falha posterior no WebSocket. Nunca registra o token nem o corpo sensível.
-  try {
-    const startedAt = Date.now();
-    console.log("[Diagnóstico Discord] Testando https://discord.com/api/v10/gateway/bot ...");
-    const response = await fetch("https://discord.com/api/v10/gateway/bot", {
-      headers: { Authorization: `Bot ${TOKEN}`, "User-Agent": "Yukina/1.0" },
-      signal: AbortSignal.timeout(15000),
-    });
-    const body = await response.json().catch(() => ({}));
-    console.log("[Diagnóstico Discord] Gateway API respondeu:", {
-      status: response.status,
-      elapsedMs: Date.now() - startedAt,
-      gatewayAvailable: typeof body?.url === "string",
-      shards: Number.isInteger(body?.shards) ? body.shards : undefined,
-      message: typeof body?.message === "string" ? body.message : undefined,
-      code: body?.code,
-    });
-  } catch (error) {
-    console.error("[Diagnóstico Discord] Falha ao consultar Gateway API:", {
-      name: error?.name,
-      code: error?.cause?.code || error?.code,
-      message: error?.message,
-    });
-  }
-
+  // Não faça uma chamada REST extra antes do login: ela pode receber 429 e
+  // atrasar/complicar o diagnóstico. O discord.js descobre o Gateway e gerencia
+  // os limites de API por conta própria.
   loginWatchdog = setTimeout(() => {
     if (discordReady) return;
-    console.error("❌ [Yukina] Não foi possível iniciar: a conexão com o Discord não ficou pronta em 60 segundos.");
-    process.exitCode = 1;
-    process.exit(1);
-  }, 60000);
+    console.error("[Discord Gateway] Ainda não ficou pronto após 120 segundos.", {
+      wsStatus: client.ws.status,
+      destroyed: client.ws.destroyed,
+      readyAt: client.readyAt,
+    });
+    // Não mate o processo imediatamente: mantenha o endpoint HTTP e permita que
+    // o WebSocket continue tentando/reconectando. O Render pode reiniciar a
+    // instância por política própria, mas o watchdog não cria um ciclo de crash.
+  }, 120000);
+  loginWatchdog.unref();
   loginWatchdog.unref();
 
   try {
