@@ -387,17 +387,10 @@ async function applyDeletions(guild, plan) {
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
-  // A Yukina usa um único shard. Evita depender do endpoint autenticado
-  // /gateway/bot, que está retornando 429 no Render. O endpoint WebSocket
-  // oficial é estável e permite iniciar sem outra chamada REST de descoberta.
-  ws: {
-    handshakeTimeout: 60000,
-    fetchGatewayInformation: async () => {
-      console.log("[Discord Gateway] Usando endpoint oficial direto; shard único.");
-      return { url: "wss://gateway.discord.gg", shards: 1 };
-    },
-  },
-  rest: { timeout: 20000 },
+  // Deixe o discord.js gerenciar descoberta do Gateway, handshake,
+  // heartbeat, reconexão e limites de API com as opções padrão da biblioteca.
+  // Não sobrescreva fetchGatewayInformation: a implementação precisa seguir
+  // a versão real do discord.js instalada pelo Render.
 });
 
 // Os sistemas são carregados somente depois que o Gateway confirmar que a Yukina está online.
@@ -1462,58 +1455,53 @@ const server = http.createServer((req, res) => panelApi(req, res, new URL(req.ur
 }));
 server.listen(port, "0.0.0.0", () => console.log(`API do painel e health endpoint ativos na porta ${port}`));
 
-// Inicialização centralizada do cliente Discord.
+// Inicialização centralizada, seguindo o fluxo simples do Aeternus:
+// validar configuração, preparar armazenamento, registrar diagnóstico e fazer login.
+// Os sistemas da Yukina continuam sendo carregados no evento clientReady.
 let discordReady = false;
 let loginWatchdog;
 
 async function initializeDiscord() {
-  console.log("[Inicialização] Etapa 1/4: validando configuração...");
-  if (!TOKEN) {
-    throw new Error("DISCORD_TOKEN não está configurado.");
-  }
+  console.log("[Inicialização] Yukina iniciando...");
+  if (!TOKEN) throw new Error("DISCORD_TOKEN não está configurado.");
 
-  console.log("[Inicialização] Verificando armazenamento de membros...");
+  console.log("[Inicialização] Validando armazenamento...");
   await memberData.initialize();
-  console.log("[Inicialização] Banco de membros validado.");
+  console.log("[Inicialização] Armazenamento validado.");
 
-  console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
-  console.log("[Inicialização] Etapa 3/4: conectando ao Discord...");
+  console.log("[Inicialização] Listeners preparados.");
+  console.log("[Inicialização] Autenticando e conectando ao Discord pelo discord.js...");
 
-  // Não faça uma chamada REST extra antes do login: ela pode receber 429 e
-  // atrasar/complicar o diagnóstico. O discord.js descobre o Gateway e gerencia
-  // os limites de API por conta própria.
   loginWatchdog = setTimeout(() => {
     if (discordReady) return;
-    console.error("[Discord Gateway] Ainda não ficou pronto após 120 segundos.", {
+    console.error("[Discord Gateway] O cliente ainda não ficou pronto após 120 segundos.", {
       wsStatus: client.ws.status,
       destroyed: client.ws.destroyed,
       readyAt: client.readyAt,
+      user: client.user?.tag || null,
     });
-    // Não mate o processo imediatamente: mantenha o endpoint HTTP e permita que
-    // o WebSocket continue tentando/reconectando. O Render pode reiniciar a
-    // instância por política própria, mas o watchdog não cria um ciclo de crash.
   }, 120000);
   loginWatchdog.unref();
 
   try {
+    // O login usa o fluxo oficial da biblioteca, sem chamadas de pré-verificação
+    // e sem substituir manualmente a descoberta do Gateway.
     await client.login(TOKEN);
-  
+    console.log("[Inicialização] Login aceito pelo discord.js; aguardando clientReady.");
   } catch (error) {
     clearTimeout(loginWatchdog);
-    console.error("[Inicialização] Falha ao autenticar/conectar ao Discord:", {
+    console.error("[Inicialização] Não foi possível iniciar a sessão Discord:", {
       name: error?.name,
       code: error?.code,
       message: error?.message,
-      wsStatus: client.ws.status
+      wsStatus: client.ws.status,
     });
     throw error;
   }
 }
 
-initializeDiscord().then(() => {
-
-}).catch((error) => {
-  console.error("[Inicialização] Inicialização do Discord falhou.", error);
+initializeDiscord().catch((error) => {
+  console.error("[Inicialização] Falha fatal ao iniciar a Yukina:", error);
   process.exitCode = 1;
   setTimeout(() => process.exit(1), 1500).unref();
 });
