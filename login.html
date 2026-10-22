@@ -28,10 +28,11 @@ h1{margin:0;font-size:29px;letter-spacing:-.6px}p{color:var(--muted);line-height
 <a class="back" href="./index.html">← Voltar para a página inicial</a>
 <div class="note">A autenticação é feita pelo Discord. Nunca informe sua senha fora do site oficial do Discord.</div>
 </main>
+<script src="./api-config.js"></script>
 <script>
 (() => {
   const CLIENT_ID = "1561485997277970514";
-  const API_BASE = (window.YUKINA_API_URL || "https://yukina.onrender.com").replace(/\/$/, "");
+  const API_BASE = (window.YUKINA_API_URL || "https://yukina-jspa.onrender.com").replace(/\/$/, "");
   const REDIRECT_URI = "https://yukina-6uo.pages.dev/login.html";
   const status = document.getElementById("status");
   const button = document.getElementById("loginButton");
