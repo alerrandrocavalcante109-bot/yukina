@@ -1045,13 +1045,23 @@ async function panelApi(req, res, url) {
       const ranges = [{ min: 5000, max: 10000 }, { min: 10000, max: 15000 }, { min: 10000, max: 20000 }, { min: 20000, max: 25000 }];
       const baseReward = Math.floor(Math.random() * (ranges[0].max - ranges[0].min + 1)) + ranges[0].min;
       const reward = Math.floor(baseReward * multiplier);
+      const session = settingsMongoClient.startSession();
       try {
-        await daily.insertOne({ guildId, userId: String(user.id), day, plan: planKey || null, multiplier, baseReward, reward, claimedAt: now });
+        await session.withTransaction(async () => {
+          await daily.insertOne({ guildId, userId: String(user.id), day, plan: planKey || null, multiplier, baseReward, reward, claimedAt: now }, { session });
+          await settingsMongoClient.db(MONGODB_DB).collection("economy_balances").updateOne(
+            { guildId, userId: String(user.id) },
+            { $inc: { balance: reward }, $set: { updatedAt: now }, $setOnInsert: { createdAt: now } },
+            { upsert: true, session }
+          );
+        });
       } catch (err) {
         if (err && err.code === 11000) return sendJson(res, 409, { ok: false, claimed: true, detail: "Você já coletou seu Daily hoje! Volte amanhã para coletar novamente." });
         throw err;
+      } finally {
+        await session.endSession();
       }
-      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, baseReward, reward, nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
+      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, baseReward, reward, balanceUpdated: true, nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
     } catch (error) {
       console.error("[Daily] Falha na coleta:", error.message || error);
       return sendJson(res, 500, { ok: false, detail: "Não foi possível verificar a coleta do Daily. Tente novamente." });
