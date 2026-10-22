@@ -1448,12 +1448,22 @@ async function panelApi(req, res, url) {
     return sendJson(res, error.status || (String(error.message).includes("MONGODB_URI") ? 503 : 500), { detail: error.message || "Erro interno da API." });
   }
 }
+// MODO DE TESTE: API do painel desconectada do processo da Yukina.
+ // Mantemos apenas um endpoint mínimo de health check para o Render.
+ // Nenhuma rota /api do painel é encaminhada para panelApi durante este teste.
 const port = Number(process.env.PORT || 10000);
-const server = http.createServer((req, res) => panelApi(req, res, new URL(req.url, "http://localhost")).catch(error => {
-  console.error("[API painel]", error);
-  if (!res.headersSent) sendJson(res, 500, { detail: "Erro interno da API." }); else res.end();
-}));
-server.listen(port, "0.0.0.0", () => console.log(`API do painel e health endpoint ativos na porta ${port}`));
+const server = http.createServer((req, res) => {
+  const pathname = new URL(req.url || "/", "http://localhost").pathname;
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  res.setHeader("Cache-Control", "no-store");
+  if (req.method === "GET" && (pathname === "/" || pathname === "/api/health")) {
+    res.writeHead(200);
+    return res.end(JSON.stringify({ ok: true, service: "Yukina Bot", mode: "discord-only-test", panelApi: "disabled" }));
+  }
+  res.writeHead(503);
+  res.end(JSON.stringify({ ok: false, detail: "API do painel desativada temporariamente para teste." }));
+});
+server.listen(port, "0.0.0.0", () => console.log(`[Teste isolado] Health endpoint ativo na porta ${port}; API do painel desativada.`));
 
 // Inicialização centralizada, seguindo o fluxo simples do Aeternus:
 // validar configuração, preparar armazenamento, registrar diagnóstico e fazer login.
