@@ -422,6 +422,11 @@ client.on("shardReconnecting", (shardId) => {
 });
 // Diagnóstico temporário do Gateway: registra eventos de conexão sem expor token ou credenciais.
 client.on("debug", (message) => {
+  // Não registrar a mensagem que contém o token, mesmo parcialmente mascarado.
+  if (/provided token/i.test(message)) {
+    console.log("[Discord debug] Token configurado (valor ocultado).");
+    return;
+  }
   console.log("[Discord debug]", message);
 });
 
@@ -1482,6 +1487,32 @@ async function initializeDiscord() {
 
   console.log("[Inicialização] Etapa 2/4: cliente e listeners preparados.");
   console.log("[Inicialização] Etapa 3/4: conectando ao Discord...");
+
+  // Testa a API REST do Discord separadamente para distinguir falha de autenticação/DNS/HTTP
+  // de uma falha posterior no WebSocket. Nunca registra o token nem o corpo sensível.
+  try {
+    const startedAt = Date.now();
+    console.log("[Diagnóstico Discord] Testando https://discord.com/api/v10/gateway/bot ...");
+    const response = await fetch("https://discord.com/api/v10/gateway/bot", {
+      headers: { Authorization: `Bot ${TOKEN}`, "User-Agent": "Yukina/1.0" },
+      signal: AbortSignal.timeout(15000),
+    });
+    const body = await response.json().catch(() => ({}));
+    console.log("[Diagnóstico Discord] Gateway API respondeu:", {
+      status: response.status,
+      elapsedMs: Date.now() - startedAt,
+      gatewayAvailable: typeof body?.url === "string",
+      shards: Number.isInteger(body?.shards) ? body.shards : undefined,
+      message: typeof body?.message === "string" ? body.message : undefined,
+      code: body?.code,
+    });
+  } catch (error) {
+    console.error("[Diagnóstico Discord] Falha ao consultar Gateway API:", {
+      name: error?.name,
+      code: error?.cause?.code || error?.code,
+      message: error?.message,
+    });
+  }
 
   loginWatchdog = setTimeout(() => {
     if (discordReady) return;
