@@ -1,6 +1,6 @@
 {
   "name": "yukina",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "main": "index.js",
   "scripts": {
@@ -9,8 +9,5 @@
   "engines": {
     "node": ">=20"
   },
-  "dependencies": {
-    "discord.js": "^14.22.1",
-    "dotenv": "^16.4.7"
-  }
+  "dependencies": {}
 }
