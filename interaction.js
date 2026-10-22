@@ -34,6 +34,7 @@ function loadJsFiles(directory) {
 
 function loadCommands(client) {
   const directory = path.join(ROOT, "commands");
+  let loaded = 0;
   for (const file of loadJsFiles(directory)) {
     try {
       delete require.cache[require.resolve(file)];
@@ -44,17 +45,18 @@ function loadCommands(client) {
         continue;
       }
       if (client.commands.has(name)) {
-        console.warn(`[Interactions] Comando duplicado ignorado: ${name}`);
+        // Já carregado pelo command-engine — mantém a primeira versão.
         continue;
       }
       client.commands.set(name, command);
+      loaded += 1;
       console.log(`   🌙 [SLASH] /${name} — carregado e pronto para sincronização`);
-      if (typeof command.prefixExecute === "function" || typeof command.executePrefix === "function") {
-        console.log(`   ⌨️ [PREFIXO] ${command.prefix || "Y"}${name} — handler de prefixo encontrado`);
-      }
     } catch (error) {
       console.error(`[Interactions] Falha ao carregar ${path.relative(ROOT, file)}:`, error);
     }
+  }
+  if (loaded > 0) {
+    console.log(`[Interactions] ${loaded} comando(s) adicional(is) carregado(s).`);
   }
 }
 
@@ -105,7 +107,6 @@ async function safeErrorReply(interaction, error) {
       await interaction.reply(payload);
     }
   } catch (replyError) {
-    // A interação pode ter expirado; não deixe um erro de resposta derrubar o bot.
     console.error("[Interactions] Não foi possível responder à interação:", replyError.message);
   }
 }
@@ -114,13 +115,18 @@ function registerInteractionHandlers(client) {
   client.commands = client.commands || new Map();
   client.components = client.components || { button: [], select: [], modal: [] };
 
+  // Garante comandos mesmo se o command-engine não tiver rodado antes.
+  loadCommands(client);
   loadComponents(client);
+
+  console.log(`[Interactions] Comandos em memória: ${client.commands.size} → ${[...client.commands.keys()].map((n) => "/" + n).join(", ") || "(nenhum)"}`);
 
   client.on("interactionCreate", async (interaction) => {
     try {
       if (interaction.isChatInputCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) {
+          console.warn(`[Interactions] Slash /${interaction.commandName} não encontrado em client.commands`);
           if (!interaction.replied && !interaction.deferred) {
             await interaction.reply({
               content: "Esse comando ainda não está disponível na Yukina.",
@@ -130,6 +136,7 @@ function registerInteractionHandlers(client) {
           return;
         }
 
+        console.log(`[Interactions] Executando /${interaction.commandName} por ${interaction.user?.tag || interaction.user?.id}`);
         await command.execute(interaction, client);
         return;
       }
@@ -145,8 +152,6 @@ function registerInteractionHandlers(client) {
       );
 
       if (!handler) {
-        // Compatibilidade com comandos antigos que exportam handleInteraction().
-        // Este é o único listener que os executa, evitando respostas duplicadas.
         for (const command of client.commands.values()) {
           if (typeof command.handleInteraction !== "function") continue;
           await command.handleInteraction(interaction);
