@@ -387,8 +387,16 @@ async function applyDeletions(guild, plan) {
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
-  // Evita depender da descoberta automática do Gateway se o endpoint padrão estiver bloqueado.
-  ws: { handshakeTimeout: 60000 },
+  // A Yukina usa um único shard. Evita depender do endpoint autenticado
+  // /gateway/bot, que está retornando 429 no Render. O endpoint WebSocket
+  // oficial é estável e permite iniciar sem outra chamada REST de descoberta.
+  ws: {
+    handshakeTimeout: 60000,
+    fetchGatewayInformation: async () => {
+      console.log("[Discord Gateway] Usando endpoint oficial direto; shard único.");
+      return { url: "wss://gateway.discord.gg", shards: 1 };
+    },
+  },
   rest: { timeout: 20000 },
 });
 
