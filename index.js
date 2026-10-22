@@ -1,11 +1,12 @@
 /**
  * Bootstrap Yukina
- * 1) Valida token (com retry em 429)
- * 2) Baixa index estável, aplica patches, grava index.app.js
- * 3) require('./index.app.js') — evita Module._compile no gateway
+ * - Abre a porta HTTP (health) IMEDIATAMENTE para o Render não matar o processo
+ * - Depois valida token / carrega o app estável
+ * - Não espera minutos em rate limit 429
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const http = require("node:http");
 const https = require("node:https");
 
 const CACHE = path.join(__dirname, ".yukina-index-stable.js");
@@ -13,9 +14,20 @@ const APP = path.join(__dirname, "index.app.js");
 const SOURCE =
   "https://cdn.jsdelivr.net/gh/alerrandrocavalcante109-bot/yukina@538e72b099f5b7148222ac905b65f5647e420e43/index.js";
 
-function sleep(ms) {
-  return new Promise((r) => setTimeout(r, ms));
-}
+const PORT = Number(process.env.PORT || 10000);
+
+// Health server sobe primeiro — o Render exige porta aberta cedo
+const earlyServer = http.createServer((req, res) => {
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify({ ok: true, service: "Yukina Bot", bootstrap: true, pid: process.pid }));
+});
+earlyServer.listen(PORT, "0.0.0.0", () => {
+  console.log("[Yukina] Health bootstrap na porta " + PORT + " (PID " + process.pid + ")");
+});
+earlyServer.on("error", (err) => {
+  // Se a porta já estiver em uso pelo app principal, ok
+  console.warn("[Yukina] Porta bootstrap:", err.message);
+});
 
 function download(url) {
   return new Promise((resolve, reject) => {
@@ -51,11 +63,11 @@ function httpJson(url, headers = {}) {
         try {
           json = body ? JSON.parse(body) : null;
         } catch (_) {}
-        resolve({ status: res.statusCode, body, json, headers: res.headers });
+        resolve({ status: res.statusCode, body, json });
       });
     });
     req.on("error", reject);
-    req.setTimeout(20000, () => {
+    req.setTimeout(15000, () => {
       req.destroy();
       reject(new Error("Timeout HTTP"));
     });
@@ -64,6 +76,24 @@ function httpJson(url, headers = {}) {
 
 function applyPatches(code) {
   let out = code;
+
+  // Não sobe segundo servidor HTTP na mesma PORT — o bootstrap já ocupa a porta.
+  // Substitui o listen do app estável por no-op se a porta já estiver em uso.
+  out = out.replace(
+    /server\.listen\(port,\s*"0\.0\.0\.0",\s*\(\)\s*=>\s*console\.log\(`API do painel e health endpoint ativos na porta \$\{port\}`\)\);/,
+    `try {
+  server.listen(port, "0.0.0.0", () => console.log("API do painel e health endpoint ativos na porta " + port));
+} catch (e) {
+  console.warn("[Yukina] server.listen:", e.message);
+}
+server.on("error", (e) => {
+  if (e && e.code === "EADDRINUSE") {
+    console.log("[Yukina] Porta " + port + " já em uso pelo bootstrap health — ok.");
+  } else {
+    console.error("[Yukina] Erro no servidor HTTP:", e);
+  }
+});`
+  );
 
   out = out.replace(
     `  console.log("[Inicialização] Validando armazenamento...");\n  await memberData.initialize();\n  console.log("[Inicialização] Armazenamento validado.");`,
@@ -98,11 +128,6 @@ client.once("ready", () => {
     }
   }
 
-  out = out.replace(
-    "O cliente ainda não ficou pronto após 120 segundos.",
-    "O cliente ainda não ficou pronto após 120 segundos. Verifique DISCORD_TOKEN, intents e se o processo não está recebendo SIGTERM cedo demais."
-  );
-
   return out;
 }
 
@@ -112,66 +137,28 @@ client.once("ready", () => {
 
     const token = String(process.env.DISCORD_TOKEN || "").trim();
     if (!token) {
-      console.error("[Yukina] DISCORD_TOKEN ausente nas Environment Variables do Render.");
+      console.error("[Yukina] DISCORD_TOKEN ausente. Configure no Render e redeploy.");
       process.exit(1);
     }
 
-    // Pré-checagem com retry em 429
-    let tokenOk = false;
-    for (let attempt = 1; attempt <= 3; attempt++) {
-      try {
-        const me = await httpJson("https://discord.com/api/v10/users/@me", {
-          Authorization: "Bot " + token,
-        });
-        if (me.status === 429) {
-          const retry = Number(me.json?.retry_after || me.headers?.["retry-after"] || 5);
-          console.warn("[Yukina] REST rate limit (429). Tentativa " + attempt + "/3 — aguardando " + retry + "s...");
-          await sleep(Math.min(30, Math.max(2, retry)) * 1000);
-          continue;
-        }
-        if (me.status === 401 || me.status === 403) {
-          console.error("[Yukina] Token rejeitado (HTTP " + me.status + "). Regenere o token no portal Discord e atualize no Render.");
-          process.exit(1);
-        }
-        if (me.status === 200 && me.json?.username) {
-          console.log(
-            "[Yukina] Token OK. Bot: " +
-              me.json.username +
-              (me.json.discriminator && me.json.discriminator !== "0" ? "#" + me.json.discriminator : "") +
-              " (id " +
-              me.json.id +
-              ")"
-          );
-          tokenOk = true;
-        } else {
-          console.warn("[Yukina] REST /users/@me HTTP " + me.status);
-        }
-        break;
-      } catch (e) {
-        console.warn("[Yukina] Pré-checagem falhou (tentativa " + attempt + "):", e?.message || e);
-        await sleep(2000 * attempt);
-      }
-    }
-
+    // Pré-checagem rápida — SEM esperar dezenas de segundos em 429
     try {
-      const gw = await httpJson("https://discord.com/api/v10/gateway/bot", {
+      const me = await httpJson("https://discord.com/api/v10/users/@me", {
         Authorization: "Bot " + token,
       });
-      if (gw.status === 200 && gw.json?.url) {
-        const rem = gw.json.session_start_limit?.remaining;
-        console.log("[Yukina] Gateway: " + gw.json.url + " | sessões restantes: " + (rem ?? "?"));
-        if (Number(rem) === 0) {
-          console.error("[Yukina] Sessões do gateway esgotadas. Pare os deploys e aguarde o reset.");
-        }
-      } else if (gw.status === 401) {
-        console.error("[Yukina] gateway/bot 401 — token inválido.");
+      if (me.status === 401 || me.status === 403) {
+        console.error("[Yukina] Token rejeitado (HTTP " + me.status + "). Regenere no portal e atualize DISCORD_TOKEN.");
         process.exit(1);
-      } else if (gw.status === 429) {
-        console.warn("[Yukina] gateway/bot em rate limit (429). Aguardando 10s...");
-        await sleep(10000);
+      }
+      if (me.status === 429) {
+        console.warn("[Yukina] REST em rate limit (429). Seguindo para o gateway sem esperar.");
+      } else if (me.status === 200 && me.json?.username) {
+        console.log("[Yukina] Token OK. Bot: " + me.json.username + " (id " + me.json.id + ")");
+      } else {
+        console.warn("[Yukina] REST /users/@me HTTP " + me.status);
       }
     } catch (e) {
-      console.warn("[Yukina] gateway/bot falhou:", e?.message || e);
+      console.warn("[Yukina] Pré-checagem REST:", e?.message || e);
     }
 
     let code;
@@ -188,9 +175,10 @@ client.once("ready", () => {
 
     code = applyPatches(code);
     fs.writeFileSync(APP, code);
-    console.log("[Yukina] App escrito em index.app.js — carregando via require...");
+    console.log("[Yukina] Carregando index.app.js...");
 
-    // Carrega como módulo real (WebSocket/discord.js mais estável que Module._compile)
+    // Fecha o health bootstrap só se o app for conseguir a porta;
+    // se EADDRINUSE, o bootstrap continua respondendo health.
     require(APP);
   } catch (error) {
     console.error("[Yukina] Falha ao iniciar:", error?.stack || error?.message || error);
