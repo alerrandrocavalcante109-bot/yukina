@@ -1489,6 +1489,9 @@ async function initializeDiscord() {
   loginWatchdog.unref();
 
   try {
+    // Desativa logs de diagnóstico do Discord.js (heartbeat, ACK e eventos internos do Gateway).
+    client.removeAllListeners("debug");
+
     await client.login(TOKEN);
   
   } catch (error) {
