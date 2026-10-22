@@ -387,6 +387,9 @@ async function applyDeletions(guild, plan) {
 
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
+  // Evita depender da descoberta automática do Gateway se o endpoint padrão estiver bloqueado.
+  ws: { handshakeTimeout: 30000 },
+  rest: { timeout: 15000 },
 });
 
 // Os sistemas são carregados somente depois que o Gateway confirmar que a Yukina está online.
@@ -404,6 +407,19 @@ function loadYukinaSystems() {
 }
 
 
+// Diagnóstico do processo de descoberta e conexão do Gateway.
+client.on("error", (error) => {
+  console.error("[Discord Client error]", error?.stack || error?.message || error);
+});
+client.on("shardError", (error, shardId) => {
+  console.error("[Discord Gateway] Erro no shard " + shardId + ":", error?.stack || error?.message || error);
+});
+client.on("shardDisconnect", (event, shardId) => {
+  console.error("[Discord Gateway] Desconectado. Shard:", shardId, "Código:", event?.code, "Motivo:", event?.reason || "não informado");
+});
+client.on("shardReconnecting", (shardId) => {
+  console.warn("[Discord Gateway] Reconectando shard:", shardId);
+});
 // Diagnóstico temporário do Gateway: registra eventos de conexão sem expor token ou credenciais.
 client.on("debug", (message) => {
   console.log("[Discord debug]", message);
