@@ -388,8 +388,8 @@ async function applyDeletions(guild, plan) {
 const client = new Client({
   intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
   // Evita depender da descoberta automática do Gateway se o endpoint padrão estiver bloqueado.
-  ws: { handshakeTimeout: 30000 },
-  rest: { timeout: 15000 },
+  ws: { handshakeTimeout: 60000 },
+  rest: { timeout: 20000 },
 });
 
 // Os sistemas são carregados somente depois que o Gateway confirmar que a Yukina está online.
@@ -420,51 +420,34 @@ client.on("shardDisconnect", (event, shardId) => {
 client.on("shardReconnecting", (shardId) => {
   console.warn("[Discord Gateway] Reconectando shard:", shardId);
 });
-// Diagnóstico temporário do Gateway: registra eventos de conexão sem expor token ou credenciais.
+// Diagnóstico do Gateway com eventos únicos; a reconexão automática fica a cargo do discord.js.
 client.on("debug", (message) => {
-  // Não registrar a mensagem que contém o token, mesmo parcialmente mascarado.
-  if (/provided token/i.test(message)) {
-    console.log("[Discord debug] Token configurado (valor ocultado).");
-    return;
-  }
+  if (/provided token/i.test(message)) return;
+  if (/heartbeat acknowledged/i.test(message)) return;
   console.log("[Discord debug]", message);
 });
 
-client.on("shardError", (error, shardId) => {
-  console.error("[Discord Gateway] Erro no shard " + shardId + ":", error?.message || error);
-});
-
-client.on("shardDisconnect", (event, shardId) => {
-  console.error("[Discord Gateway] Desconectado. Shard:", shardId, "Código:", event?.code, "Motivo:", event?.reason || "não informado");
-});
-
-client.on("shardReconnecting", (shardId) => {
-  console.warn("[Discord Gateway] Reconectando shard:", shardId);
-});
-
-// Mantém apenas erros reais do cliente, sem despejar diagnósticos de heartbeat/Gateway.
 client.on("error", (error) => {
-  console.error("[Discord] Erro do cliente:", error);
+  console.error("[Discord] Erro do cliente:", error?.stack || error?.message || error);
 });
-
 client.on("shardError", (error, shardId) => {
-  console.error(`[Discord] Erro no Gateway (shard ${shardId}):`, error);
+  console.error("[Discord Gateway] Erro no shard " + shardId + ":", error?.stack || error?.message || error);
 });
-
 client.on("shardDisconnect", (event, shardId) => {
-  console.warn(`[Discord] Gateway desconectado (shard ${shardId}). Código: ${event?.code ?? "desconhecido"}; motivo: ${event?.reason || "não informado"}; reconexão automática será tentada pelo discord.js.`);
+  console.warn("[Discord Gateway] Shard " + shardId + " desconectado:", {
+    code: event?.code,
+    reason: event?.reason || "não informado",
+    closeCode: event?.code === 1000 ? "normal" : "verificar causa",
+  });
 });
-
 client.on("shardReconnecting", (shardId) => {
-  console.warn(`[Discord] Tentando reconectar ao Gateway (shard ${shardId})...`);
+  console.warn("[Discord Gateway] Reconectando shard " + shardId + "...");
 });
-
 client.on("shardResume", (shardId, replayedEvents) => {
-  console.log(`[Discord] Conexão retomada (shard ${shardId}); eventos recuperados: ${replayedEvents}.`);
+  console.log("[Discord Gateway] Sessão retomada:", { shardId, replayedEvents });
 });
-
 client.on("invalidated", () => {
-  console.error("[Discord] A sessão foi invalidada. O processo será encerrado para o Render reiniciar o serviço.");
+  console.error("[Discord Gateway] Sessão invalidada pelo Discord; encerrando para reinicialização limpa.");
   process.exitCode = 1;
   setTimeout(() => process.exit(1), 1000).unref();
 });
@@ -1502,7 +1485,6 @@ async function initializeDiscord() {
     // o WebSocket continue tentando/reconectando. O Render pode reiniciar a
     // instância por política própria, mas o watchdog não cria um ciclo de crash.
   }, 120000);
-  loginWatchdog.unref();
   loginWatchdog.unref();
 
   try {
