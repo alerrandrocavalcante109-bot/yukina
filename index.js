@@ -1,8 +1,8 @@
 /**
  * Bootstrap Yukina
- * - Abre a porta HTTP (health) IMEDIATAMENTE para o Render não matar o processo
- * - Depois valida token / carrega o app estável
- * - Fecha o health temporário e deixa o app principal na PORT
+ * - Health imediato na PORT
+ * - Baixa index estável, aplica patches (SIGTERM grace + ready fallback)
+ * - require('./index.app.js')
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -15,6 +15,8 @@ const SOURCE =
   "https://cdn.jsdelivr.net/gh/alerrandrocavalcante109-bot/yukina@538e72b099f5b7148222ac905b65f5647e420e43/index.js";
 
 const PORT = Number(process.env.PORT || 10000);
+const STARTED_AT = Date.now();
+const SIGTERM_GRACE_MS = 90_000;
 
 const earlyServer = http.createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
@@ -120,11 +122,28 @@ function applyPatches(code) {
     }
   }
 
+  // SIGTERM grace: nos primeiros 90s após o start, não encerra (evita race do deploy no Render)
+  const oldShutdown = `process.on("SIGTERM", () => shutdown("SIGTERM"));
+process.on("SIGINT", () => shutdown("SIGINT"));`;
+  const newShutdown = `process.on("SIGTERM", () => {
+  const uptimeMs = Date.now() - (Number(process.env.YUKINA_BOOT_TS) || Date.now());
+  if (uptimeMs < 90000) {
+    console.warn("[Yukina] SIGTERM ignorado nos primeiros 90s (deploy race do Render). uptime=" + Math.round(uptimeMs / 1000) + "s");
+    return;
+  }
+  shutdown("SIGTERM");
+});
+process.on("SIGINT", () => shutdown("SIGINT"));`;
+  if (out.includes(oldShutdown)) {
+    out = out.replace(oldShutdown, newShutdown);
+  }
+
   return out;
 }
 
 (async () => {
   try {
+    process.env.YUKINA_BOOT_TS = String(STARTED_AT);
     await listenEarly();
     console.log("[Yukina] Bootstrap PID=" + process.pid + " | node " + process.version);
 
@@ -168,10 +187,8 @@ function applyPatches(code) {
     code = applyPatches(code);
     fs.writeFileSync(APP, code);
 
-    // Libera a PORT para o servidor completo do app (painel + health)
     await closeEarly();
     console.log("[Yukina] Health bootstrap fechado; carregando index.app.js...");
-
     require(APP);
   } catch (error) {
     console.error("[Yukina] Falha ao iniciar:", error?.stack || error?.message || error);
