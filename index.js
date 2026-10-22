@@ -37,10 +37,5 @@ server.listen(PORT, "0.0.0.0", () => {
   console.log("[Yukina] Painel: https://yukina-6uo.pages.dev");
 });
 
-process.on("SIGTERM", () => {
-  console.log("[Yukina] SIGTERM — encerrando health server.");
-  server.close(() => process.exit(0));
-});
-process.on("SIGINT", () => {
-  server.close(() => process.exit(0));
-});
+// Não registra SIGTERM/SIGINT com process.exit — o Render gerencia o ciclo de vida.
+// Handlers que dão exit(0) no SIGTERM derrubavam o service no meio do deploy.
