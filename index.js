@@ -404,6 +404,25 @@ function loadYukinaSystems() {
 }
 
 
+// Diagnóstico temporário do Gateway: registra eventos de conexão sem expor token ou credenciais.
+client.on("debug", (message) => {
+  if (/gateway|identify|hello|heartbeat|session|connect|resume|websocket/i.test(message)) {
+    console.log("[Discord Gateway debug]", message);
+  }
+});
+
+client.on("shardError", (error, shardId) => {
+  console.error("[Discord Gateway] Erro no shard " + shardId + ":", error?.message || error);
+});
+
+client.on("shardDisconnect", (event, shardId) => {
+  console.error("[Discord Gateway] Desconectado. Shard:", shardId, "Código:", event?.code, "Motivo:", event?.reason || "não informado");
+});
+
+client.on("shardReconnecting", (shardId) => {
+  console.warn("[Discord Gateway] Reconectando shard:", shardId);
+});
+
 // Mantém apenas erros reais do cliente, sem despejar diagnósticos de heartbeat/Gateway.
 client.on("error", (error) => {
   console.error("[Discord] Erro do cliente:", error);
