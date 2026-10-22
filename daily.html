@@ -110,6 +110,7 @@
       <p class="rules-warning">⚠️ <strong>Importante:</strong> a verificação pode bloquear conexões consideradas suspeitas, e o uso de VPN pode causar esse problema — mas isso não significa que toda VPN será necessariamente bloqueada. Se tiver dificuldades, desligue a VPN/proxy, atualize a página e tente novamente. Tentativas de burlar as proteções podem resultar na restrição do acesso ao Daily.</p>
     </section>
   </main>
+  <script src="./api-config.js"></script>
   <script>
     window.yukinaTurnstileReady = async function () {
       const status = document.getElementById('captcha-status');
@@ -125,7 +126,7 @@
         return;
       }
       try {
-        const response = await fetch('https://yukina.onrender.com/api/daily/status', {
+        const response = await fetch('https://yukina-jspa.onrender.com/api/daily/status', {
           headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
         });
         const data = await response.json().catch(() => ({}));
@@ -158,7 +159,7 @@
           callback: async function (captchaToken) {
             status.textContent = 'Confirmando sua coleta diária...';
             try {
-              const response = await fetch('https://yukina.onrender.com/api/daily/claim', {
+              const response = await fetch('https://yukina-jspa.onrender.com/api/daily/claim', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
                 body: JSON.stringify({ token: captchaToken })
@@ -232,7 +233,7 @@
           return;
         }
         try {
-          const response = await fetch('https://yukina.onrender.com/api/vip/daily', {
+          const response = await fetch('https://yukina-jspa.onrender.com/api/vip/daily', {
             headers: { Authorization: 'Bearer ' + token }, cache: 'no-store'
           });
           const data = await response.json().catch(() => ({}));
