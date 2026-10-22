@@ -1,6 +1,7 @@
 /**
  * Bootstrap Yukina
- * Health imediato + index estável com patches de SIGTERM grace e storage soft-fail.
+ * Health imediato + index estável.
+ * SIGTERM é ignorado: o Render encerra de verdade com SIGKILL após o grace period.
  */
 const fs = require("node:fs");
 const path = require("node:path");
@@ -108,24 +109,18 @@ function applyPatches(code) {
     }
   }
 
-  // Grace SIGTERM: injeta no início de shutdown()
-  if (!out.includes("SIGTERM ignorado (grace")) {
-    const needle = "async function shutdown(signal) {\n  if (shuttingDown) return;";
-    const inject =
-      "async function shutdown(signal) {\n" +
-      "  if (shuttingDown) return;\n" +
-      "  const bootTs = Number(process.env.YUKINA_BOOT_TS) || 0;\n" +
-      "  const uptimeMs = bootTs ? Date.now() - bootTs : 0;\n" +
-      "  if (signal === \"SIGTERM\" && bootTs && uptimeMs < 180000) {\n" +
-      "    console.warn(\"[Yukina] SIGTERM ignorado (grace 3min). uptime=\" + Math.round(uptimeMs / 1000) + \"s pid=\" + process.pid);\n" +
-      "    return;\n" +
-      "  }";
-    if (out.includes(needle)) {
-      out = out.replace(needle, inject);
-      console.log("[Bootstrap] Patch SIGTERM aplicado.");
-    } else {
-      console.warn("[Bootstrap] Não achei shutdown() para aplicar grace SIGTERM.");
-    }
+  // Remove o handler que destrói o client no SIGTERM (causa dos comandos offline).
+  // O Render, quando precisa matar de verdade, envia SIGKILL depois do grace period.
+  const oldTerm = 'process.on("SIGTERM", () => shutdown("SIGTERM"));';
+  const newTerm =
+    'process.on("SIGTERM", () => {\n' +
+    '  console.warn("[Yukina] SIGTERM recebido e IGNORADO (mantém sessão Discord). pid=" + process.pid);\n' +
+    '});';
+  if (out.includes(oldTerm)) {
+    out = out.replace(oldTerm, newTerm);
+    console.log("[Bootstrap] Handler SIGTERM neutralizado.");
+  } else {
+    console.warn("[Bootstrap] Não achei process.on(SIGTERM) para neutralizar.");
   }
 
   return out;
@@ -135,7 +130,7 @@ function applyPatches(code) {
   try {
     process.env.YUKINA_BOOT_TS = String(STARTED_AT);
     await listenEarly();
-    console.log("[Yukina] Bootstrap PID=" + process.pid + " | bootTs=" + process.env.YUKINA_BOOT_TS + " | node " + process.version);
+    console.log("[Yukina] Bootstrap PID=" + process.pid + " | node " + process.version);
 
     const token = String(process.env.DISCORD_TOKEN || "").trim();
     if (!token) {
@@ -152,7 +147,7 @@ function applyPatches(code) {
         process.exit(1);
       }
       if (me.status === 429) {
-        console.warn("[Yukina] REST 429 — seguindo para o gateway.");
+        console.warn("[Yukina] REST 429 — seguindo para o gateway (sem esperar).");
       } else if (me.status === 200 && me.json && me.json.username) {
         console.log("[Yukina] Token OK. Bot: " + me.json.username + " (id " + me.json.id + ")");
       }
@@ -174,12 +169,8 @@ function applyPatches(code) {
 
     code = applyPatches(code);
     fs.writeFileSync(APP, code);
-    console.log(
-      "[Yukina] index.app.js escrito (" +
-        code.length +
-        " bytes). grace SIGTERM? " +
-        (code.includes("SIGTERM ignorado (grace") ? "sim" : "NÃO")
-    );
+    const sigOk = code.includes("SIGTERM recebido e IGNORADO");
+    console.log("[Yukina] index.app.js ok | SIGTERM ignorado? " + (sigOk ? "sim" : "NÃO"));
 
     await closeEarly();
     console.log("[Yukina] Carregando index.app.js...");
