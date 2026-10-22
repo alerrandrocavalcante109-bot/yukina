@@ -21,12 +21,12 @@ const xpMultiplierStorage = require("./system-storage").forSystem("xp-multiplier
 const { parseCountingValue } = require("./counting-number-parser");
 const { getVipCollection } = require("./vip-store");
 
-const TOKEN = (process.env.DISCORD_TOKEN || "").trim();
+const TOKEN = (process.env.TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
 const AI_MODEL = (process.env.AI_MODEL || "meta-llama/llama-3.3-70b-instruct:free").trim();
 
 if (!TOKEN) {
-  console.error("❌ [Yukina] Token do Discord ausente. Configure DISCORD_TOKEN nas variáveis de ambiente do Render.");
+  console.error("❌ [Yukina] Token do Discord ausente. Configure TOKEN nas variáveis de ambiente do Render.");
   process.exit(1);
 }
 
@@ -1473,7 +1473,7 @@ let loginWatchdog;
 async function initializeDiscord() {
   console.log("[Inicialização] Etapa 1/4: validando configuração...");
   if (!TOKEN) {
-    throw new Error("DISCORD_TOKEN não está configurado.");
+    throw new Error("TOKEN não está configurado.");
   }
 
   console.log("[Inicialização] Verificando armazenamento de membros...");
