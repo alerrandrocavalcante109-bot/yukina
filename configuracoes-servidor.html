@@ -25,6 +25,18 @@
     .server-picker{width:100%;margin-top:18px;padding:12px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;display:flex;justify-content:space-between;cursor:pointer}
     .system-picker{width: min(100%, 250px);margin-top:10px;padding:13px 12px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;text-align:left;cursor:pointer}
     .system-picker:hover,.server-picker:hover{background:#555560}
+    .xp-level-list{display:grid;gap:12px;margin-top:22px;width:min(100%,760px)}
+    .xp-level-row{display:grid;grid-template-columns:minmax(90px,.6fr) minmax(0,1.4fr);align-items:center;gap:12px;padding:14px;border:1px solid #ffffff45;border-radius:13px;background:#21153b88;text-align:left}
+    .xp-level-number{font-weight:750;color:#d9c7ff}
+    .xp-role-select{width:100%;min-width:0;padding:11px;border:1px solid #c4b5fd;border-radius:9px;background:#211b32;color:#fff;font:inherit}
+    .xp-role-select:focus{outline:2px solid #c4b5fd;outline-offset:2px}
+    .xp-interface-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:18px}
+    #addXpLevel{background:#0f9f8f;border-color:#41d9c6}
+    #addXpLevel:hover{background:#0b8276}
+    #saveXpRoles{background:#16a34a;border-color:#4ade80}
+    #saveXpRoles:hover{background:#15803d}
+    .xp-note{margin-top:14px!important;font-size:.9rem!important;color:#eadbff!important}
+    @media(max-width:480px){.xp-level-row{grid-template-columns:1fr;gap:8px}}
     .system-screen{display:none;width:min(100%,760px);padding:0;border:0;border-radius:0;background:transparent;backdrop-filter:none;text-align:left}
     .system-screen.open{display:block}
     .system-screen h1{font-size:clamp(1.8rem,5vw,2.8rem)}
@@ -138,6 +150,7 @@
     <div id="selectedServer" hidden style="margin-top:18px;align-items:center;gap:12px"><img id="selectedServerIcon" class="server-avatar" alt=""><span id="selectedServerName"></span></div>
     <button id="chooseServer" class="server-picker" type="button"><span>Escolher outro servidor</span><span>⌄</span></button>
     <button id="customCommands" class="system-picker" type="button">Personalização de comandos <span aria-hidden="true">›</span></button>
+    <button id="xpRolesMenu" class="system-picker" type="button">❄️ Cargos por XP <span aria-hidden="true">›</span></button>
   </aside>
   <div id="serverModal" class="server-modal" aria-hidden="true"><section class="server-modal-card" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle"><div class="server-modal-heading"><h3 id="serverModalTitle">Escolher outro servidor</h3><button id="serverModalClose" type="button" aria-label="Fechar">×</button></div><div id="serverList" class="server-list"><p class="server-empty">Carregando servidores...</p></div></section></div>
   <div id="userProfile" class="user-profile" aria-label="Usuário conectado" hidden>
@@ -148,6 +161,29 @@
     <h1>Seja bem-vindo às Configurações da Yukina!</h1>
     <p>Esta página será o espaço para gerenciar as configurações dos servidores do Discord. A ideia é reunir as opções de cada servidor em um só lugar, para que você possa selecionar o servidor desejado e ajustar suas configurações quando os recursos estiverem disponíveis.</p>
   </main>
+  <section id="xpRolesScreen" class="system-screen" aria-labelledby="xpRolesTitle">
+    <h1 id="xpRolesTitle">Cargos por XP</h1>
+    <p>Defina quais cargos os membros receberão ao alcançar cada nível de experiência no servidor.</p>
+    <div id="xpLevelList" class="xp-level-list" aria-live="polite">
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole1">Nível 1</label><select id="xpRole1" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole5">Nível 5</label><select id="xpRole5" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole10">Nível 10</label><select id="xpRole10" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole15">Nível 15</label><select id="xpRole15" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole20">Nível 20</label><select id="xpRole20" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole25">Nível 25</label><select id="xpRole25" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole30">Nível 30</label><select id="xpRole30" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole40">Nível 40</label><select id="xpRole40" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole50">Nível 50</label><select id="xpRole50" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole60">Nível 60</label><select id="xpRole60" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole75">Nível 75</label><select id="xpRole75" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+      <div class="xp-level-row"><label class="xp-level-number" for="xpRole100">Nível 100</label><select id="xpRole100" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+    </div>
+    <div class="xp-interface-actions">
+      <button id="addXpLevel" class="create-command-button" type="button">＋ Adicionar nível</button>
+      <button id="saveXpRoles" class="create-command-button" type="button">Salvar configurações</button>
+    </div>
+    <p class="xp-note">A interface está criada. O carregamento dos cargos do servidor e o salvamento serão conectados na próxima etapa.</p>
+  </section>
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
     <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
@@ -246,12 +282,48 @@
       const welcomeScreen = document.getElementById('welcomeScreen');
       const customCommandsScreen = document.getElementById('customCommandsScreen');
       const commandTypeScreen = document.getElementById('commandTypeScreen');
+      const xpRolesScreen = document.getElementById('xpRolesScreen');
       document.getElementById('customCommands').addEventListener('click', () => {
         setMenu(false);
         welcomeScreen.style.display = 'none';
         commandTypeScreen.classList.remove('open');
+        xpRolesScreen.classList.remove('open');
         customCommandsScreen.classList.add('open');
         loadCustomCommands();
+      });
+      document.getElementById('xpRolesMenu').addEventListener('click', () => {
+        setMenu(false);
+        welcomeScreen.style.display = 'none';
+        customCommandsScreen.classList.remove('open');
+        commandTypeScreen.classList.remove('open');
+        xpRolesScreen.classList.add('open');
+      });
+      const xpLevelList = document.getElementById('xpLevelList');
+      document.getElementById('addXpLevel').addEventListener('click', () => {
+        const current = [...xpLevelList.querySelectorAll('.xp-level-row')].length;
+        const level = window.prompt('Qual nível deve receber um cargo?');
+        if (level === null) return;
+        const value = Number(level);
+        if (!Number.isInteger(value) || value < 1 || value > 100 || xpLevelList.querySelector('[data-level="' + value + '"]')) {
+          alert('Informe um nível inteiro de 1 a 100 que ainda não esteja na lista.');
+          return;
+        }
+        const row = document.createElement('div');
+        row.className = 'xp-level-row';
+        row.dataset.level = String(value);
+        const label = document.createElement('label');
+        label.className = 'xp-level-number';
+        label.htmlFor = 'xpRoleCustom' + value;
+        label.textContent = 'Nível ' + value;
+        const select = document.createElement('select');
+        select.className = 'xp-role-select';
+        select.id = 'xpRoleCustom' + value;
+        select.innerHTML = '<option value="">Selecione um cargo</option>';
+        row.append(label, select);
+        xpLevelList.append(row);
+      });
+      document.getElementById('saveXpRoles').addEventListener('click', () => {
+        alert('A interface está pronta. A conexão com os cargos do servidor e o salvamento será implementada na próxima etapa.');
       });
       document.getElementById('createCommandButton').addEventListener('click', () => {
         resetCommandEditor();
