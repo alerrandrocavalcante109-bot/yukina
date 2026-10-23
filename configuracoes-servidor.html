@@ -35,6 +35,11 @@
     .command-type-button{min-width:140px;padding:14px 18px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
     .command-type-button:hover{background:#555560}
     .command-type-button:focus-visible{outline:3px solid #fff;outline-offset:3px}
+    .command-preview-card{margin-top:24px;padding:18px;border:1px solid #ffffff55;border-radius:14px;background:#21153b88;box-shadow:0 8px 24px #180b3b22}
+    .command-preview-title{margin:0 0 12px;font-size:1rem;font-weight:700}
+    .command-preview-embed{padding:14px;border-left:4px solid #9b7bff;border-radius:8px;background:#171323;color:#fff;text-align:left;overflow-wrap:anywhere}
+    .command-preview-text{margin:0;padding:14px;border-radius:8px;background:#171323;color:#fff;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
+    .command-preview-empty{margin:0;color:#e7dcff;font-size:.95rem}
     .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
     .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
     .server-modal.open{opacity:1;visibility:visible}
@@ -84,6 +89,10 @@
     <div class="command-type-options">
       <button id="commandTypeEmbed" class="command-type-button" type="button">Embed</button>
       <button id="commandTypeText" class="command-type-button" type="button">Texto simples</button>
+    </div>
+    <div class="command-preview-card" aria-live="polite">
+      <h2 class="command-preview-title">Pré-visualização em tempo real</h2>
+      <div id="commandPreview"><p class="command-preview-empty">Escolha Embed ou Texto simples para visualizar o formato do comando aqui.</p></div>
     </div>
   </section>
   <script>
@@ -149,11 +158,14 @@
         customCommandsScreen.classList.remove('open');
         commandTypeScreen.classList.add('open');
       });
+      const commandPreview = document.getElementById('commandPreview');
       document.getElementById('commandTypeEmbed').addEventListener('click', () => {
         commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Embed.';
+        commandPreview.innerHTML = '<div class="command-preview-embed"><strong>Nome do comando</strong><p style="margin:8px 0 0">A mensagem do comando aparecerá aqui.</p></div>';
       });
       document.getElementById('commandTypeText').addEventListener('click', () => {
         commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Texto simples.';
+        commandPreview.innerHTML = '<p class="command-preview-text">A mensagem do comando aparecerá aqui.</p>';
       });
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
