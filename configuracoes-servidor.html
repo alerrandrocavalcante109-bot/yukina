@@ -50,7 +50,7 @@
     .message-editor-heading{margin:0 0 4px;font-size:1rem;font-weight:700}
     .message-editor-hint{margin:0 0 6px!important;font-size:.9rem!important;color:#e7dcff!important;line-height:1.5!important}
     .message-editor label{font-weight:650}
-    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
+    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}\n    .embed-color-control{margin:0 0 14px;text-align:left}\n    .embed-color-row{display:flex;align-items:center;gap:10px;margin-top:7px}\n    .embed-color-row input[type=color]{width:54px;height:44px;padding:4px;border:1px solid #ffffff55;border-radius:9px;background:#211b32;cursor:pointer}\n    .embed-color-row input[type=text]{flex:1;min-width:0;text-transform:uppercase}
     .message-editor textarea{min-height:110px;resize:vertical}
     .message-editor input:focus,.message-editor textarea:focus{outline:2px solid #b9a0ff;outline-offset:2px}
     .mention-channel,.mention-role{display:inline;border-radius:3px;padding:0 2px;font-weight:500;white-space:pre-wrap;cursor:default}
@@ -137,6 +137,13 @@
       <p class="message-editor-hint">Use #nome-do-canal para destacar um canal e @nome-do-cargo para destacar um cargo.</p>
       <label for="commandMessageTitle">Título do embed (opcional)</label>
       <input id="commandMessageTitle" type="text" maxlength="256" placeholder="Digite o título">
+      <div id="embedColorControl" class="embed-color-control">
+        <label for="commandEmbedColor">Cor do embed</label>
+        <div class="embed-color-row">
+          <input id="commandEmbedColor" type="color" value="#9b7bff" aria-label="Escolher cor do embed">
+          <input id="commandEmbedColorHex" type="text" value="#9B7BFF" maxlength="7" inputmode="text" aria-label="Código hexadecimal da cor" placeholder="#9B7BFF">
+        </div>
+      </div>
       <label for="commandMessageBody">Mensagem</label>
       <div class="message-input-wrap"><textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem. Use **negrito**, _itálico_, #canal ou @cargo."></textarea><div id="mentionMenu" class="mention-menu" role="listbox" hidden></div></div>
     </div>
@@ -360,6 +367,28 @@
           else { event.preventDefault(); options[event.key === 'ArrowDown' ? 0 : options.length-1].focus(); }
         }
       });
+      const commandEmbedColor = document.getElementById('commandEmbedColor');
+      const commandEmbedColorHex = document.getElementById('commandEmbedColorHex');
+      function normalizeHexColor(value) {
+        const hex = String(value || '').trim();
+        return /^#[0-9a-fA-F]{6}$/.test(hex) ? hex.toUpperCase() : null;
+      }
+      commandEmbedColor.addEventListener('input', () => {
+        commandEmbedColorHex.value = commandEmbedColor.value.toUpperCase();
+        renderCommandPreview();
+      });
+      commandEmbedColorHex.addEventListener('input', () => {
+        const color = normalizeHexColor(commandEmbedColorHex.value);
+        if (color) {
+          commandEmbedColor.value = color;
+          renderCommandPreview();
+        }
+      });
+      commandEmbedColorHex.addEventListener('change', () => {
+        const color = normalizeHexColor(commandEmbedColorHex.value);
+        if (color) commandEmbedColorHex.value = color;
+        else commandEmbedColorHex.value = commandEmbedColor.value.toUpperCase();
+      });
       function renderCommandPreview() {
         const title = commandMessageTitle.value.trim() || 'Prévia de embed';
         const body = commandMessageBody.value || 'A mensagem do comando aparecerá aqui.';
@@ -369,6 +398,7 @@
           commandPreview.innerHTML = '';
           const embed = document.createElement('div');
           embed.className = 'command-preview-embed';
+          embed.style.borderLeftColor = normalizeHexColor(commandEmbedColor.value) || '#9B7BFF';
           const heading = document.createElement('h3');
           heading.className = 'command-preview-embed-title';
           heading.textContent = title;
