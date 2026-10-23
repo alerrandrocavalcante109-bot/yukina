@@ -21,7 +21,7 @@
     .side-menu.open{transform:translateX(0)}
     .side-menu h2{margin:0;color:#fff;font-size:1.15rem;font-weight:700}
     .server-avatar{width:87px;height:87px;object-fit:cover;border-radius:15px;background:#51445f}
-    .server-picker{width:100%;margin-top:18px;padding:12px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;display:flex;justify-content:space-between;cursor:pointer}
+    .server-picker{width:100%;margin-top:18px;padding:12px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;display:flex;justify-content:space-between;cursor:pointer}\n    .system-picker{width:100%;margin-top:10px;padding:13px 12px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;text-align:left;cursor:pointer}\n    .system-picker:hover,.server-picker:hover{background:#555560}\n    .system-screen{display:none;width:min(100%,760px);padding:28px;border:1px solid #ffffff45;border-radius:20px;background:#21153b88;backdrop-filter:blur(12px);text-align:left}\n    .system-screen.open{display:block}\n    .system-screen h1{font-size:clamp(1.8rem,5vw,2.8rem)}\n    .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
     .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
     .server-modal.open{opacity:1;visibility:visible}
     .server-modal-card{width:min(100%,480px);max-height:75vh;overflow:auto;padding:20px;border-radius:18px;background:#393744;color:white;text-align:left}
@@ -47,7 +47,7 @@
   <aside id="sideMenu" class="side-menu" aria-label="Menu principal" aria-hidden="true">
     <h2>Menu</h2>
     <div id="selectedServer" hidden style="margin-top:18px;align-items:center;gap:12px"><img id="selectedServerIcon" class="server-avatar" alt=""><span id="selectedServerName"></span></div>
-    <button id="chooseServer" class="server-picker" type="button"><span>Escolher outro servidor</span><span>⌄</span></button>
+    <button id="chooseServer" class="server-picker" type="button"><span>Escolher outro servidor</span><span>⌄</span></button>\n    <button id="customCommands" class="system-picker" type="button">Personalização de comandos <span aria-hidden="true">›</span></button>
   </aside>
   <div id="serverModal" class="server-modal" aria-hidden="true"><section class="server-modal-card" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle"><div class="server-modal-heading"><h3 id="serverModalTitle">Escolher outro servidor</h3><button id="serverModalClose" type="button" aria-label="Fechar">×</button></div><div id="serverList" class="server-list"><p class="server-empty">Carregando servidores...</p></div></section></div>
   <div id="userProfile" class="user-profile" aria-label="Usuário conectado" hidden>
