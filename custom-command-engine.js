@@ -73,15 +73,11 @@ module.exports = function startCustomCommandEngine(client, getSettingsCollection
 
       if (type === "embed") {
         const items = Array.isArray(command.embeds) ? command.embeds.slice(0, 10) : [];
-        const main = {
-          title: command.title || "",
-          message: command.message || "",
-          color: command.color || command.embedColor || "#A7D8F0",
-          link: command.link || command.embedLink || "",
-          image: command.image || command.embedImage || "",
-        };
-        const sources = [main, ...items];
-        const embeds = sources
+        const embeds = items
+          .map((item) => ({
+            ...item,
+            color: item?.color || "#A7D8F0",
+          }))
           .map(renderEmbed)
           .filter((embed) => embed.data.title || embed.data.description || embed.data.image || embed.data.url)
           .slice(0, 10);
