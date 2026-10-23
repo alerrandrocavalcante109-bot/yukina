@@ -37,15 +37,6 @@
     .server-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .server-status{padding:8px 5px;color:var(--muted);font-size:.82rem;line-height:1.5}
     .server-overview{display:block;width:100%;margin-top:10px;padding:12px;border:1px solid #8edcff30;border-radius:12px;background:#0b0712;color:inherit;text-align:left;cursor:pointer}.server-overview:hover{border-color:#a7d8f0aa;background:#a7d8f00b}
-    .overview-title{margin:0 0 10px;font-size:.95rem;color:var(--ice)}
-    .overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-    .overview-item{min-width:0;padding:9px;border-radius:9px;background:#a7d8f00b}
-    .overview-label{display:block;margin-bottom:4px;color:var(--muted);font-size:.72rem}
-    .overview-value{display:block;color:#f8f4ff;font-size:.82rem;font-weight:650;overflow-wrap:anywhere}
-    .overview-wide{grid-column:1/-1}
-    .overview-features{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
-    .overview-chip{padding:4px 7px;border:1px solid #8edcff30;border-radius:999px;color:var(--muted);font-size:.7rem}
-    @media(max-width:360px){.overview-grid{grid-template-columns:1fr}}
     main{width:min(100%,780px);text-align:center}
     .mark{width:clamp(84px,18vw,132px);height:clamp(84px,18vw,132px);object-fit:cover;border-radius:50%;border:2px solid #a7d8f080;box-shadow:0 0 36px #8edcff24}
     .eyebrow{margin:25px 0 12px;color:var(--ice);font-size:.78rem;letter-spacing:.2em;text-transform:uppercase}
@@ -70,17 +61,7 @@
       <button id="serverPicker" class="server-picker" type="button" aria-expanded="false" aria-controls="serverOptions">
         <span class="picker-label">Mudar de servidor</span><span class="picker-arrow" aria-hidden="true">⌄</span>
       </button>
-      <button id="overviewLink" class="server-overview" type="button" aria-label="Abrir tela de visão geral do servidor">
-        <h2 id="overviewTitle" class="overview-title">Visão geral</h2>
-        <div id="overviewContent" class="overview-grid">
-          <div class="overview-item overview-wide"><span class="overview-label">Servidor</span><span id="overviewName" class="overview-value">Selecione um servidor</span></div>
-          <div class="overview-item"><span class="overview-label">ID do servidor</span><span id="overviewId" class="overview-value">—</span></div>
-          <div class="overview-item"><span class="overview-label">Sua permissão</span><span id="overviewPermission" class="overview-value">—</span></div>
-          <div class="overview-item"><span class="overview-label">Proprietário</span><span id="overviewOwner" class="overview-value">—</span></div>
-          <div class="overview-item"><span class="overview-label">Data de criação</span><span id="overviewCreated" class="overview-value">—</span></div>
-          <div class="overview-item overview-wide"><span class="overview-label">Recursos do servidor</span><div id="overviewFeatures" class="overview-features"><span class="overview-chip">Aguardando dados</span></div></div>
-        </div>
-      </button>
+      <button id="overviewLink" class="server-overview" type="button" aria-label="Abrir visão geral do servidor">↗ Abrir visão geral do servidor</button>
       <div id="serverOptions" class="server-options" hidden>
         <div id="serverStatus" class="server-status" role="status" aria-live="polite">Carregando servidores…</div>
       </div>
@@ -103,12 +84,6 @@
       const currentName = document.getElementById('currentServerName');
       const currentAvatar = document.getElementById('currentServerAvatar');
       const overviewLink = document.getElementById('overviewLink');
-      const overviewName = document.getElementById('overviewName');
-      const overviewId = document.getElementById('overviewId');
-      const overviewPermission = document.getElementById('overviewPermission');
-      const overviewOwner = document.getElementById('overviewOwner');
-      const overviewCreated = document.getElementById('overviewCreated');
-      const overviewFeatures = document.getElementById('overviewFeatures');
       const fallbackAvatar = 'https://yukina-6uo.pages.dev/assets/yukina-bg.png';
       const ADMIN = 0x8n;
       const MANAGE_GUILD = 0x20n;
@@ -161,42 +136,10 @@
       function iconUrl(guild) {
         return guild.icon ? 'https://cdn.discordapp.com/icons/' + encodeURIComponent(guild.id) + '/' + encodeURIComponent(guild.icon) + '.png?size=128' : fallbackAvatar;
       }
-      function renderOverview(guild) {
-        overviewName.textContent = guild.name || 'Não informado';
-        overviewId.textContent = guild.id || '—';
-        let permissionText = 'Membro';
-        try {
-          const permissions = BigInt(guild.permissions || '0');
-          if ((permissions & ADMIN) !== 0n) permissionText = 'Administrador';
-          else if ((permissions & MANAGE_GUILD) !== 0n) permissionText = 'Gerenciar servidor';
-        } catch (_) {}
-        overviewPermission.textContent = permissionText;
-        overviewOwner.textContent = guild.owner === true ? 'Sim' : guild.owner === false ? 'Não' : 'Não informado pela API';
-        try {
-          const timestamp = (BigInt(guild.id) >> 22n) + 1420070400000n;
-          overviewCreated.textContent = new Date(Number(timestamp)).toLocaleDateString('pt-BR');
-        } catch (_) { overviewCreated.textContent = 'Indisponível'; }
-        overviewFeatures.replaceChildren();
-        const features = Array.isArray(guild.features) ? guild.features : [];
-        if (!features.length) {
-          const chip = document.createElement('span');
-          chip.className = 'overview-chip';
-          chip.textContent = 'Nenhum recurso informado pela API';
-          overviewFeatures.appendChild(chip);
-        } else {
-          features.forEach(feature => {
-            const chip = document.createElement('span');
-            chip.className = 'overview-chip';
-            chip.textContent = String(feature).toLowerCase().replaceAll('_',' ').replace(/\\b\\w/g, letter => letter.toUpperCase());
-            overviewFeatures.appendChild(chip);
-          });
-        }
-      }
       function setCurrent(guild) {
         currentName.textContent = guild.name;
         currentAvatar.src = iconUrl(guild);
         currentAvatar.alt = 'Ícone de ' + guild.name;
-        renderOverview(guild);
         const url = new URL(window.location.href);
         url.searchParams.set('guild', guild.id);
         url.searchParams.set('name', guild.name);
@@ -292,12 +235,6 @@
         const params = new URLSearchParams(window.location.search);
         ['guild','name'].forEach(key => { if (params.has(key)) url.searchParams.set(key, params.get(key)); });
         const guild = guilds.find(item => item.id === params.get('guild'));
-        if (guild) {
-          url.searchParams.set('permission', document.getElementById('overviewPermission').textContent);
-          url.searchParams.set('owner', document.getElementById('overviewOwner').textContent);
-          url.searchParams.set('created', document.getElementById('overviewCreated').textContent);
-          url.searchParams.set('features', (guild.features || []).join(','));
-        }
         menu.hidden = true;
         toggle.setAttribute('aria-expanded', 'false');
         window.location.href = url.pathname + url.search;
