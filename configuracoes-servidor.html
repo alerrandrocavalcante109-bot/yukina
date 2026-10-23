@@ -56,10 +56,12 @@
     .mention-channel,.mention-role{display:inline-block;padding:0 4px;border-radius:4px;font-weight:650;white-space:pre-wrap}
     .mention-channel{background:#5865f233;color:#c9cdff}
     .mention-role{background:#e8a5ff22;color:#f0baff}
-    .message-editor label{font-weight:650}
-    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
-    .message-editor textarea{min-height:110px;resize:vertical}
-    .message-editor input:focus,.message-editor textarea:focus{outline:2px solid #b9a0ff;outline-offset:2px}
+    .message-input-wrap{position:relative}
+    .mention-menu{position:absolute;z-index:20;left:0;right:0;bottom:calc(100% + 6px);max-height:220px;overflow:auto;padding:6px;border:1px solid #ffffff35;border-radius:10px;background:#292532;box-shadow:0 12px 28px #0005;text-align:left}
+    .mention-menu[hidden]{display:none}
+    .mention-option{display:flex;align-items:center;gap:9px;width:100%;padding:9px 10px;border:0;border-radius:7px;background:transparent;color:#fff;text-align:left;font:inherit;cursor:pointer}
+    .mention-option:hover,.mention-option:focus{background:#ffffff18;outline:none}
+    .mention-option-icon{width:25px;height:25px;display:grid;place-items:center;border-radius:7px;background:#5865f233;color:#c9cdff;font-weight:700}
     .preview-update{animation:preview-change .24s ease}
     @keyframes preview-change{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
     @media(prefers-reduced-motion:reduce){.preview-update{animation:none}}
@@ -123,7 +125,7 @@
       <label for="commandMessageTitle">Título do embed (opcional)</label>
       <input id="commandMessageTitle" type="text" maxlength="256" placeholder="Digite o título">
       <label for="commandMessageBody">Mensagem</label>
-      <textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem do comando. Ex.: Olá! Confira #regras e fale com @Equipe."></textarea>
+      <div class="message-input-wrap"><textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem. Use **negrito**, _itálico_, #canal ou @cargo."></textarea><div id="mentionMenu" class="mention-menu" role="listbox" hidden></div></div>
     </div>
     <div class="command-preview-card" aria-live="polite">
       <h2 class="command-preview-title">Pré-visualização em tempo real</h2>
@@ -199,18 +201,109 @@
       const messageEditor = document.getElementById('messageEditor');
       let commandMessageType = '';
       function formatMessage(container, text) {
-        const pattern = /(#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
+        const pattern = /(\\*\\*.+?\\*\\*|__(.+?)__|\\*(?!\\s).+?\\*(?!\\*)|_(?!\\s).+?_(?!_)|~~.+?~~|#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
         let lastIndex = 0;
         for (const match of text.matchAll(pattern)) {
           if (match.index > lastIndex) container.append(document.createTextNode(text.slice(lastIndex, match.index)));
-          const mention = document.createElement('span');
-          mention.className = match[0].startsWith('#') ? 'mention-channel' : 'mention-role';
-          mention.textContent = match[0];
-          container.append(mention);
-          lastIndex = match.index + match[0].length;
+          const token = match[0];
+          if (token.startsWith('#') || token.startsWith('@')) {
+            const mention = document.createElement('span');
+            mention.className = token.startsWith('#') ? 'mention-channel' : 'mention-role';
+            mention.textContent = token;
+            container.append(mention);
+          } else {
+            const strong = token.startsWith('**') || token.startsWith('__');
+            const italic = token.startsWith('*') || token.startsWith('_');
+            const del = token.startsWith('~~');
+            const tag = del ? 'del' : strong ? 'strong' : italic ? 'em' : 'span';
+            const el = document.createElement(tag);
+            el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1);
+            container.append(el);
+          }
+          lastIndex = match.index + token.length;
         }
         if (lastIndex < text.length) container.append(document.createTextNode(text.slice(lastIndex)));
       }
+      function closeMentionMenu() {
+        mentionMenu.hidden = true;
+        activeMention = null;
+        mentionItems = [];
+      }
+      function renderMentionMenu(items, query, kind) {
+        mentionItems = items.filter(item => item.name.toLowerCase().includes(query.toLowerCase())).slice(0, 30);
+        mentionMenu.replaceChildren();
+        if (!mentionItems.length) {
+          const empty = document.createElement('div');
+          empty.className = 'server-empty';
+          empty.textContent = kind === 'channel' ? 'Nenhum canal encontrado.' : 'Nenhum cargo encontrado.';
+          mentionMenu.append(empty);
+        } else {
+          mentionItems.forEach(item => {
+            const option = document.createElement('button');
+            option.type = 'button';
+            option.className = 'mention-option';
+            option.setAttribute('role','option');
+            const icon = document.createElement('span');
+            icon.className = 'mention-option-icon';
+            icon.textContent = kind === 'channel' ? '#' : '@';
+            const name = document.createElement('span');
+            name.textContent = item.name;
+            option.append(icon,name);
+            option.addEventListener('mousedown', event => {
+              event.preventDefault();
+              const input = commandMessageBody;
+              const before = input.value.slice(0, activeMention.start);
+              const after = input.value.slice(input.selectionStart);
+              const insert = (kind === 'channel' ? '#' : '@') + item.name.replace(/\\s+/g,'-') + ' ';
+              input.value = before + insert + after;
+              const cursor = before.length + insert.length;
+              input.focus();
+              input.setSelectionRange(cursor,cursor);
+              closeMentionMenu();
+              renderCommandPreview();
+            });
+            mentionMenu.append(option);
+          });
+        }
+        mentionMenu.hidden = false;
+      }
+      async function loadMentionItems(kind) {
+        const selected = JSON.parse(stored('yukina_selected_guild') || 'null');
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        if (!selected?.id || !apiBase) return [];
+        const token = getToken();
+        const headers = token ? {Authorization:'Bearer ' + token} : {};
+        const endpoint = apiBase + '/api/guilds/' + encodeURIComponent(selected.id) + '/' + (kind === 'channel' ? 'channels' : 'roles');
+        try {
+          const response = await fetch(endpoint,{headers});
+          if (!response.ok) return [];
+          const data = await response.json();
+          return (Array.isArray(data) ? data : data.items || data.channels || data.roles || []).map(item => ({id:item.id,name:item.name || item.label || ''})).filter(item => item.name);
+        } catch (_) { return []; }
+      }
+      async function updateMentionMenu() {
+        const input = commandMessageBody;
+        const cursor = input.selectionStart;
+        const before = input.value.slice(0,cursor);
+        const match = before.match(/(^|\\s)([#@])([^\\s#@]*)$/);
+        if (!match) { closeMentionMenu(); return; }
+        const kind = match[2] === '#' ? 'channel' : 'role';
+        const start = cursor - match[0].length + match[1].length;
+        activeMention = {kind,start,query:match[3]};
+        const items = await loadMentionItems(kind);
+        if (!activeMention || activeMention.kind !== kind || commandMessageBody.selectionStart !== cursor) return;
+        renderMentionMenu(items,match[3],kind);
+      }
+      commandMessageBody.addEventListener('input', updateMentionMenu);
+      commandMessageBody.addEventListener('keyup', event => {
+        if (event.key === 'Escape') closeMentionMenu();
+        else if (['ArrowDown','ArrowUp','Enter'].includes(event.key) && !mentionMenu.hidden) {
+          const options = [...mentionMenu.querySelectorAll('button')];
+          if (!options.length) return;
+          if (event.key === 'Enter') { event.preventDefault(); options[0].dispatchEvent(new MouseEvent('mousedown',{bubbles:true})); }
+          else { event.preventDefault(); options[event.key === 'ArrowDown' ? 0 : options.length-1].focus(); }
+        }
+      });
       function renderCommandPreview() {
         const title = commandMessageTitle.value.trim() || 'Prévia de embed';
         const body = commandMessageBody.value || 'A mensagem do comando aparecerá aqui.';
