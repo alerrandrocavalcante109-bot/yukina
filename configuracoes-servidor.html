@@ -29,11 +29,35 @@
     .system-screen.open{display:block}
     .system-screen h1{font-size:clamp(1.8rem,5vw,2.8rem)}
     .system-screen p{margin:10px 0 0;max-width:650px;color:#f5edff;line-height:1.8}
-    .create-command-button{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:12px 18px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
-    .create-command-button:hover{background:#555560}
+    button{transition:background-color .18s ease,border-color .18s ease,transform .18s ease,box-shadow .18s ease}
+    button:not(:disabled){cursor:pointer}
+    button:not(:disabled):active{transform:translateY(1px)}
+    .create-command-button{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:12px 18px;border:1px solid #ffffff45;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer;box-shadow:0 4px 12px #160a2c22}
+    .create-command-button:hover{filter:brightness(1.09);box-shadow:0 6px 16px #160a2c33}
+    #createCommandButton{background:#5865f2;border-color:#7982ff}
+    #createCommandButton:hover{background:#4752c4}
+    #addAnotherEmbed{background:#0f9f8f;border-color:#41d9c6}
+    #addAnotherEmbed:hover{background:#0b8276}
+    #saveCommandButton{background:#16a34a;border-color:#4ade80;color:#fff;min-width:140px;box-shadow:0 6px 18px #16a34a40}
+    #saveCommandButton:hover{background:#15803d;box-shadow:0 8px 22px #16a34a55}
+    #saveCommandButton:disabled{opacity:.72;cursor:wait}
     .command-type-options{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
-    .command-type-button{min-width:140px;padding:14px 18px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
-    .command-type-button:hover{background:#555560}
+    .command-type-button{min-width:140px;padding:14px 18px;border:1px solid #ffffff45;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
+    #commandTypeEmbed{background:#8b5cf6;border-color:#c4b5fd}
+    #commandTypeEmbed:hover{background:#7c3aed}
+    #commandTypeText{background:#2563eb;border-color:#93c5fd}
+    #commandTypeText:hover{background:#1d4ed8}
+    .command-type-button[aria-pressed="true"]{box-shadow:0 0 0 2px #fff8,0 6px 16px #160a2c33;filter:brightness(1.08)}
+    .command-type-button:hover{filter:brightness(1.08)}
+    .server-picker{background:#475569;border-color:#94a3b8}
+    .server-picker:hover{background:#334155}
+    .system-picker{background:#7c3aed;border-color:#c4b5fd}
+    .system-picker:hover{background:#6d28d9}
+    .system-back{background:#64748b;border-color:#cbd5e1}
+    .system-back:hover{background:#475569}
+    #serverModalClose{width:36px;height:36px;border:1px solid #fda4af;border-radius:10px;background:#be123c;color:#fff;font-size:22px;cursor:pointer}
+    #serverModalClose:hover{background:#9f1239}
+    .server-option:hover{background:#ffffff1c;border-color:#a78bfa}
     .command-type-button:focus-visible{outline:3px solid #fff;outline-offset:3px}
     .command-preview-card{margin-top:24px;padding:18px;border:1px solid #ffffff55;border-radius:14px;background:#21153b88;box-shadow:0 8px 24px #180b3b22}
     .command-preview-title{margin:0 0 12px;font-size:1rem;font-weight:700}
