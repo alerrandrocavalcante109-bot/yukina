@@ -42,8 +42,6 @@
     .command-preview-embed-description{margin:8px 0 0;color:#dbdee1;line-height:1.5}
     .command-preview-text{margin:0;padding:14px 0;color:#fff;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
     .command-preview-empty{margin:0;color:#e7dcff;font-size:.95rem}
-    .edit-message-button{margin-top:12px;padding:12px 16px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
-    .edit-message-button:hover{background:#555560}
     .command-name-editor{display:grid;gap:8px;margin-top:20px;max-width:520px}
     .command-name-editor label{font-weight:650}
     .command-name-editor input{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
@@ -111,7 +109,6 @@
       <button id="commandTypeEmbed" class="command-type-button" type="button" aria-pressed="false">Embed</button>
       <button id="commandTypeText" class="command-type-button" type="button" aria-pressed="false">Texto simples</button>
     </div>
-    <button id="editMessageButton" class="edit-message-button" type="button" aria-expanded="false">Editar mensagem</button>
     <div id="messageEditor" class="message-editor">
       <label for="commandMessageTitle">Título do embed (opcional)</label>
       <input id="commandMessageTitle" type="text" maxlength="256" placeholder="Digite o título">
@@ -190,7 +187,6 @@
       const commandMessageTitle = document.getElementById('commandMessageTitle');
       const commandMessageBody = document.getElementById('commandMessageBody');
       const messageEditor = document.getElementById('messageEditor');
-      const editMessageButton = document.getElementById('editMessageButton');
       let commandMessageType = '';
       function renderCommandPreview() {
         const title = commandMessageTitle.value.trim() || 'Prévia de embed';
@@ -227,12 +223,6 @@
       }
       document.getElementById('commandTypeEmbed').addEventListener('click', () => chooseCommandType('embed'));
       document.getElementById('commandTypeText').addEventListener('click', () => chooseCommandType('text'));
-      editMessageButton.addEventListener('click', () => {
-        const open = !messageEditor.classList.contains('open');
-        messageEditor.classList.toggle('open', open);
-        editMessageButton.setAttribute('aria-expanded', String(open));
-        editMessageButton.textContent = open ? 'Fechar edição' : 'Editar mensagem';
-      });
       commandMessageTitle.addEventListener('input', renderCommandPreview);
       commandMessageBody.addEventListener('input', renderCommandPreview);
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
