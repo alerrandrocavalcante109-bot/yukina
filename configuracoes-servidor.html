@@ -35,6 +35,14 @@
     .create-command-button{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:12px 18px;border:1px solid #ffffff45;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer;box-shadow:0 4px 12px #160a2c22}
     .create-command-button:hover{filter:brightness(1.09);box-shadow:0 6px 16px #160a2c33}
     #createCommandButton{background:#5865f2;border-color:#7982ff}
+    .custom-command-list{display:grid;gap:10px;margin-top:18px}
+    .custom-command-row{display:flex;align-items:center;gap:10px;padding:12px;border:1px solid #ffffff45;border-radius:12px;background:#21153b88;text-align:left}
+    .custom-command-edit{flex:1;min-width:0;padding:10px 12px;border:1px solid #93c5fd;border-radius:9px;background:#2563eb;color:#fff;font:inherit;font-weight:650;text-align:left;overflow-wrap:anywhere}
+    .custom-command-delete{flex:0 0 auto;padding:10px 12px;border:1px solid #fda4af;border-radius:9px;background:#dc2626;color:#fff;font:inherit;font-weight:650}
+    .custom-command-delete:hover{background:#b91c1c}
+    .custom-command-empty{margin:0!important;padding:12px;border:1px dashed #ffffff55;border-radius:10px;color:#f5edff}
+    #backToCommandList{background:#64748b;border-color:#cbd5e1}
+    #backToCommandList:hover{background:#475569}
     #createCommandButton:hover{background:#4752c4}
     #addAnotherEmbed{background:#0f9f8f;border-color:#41d9c6}
     #addAnotherEmbed:hover{background:#0b8276}
@@ -144,8 +152,10 @@
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
     <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
     <button id="createCommandButton" class="create-command-button" type="button">＋ Criar comando</button>
+    <div id="customCommandList" class="custom-command-list" aria-live="polite"><p class="custom-command-empty">Escolha um servidor para ver os comandos salvos.</p></div>
   </section>
   <section id="commandTypeScreen" class="system-screen" aria-labelledby="commandTypeTitle">
+    <button id="backToCommandList" class="system-back" type="button">← Voltar aos comandos</button>
     <h1 id="commandTypeTitle">Criar comando</h1>
     <p>Como você deseja enviar a mensagem desse comando?</p>
     <div class="command-name-editor">
@@ -241,10 +251,18 @@
         welcomeScreen.style.display = 'none';
         commandTypeScreen.classList.remove('open');
         customCommandsScreen.classList.add('open');
+        loadCustomCommands();
       });
       document.getElementById('createCommandButton').addEventListener('click', () => {
+        resetCommandEditor();
+        document.getElementById('commandTypeTitle').textContent = 'Criar comando';
         customCommandsScreen.classList.remove('open');
         commandTypeScreen.classList.add('open');
+      });
+      document.getElementById('backToCommandList').addEventListener('click', () => {
+        commandTypeScreen.classList.remove('open');
+        customCommandsScreen.classList.add('open');
+        loadCustomCommands();
       });
       const commandPreview = document.getElementById('commandPreview');
       const commandMessageTitle = document.getElementById('commandMessageTitle');
@@ -558,7 +576,7 @@
           if (!response.ok) throw new Error(current.detail || 'Não foi possível carregar as configurações do servidor.');
           const settings = current.settings && typeof current.settings === 'object' ? current.settings : {};
           const commands = Array.isArray(settings.customCommands) ? settings.customCommands : [];
-          const existingIndex = commands.findIndex(item => String(item.name || '').toLowerCase() === payload.name);
+          const existingIndex = commands.findIndex(item => String(item.name || '').toLowerCase() === (editingCommandName || payload.name));
           if (existingIndex >= 0) commands[existingIndex] = payload;
           else commands.push(payload);
           const writeResponse = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {
@@ -569,17 +587,14 @@
           const result = await writeResponse.json().catch(() => ({}));
           if (!writeResponse.ok || !result.ok) throw new Error(result.detail || 'A API não confirmou o salvamento.');
           if (saveAnimationTimer) { clearInterval(saveAnimationTimer); saveAnimationTimer = null; }
-          saveCommandButton.dataset.state = 'saved';
-          saveCommandButton.textContent = 'Comando salvo!';
-          await new Promise(resolve => setTimeout(resolve, 950));
-          saveCommandButton.dataset.state = 'sending';
-          saveCommandButton.textContent = 'Enviando para a Yukina...';
-          await new Promise(resolve => setTimeout(resolve, 700));
-          saveCommandButton.dataset.state = 'sent';
-          saveCommandButton.textContent = 'Comando enviado!';
-          saveCommandButton.disabled = false;
-          await new Promise(resolve => setTimeout(resolve, 1800));
-          if (saveCommandButton.dataset.state === 'sent') setSaveStatus('Salvar', '');
+          setSaveStatus('Comando salvo!', 'saved');
+          await new Promise(resolve => setTimeout(resolve, 450));
+          commandTypeScreen.classList.remove('open');
+          customCommandsScreen.classList.add('open');
+          document.getElementById('commandTypeTitle').textContent = 'Criar comando';
+          resetCommandEditor();
+          await loadCustomCommands();
+          setSaveStatus('Salvar', '');
         } catch (error) {
           if (saveAnimationTimer) { clearInterval(saveAnimationTimer); saveAnimationTimer = null; }
           saveCommandButton.disabled = false;
@@ -588,6 +603,92 @@
           alert(error.message || 'Não foi possível salvar o comando na Yukina.');
           setTimeout(() => { if (saveCommandButton.dataset.state === 'error') setSaveStatus('Tentar novamente', ''); }, 2200);
         }
+      }
+      const customCommandList = document.getElementById('customCommandList');
+      let editingCommandName = null;
+      async function getCommandSettings() {
+        const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
+        const token = getToken();
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
+        const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
+        const data = await response.json().catch(()=>({}));
+        if (!response.ok) throw new Error(data.detail || 'Não foi possível carregar os comandos.');
+        return {guild,token,apiBase,settings:data.settings && typeof data.settings === 'object' ? data.settings : {}};
+      }
+      async function loadCustomCommands() {
+        customCommandList.replaceChildren();
+        const loading=document.createElement('p'); loading.className='custom-command-empty'; loading.textContent='Carregando comandos...'; customCommandList.append(loading);
+        try {
+          const {settings}=await getCommandSettings();
+          const commands=Array.isArray(settings.customCommands)?settings.customCommands:[];
+          customCommandList.replaceChildren();
+          if(!commands.length){const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent='Nenhum comando criado ainda. Clique em “Criar comando” para começar.';customCommandList.append(empty);return;}
+          commands.forEach(command=>{
+            const row=document.createElement('div');row.className='custom-command-row';
+            const edit=document.createElement('button');edit.type='button';edit.className='custom-command-edit';edit.textContent=String(command.name||'comando');edit.title='Clique para editar este comando';
+            const del=document.createElement('button');del.type='button';del.className='custom-command-delete';del.textContent='Deletar';del.setAttribute('aria-label','Deletar comando '+String(command.name||''));
+            edit.addEventListener('click',()=>editCustomCommand(command));
+            del.addEventListener('click',()=>deleteCustomCommand(command.name,del));
+            row.append(edit,del);customCommandList.append(row);
+          });
+        } catch(error) {
+          customCommandList.replaceChildren();
+          const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent=error.message||'Não foi possível carregar os comandos.';customCommandList.append(empty);
+        }
+      }
+      function resetCommandEditor() {
+        editingCommandName=null;
+        document.getElementById('commandName').value='';
+        commandMessageTitle.value='';
+        commandMessageBody.value='';
+        commandEmbedColor.value='#9B7BFF';commandEmbedColorHex.value='#9B7BFF';
+        commandEmbedLink.value='';commandEmbedImage.value='';
+        additionalEmbedData.splice(0,additionalEmbedData.length);additionalEmbeds.replaceChildren();
+        commandMessageType='';
+        document.getElementById('commandTypeEmbed').setAttribute('aria-pressed','false');
+        document.getElementById('commandTypeText').setAttribute('aria-pressed','false');
+        commandTypeScreen.querySelector('p').textContent='Como você deseja enviar a mensagem desse comando?';
+        renderCommandPreview();
+      }
+      function editCustomCommand(command) {
+        resetCommandEditor();
+        editingCommandName=String(command.name||'').toLowerCase();
+        document.getElementById('commandName').value=String(command.name||'');
+        const type=String(command.type||'text').toLowerCase()==='embed'?'embed':'text';
+        chooseCommandType(type);
+        const items=Array.isArray(command.embeds)?command.embeds:[];
+        if(type==='embed'&&items.length){
+          const main=items[0]||{};
+          commandMessageTitle.value=main.title||'';
+          commandMessageBody.value=main.message||'';
+          commandEmbedColor.value=normalizeHexColor(main.color)||'#9B7BFF';commandEmbedColorHex.value=commandEmbedColor.value.toUpperCase();
+          commandEmbedLink.value=main.link||'';commandEmbedImage.value=main.image||'';
+          items.slice(1,10).forEach(item=>{
+            addAdditionalEmbed();
+            const entry=additionalEmbedData[additionalEmbedData.length-1];
+            entry.fields.title.value=item.title||'';entry.fields.body.value=item.message||'';
+            entry.fields.link.value=item.link||'';entry.fields.image.value=item.image||'';
+            entry.fields.color.value=normalizeHexColor(item.color)||'#9B7BFF';entry.hex.value=entry.fields.color.value.toUpperCase();
+          });
+        }
+        renderCommandPreview();
+        document.getElementById('commandTypeTitle').textContent='Editar comando';
+        customCommandsScreen.classList.remove('open');commandTypeScreen.classList.add('open');
+      }
+      async function deleteCustomCommand(name,button) {
+        if(!confirm('Tem certeza de que deseja deletar o comando "'+name+'"?')) return;
+        button.disabled=true;
+        try {
+          const {guild,token,apiBase,settings}=await getCommandSettings();
+          const commands=Array.isArray(settings.customCommands)?settings.customCommands:[];
+          const remaining=commands.filter(item=>String(item.name||'').toLowerCase()!==String(name||'').toLowerCase());
+          if(remaining.length===commands.length) throw new Error('Esse comando não foi encontrado.');
+          const response=await fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({settings:{customCommands:remaining}})});
+          const result=await response.json().catch(()=>({}));
+          if(!response.ok||!result.ok) throw new Error(result.detail||'A API não confirmou a exclusão.');
+          await loadCustomCommands();
+        } catch(error) { alert(error.message||'Não foi possível deletar o comando.');button.disabled=false; }
       }
       saveCommandButton.addEventListener('click', saveCustomCommand);
       function getToken() {
