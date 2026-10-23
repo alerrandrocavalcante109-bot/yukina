@@ -517,7 +517,7 @@
         let guild = null;
         try { guild = JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) {}
         const token = getToken();
-        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id) { setSaveStatus('Salvar', ''); alert('Escolha um servidor antes de salvar o comando.'); return; }
         if (!token) { setSaveStatus('Salvar', ''); alert('Sua sessão do Discord expirou. Entre novamente para salvar.'); return; }
         if (!apiBase) { setSaveStatus('Salvar', ''); alert('A API da Yukina não está configurada nesta página.'); return; }
