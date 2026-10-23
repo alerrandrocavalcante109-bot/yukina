@@ -57,6 +57,11 @@
     .mention-channel{background:rgba(88,101,242,.30);color:#dee0fc}
     .mention-role{background:rgba(206,116,255,.20);color:#e8b9ff}
     .command-preview-embed-description strong,.command-preview-text strong{font-weight:700}
+    .discord-heading{display:block;margin:12px 0 8px;font-weight:800;line-height:1.2;color:#f2f3f5}
+    .discord-heading:first-child{margin-top:0}
+    .command-preview-embed-description h3.discord-heading,.command-preview-text h3.discord-heading{font-size:1.5em}
+    .command-preview-embed-description h4.discord-heading,.command-preview-text h4.discord-heading{font-size:1.25em}
+    .command-preview-embed-description h5.discord-heading,.command-preview-text h5.discord-heading{font-size:1.1em}
     .command-preview-embed-description em,.command-preview-text em{font-style:italic}
     .command-preview-embed-description del,.command-preview-text del{text-decoration:line-through}
     .command-preview-embed-description code,.command-preview-text code{padding:2px 4px;border-radius:4px;background:#1e1f22;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
@@ -214,10 +219,18 @@
       let activeMention = null;
       function formatMessage(container, text) {
         // Preserve spaces and line breaks while rendering Discord-like inline formatting.
-        const pattern = /(\*\*.+?\*\*|__.+?__|\|\|.+?\|\||~~.+?~~|\*(?!\s)[^\n*]+?\*|_(?!\s)[^\n_]+?_|\bhttps?:\/\/[^\s<>]+|<#[0-9]+>|<@&[0-9]+>|<@!?[0-9]+>|#[-\wÀ-ÿ]+|@[\wÀ-ÿ-]+)/g;
+        const pattern = /(^|\n)(#{1,3})[ \t]+([^\n]+)|(^|\s)(\*\*.+?\*\*|__.+?__|\|\|.+?\|\||~~.+?~~|\*(?!\s)[^\n*]+?\*|_(?!\s)[^\n_]+?_|https?:\/\/[^\s<>]+|<#[0-9]+>|<@&[0-9]+>|<@!?[0-9]+>|#[-\wÀ-ÿ]+|@[\wÀ-ÿ-]+)/g;
         let lastIndex = 0;
         for (const match of text.matchAll(pattern)) {
           if (match.index > lastIndex) container.append(document.createTextNode(text.slice(lastIndex, match.index)));
+          if (match[2]) {
+            const heading = document.createElement(match[2].length === 1 ? 'h3' : match[2].length === 2 ? 'h4' : 'h5');
+            heading.className = 'discord-heading';
+            heading.textContent = match[3];
+            container.append(heading);
+            lastIndex = match.index + match[0].length;
+            continue;
+          }
           const token = match[0];
           if (token.startsWith('<#') || token.startsWith('<@&') || token.startsWith('<@') || token.startsWith('#') || token.startsWith('@')) {
             const mention = document.createElement('span');
