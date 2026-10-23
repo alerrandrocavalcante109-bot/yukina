@@ -64,10 +64,19 @@
     <img id="loggedUserAvatar" alt="Foto do usuário" src="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
     <div><div id="loggedUserName" class="user-profile-name"></div><div class="user-profile-label">Conta conectada</div></div>
   </div>
-  <main>
+  <main id="welcomeScreen">
     <h1>Seja bem-vindo às Configurações da Yukina!</h1>
     <p>Esta página será o espaço para gerenciar as configurações dos servidores do Discord. A ideia é reunir as opções de cada servidor em um só lugar, para que você possa selecionar o servidor desejado e ajustar suas configurações quando os recursos estiverem disponíveis.</p>
   </main>
+  <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
+    <button id="customCommandsBack" class="system-back" type="button">← Voltar</button>
+    <h1 id="customCommandsTitle">Personalização de comandos</h1>
+    <div class="system-intro">
+      <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
+      <p>Você poderá escolher entre uma mensagem em texto simples ou uma mensagem em embed, com título, descrição e aparência personalizada.</p>
+      <p>Por enquanto, esta tela é apenas uma apresentação do sistema. A criação e o salvamento dos comandos ainda não estão disponíveis.</p>
+    </div>
+  </section>
   <script>
     (() => {
       const menu = document.getElementById('sideMenu');
@@ -118,7 +127,18 @@
         toggle.setAttribute('aria-expanded', String(open));
         toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
       }
-      const welcomeScreen = document.getElementById('welcomeScreen');\n      const customCommandsScreen = document.getElementById('customCommandsScreen');\n      document.getElementById('customCommands').addEventListener('click', () => {\n        setMenu(false);\n        welcomeScreen.style.display = 'none';\n        customCommandsScreen.classList.add('open');\n      });\n      document.getElementById('customCommandsBack').addEventListener('click', () => {\n        customCommandsScreen.classList.remove('open');\n        welcomeScreen.style.display = '';\n      });\n      toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
+      const welcomeScreen = document.getElementById('welcomeScreen');
+      const customCommandsScreen = document.getElementById('customCommandsScreen');
+      document.getElementById('customCommands').addEventListener('click', () => {
+        setMenu(false);
+        welcomeScreen.style.display = 'none';
+        customCommandsScreen.classList.add('open');
+      });
+      document.getElementById('customCommandsBack').addEventListener('click', () => {
+        customCommandsScreen.classList.remove('open');
+        welcomeScreen.style.display = '';
+      });
+      toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
       document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenu(false); });
       const stored = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
