@@ -39,7 +39,7 @@
     .command-preview-title{margin:0 0 12px;font-size:1rem;font-weight:700}
     .command-preview-embed{padding:14px;border-left:4px solid #9b7bff;border-radius:8px;background:#2b2d31;color:#f2f3f5;text-align:left;overflow-wrap:anywhere}
     .command-preview-embed-title{margin:0;font-size:1rem;font-weight:700}
-    .command-preview-embed-description{margin:8px 0 0;color:#dbdee1;line-height:1.5}
+    .command-preview-embed-description{margin:8px 0 0;color:#dbdee1;line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere}
     .command-preview-text{margin:0;padding:14px 0;color:#fff;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
     .command-preview-empty{margin:0;color:#e7dcff;font-size:.95rem}
     .command-name-editor{display:grid;gap:8px;margin-top:20px;max-width:520px}
@@ -61,7 +61,7 @@
     .command-preview-embed-description del,.command-preview-text del{text-decoration:line-through}
     .command-preview-embed-description code,.command-preview-text code{padding:2px 4px;border-radius:4px;background:#1e1f22;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
     .command-preview-embed-description .discord-spoiler,.command-preview-text .discord-spoiler{border-radius:3px;background:#202225;color:transparent;cursor:pointer}
-    .command-preview-embed-description .discord-spoiler:hover,.command-preview-text .discord-spoiler:hover{color:#dbdee1}
+    .command-preview-embed-description .discord-spoiler:hover,.command-preview-text .discord-spoiler:hover,.discord-spoiler.revealed{color:#dbdee1}
     .command-preview-embed-description .discord-link,.command-preview-text .discord-link{color:#00a8fc;text-decoration:none}
     .command-preview-embed-description .discord-link:hover,.command-preview-text .discord-link:hover{text-decoration:underline}
     .message-input-wrap{position:relative}
@@ -213,39 +213,35 @@
       const mentionItemsCache = { channel: [], role: [] };
       let activeMention = null;
       function formatMessage(container, text) {
-        const pattern = /(\*\*.+?\*\*|__(.+?)__|\*(?!\s).+?\*(?!\*)|_(?!\s).+?_(?!_)|~~.+?~~|\|\|.+?\|\||<#[0-9]+>|<@&[0-9]+>|#[-\wÀ-ÿ]+|@[\wÀ-ÿ-]+)/g;
+        // Preserve spaces and line breaks while rendering Discord-like inline formatting.
+        const pattern = /(\*\*.+?\*\*|__.+?__|\|\|.+?\|\||~~.+?~~|\*(?!\s)[^\n*]+?\*|_(?!\s)[^\n_]+?_|\bhttps?:\/\/[^\s<>]+|<#[0-9]+>|<@&[0-9]+>|<@!?[0-9]+>|#[-\wÀ-ÿ]+|@[\wÀ-ÿ-]+)/g;
         let lastIndex = 0;
         for (const match of text.matchAll(pattern)) {
           if (match.index > lastIndex) container.append(document.createTextNode(text.slice(lastIndex, match.index)));
           const token = match[0];
-          if (token.startsWith('#') || token.startsWith('@') || token.startsWith('<#') || token.startsWith('<@&')) {
+          if (token.startsWith('<#') || token.startsWith('<@&') || token.startsWith('<@') || token.startsWith('#') || token.startsWith('@')) {
             const mention = document.createElement('span');
-            const isChannel = token.startsWith('#') || token.startsWith('<#');
+            const isChannel = token.startsWith('<#') || token.startsWith('#');
             mention.className = isChannel ? 'mention-channel' : 'mention-role';
-            const idMatch = token.match(/^<[@#&]+(\d+)>$/);
+            const idMatch = token.match(/^<[@#&!]+(\d+)>$/);
             if (idMatch) {
               const kind = isChannel ? 'channel' : 'role';
-              const found = mentionItemsCache[kind].find(item => item.id === idMatch[1]);
-              mention.textContent = (isChannel ? '#' : '@') + (found ? found.name : 'ID ' + idMatch[1]);
-              mention.title = found ? found.name : (isChannel ? 'Canal não carregado — verifique a API e o servidor selecionado' : 'Cargo não carregado — verifique a API e o servidor selecionado');
-            } else {
-              mention.textContent = token;
-            }
+              const found = (mentionItemsCache[kind] || []).find(item => item.id === idMatch[1]);
+              mention.textContent = (isChannel ? '#' : '@') + (found ? found.name : idMatch[1]);
+              mention.title = found ? found.name : (isChannel ? 'Canal do Discord' : 'Cargo do Discord');
+            } else { mention.textContent = token; }
             container.append(mention);
           } else if (token.startsWith('||')) {
-            const spoiler = document.createElement('span');
-            spoiler.className = 'discord-spoiler';
-            spoiler.textContent = token.slice(2, -2);
-            spoiler.addEventListener('click', () => spoiler.classList.toggle('revealed'));
-            container.append(spoiler);
+            const spoiler = document.createElement('span'); spoiler.className = 'discord-spoiler'; spoiler.textContent = token.slice(2, -2);
+            spoiler.addEventListener('click', () => spoiler.classList.toggle('revealed')); container.append(spoiler);
+          } else if (/^https?:\/\//.test(token)) {
+            const link = document.createElement('a'); link.className = 'discord-link'; link.textContent = token; link.href = token; link.target = '_blank'; link.rel = 'noopener noreferrer'; container.append(link);
           } else {
             const strong = token.startsWith('**') || token.startsWith('__');
             const italic = token.startsWith('*') || token.startsWith('_');
             const del = token.startsWith('~~');
             const tag = del ? 'del' : strong ? 'strong' : italic ? 'em' : 'span';
-            const el = document.createElement(tag);
-            el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1);
-            container.append(el);
+            const el = document.createElement(tag); el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1); container.append(el);
           }
           lastIndex = match.index + token.length;
         }
