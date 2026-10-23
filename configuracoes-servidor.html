@@ -69,7 +69,6 @@
     <p>Esta página será o espaço para gerenciar as configurações dos servidores do Discord. A ideia é reunir as opções de cada servidor em um só lugar, para que você possa selecionar o servidor desejado e ajustar suas configurações quando os recursos estiverem disponíveis.</p>
   </main>
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
-    <button id="customCommandsBack" class="system-back" type="button">← Voltar</button>
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
     <div class="system-intro">
       <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
@@ -133,10 +132,6 @@
         setMenu(false);
         welcomeScreen.style.display = 'none';
         customCommandsScreen.classList.add('open');
-      });
-      document.getElementById('customCommandsBack').addEventListener('click', () => {
-        customCommandsScreen.classList.remove('open');
-        welcomeScreen.style.display = '';
       });
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
