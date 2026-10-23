@@ -37,8 +37,10 @@
     .command-type-button:focus-visible{outline:3px solid #fff;outline-offset:3px}
     .command-preview-card{margin-top:24px;padding:18px;border:1px solid #ffffff55;border-radius:14px;background:#21153b88;box-shadow:0 8px 24px #180b3b22}
     .command-preview-title{margin:0 0 12px;font-size:1rem;font-weight:700}
-    .command-preview-embed{padding:14px;border-left:4px solid #9b7bff;border-radius:8px;background:#171323;color:#fff;text-align:left;overflow-wrap:anywhere}
-    .command-preview-text{margin:0;padding:14px;border-radius:8px;background:#171323;color:#fff;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere}
+    .command-preview-embed{padding:14px;border-left:4px solid #9b7bff;border-radius:8px;background:#2b2d31;color:#f2f3f5;text-align:left;overflow-wrap:anywhere}
+    .command-preview-embed-title{margin:0;font-size:1rem;font-weight:700}
+    .command-preview-embed-description{margin:8px 0 0;color:#dbdee1;line-height:1.5}
+    .command-preview-text{margin:0;padding:14px 0;color:#fff;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
     .command-preview-empty{margin:0;color:#e7dcff;font-size:.95rem}
     .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
     .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
@@ -161,11 +163,11 @@
       const commandPreview = document.getElementById('commandPreview');
       document.getElementById('commandTypeEmbed').addEventListener('click', () => {
         commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Embed.';
-        commandPreview.innerHTML = '<div class="command-preview-embed"><strong>Nome do comando</strong><p style="margin:8px 0 0">A mensagem do comando aparecerá aqui.</p></div>';
+        commandPreview.innerHTML = '<div class="command-preview-embed"><h3 class="command-preview-embed-title">Prévia de embed</h3><p class="command-preview-embed-description">A mensagem do comando aparecerá aqui dentro do embed, como uma mensagem formatada do Discord.</p></div>';
       });
       document.getElementById('commandTypeText').addEventListener('click', () => {
         commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Texto simples.';
-        commandPreview.innerHTML = '<p class="command-preview-text">A mensagem do comando aparecerá aqui.</p>';
+        commandPreview.innerHTML = '<p class="command-preview-text">A mensagem do comando aparecerá aqui como texto simples, sem embed ou cartão de formatação.</p>';
       });
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
