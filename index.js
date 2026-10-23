@@ -976,6 +976,12 @@ async function authorizePanel(req, guildId) {
       if (guildsRes.status === 429 && cachedGuilds && cachedGuilds.staleUntil > Date.now()) {
         guilds = cachedGuilds.guilds;
         console.warn("[API painel] Usando cache recente de servidores devido ao limite 429 do Discord.");
+        // Um cache antigo não prova que o usuário perdeu acesso ao servidor.
+        // Se o servidor solicitado não aparece nele, responde com erro temporário
+        // em vez de afirmar incorretamente que a Yukina não está no servidor.
+        if (!Array.isArray(guilds) || !guilds.some(g => g.id === guildId)) {
+          throw Object.assign(new Error("O Discord limitou a consulta aos seus servidores e o cache disponível não confirma seu acesso. Aguarde um minuto e tente novamente; não é necessário remover ou adicionar a Yukina por causa deste aviso."), { status: 503 });
+        }
       } else {
         const status = guildsRes.status === 401 ? 401 : guildsRes.status === 403 ? 403 : 502;
         const message = status === 401
