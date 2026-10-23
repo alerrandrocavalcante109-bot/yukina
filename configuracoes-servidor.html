@@ -202,17 +202,26 @@
       let commandMessageType = '';
       const mentionMenu = document.getElementById('mentionMenu');
       let mentionItems = [];
+      const mentionItemsCache = { channel: [], role: [] };
       let activeMention = null;
       function formatMessage(container, text) {
-        const pattern = /(\\*\\*.+?\\*\\*|__(.+?)__|\\*(?!\\s).+?\\*(?!\\*)|_(?!\\s).+?_(?!_)|~~.+?~~|#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
+        const pattern = /(\\*\\*.+?\\*\\*|__(.+?)__|\\*(?!\\s).+?\\*(?!\\*)|_(?!\\s).+?_(?!_)|~~.+?~~|<#[0-9]+>|<@&[0-9]+>|#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
         let lastIndex = 0;
         for (const match of text.matchAll(pattern)) {
           if (match.index > lastIndex) container.append(document.createTextNode(text.slice(lastIndex, match.index)));
           const token = match[0];
-          if (token.startsWith('#') || token.startsWith('@')) {
+          if (token.startsWith('#') || token.startsWith('@') || token.startsWith('<#') || token.startsWith('<@&')) {
             const mention = document.createElement('span');
-            mention.className = token.startsWith('#') ? 'mention-channel' : 'mention-role';
-            mention.textContent = token;
+            const isChannel = token.startsWith('#') || token.startsWith('<#');
+            mention.className = isChannel ? 'mention-channel' : 'mention-role';
+            const idMatch = token.match(/^<[@#&]+(\\d+)>$/);
+            if (idMatch) {
+              const kind = isChannel ? 'channel' : 'role';
+              const found = mentionItemsCache[kind].find(item => item.id === idMatch[1]);
+              mention.textContent = (isChannel ? '#' : '@') + (found ? found.name : idMatch[1]);
+            } else {
+              mention.textContent = token;
+            }
             container.append(mention);
           } else {
             const strong = token.startsWith('**') || token.startsWith('__');
@@ -232,6 +241,7 @@
         activeMention = null;
       }
       function renderMentionMenu(items, query, kind) {
+        mentionItemsCache[kind] = items;
         mentionItems = items.filter(item => item.name.toLowerCase().includes(query.toLowerCase())).slice(0, 30);
         mentionMenu.replaceChildren();
         if (!mentionItems.length) {
@@ -256,7 +266,7 @@
               const input = commandMessageBody;
               const before = input.value.slice(0, activeMention.start);
               const after = input.value.slice(input.selectionStart);
-              const insert = (kind === 'channel' ? '#' : '@') + item.name.replace(/\\s+/g,'-') + ' ';
+              const insert = (kind === 'channel' ? '<#' + item.id + '>' : '<@&' + item.id + '>') + ' ';
               input.value = before + insert + after;
               const cursor = before.length + insert.length;
               input.focus();
