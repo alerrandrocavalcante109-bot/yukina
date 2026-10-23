@@ -151,6 +151,7 @@
     <button id="chooseServer" class="server-picker" type="button"><span>Escolher outro servidor</span><span>⌄</span></button>
     <button id="customCommands" class="system-picker" type="button">Personalização de comandos <span aria-hidden="true">›</span></button>
     <button id="xpRolesMenu" class="system-picker" type="button">❄️ Cargos por XP <span aria-hidden="true">›</span></button>
+    <button id="temporalRolesMenu" class="system-picker" type="button">⏳ Hierarquia temporal <span aria-hidden="true">›</span></button>
   </aside>
   <div id="serverModal" class="server-modal" aria-hidden="true"><section class="server-modal-card" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle"><div class="server-modal-heading"><h3 id="serverModalTitle">Escolher outro servidor</h3><button id="serverModalClose" type="button" aria-label="Fechar">×</button></div><div id="serverList" class="server-list"><p class="server-empty">Carregando servidores...</p></div></section></div>
   <div id="userProfile" class="user-profile" aria-label="Usuário conectado" hidden>
@@ -176,6 +177,22 @@
     </div>
     <div id="xpLevelList" class="xp-level-list" aria-live="polite"><p class="custom-command-empty">Escolha um servidor para ver os cargos por XP salvos.</p></div>
     <p id="xpStatus" class="xp-note" role="status"></p>
+  </section>
+  <section id="temporalRolesScreen" class="system-screen" aria-labelledby="temporalRolesTitle">
+    <h1 id="temporalRolesTitle">Hierarquia temporal</h1>
+    <p>Defina quais cargos os membros receberão conforme o tempo de permanência no servidor.</p>
+    <div class="command-name-editor">
+      <label for="temporalDaysInput">Tempo de permanência (dias)</label>
+      <input id="temporalDaysInput" type="number" min="1" max="36500" step="1" placeholder="Ex.: 30">
+      <label for="temporalRoleSelect">Cargo que será entregue</label>
+      <select id="temporalRoleSelect" class="xp-role-select"><option value="">Carregando cargos do servidor...</option></select>
+    </div>
+    <div class="xp-interface-actions">
+      <button id="addTemporalRule" class="create-command-button" type="button">＋ Adicionar etapa temporal</button>
+      <button id="saveTemporalRules" class="create-command-button" type="button">Salvar configurações</button>
+    </div>
+    <div id="temporalRuleList" class="xp-level-list" aria-live="polite"><p class="custom-command-empty">Escolha um servidor para ver a hierarquia temporal.</p></div>
+    <p id="temporalStatus" class="xp-note" role="status"></p>
   </section>
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
@@ -276,6 +293,7 @@
       const customCommandsScreen = document.getElementById('customCommandsScreen');
       const commandTypeScreen = document.getElementById('commandTypeScreen');
       const xpRolesScreen = document.getElementById('xpRolesScreen');
+      const temporalRolesScreen = document.getElementById('temporalRolesScreen');
       document.getElementById('customCommands').addEventListener('click', () => {
         setMenu(false);
         welcomeScreen.style.display = 'none';
@@ -291,6 +309,15 @@
         commandTypeScreen.classList.remove('open');
         xpRolesScreen.classList.add('open');
         loadXpRoles();
+      });
+      document.getElementById('temporalRolesMenu').addEventListener('click', () => {
+        setMenu(false);
+        welcomeScreen.style.display = 'none';
+        customCommandsScreen.classList.remove('open');
+        commandTypeScreen.classList.remove('open');
+        xpRolesScreen.classList.remove('open');
+        temporalRolesScreen.classList.add('open');
+        loadTemporalRules();
       });
       const xpLevelList = document.getElementById('xpLevelList');
       const xpLevelInput = document.getElementById('xpLevelInput');
@@ -374,6 +401,93 @@
           if(!response.ok||!result.ok)throw new Error(result.detail||'A API não confirmou o salvamento.');
           setXpStatus('Configurações de cargos por XP salvas.');await loadXpRoles(true);
         }catch(error){setXpStatus(error.message||'Não foi possível salvar as configurações.');alert(error.message||'Falha ao salvar.');}
+        finally{button.disabled=false;}
+      });
+      const temporalDaysInput = document.getElementById('temporalDaysInput');
+      const temporalRoleSelect = document.getElementById('temporalRoleSelect');
+      const temporalRuleList = document.getElementById('temporalRuleList');
+      const temporalStatus = document.getElementById('temporalStatus');
+      let temporalRules = [];
+      let temporalRolesLoadedFor = '';
+      let editingTemporalDays = null;
+      function setTemporalStatus(text) { temporalStatus.textContent = text || ''; }
+      async function getTemporalContext() {
+        const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
+        const token = getToken();
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
+        return {guild,token,apiBase};
+      }
+      async function loadTemporalRules(force = false) {
+        try {
+          const {guild,token,apiBase}=await getTemporalContext();
+          if (!force && temporalRolesLoadedFor === guild.id) { renderTemporalRules(); return; }
+          setTemporalStatus('Carregando cargos e configurações...');
+          const [resourcesResponse,settingsResponse]=await Promise.all([
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+          ]);
+          const resources=await resourcesResponse.json().catch(()=>({}));
+          const data=await settingsResponse.json().catch(()=>({}));
+          if(!resourcesResponse.ok) throw new Error(resources.detail||'Não foi possível carregar os cargos do servidor.');
+          if(!settingsResponse.ok) throw new Error(data.detail||'Não foi possível carregar as configurações.');
+          temporalRoleSelect.replaceChildren(new Option('Selecione um cargo',''));
+          (Array.isArray(resources.roles)?resources.roles:[]).forEach(role=>temporalRoleSelect.add(new Option(role.name,role.id)));
+          const settings=data.settings&&typeof data.settings==='object'?data.settings:{};
+          temporalRules=(Array.isArray(settings.timeRules)?settings.timeRules:[])
+            .map(rule=>({days:Number(rule.days),role:String(rule.role||'')}))
+            .filter(rule=>Number.isInteger(rule.days)&&rule.days>=1&&rule.role);
+          temporalRolesLoadedFor=guild.id;
+          renderTemporalRules();
+          setTemporalStatus('Selecione o tempo de permanência e o cargo para adicionar ou editar uma etapa.');
+        } catch(error) {
+          setTemporalStatus(error.message||'Não foi possível carregar a hierarquia temporal.');
+          temporalRuleList.replaceChildren();
+          const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent=error.message||'Falha ao carregar.';temporalRuleList.append(empty);
+        }
+      }
+      function renderTemporalRules() {
+        temporalRuleList.replaceChildren();
+        if(!temporalRules.length) {
+          const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent='Nenhuma etapa temporal configurada ainda.';temporalRuleList.append(empty);return;
+        }
+        [...temporalRules].sort((a,b)=>a.days-b.days).forEach(rule=>{
+          const row=document.createElement('div');row.className='custom-command-row';
+          const edit=document.createElement('button');edit.type='button';edit.className='custom-command-edit';
+          edit.textContent=rule.days+' dia(s) — '+(temporalRoleSelect.querySelector('option[value="'+CSS.escape(rule.role)+'"]')?.textContent||'Cargo não encontrado');
+          edit.title='Clique para editar esta etapa temporal';
+          edit.addEventListener('click',()=>{editingTemporalDays=rule.days;temporalDaysInput.value=String(rule.days);temporalRoleSelect.value=rule.role;document.getElementById('addTemporalRule').textContent='Salvar edição';setTemporalStatus('Editando a etapa de '+rule.days+' dia(s).');temporalDaysInput.focus();});
+          const remove=document.createElement('button');remove.type='button';remove.className='custom-command-delete';remove.textContent='Remover';
+          remove.addEventListener('click',()=>removeTemporalRule(rule.days,remove));
+          row.append(edit,remove);temporalRuleList.append(row);
+        });
+      }
+      document.getElementById('addTemporalRule').addEventListener('click',()=>{
+        const days=Number(temporalDaysInput.value);const role=temporalRoleSelect.value;
+        if(!Number.isInteger(days)||days<1||days>36500){alert('Informe um número inteiro de dias entre 1 e 36500.');return;}
+        if(!role){alert('Selecione o cargo que será entregue.');return;}
+        if(temporalRules.some(rule=>rule.days===days)&&editingTemporalDays!==days){alert('Já existe uma etapa para esse tempo. Clique nela para editar.');return;}
+        if(temporalRules.some(rule=>rule.role===role&&rule.days!==editingTemporalDays)){alert('Esse cargo já está associado a outro tempo.');return;}
+        temporalRules=temporalRules.filter(rule=>rule.days!==editingTemporalDays&&rule.days!==days);
+        temporalRules.push({days,role});editingTemporalDays=null;temporalDaysInput.value='';temporalRoleSelect.value='';
+        document.getElementById('addTemporalRule').textContent='＋ Adicionar etapa temporal';
+        renderTemporalRules();setTemporalStatus('Etapa adicionada à lista. Clique em Salvar configurações para aplicar.');
+      });
+      async function removeTemporalRule(days,button) {
+        if(!confirm('Remover a etapa de cargo após '+days+' dia(s)?'))return;
+        temporalRules=temporalRules.filter(rule=>rule.days!==days);
+        if(editingTemporalDays===days){editingTemporalDays=null;temporalDaysInput.value='';temporalRoleSelect.value='';document.getElementById('addTemporalRule').textContent='＋ Adicionar etapa temporal';}
+        renderTemporalRules();setTemporalStatus('Etapa removida da lista. Clique em Salvar configurações para aplicar.');
+      }
+      document.getElementById('saveTemporalRules').addEventListener('click',async()=>{
+        const button=document.getElementById('saveTemporalRules');if(button.disabled)return;button.disabled=true;setTemporalStatus('Salvando...');
+        try{
+          const {guild,token,apiBase}=await getTemporalContext();
+          const response=await fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({settings:{timeRules:temporalRules.map(rule=>({days:rule.days,role:rule.role}))}})});
+          const result=await response.json().catch(()=>({}));
+          if(!response.ok||!result.ok)throw new Error(result.detail||'A API não confirmou o salvamento.');
+          setTemporalStatus('Configurações da hierarquia temporal salvas.');await loadTemporalRules(true);
+        }catch(error){setTemporalStatus(error.message||'Não foi possível salvar as configurações.');alert(error.message||'Falha ao salvar.');}
         finally{button.disabled=false;}
       });
       document.getElementById('createCommandButton').addEventListener('click', () => {
