@@ -20,7 +20,19 @@
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(ellipse at 12% 0%,#173d5b 0,transparent 38%),radial-gradient(ellipse at 90% 15%,#29244f 0,transparent 32%),var(--bg);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f8f4ff}
     .server-menu{position:fixed;top:18px;left:18px;z-index:10}
     .menu-toggle{width:44px;height:44px;display:grid;place-items:center;border:1px solid #8edcff55;border-radius:13px;background:#171020cc;color:#f8f4ff;font-size:24px;cursor:pointer;backdrop-filter:blur(12px)}
-    .menu-panel{position:absolute;top:54px;left:0;display:flex;align-items:center;gap:12px;min-width:240px;padding:14px;border:1px solid #8edcff55;border-radius:16px;background:#171020f2;box-shadow:0 16px 44px #0008}
+    .menu-panel{position:absolute;top:54px;left:0;width:270px;padding:12px;border:1px solid #8edcff55;border-radius:16px;background:#171020f5;box-shadow:0 16px 44px #0008;backdrop-filter:blur(16px)}
+    .server-current{display:flex;align-items:center;gap:12px;padding:4px 4px 12px}
+    .server-picker{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 12px;border:1px solid #8edcff35;border-radius:12px;background:#0b0712;color:#f8f4ff;text-align:left;cursor:pointer}
+    .picker-label{font-size:.82rem;color:var(--muted)}
+    .picker-arrow{transition:transform .18s ease}
+    .server-picker[aria-expanded="true"] .picker-arrow{transform:rotate(180deg)}
+    .server-options{margin-top:6px;padding:5px;border:1px solid #8edcff30;border-radius:12px;background:#0b0712;max-height:260px;overflow:auto}
+    .server-options[hidden]{display:none}
+    .server-option{display:flex;width:100%;align-items:center;gap:10px;padding:9px;border:0;border-radius:9px;background:transparent;color:#f8f4ff;text-align:left;cursor:pointer}
+    .server-option:hover,.server-option[aria-current="true"]{background:#a7d8f01a}
+    .server-option img{width:34px;height:34px;border-radius:10px;object-fit:cover}
+    .server-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    .server-status{padding:8px 5px;color:var(--muted);font-size:.82rem;line-height:1.5}
     .menu-panel[hidden]{display:none}
     .server-avatar{width:56px;height:56px;flex:0 0 56px;object-fit:cover;border-radius:14px}
     .server-name{font-weight:700;color:#f8f4ff}
