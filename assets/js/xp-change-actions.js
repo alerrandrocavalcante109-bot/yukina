@@ -10,6 +10,7 @@
   actions.hidden = true;
   actions.style.cssText = "margin:14px 0;padding:14px;border:1px solid #e7bd75!important;background:transparent!important";
   actions.innerHTML = '<strong>⚠️ Você tem alterações não salvas.</strong><div class="row" style="margin-top:10px"><button type="button" data-xp-action="reset">Redefinir</button><button type="button" class="btn" data-xp-action="save">Salvar</button></div>';
+  const wasDirty = !anchor.hidden;
   anchor.replaceWith(actions);
 
   const saveButton = actions.querySelector('[data-xp-action="save"]');
@@ -45,9 +46,9 @@
 
   // Recalcula a visibilidade a partir do estado atual, inclusive se o script principal
   // tiver emitido o evento antes deste arquivo ser carregado.
-  const check = () => {
-    const warning = document.getElementById("xpWarningText");
-    if (warning) setDirty(!warning.parentElement.hidden);
-  };
-  check();
+  setDirty(wasDirty);
+  // Se o script principal inicializar depois, o evento sincroniza o estado real.
+  window.addEventListener("yukina:xp-dirty", event => {
+    setDirty(Boolean(event.detail && event.detail.dirty));
+  });
 })();
