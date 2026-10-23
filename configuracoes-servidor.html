@@ -53,9 +53,17 @@
     .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
     .message-editor textarea{min-height:110px;resize:vertical}
     .message-editor input:focus,.message-editor textarea:focus{outline:2px solid #b9a0ff;outline-offset:2px}
-    .mention-channel,.mention-role{display:inline-block;padding:0 4px;border-radius:4px;font-weight:650;white-space:pre-wrap}
-    .mention-channel{background:#5865f233;color:#c9cdff}
-    .mention-role{background:#e8a5ff22;color:#f0baff}
+    .mention-channel,.mention-role{display:inline;border-radius:3px;padding:0 2px;font-weight:500;white-space:pre-wrap;cursor:default}
+    .mention-channel{background:rgba(88,101,242,.30);color:#dee0fc}
+    .mention-role{background:rgba(206,116,255,.20);color:#e8b9ff}
+    .command-preview-embed-description strong,.command-preview-text strong{font-weight:700}
+    .command-preview-embed-description em,.command-preview-text em{font-style:italic}
+    .command-preview-embed-description del,.command-preview-text del{text-decoration:line-through}
+    .command-preview-embed-description code,.command-preview-text code{padding:2px 4px;border-radius:4px;background:#1e1f22;font-family:ui-monospace,SFMono-Regular,Consolas,monospace;font-size:.92em}
+    .command-preview-embed-description .discord-spoiler,.command-preview-text .discord-spoiler{border-radius:3px;background:#202225;color:transparent;cursor:pointer}
+    .command-preview-embed-description .discord-spoiler:hover,.command-preview-text .discord-spoiler:hover{color:#dbdee1}
+    .command-preview-embed-description .discord-link,.command-preview-text .discord-link{color:#00a8fc;text-decoration:none}
+    .command-preview-embed-description .discord-link:hover,.command-preview-text .discord-link:hover{text-decoration:underline}
     .message-input-wrap{position:relative}
     .mention-menu{position:absolute;z-index:20;left:0;right:0;bottom:calc(100% + 6px);max-height:220px;overflow:auto;padding:6px;border:1px solid #ffffff35;border-radius:10px;background:#292532;box-shadow:0 12px 28px #0005;text-align:left}
     .mention-menu[hidden]{display:none}
@@ -205,7 +213,7 @@
       const mentionItemsCache = { channel: [], role: [] };
       let activeMention = null;
       function formatMessage(container, text) {
-        const pattern = /(\\*\\*.+?\\*\\*|__(.+?)__|\\*(?!\\s).+?\\*(?!\\*)|_(?!\\s).+?_(?!_)|~~.+?~~|<#[0-9]+>|<@&[0-9]+>|#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
+        const pattern = /(\*\*.+?\*\*|__(.+?)__|\*(?!\s).+?\*(?!\*)|_(?!\s).+?_(?!_)|~~.+?~~|\|\|.+?\|\||<#[0-9]+>|<@&[0-9]+>|#[-\wÀ-ÿ]+|@[\wÀ-ÿ-]+)/g;
         let lastIndex = 0;
         for (const match of text.matchAll(pattern)) {
           if (match.index > lastIndex) container.append(document.createTextNode(text.slice(lastIndex, match.index)));
@@ -214,7 +222,7 @@
             const mention = document.createElement('span');
             const isChannel = token.startsWith('#') || token.startsWith('<#');
             mention.className = isChannel ? 'mention-channel' : 'mention-role';
-            const idMatch = token.match(/^<[@#&]+(\\d+)>$/);
+            const idMatch = token.match(/^<[@#&]+(\d+)>$/);
             if (idMatch) {
               const kind = isChannel ? 'channel' : 'role';
               const found = mentionItemsCache[kind].find(item => item.id === idMatch[1]);
@@ -224,13 +232,21 @@
             }
             container.append(mention);
           } else {
-            const strong = token.startsWith('**') || token.startsWith('__');
-            const italic = token.startsWith('*') || token.startsWith('_');
-            const del = token.startsWith('~~');
-            const tag = del ? 'del' : strong ? 'strong' : italic ? 'em' : 'span';
-            const el = document.createElement(tag);
-            el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1);
-            container.append(el);
+            if (token.startsWith('||')) {
+              const spoiler = document.createElement('span');
+              spoiler.className = 'discord-spoiler';
+              spoiler.textContent = token.slice(2, -2);
+              spoiler.addEventListener('click', () => spoiler.classList.toggle('revealed'));
+              container.append(spoiler);
+            } else {
+              const strong = token.startsWith('**') || token.startsWith('__');
+              const italic = token.startsWith('*') || token.startsWith('_');
+              const del = token.startsWith('~~');
+              const tag = del ? 'del' : strong ? 'strong' : italic ? 'em' : 'span';
+              const el = document.createElement(tag);
+              el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1);
+              container.append(el);
+            }
           }
           lastIndex = match.index + token.length;
         }
@@ -310,7 +326,7 @@
         const input = commandMessageBody;
         const cursor = input.selectionStart;
         const before = input.value.slice(0,cursor);
-        const match = before.match(/(^|\\s)([#@])([^\\s#@]*)$/);
+        const match = before.match(/(^|\s)([#@])([^\s#@]*)$/);
         if (!match) { closeMentionMenu(); return; }
         const kind = match[2] === '#' ? 'channel' : 'role';
         const start = cursor - match[0].length + match[1].length;
