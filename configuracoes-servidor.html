@@ -6,6 +6,7 @@
   <meta name="theme-color" content="#34205f">
   <link rel="icon" type="image/png" href="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
   <title>Configurações dos Servidores • Yukina</title>
+  <script src="./api-config.js"></script>
   <style>
     *{box-sizing:border-box}
     html,body{margin:0;min-height:100%;background:#34205f}
@@ -13,12 +14,66 @@
     main{width:min(100%,760px)}
     h1{margin:0;font-size:clamp(2rem,6vw,3.5rem);font-weight:750;letter-spacing:-.04em;text-shadow:0 3px 24px #170b3866}
     p{max-width:650px;margin:22px auto 0;font-size:clamp(1rem,2.5vw,1.15rem);line-height:1.8;color:#f5edff}
+    .user-profile{position:fixed;top:18px;right:18px;z-index:5;display:flex;align-items:center;gap:10px;max-width:min(280px,calc(100vw - 36px));padding:7px 12px 7px 7px;border:1px solid #ffffff55;border-radius:999px;background:#21153bd9;box-shadow:0 8px 26px #180b3b44;backdrop-filter:blur(12px)}
+    .user-profile[hidden]{display:none}
+    .user-profile img{width:38px;height:38px;flex:0 0 38px;border-radius:50%;object-fit:cover;background:#432078}
+    .user-profile-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem;font-weight:650;color:#fff}
+    .user-profile-label{font-size:.68rem;color:#eadbff}
+    @media(max-width:480px){.user-profile{top:12px;right:12px;gap:6px;padding:5px 9px 5px 5px}.user-profile img{width:32px;height:32px;flex-basis:32px}.user-profile-name{max-width:115px;font-size:.8rem}}
   </style>
 </head>
 <body>
+  <div id="userProfile" class="user-profile" aria-label="Usuário conectado" hidden>
+    <img id="loggedUserAvatar" alt="Foto do usuário" src="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
+    <div><div id="loggedUserName" class="user-profile-name"></div><div class="user-profile-label">Conta conectada</div></div>
+  </div>
   <main>
     <h1>Seja bem-vindo às Configurações da Yukina!</h1>
     <p>Esta página será o espaço para gerenciar as configurações dos servidores do Discord. A ideia é reunir as opções de cada servidor em um só lugar, para que você possa selecionar o servidor desejado e ajustar suas configurações quando os recursos estiverem disponíveis.</p>
   </main>
+  <script>
+    (() => {
+      const stored = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
+      const save = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
+      function getToken() {
+        const sessionExpiry = Number(stored('yukina_panel_session_expires_at') || 0);
+        if (sessionExpiry && Date.now() >= sessionExpiry) return null;
+        const expiry = Number(stored('yukina_discord_token_expires_at') || 0);
+        if (expiry && Date.now() >= expiry) return null;
+        return stored('yukina_discord_token');
+      }
+      async function refreshToken() {
+        const refresh = stored('yukina_discord_refresh_token');
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
+        if (!refresh || !apiBase) return false;
+        try {
+          const response = await fetch(apiBase + '/api/oauth/refresh', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({refresh_token:refresh})});
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.access_token) return false;
+          save('yukina_discord_token', data.access_token);
+          if (data.refresh_token) save('yukina_discord_refresh_token', data.refresh_token);
+          save('yukina_discord_token_expires_at', String(Date.now() + Math.max(60000, Number(data.expires_in || 3600) * 1000 - 60000)));
+          return true;
+        } catch (_) { return false; }
+      }
+      async function loadUserProfile() {
+        let token = getToken();
+        if (!token && stored('yukina_discord_refresh_token')) { await refreshToken(); token = getToken(); }
+        if (!token) return;
+        try {
+          let response = await fetch('https://discord.com/api/users/@me', {headers:{Authorization:'Bearer ' + token}});
+          if (response.status === 401 && await refreshToken()) { token = getToken(); if (token) response = await fetch('https://discord.com/api/users/@me', {headers:{Authorization:'Bearer ' + token}}); }
+          if (!response.ok) return;
+          const user = await response.json();
+          document.getElementById('loggedUserName').textContent = user.global_name || user.username || 'Usuário';
+          const image = document.getElementById('loggedUserAvatar');
+          image.src = user.avatar ? 'https://cdn.discordapp.com/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.png?size=128' : 'https://cdn.discordapp.com/embed/avatars/0.png';
+          image.onerror = () => { image.onerror = null; image.src = 'https://yukina-6uo.pages.dev/assets/yukina-bg.png'; };
+          document.getElementById('userProfile').hidden = false;
+        } catch (_) {}
+      }
+      loadUserProfile();
+    })();
+  </script>
 </body>
 </html>
