@@ -44,6 +44,10 @@
     .command-preview-empty{margin:0;color:#e7dcff;font-size:.95rem}
     .edit-message-button{margin-top:12px;padding:12px 16px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
     .edit-message-button:hover{background:#555560}
+    .command-name-editor{display:grid;gap:8px;margin-top:20px;max-width:520px}
+    .command-name-editor label{font-weight:650}
+    .command-name-editor input{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
+    .command-name-editor input:focus{outline:2px solid #b9a0ff;outline-offset:2px}
     .message-editor{display:none;margin-top:14px;gap:10px}
     .message-editor.open{display:grid}
     .message-editor label{font-weight:650}
@@ -99,6 +103,10 @@
   <section id="commandTypeScreen" class="system-screen" aria-labelledby="commandTypeTitle">
     <h1 id="commandTypeTitle">Criar comando</h1>
     <p>Como você deseja enviar a mensagem desse comando?</p>
+    <div class="command-name-editor">
+      <label for="commandName">Nome do comando</label>
+      <input id="commandName" type="text" maxlength="32" placeholder="Ex.: boas-vindas" autocomplete="off">
+    </div>
     <div class="command-type-options">
       <button id="commandTypeEmbed" class="command-type-button" type="button" aria-pressed="false">Embed</button>
       <button id="commandTypeText" class="command-type-button" type="button" aria-pressed="false">Texto simples</button>
