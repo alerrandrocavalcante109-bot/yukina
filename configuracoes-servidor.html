@@ -50,7 +50,7 @@
     .message-editor-heading{margin:0 0 4px;font-size:1rem;font-weight:700}
     .message-editor-hint{margin:0 0 6px!important;font-size:.9rem!important;color:#e7dcff!important;line-height:1.5!important}
     .message-editor label{font-weight:650}
-    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}\n    .embed-color-control{margin:0 0 14px;text-align:left}\n    .embed-color-row{display:flex;align-items:center;gap:10px;margin-top:7px}\n    .embed-color-row input[type=color]{width:54px;height:44px;padding:4px;border:1px solid #ffffff55;border-radius:9px;background:#211b32;cursor:pointer}\n    .embed-color-row input[type=text]{flex:1;min-width:0;text-transform:uppercase}
+    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}\n    .embed-color-control{margin:0 0 14px;text-align:left}\n    .embed-color-row{display:flex;align-items:center;gap:10px;margin-top:7px}\n    .embed-color-row input[type=color]{width:54px;height:44px;padding:4px;border:1px solid #ffffff55;border-radius:9px;background:#211b32;cursor:pointer}\n    .embed-color-row input[type=text]{flex:1;min-width:0;text-transform:uppercase}\n    .additional-embed-editor{margin-top:16px;padding:14px;border:1px solid #ffffff38;border-radius:12px;background:#211b324d;text-align:left}\n    .additional-embed-editor h3{margin:0 0 12px;font-size:1rem}\n    .additional-embed-editor label{display:block;margin:10px 0 6px}\n    .additional-embed-editor input,.additional-embed-editor textarea{width:100%;padding:11px;border:1px solid #ffffff55;border-radius:9px;background:#211b32;color:#fff;font:inherit}\n    .additional-embed-editor textarea{min-height:100px;resize:vertical}\n    .embed-preview-image{display:block;width:100%;max-height:280px;object-fit:contain;object-position:left center;margin-top:12px;border-radius:4px}\n    .embed-preview-link{display:inline-block;margin-top:8px;color:#00a8fc;text-decoration:none;overflow-wrap:anywhere}
     .message-editor textarea{min-height:110px;resize:vertical}
     .message-editor input:focus,.message-editor textarea:focus{outline:2px solid #b9a0ff;outline-offset:2px}
     .mention-channel,.mention-role{display:inline;border-radius:3px;padding:0 2px;font-weight:500;white-space:pre-wrap;cursor:default}
@@ -144,8 +144,14 @@
           <input id="commandEmbedColorHex" type="text" value="#9B7BFF" maxlength="7" inputmode="text" aria-label="Código hexadecimal da cor" placeholder="#9B7BFF">
         </div>
       </div>
+      <label for="commandEmbedLink">Link do embed (opcional)</label>
+      <input id="commandEmbedLink" type="url" placeholder="https://exemplo.com">
+      <label for="commandEmbedImage">Imagem do embed (URL opcional)</label>
+      <input id="commandEmbedImage" type="url" placeholder="https://exemplo.com/imagem.png">
       <label for="commandMessageBody">Mensagem</label>
       <div class="message-input-wrap"><textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem. Use **negrito**, _itálico_, #canal ou @cargo."></textarea><div id="mentionMenu" class="mention-menu" role="listbox" hidden></div></div>
+      <button id="addAnotherEmbed" class="create-command-button" type="button">＋ Adicionar outro embed</button>
+      <div id="additionalEmbeds"></div>
     </div>
     <div class="command-preview-card" aria-live="polite">
       <h2 class="command-preview-title">Pré-visualização em tempo real</h2>
@@ -389,30 +395,59 @@
         if (color) commandEmbedColorHex.value = color;
         else commandEmbedColorHex.value = commandEmbedColor.value.toUpperCase();
       });
+      const commandEmbedLink = document.getElementById("commandEmbedLink");
+      const commandEmbedImage = document.getElementById("commandEmbedImage");
+      const additionalEmbeds = document.getElementById("additionalEmbeds");
+      const additionalEmbedData = [];
+      function makeField(label, type, placeholder, key) {
+        const wrap = document.createElement("div");
+        const lab = document.createElement("label"); lab.textContent = label; wrap.append(lab);
+        const input = document.createElement(type === "textarea" ? "textarea" : "input");
+        if (type !== "textarea") input.type = type;
+        input.placeholder = placeholder;
+        input.dataset.key = key;
+        wrap.append(input); return {wrap,input};
+      }
+      function addAdditionalEmbed() {
+        const index = additionalEmbedData.length;
+        const card = document.createElement("div"); card.className = "additional-embed-editor";
+        const heading = document.createElement("h3"); heading.textContent = "Embed adicional " + (index + 2); card.append(heading);
+        const fields = {};
+        [["Título","text","Título do embed","title"],["Mensagem","textarea","Digite a mensagem","body"],["Link do embed","url","https://exemplo.com","link"],["Imagem do embed (URL)","url","https://exemplo.com/imagem.png","image"]].forEach(([label,type,placeholder,key]) => { const f=makeField(label,type,placeholder,key); fields[key]=f.input; card.append(f.wrap); });
+        const colorWrap=document.createElement("div"); colorWrap.className="embed-color-control";
+        const colorLabel=document.createElement("label"); colorLabel.textContent="Cor do embed"; colorWrap.append(colorLabel);
+        const colorRow=document.createElement("div"); colorRow.className="embed-color-row";
+        const color=document.createElement("input"); color.type="color"; color.value="#9B7BFF"; color.setAttribute("aria-label","Escolher cor do embed adicional");
+        const hex=document.createElement("input"); hex.type="text"; hex.value="#9B7BFF"; hex.maxLength=7; hex.placeholder="#9B7BFF"; hex.setAttribute("aria-label","Código hexadecimal da cor do embed adicional");
+        colorRow.append(color,hex); colorWrap.append(colorRow); card.append(colorWrap); fields.color=color;
+        color.addEventListener("input",()=>{hex.value=color.value.toUpperCase();renderCommandPreview();});
+        hex.addEventListener("input",()=>{const value=normalizeHexColor(hex.value);if(value){color.value=value;renderCommandPreview();}});
+        const remove=document.createElement("button"); remove.type="button"; remove.className="create-command-button"; remove.textContent="Remover embed";
+        const item={card,fields,hex}; additionalEmbedData.push(item);
+        Object.values(fields).forEach(input=>input.addEventListener("input",renderCommandPreview));
+        remove.addEventListener("click",()=>{const i=additionalEmbedData.indexOf(item);if(i>=0)additionalEmbedData.splice(i,1);card.remove();additionalEmbedData.forEach((entry,n)=>entry.card.querySelector("h3").textContent="Embed adicional "+(n+2));renderCommandPreview();});
+        card.append(remove); additionalEmbeds.append(card); renderCommandPreview();
+      }
+      document.getElementById("addAnotherEmbed").addEventListener("click",addAdditionalEmbed);
       function renderCommandPreview() {
         const title = commandMessageTitle.value.trim() || 'Prévia de embed';
         const body = commandMessageBody.value || 'A mensagem do comando aparecerá aqui.';
         commandPreview.classList.remove('preview-update');
         void commandPreview.offsetWidth;
+        commandPreview.innerHTML = '';
         if (commandMessageType === 'embed') {
-          commandPreview.innerHTML = '';
-          const embed = document.createElement('div');
-          embed.className = 'command-preview-embed';
-          embed.style.borderLeftColor = normalizeHexColor(commandEmbedColor.value) || '#9B7BFF';
-          const heading = document.createElement('h3');
-          heading.className = 'command-preview-embed-title';
-          heading.textContent = title;
-          const description = document.createElement('p');
-          description.className = 'command-preview-embed-description';
-          formatMessage(description, body);
-          embed.append(heading, description);
-          commandPreview.append(embed);
+          const all = [{title,body,link:commandEmbedLink.value.trim(),image:commandEmbedImage.value.trim(),color:normalizeHexColor(commandEmbedColor.value)||'#9B7BFF'}];
+          additionalEmbedData.forEach(item=>all.push({title:item.fields.title.value.trim(),body:item.fields.body.value,link:item.fields.link.value.trim(),image:item.fields.image.value.trim(),color:normalizeHexColor(item.fields.color.value)||'#9B7BFF'}));
+          all.forEach((data,index)=>{
+            const embed=document.createElement('div'); embed.className='command-preview-embed'; embed.style.borderLeftColor=data.color;
+            const heading=document.createElement('h3'); heading.className='command-preview-embed-title'; heading.textContent=data.title||('Prévia de embed '+(index+1)); embed.append(heading);
+            if(data.body){const description=document.createElement('p');description.className='command-preview-embed-description';formatMessage(description,data.body);embed.append(description);}
+            if(data.link && /^https?:\/\//i.test(data.link)){const link=document.createElement('a');link.className='embed-preview-link';link.href=data.link;link.target='_blank';link.rel='noopener noreferrer';link.textContent=data.link;embed.append(link);}
+            if(data.image && /^https?:\/\//i.test(data.image)){const image=document.createElement('img');image.className='embed-preview-image';image.src=data.image;image.alt=data.title||'Imagem do embed';image.loading='lazy';image.onerror=()=>image.remove();embed.append(image);}
+            commandPreview.append(embed);
+          });
         } else if (commandMessageType === 'text') {
-          commandPreview.innerHTML = '';
-          const paragraph = document.createElement('p');
-          paragraph.className = 'command-preview-text';
-          formatMessage(paragraph, body);
-          commandPreview.append(paragraph);
+          const paragraph=document.createElement('p');paragraph.className='command-preview-text';formatMessage(paragraph,body);commandPreview.append(paragraph);
         }
         commandPreview.classList.add('preview-update');
       }
@@ -426,6 +461,8 @@
       document.getElementById('commandTypeEmbed').addEventListener('click', () => chooseCommandType('embed'));
       document.getElementById('commandTypeText').addEventListener('click', () => chooseCommandType('text'));
       commandMessageTitle.addEventListener('input', renderCommandPreview);
+      commandEmbedLink.addEventListener("input", renderCommandPreview);
+      commandEmbedImage.addEventListener("input", renderCommandPreview);
       commandMessageBody.addEventListener('input', renderCommandPreview);
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
