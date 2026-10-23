@@ -164,25 +164,18 @@
   <section id="xpRolesScreen" class="system-screen" aria-labelledby="xpRolesTitle">
     <h1 id="xpRolesTitle">Cargos por XP</h1>
     <p>Defina quais cargos os membros receberão ao alcançar cada nível de experiência no servidor.</p>
-    <div id="xpLevelList" class="xp-level-list" aria-live="polite">
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole1">Nível 1</label><select id="xpRole1" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole5">Nível 5</label><select id="xpRole5" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole10">Nível 10</label><select id="xpRole10" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole15">Nível 15</label><select id="xpRole15" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole20">Nível 20</label><select id="xpRole20" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole25">Nível 25</label><select id="xpRole25" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole30">Nível 30</label><select id="xpRole30" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole40">Nível 40</label><select id="xpRole40" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole50">Nível 50</label><select id="xpRole50" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole60">Nível 60</label><select id="xpRole60" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole75">Nível 75</label><select id="xpRole75" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
-      <div class="xp-level-row"><label class="xp-level-number" for="xpRole100">Nível 100</label><select id="xpRole100" class="xp-role-select"><option value="">Selecione um cargo</option></select></div>
+    <div class="command-name-editor">
+      <label for="xpLevelInput">Nível de XP</label>
+      <input id="xpLevelInput" type="number" min="1" max="100" step="1" placeholder="Ex.: 10">
+      <label for="xpRoleSelect">Cargo que será entregue</label>
+      <select id="xpRoleSelect" class="xp-role-select"><option value="">Carregando cargos do servidor...</option></select>
     </div>
     <div class="xp-interface-actions">
-      <button id="addXpLevel" class="create-command-button" type="button">＋ Adicionar nível</button>
+      <button id="addXpLevel" class="create-command-button" type="button">＋ Adicionar cargo por XP</button>
       <button id="saveXpRoles" class="create-command-button" type="button">Salvar configurações</button>
     </div>
-    <p class="xp-note">A interface está criada. O carregamento dos cargos do servidor e o salvamento serão conectados na próxima etapa.</p>
+    <div id="xpLevelList" class="xp-level-list" aria-live="polite"><p class="custom-command-empty">Escolha um servidor para ver os cargos por XP salvos.</p></div>
+    <p id="xpStatus" class="xp-note" role="status"></p>
   </section>
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
@@ -297,33 +290,91 @@
         customCommandsScreen.classList.remove('open');
         commandTypeScreen.classList.remove('open');
         xpRolesScreen.classList.add('open');
+        loadXpRoles();
       });
       const xpLevelList = document.getElementById('xpLevelList');
-      document.getElementById('addXpLevel').addEventListener('click', () => {
-        const current = [...xpLevelList.querySelectorAll('.xp-level-row')].length;
-        const level = window.prompt('Qual nível deve receber um cargo?');
-        if (level === null) return;
-        const value = Number(level);
-        if (!Number.isInteger(value) || value < 1 || value > 100 || xpLevelList.querySelector('[data-level="' + value + '"]')) {
-          alert('Informe um nível inteiro de 1 a 100 que ainda não esteja na lista.');
-          return;
+      const xpLevelInput = document.getElementById('xpLevelInput');
+      const xpRoleSelect = document.getElementById('xpRoleSelect');
+      const xpStatus = document.getElementById('xpStatus');
+      let xpRules = [];
+      let xpRolesLoadedFor = '';
+      let editingXpLevel = null;
+      function setXpStatus(text) { xpStatus.textContent = text || ''; }
+      async function getXpContext() {
+        const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
+        const token = getToken();
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
+        return {guild,token,apiBase};
+      }
+      async function loadXpRoles(force = false) {
+        try {
+          const {guild,token,apiBase}=await getXpContext();
+          if (!force && xpRolesLoadedFor === guild.id) { renderXpRules(); return; }
+          setXpStatus('Carregando cargos e configurações...');
+          const [resourcesResponse,settingsResponse]=await Promise.all([
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+          ]);
+          const resources=await resourcesResponse.json().catch(()=>({}));
+          const data=await settingsResponse.json().catch(()=>({}));
+          if(!resourcesResponse.ok) throw new Error(resources.detail||'Não foi possível carregar os cargos do servidor.');
+          if(!settingsResponse.ok) throw new Error(data.detail||'Não foi possível carregar as configurações.');
+          const roles=Array.isArray(resources.roles)?resources.roles:[];
+          xpRoleSelect.replaceChildren(new Option('Selecione um cargo',''));
+          roles.forEach(role=>xpRoleSelect.add(new Option(role.name,role.id)));
+          const settings=data.settings&&typeof data.settings==='object'?data.settings:{};
+          xpRules=(Array.isArray(settings.xpRules)?settings.xpRules:[]).map(rule=>({level:Number(rule.level),role:String(rule.role||'')})).filter(rule=>Number.isInteger(rule.level)&&rule.level>=1&&rule.level<=100&&rule.role);
+          xpRolesLoadedFor=guild.id;
+          renderXpRules();
+          setXpStatus(roles.length?'Selecione um nível e um cargo para adicionar ou editar.':'Nenhum cargo disponível foi retornado pela API.');
+        } catch(error) {
+          setXpStatus(error.message||'Não foi possível carregar cargos por XP.');
+          xpLevelList.replaceChildren();
+          const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent=error.message||'Falha ao carregar.';xpLevelList.append(empty);
         }
-        const row = document.createElement('div');
-        row.className = 'xp-level-row';
-        row.dataset.level = String(value);
-        const label = document.createElement('label');
-        label.className = 'xp-level-number';
-        label.htmlFor = 'xpRoleCustom' + value;
-        label.textContent = 'Nível ' + value;
-        const select = document.createElement('select');
-        select.className = 'xp-role-select';
-        select.id = 'xpRoleCustom' + value;
-        select.innerHTML = '<option value="">Selecione um cargo</option>';
-        row.append(label, select);
-        xpLevelList.append(row);
+      }
+      function renderXpRules() {
+        xpLevelList.replaceChildren();
+        if(!xpRules.length) {
+          const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent='Nenhum cargo por XP configurado ainda.';xpLevelList.append(empty);return;
+        }
+        [...xpRules].sort((a,b)=>a.level-b.level).forEach(rule=>{
+          const row=document.createElement('div');row.className='custom-command-row';
+          const edit=document.createElement('button');edit.type='button';edit.className='custom-command-edit';edit.textContent='Nível '+rule.level+' — '+(xpRoleSelect.querySelector('option[value="'+CSS.escape(rule.role)+'"]')?.textContent||'Cargo não encontrado');
+          edit.addEventListener('click',()=>{editingXpLevel=rule.level;xpLevelInput.value=String(rule.level);xpRoleSelect.value=rule.role;document.getElementById('addXpLevel').textContent='Salvar edição';setXpStatus('Editando o nível '+rule.level+'.');xpLevelInput.focus();});
+          const remove=document.createElement('button');remove.type='button';remove.className='custom-command-delete';remove.textContent='Remover';
+          remove.addEventListener('click',()=>removeXpRule(rule.level,remove));
+          row.append(edit,remove);xpLevelList.append(row);
+        });
+      }
+      document.getElementById('addXpLevel').addEventListener('click',()=>{
+        const level=Number(xpLevelInput.value);const role=xpRoleSelect.value;
+        if(!Number.isInteger(level)||level<1||level>100){alert('Informe um nível inteiro entre 1 e 100.');return;}
+        if(!role){alert('Selecione o cargo que será entregue.');return;}
+        if(xpRules.some(rule=>rule.level===level)&&editingXpLevel!==level){alert('Esse nível já existe. Clique nele para editar.');return;}
+        if(xpRules.some(rule=>rule.role===role&&rule.level!==editingXpLevel)){alert('Esse cargo já está associado a outro nível.');return;}
+        xpRules=xpRules.filter(rule=>rule.level!==editingXpLevel&&rule.level!==level);
+        xpRules.push({level,role});editingXpLevel=null;xpLevelInput.value='';xpRoleSelect.value='';
+        document.getElementById('addXpLevel').textContent='＋ Adicionar cargo por XP';
+        renderXpRules();setXpStatus('Nível adicionado à lista. Clique em Salvar configurações para aplicar.');
       });
-      document.getElementById('saveXpRoles').addEventListener('click', () => {
-        alert('A interface está pronta. A conexão com os cargos do servidor e o salvamento será implementada na próxima etapa.');
+      async function removeXpRule(level,button) {
+        if(!confirm('Remover a configuração de cargo do nível '+level+'?'))return;
+        xpRules=xpRules.filter(rule=>rule.level!==level);
+        if(editingXpLevel===level){editingXpLevel=null;xpLevelInput.value='';xpRoleSelect.value='';document.getElementById('addXpLevel').textContent='＋ Adicionar cargo por XP';}
+        renderXpRules();setXpStatus('Nível removido da lista. Clique em Salvar configurações para aplicar.');
+      }
+      document.getElementById('saveXpRoles').addEventListener('click',async()=>{
+        const button=document.getElementById('saveXpRoles');if(button.disabled)return;button.disabled=true;setXpStatus('Salvando...');
+        try{
+          const {guild,token,apiBase}=await getXpContext();
+          const response=await fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({settings:{xpRules:xpRules.map(rule=>({level:rule.level,role:rule.role}))}})});
+          const result=await response.json().catch(()=>({}));
+          if(!response.ok||!result.ok)throw new Error(result.detail||'A API não confirmou o salvamento.');
+          setXpStatus('Configurações de cargos por XP salvas.');await loadXpRoles(true);
+        }catch(error){setXpStatus(error.message||'Não foi possível salvar as configurações.');alert(error.message||'Falha ao salvar.');}
+        finally{button.disabled=false;}
       });
       document.getElementById('createCommandButton').addEventListener('click', () => {
         resetCommandEditor();
