@@ -61,7 +61,7 @@
       <button id="serverPicker" class="server-picker" type="button" aria-expanded="false" aria-controls="serverOptions">
         <span class="picker-label">Mudar de servidor</span><span class="picker-arrow" aria-hidden="true">⌄</span>
       </button>
-      <button id="overviewLink" class="server-overview" type="button" aria-label="Abrir visão geral do servidor">↗ Abrir visão geral do servidor</button>
+      <button id="overviewLink" class="server-overview" type="button" aria-label="Mostrar informações do servidor">ℹ️ Informações do servidor</button>
       <div id="serverOptions" class="server-options" hidden>
         <div id="serverStatus" class="server-status" role="status" aria-live="polite">Carregando servidores…</div>
       </div>
@@ -73,7 +73,18 @@
     <h1>Bem-vindo às <span class="accent">Configurações dos Servidores</span></h1>
     <p>Este é o espaço de configurações dos servidores do Discord. Em breve, novas opções estarão disponíveis por aqui.</p>
     <div class="footer">Feito com ❄️ pela Yukina</div>
-  </main>
+  </main><section id="serverInfoPanel" class="item wide" hidden style="width:min(100%,780px);margin:18px auto;text-align:left">
+   <h2 style="margin-top:0;color:var(--ice)">Informações do servidor</h2>
+   <div class="grid">
+    <div class="item"><span class="label">Nome</span><div class="value" id="panelGuildName">—</div></div>
+    <div class="item"><span class="label">ID</span><div class="value" id="panelGuildId">—</div></div>
+    <div class="item"><span class="label">Sua permissão</span><div class="value" id="panelGuildPermission">—</div></div>
+    <div class="item"><span class="label">Proprietário</span><div class="value" id="panelGuildOwner">—</div></div>
+    <div class="item"><span class="label">Criado em</span><div class="value" id="panelGuildCreated">—</div></div>
+    <div class="item wide"><span class="label">Recursos</span><div class="chips" id="panelGuildFeatures">—</div></div>
+   </div>
+   <p class="note">Os dados são exibidos aqui sem sair desta página. Use o menu para selecionar outro sistema ou servidor.</p>
+   </section>
   <script>
     (() => {
       const toggle = document.getElementById('menuToggle');
@@ -231,13 +242,27 @@
         }
       }
       overviewLink.addEventListener('click', () => {
-        const url = new URL('./visao-geral-servidor.html', window.location.href);
         const params = new URLSearchParams(window.location.search);
-        ['guild','name'].forEach(key => { if (params.has(key)) url.searchParams.set(key, params.get(key)); });
-        const guild = guilds.find(item => item.id === params.get('guild'));
-        menu.hidden = true;
-        toggle.setAttribute('aria-expanded', 'false');
-        window.location.href = url.pathname + url.search;
+        const guild = guilds.find(item => item.id === params.get('guild')) || guilds[0];
+        const panel = document.getElementById('serverInfoPanel');
+        if (!panel) return;
+        if (!guild) {
+          document.getElementById('panelGuildName').textContent = 'Selecione um servidor primeiro';
+          panel.hidden = false;
+          return;
+        }
+        document.getElementById('panelGuildName').textContent = guild.name || 'Não informado';
+        document.getElementById('panelGuildId').textContent = guild.id || '—';
+        let permission = 'Membro';
+        try { const p = BigInt(guild.permissions || '0'); if ((p & ADMIN) !== 0n) permission = 'Administrador'; else if ((p & MANAGE_GUILD) !== 0n) permission = 'Gerenciar servidor'; } catch (_) {}
+        document.getElementById('panelGuildPermission').textContent = permission;
+        document.getElementById('panelGuildOwner').textContent = guild.owner === true ? 'Sim' : guild.owner === false ? 'Não' : 'Não informado pela API';
+        try { document.getElementById('panelGuildCreated').textContent = new Date(Number((BigInt(guild.id) >> 22n) + 1420070400000n)).toLocaleDateString('pt-BR'); } catch (_) { document.getElementById('panelGuildCreated').textContent = 'Indisponível'; }
+        const features = document.getElementById('panelGuildFeatures');
+        features.replaceChildren();
+        (Array.isArray(guild.features) ? guild.features : []).forEach(value => { const chip=document.createElement('span'); chip.className='chip'; chip.textContent=String(value).toLowerCase().replaceAll('_',' '); features.appendChild(chip); });
+        if (!features.childElementCount) features.textContent='Nenhum recurso informado pela API';
+        panel.hidden = !panel.hidden;
       });
       toggle.addEventListener('click', () => {
         const opening = menu.hidden;
@@ -250,13 +275,6 @@
         options.hidden = !opening;
         picker.setAttribute('aria-expanded', String(opening));
         if (opening && !loaded) loadGuilds();
-      });
-      document.addEventListener('click', event => {
-        if (!event.target.closest('.server-menu')) {
-          menu.hidden = true;
-          toggle.setAttribute('aria-expanded', 'false');
-          toggle.setAttribute('aria-label', 'Abrir menu de servidores');
-        }
       });
       document.addEventListener('keydown', event => {
         if (event.key === 'Escape') {
