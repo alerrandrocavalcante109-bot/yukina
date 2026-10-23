@@ -31,6 +31,10 @@
     .system-screen p{margin:10px 0 0;max-width:650px;color:#f5edff;line-height:1.8}
     .create-command-button{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:12px 18px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
     .create-command-button:hover{background:#555560}
+    .command-type-options{display:flex;flex-wrap:wrap;gap:12px;margin-top:22px}
+    .command-type-button{min-width:140px;padding:14px 18px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
+    .command-type-button:hover{background:#555560}
+    .command-type-button:focus-visible{outline:3px solid #fff;outline-offset:3px}
     .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
     .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
     .server-modal.open{opacity:1;visibility:visible}
@@ -72,8 +76,15 @@
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
     <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
-    <p>A mensagem será enviada em texto simples, sem embed, quando o comando personalizado for utilizado.</p>
     <button id="createCommandButton" class="create-command-button" type="button">＋ Criar comando</button>
+  </section>
+  <section id="commandTypeScreen" class="system-screen" aria-labelledby="commandTypeTitle">
+    <h1 id="commandTypeTitle">Criar comando</h1>
+    <p>Como você deseja enviar a mensagem desse comando?</p>
+    <div class="command-type-options">
+      <button id="commandTypeEmbed" class="command-type-button" type="button">Embed</button>
+      <button id="commandTypeText" class="command-type-button" type="button">Texto simples</button>
+    </div>
   </section>
   <script>
     (() => {
@@ -127,10 +138,22 @@
       }
       const welcomeScreen = document.getElementById('welcomeScreen');
       const customCommandsScreen = document.getElementById('customCommandsScreen');
+      const commandTypeScreen = document.getElementById('commandTypeScreen');
       document.getElementById('customCommands').addEventListener('click', () => {
         setMenu(false);
         welcomeScreen.style.display = 'none';
+        commandTypeScreen.classList.remove('open');
         customCommandsScreen.classList.add('open');
+      });
+      document.getElementById('createCommandButton').addEventListener('click', () => {
+        customCommandsScreen.classList.remove('open');
+        commandTypeScreen.classList.add('open');
+      });
+      document.getElementById('commandTypeEmbed').addEventListener('click', () => {
+        commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Embed.';
+      });
+      document.getElementById('commandTypeText').addEventListener('click', () => {
+        commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Texto simples.';
       });
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
