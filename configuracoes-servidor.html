@@ -200,6 +200,9 @@
       const commandMessageBody = document.getElementById('commandMessageBody');
       const messageEditor = document.getElementById('messageEditor');
       let commandMessageType = '';
+      const mentionMenu = document.getElementById('mentionMenu');
+      let mentionItems = [];
+      let activeMention = null;
       function formatMessage(container, text) {
         const pattern = /(\\*\\*.+?\\*\\*|__(.+?)__|\\*(?!\\s).+?\\*(?!\\*)|_(?!\\s).+?_(?!_)|~~.+?~~|#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
         let lastIndex = 0;
@@ -269,7 +272,7 @@
       }
       async function loadMentionItems(kind) {
         const selected = JSON.parse(stored('yukina_selected_guild') || 'null');
-        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!selected?.id || !apiBase) return [];
         const token = getToken();
         const headers = token ? {Authorization:'Bearer ' + token} : {};
