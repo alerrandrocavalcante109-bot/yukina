@@ -166,13 +166,48 @@
         return guild.icon ? 'https://cdn.discordapp.com/icons/' + encodeURIComponent(guild.id) + '/' + encodeURIComponent(guild.icon) + '.png?size=128' : fallbackAvatar;
       }
       function setCurrent(guild) {
-        currentName.textContent = guild.name;
+        if (!guild) return;
+        currentName.textContent = guild.name || 'Servidor selecionado';
         currentAvatar.src = iconUrl(guild);
-        currentAvatar.alt = 'Ícone de ' + guild.name;
+        currentAvatar.alt = 'Ícone de ' + (guild.name || 'servidor');
         const url = new URL(window.location.href);
         url.searchParams.set('guild', guild.id);
-        url.searchParams.set('name', guild.name);
+        url.searchParams.set('name', guild.name || '');
         window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+
+        // Atualiza também os dados da página no mesmo instante da seleção.
+        const text = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value ?? 'Não disponibilizado'; };
+        text('name', guild.name || 'Não informado');
+        text('nameValue', guild.name || 'Não informado');
+        text('idValue', guild.id || '—');
+        const avatar = document.getElementById('avatar');
+        if (avatar) avatar.src = iconUrl(guild);
+        let permission = 'Membro';
+        try { const p = BigInt(guild.permissions || '0'); if ((p & ADMIN) !== 0n) permission = 'Administrador'; else if ((p & MANAGE_GUILD) !== 0n) permission = 'Gerenciar servidor'; }
+        catch (_) {}
+        text('permission', permission);
+        text('owner', guild.owner === true ? 'Sim' : guild.owner === false ? 'Não' : 'Não informado pela API');
+        try { text('created', new Date(Number((BigInt(guild.id) >> 22n) + 1420070400000n)).toLocaleDateString('pt-BR')); } catch (_) { text('created', 'Indisponível'); }
+        text('iconStatus', guild.icon ? 'Configurado' : 'Sem ícone personalizado');
+        text('bannerStatus', guild.banner ? 'Configurado' : 'Não informado pela API');
+        const featureBox = document.getElementById('features');
+        if (featureBox) {
+          featureBox.replaceChildren();
+          (Array.isArray(guild.features) ? guild.features : []).forEach(value => { const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = String(value).toLowerCase().replaceAll('_', ' '); featureBox.appendChild(chip); });
+          if (!featureBox.childElementCount) featureBox.textContent = 'Nenhum recurso informado pela API';
+        }
+        // Mantém o painel inline sincronizado com o servidor atualmente selecionado.
+        text('panelGuildName', guild.name || 'Não informado');
+        text('panelGuildId', guild.id || '—');
+        text('panelGuildPermission', permission);
+        text('panelGuildOwner', guild.owner === true ? 'Sim' : guild.owner === false ? 'Não' : 'Não informado pela API');
+        try { text('panelGuildCreated', new Date(Number((BigInt(guild.id) >> 22n) + 1420070400000n)).toLocaleDateString('pt-BR')); } catch (_) { text('panelGuildCreated', 'Indisponível'); }
+        const panelFeatures = document.getElementById('panelGuildFeatures');
+        if (panelFeatures) {
+          panelFeatures.replaceChildren();
+          (Array.isArray(guild.features) ? guild.features : []).forEach(value => { const chip = document.createElement('span'); chip.className = 'chip'; chip.textContent = String(value).toLowerCase().replaceAll('_', ' '); panelFeatures.appendChild(chip); });
+          if (!panelFeatures.childElementCount) panelFeatures.textContent = 'Nenhum recurso informado pela API';
+        }
         renderGuilds();
       }
       function renderGuilds() {
@@ -280,7 +315,7 @@
         features.replaceChildren();
         (Array.isArray(guild.features) ? guild.features : []).forEach(value => { const chip=document.createElement('span'); chip.className='chip'; chip.textContent=String(value).toLowerCase().replaceAll('_',' '); features.appendChild(chip); });
         if (!features.childElementCount) features.textContent='Nenhum recurso informado pela API';
-        panel.hidden = !panel.hidden;
+        panel.hidden = false;
       });
       toggle.addEventListener('click', () => {
         const opening = menu.hidden;
