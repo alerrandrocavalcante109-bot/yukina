@@ -24,24 +24,38 @@
     setDirty(Boolean(event.detail && event.detail.dirty));
   });
 
-  saveButton.addEventListener("click", async () => {
-    if (typeof window.YukinaXpSave !== "function") {
-      window.alert("O sistema de salvamento de XP ainda não foi carregado. Recarregue o painel.");
-      return;
+  async function waitForAction(name) {
+    // A página principal inicializa os handlers após montar o painel. Aguarda brevemente
+    // em vez de falhar imediatamente em dispositivos lentos ou com cache parcial.
+    for (let attempt = 0; attempt < 30; attempt++) {
+      if (typeof window[name] === "function") return window[name];
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
+    throw new Error("O painel de XP não terminou de inicializar. Atualize a página e tente novamente.");
+  }
+
+  saveButton.addEventListener("click", async () => {
     saveButton.disabled = true;
-    try { await window.YukinaXpSave(); }
-    finally { saveButton.disabled = false; }
+    try {
+      const action = await waitForAction("YukinaXpSave");
+      await action();
+    } catch (error) {
+      window.alert(error.message || "Não foi possível inicializar o salvamento de XP.");
+    } finally {
+      saveButton.disabled = false;
+    }
   });
 
   resetButton.addEventListener("click", async () => {
-    if (typeof window.YukinaXpReset !== "function") {
-      window.alert("O sistema de redefinição de XP ainda não foi carregado. Recarregue o painel.");
-      return;
-    }
     resetButton.disabled = true;
-    try { await window.YukinaXpReset(); }
-    finally { resetButton.disabled = false; }
+    try {
+      const action = await waitForAction("YukinaXpReset");
+      await action();
+    } catch (error) {
+      window.alert(error.message || "Não foi possível inicializar a redefinição de XP.");
+    } finally {
+      resetButton.disabled = false;
+    }
   });
 
   // Recalcula a visibilidade a partir do estado atual, inclusive se o script principal
