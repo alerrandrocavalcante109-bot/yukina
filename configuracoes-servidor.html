@@ -46,8 +46,16 @@
     .command-name-editor label{font-weight:650}
     .command-name-editor input{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
     .command-name-editor input:focus{outline:2px solid #b9a0ff;outline-offset:2px}
-    .message-editor{display:none;margin-top:14px;gap:10px}
-    .message-editor.open{display:grid}
+    .message-editor{display:grid;margin-top:22px;gap:10px;padding:18px;border:1px solid #ffffff55;border-radius:14px;background:#21153b88;box-shadow:0 8px 24px #180b3b22}
+    .message-editor-heading{margin:0 0 4px;font-size:1rem;font-weight:700}
+    .message-editor-hint{margin:0 0 6px!important;font-size:.9rem!important;color:#e7dcff!important;line-height:1.5!important}
+    .message-editor label{font-weight:650}
+    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
+    .message-editor textarea{min-height:110px;resize:vertical}
+    .message-editor input:focus,.message-editor textarea:focus{outline:2px solid #b9a0ff;outline-offset:2px}
+    .mention-channel,.mention-role{display:inline-block;padding:0 4px;border-radius:4px;font-weight:650;white-space:pre-wrap}
+    .mention-channel{background:#5865f233;color:#c9cdff}
+    .mention-role{background:#e8a5ff22;color:#f0baff}
     .message-editor label{font-weight:650}
     .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
     .message-editor textarea{min-height:110px;resize:vertical}
@@ -110,10 +118,12 @@
       <button id="commandTypeText" class="command-type-button" type="button" aria-pressed="false">Texto simples</button>
     </div>
     <div id="messageEditor" class="message-editor">
+      <h2 class="message-editor-heading">Mensagem do comando</h2>
+      <p class="message-editor-hint">Use #nome-do-canal para destacar um canal e @nome-do-cargo para destacar um cargo.</p>
       <label for="commandMessageTitle">Título do embed (opcional)</label>
       <input id="commandMessageTitle" type="text" maxlength="256" placeholder="Digite o título">
       <label for="commandMessageBody">Mensagem</label>
-      <textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem do comando"></textarea>
+      <textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem do comando. Ex.: Olá! Confira #regras e fale com @Equipe."></textarea>
     </div>
     <div class="command-preview-card" aria-live="polite">
       <h2 class="command-preview-title">Pré-visualização em tempo real</h2>
@@ -188,6 +198,19 @@
       const commandMessageBody = document.getElementById('commandMessageBody');
       const messageEditor = document.getElementById('messageEditor');
       let commandMessageType = '';
+      function formatMessage(container, text) {
+        const pattern = /(#[-\\wÀ-ÿ]+|@[\\wÀ-ÿ-]+)/g;
+        let lastIndex = 0;
+        for (const match of text.matchAll(pattern)) {
+          if (match.index > lastIndex) container.append(document.createTextNode(text.slice(lastIndex, match.index)));
+          const mention = document.createElement('span');
+          mention.className = match[0].startsWith('#') ? 'mention-channel' : 'mention-role';
+          mention.textContent = match[0];
+          container.append(mention);
+          lastIndex = match.index + match[0].length;
+        }
+        if (lastIndex < text.length) container.append(document.createTextNode(text.slice(lastIndex)));
+      }
       function renderCommandPreview() {
         const title = commandMessageTitle.value.trim() || 'Prévia de embed';
         const body = commandMessageBody.value || 'A mensagem do comando aparecerá aqui.';
@@ -202,14 +225,14 @@
           heading.textContent = title;
           const description = document.createElement('p');
           description.className = 'command-preview-embed-description';
-          description.textContent = body;
+          formatMessage(description, body);
           embed.append(heading, description);
           commandPreview.append(embed);
         } else if (commandMessageType === 'text') {
           commandPreview.innerHTML = '';
           const paragraph = document.createElement('p');
           paragraph.className = 'command-preview-text';
-          paragraph.textContent = body;
+          formatMessage(paragraph, body);
           commandPreview.append(paragraph);
         }
         commandPreview.classList.add('preview-update');
