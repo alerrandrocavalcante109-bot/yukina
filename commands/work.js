@@ -110,7 +110,7 @@ async function runWork({ guildId, user, reply }) {
     if (now - lastWorkAt < COOLDOWN_MS) {
       const availableAt = Math.ceil((lastWorkAt + COOLDOWN_MS) / 1000);
       return reply({
-        content: "🫧 Você já cumpriu seu turno por hoje — a Yukina recomenda uma pausa aconchegante. Você poderá trabalhar novamente <t:" + availableAt + ":R>.",
+        content: "🫧 Você já cumpriu seu turno — a Yukina recomenda uma pausa aconchegante. Você poderá trabalhar novamente <t:" + availableAt + ":R>.",
         ephemeral: true,
       });
     }
