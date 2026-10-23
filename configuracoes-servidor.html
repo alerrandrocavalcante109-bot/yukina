@@ -227,26 +227,25 @@
               const kind = isChannel ? 'channel' : 'role';
               const found = mentionItemsCache[kind].find(item => item.id === idMatch[1]);
               mention.textContent = (isChannel ? '#' : '@') + (found ? found.name : idMatch[1]);
+              mention.title = found ? found.name : (isChannel ? 'Canal do Discord' : 'Cargo do Discord');
             } else {
               mention.textContent = token;
             }
             container.append(mention);
+          } else if (token.startsWith('||')) {
+            const spoiler = document.createElement('span');
+            spoiler.className = 'discord-spoiler';
+            spoiler.textContent = token.slice(2, -2);
+            spoiler.addEventListener('click', () => spoiler.classList.toggle('revealed'));
+            container.append(spoiler);
           } else {
-            if (token.startsWith('||')) {
-              const spoiler = document.createElement('span');
-              spoiler.className = 'discord-spoiler';
-              spoiler.textContent = token.slice(2, -2);
-              spoiler.addEventListener('click', () => spoiler.classList.toggle('revealed'));
-              container.append(spoiler);
-            } else {
-              const strong = token.startsWith('**') || token.startsWith('__');
-              const italic = token.startsWith('*') || token.startsWith('_');
-              const del = token.startsWith('~~');
-              const tag = del ? 'del' : strong ? 'strong' : italic ? 'em' : 'span';
-              const el = document.createElement(tag);
-              el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1);
-              container.append(el);
-            }
+            const strong = token.startsWith('**') || token.startsWith('__');
+            const italic = token.startsWith('*') || token.startsWith('_');
+            const del = token.startsWith('~~');
+            const tag = del ? 'del' : strong ? 'strong' : italic ? 'em' : 'span';
+            const el = document.createElement(tag);
+            el.textContent = token.slice(strong || del ? 2 : 1, strong || del ? -2 : -1);
+            container.append(el);
           }
           lastIndex = match.index + token.length;
         }
@@ -313,10 +312,13 @@
             return [];
           }
           const list = kind === 'channel' ? data.channels : data.roles;
-          return (Array.isArray(list) ? list : []).map(item => ({
+          const normalized = (Array.isArray(list) ? list : []).map(item => ({
             id: String(item.id || ''),
-            name: String(item.name || '')
+            name: String(item.name || ''),
+            type: item.type
           })).filter(item => item.id && item.name && (kind !== 'channel' || item.type !== 4));
+          mentionItemsCache[kind] = normalized;
+          return normalized;
         } catch (error) {
           console.warn('[Painel Yukina] API indisponível ao buscar recursos:', error);
           return [];
