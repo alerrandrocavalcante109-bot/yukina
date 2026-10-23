@@ -42,6 +42,17 @@
     .command-preview-embed-description{margin:8px 0 0;color:#dbdee1;line-height:1.5}
     .command-preview-text{margin:0;padding:14px 0;color:#fff;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
     .command-preview-empty{margin:0;color:#e7dcff;font-size:.95rem}
+    .edit-message-button{margin-top:12px;padding:12px 16px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
+    .edit-message-button:hover{background:#555560}
+    .message-editor{display:none;margin-top:14px;gap:10px}
+    .message-editor.open{display:grid}
+    .message-editor label{font-weight:650}
+    .message-editor input,.message-editor textarea{width:100%;padding:12px;border:1px solid #ffffff55;border-radius:10px;background:#211b32;color:#fff;font:inherit}
+    .message-editor textarea{min-height:110px;resize:vertical}
+    .message-editor input:focus,.message-editor textarea:focus{outline:2px solid #b9a0ff;outline-offset:2px}
+    .preview-update{animation:preview-change .24s ease}
+    @keyframes preview-change{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
+    @media(prefers-reduced-motion:reduce){.preview-update{animation:none}}
     .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
     .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
     .server-modal.open{opacity:1;visibility:visible}
@@ -89,8 +100,15 @@
     <h1 id="commandTypeTitle">Criar comando</h1>
     <p>Como você deseja enviar a mensagem desse comando?</p>
     <div class="command-type-options">
-      <button id="commandTypeEmbed" class="command-type-button" type="button">Embed</button>
-      <button id="commandTypeText" class="command-type-button" type="button">Texto simples</button>
+      <button id="commandTypeEmbed" class="command-type-button" type="button" aria-pressed="false">Embed</button>
+      <button id="commandTypeText" class="command-type-button" type="button" aria-pressed="false">Texto simples</button>
+    </div>
+    <button id="editMessageButton" class="edit-message-button" type="button" aria-expanded="false">Editar mensagem</button>
+    <div id="messageEditor" class="message-editor">
+      <label for="commandMessageTitle">Título do embed (opcional)</label>
+      <input id="commandMessageTitle" type="text" maxlength="256" placeholder="Digite o título">
+      <label for="commandMessageBody">Mensagem</label>
+      <textarea id="commandMessageBody" maxlength="4000" placeholder="Digite a mensagem do comando"></textarea>
     </div>
     <div class="command-preview-card" aria-live="polite">
       <h2 class="command-preview-title">Pré-visualização em tempo real</h2>
@@ -161,14 +179,54 @@
         commandTypeScreen.classList.add('open');
       });
       const commandPreview = document.getElementById('commandPreview');
-      document.getElementById('commandTypeEmbed').addEventListener('click', () => {
-        commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Embed.';
-        commandPreview.innerHTML = '<div class="command-preview-embed"><h3 class="command-preview-embed-title">Prévia de embed</h3><p class="command-preview-embed-description">A mensagem do comando aparecerá aqui dentro do embed, como uma mensagem formatada do Discord.</p></div>';
+      const commandMessageTitle = document.getElementById('commandMessageTitle');
+      const commandMessageBody = document.getElementById('commandMessageBody');
+      const messageEditor = document.getElementById('messageEditor');
+      const editMessageButton = document.getElementById('editMessageButton');
+      let commandMessageType = '';
+      function renderCommandPreview() {
+        const title = commandMessageTitle.value.trim() || 'Prévia de embed';
+        const body = commandMessageBody.value || 'A mensagem do comando aparecerá aqui.';
+        commandPreview.classList.remove('preview-update');
+        void commandPreview.offsetWidth;
+        if (commandMessageType === 'embed') {
+          commandPreview.innerHTML = '';
+          const embed = document.createElement('div');
+          embed.className = 'command-preview-embed';
+          const heading = document.createElement('h3');
+          heading.className = 'command-preview-embed-title';
+          heading.textContent = title;
+          const description = document.createElement('p');
+          description.className = 'command-preview-embed-description';
+          description.textContent = body;
+          embed.append(heading, description);
+          commandPreview.append(embed);
+        } else if (commandMessageType === 'text') {
+          commandPreview.innerHTML = '';
+          const paragraph = document.createElement('p');
+          paragraph.className = 'command-preview-text';
+          paragraph.textContent = body;
+          commandPreview.append(paragraph);
+        }
+        commandPreview.classList.add('preview-update');
+      }
+      function chooseCommandType(type) {
+        commandMessageType = type;
+        commandTypeScreen.querySelector('p').textContent = type === 'embed' ? 'Tipo escolhido: Embed.' : 'Tipo escolhido: Texto simples.';
+        document.getElementById('commandTypeEmbed').setAttribute('aria-pressed', String(type === 'embed'));
+        document.getElementById('commandTypeText').setAttribute('aria-pressed', String(type === 'text'));
+        renderCommandPreview();
+      }
+      document.getElementById('commandTypeEmbed').addEventListener('click', () => chooseCommandType('embed'));
+      document.getElementById('commandTypeText').addEventListener('click', () => chooseCommandType('text'));
+      editMessageButton.addEventListener('click', () => {
+        const open = !messageEditor.classList.contains('open');
+        messageEditor.classList.toggle('open', open);
+        editMessageButton.setAttribute('aria-expanded', String(open));
+        editMessageButton.textContent = open ? 'Fechar edição' : 'Editar mensagem';
       });
-      document.getElementById('commandTypeText').addEventListener('click', () => {
-        commandTypeScreen.querySelector('p').textContent = 'Tipo escolhido: Texto simples.';
-        commandPreview.innerHTML = '<p class="command-preview-text">A mensagem do comando aparecerá aqui como texto simples, sem embed ou cartão de formatação.</p>';
-      });
+      commandMessageTitle.addEventListener('input', renderCommandPreview);
+      commandMessageBody.addEventListener('input', renderCommandPreview);
       toggle.addEventListener('click', () => setMenu(!menu.classList.contains('open')));
       scrim.addEventListener('click', () => setMenu(false));
       document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenu(false); });
