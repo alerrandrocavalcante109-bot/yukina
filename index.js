@@ -399,6 +399,7 @@ function loadYukinaSystems() {
   systemsLoaded = true;
   console.log("[Yukina] Conexão estabelecida; iniciando os sistemas em seguida...");
   require("./command-engine")(client);
+  require("./custom-command-engine")(client, getSettingsCollection);
   require("./rank-system")(client);
   require("./xp-level-system")(client);
   require("./time-role-system")(client);
