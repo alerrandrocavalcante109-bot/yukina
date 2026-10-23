@@ -28,7 +28,9 @@
     .system-screen{display:none;width:min(100%,760px);padding:28px;border:1px solid #ffffff45;border-radius:20px;background:#21153b88;backdrop-filter:blur(12px);text-align:left}
     .system-screen.open{display:block}
     .system-screen h1{font-size:clamp(1.8rem,5vw,2.8rem)}
-    .system-screen p{margin:16px 0 0;max-width:650px;color:#f5edff;line-height:1.8}
+    .system-screen p{margin:10px 0 0;max-width:650px;color:#f5edff;line-height:1.8}
+    .create-command-button{display:inline-flex;align-items:center;gap:8px;margin-top:20px;padding:12px 18px;border:1px solid #ffffff66;border-radius:12px;background:#62626c;color:#fff;font:inherit;font-weight:650;cursor:pointer}
+    .create-command-button:hover{background:#555560}
     .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
     .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
     .server-modal.open{opacity:1;visibility:visible}
@@ -69,10 +71,9 @@
   </main>
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
-    <div>
-      <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
-      <p>A mensagem será enviada em texto simples, sem embed, quando o comando personalizado for utilizado.</p>
-    </div>
+    <p>Crie comandos personalizados para o seu servidor, definindo uma mensagem que a Yukina enviará quando o comando for utilizado.</p>
+    <p>A mensagem será enviada em texto simples, sem embed, quando o comando personalizado for utilizado.</p>
+    <button id="createCommandButton" class="create-command-button" type="button">＋ Criar comando</button>
   </section>
   <script>
     (() => {
