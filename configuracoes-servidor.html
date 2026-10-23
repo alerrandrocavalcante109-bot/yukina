@@ -36,7 +36,7 @@
     .server-option img{width:34px;height:34px;border-radius:10px;object-fit:cover;background:#282038}
     .server-option span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
     .server-status{padding:8px 5px;color:var(--muted);font-size:.82rem;line-height:1.5}
-    .server-overview{margin-top:10px;padding:12px;border:1px solid #8edcff30;border-radius:12px;background:#0b0712}
+    .server-overview{display:block;width:100%;margin-top:10px;padding:12px;border:1px solid #8edcff30;border-radius:12px;background:#0b0712;color:inherit;text-align:left;cursor:pointer}.server-overview:hover{border-color:#a7d8f0aa;background:#a7d8f00b}
     .overview-title{margin:0 0 10px;font-size:.95rem;color:var(--ice)}
     .overview-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
     .overview-item{min-width:0;padding:9px;border-radius:9px;background:#a7d8f00b}
@@ -70,7 +70,7 @@
       <button id="serverPicker" class="server-picker" type="button" aria-expanded="false" aria-controls="serverOptions">
         <span class="picker-label">Mudar de servidor</span><span class="picker-arrow" aria-hidden="true">⌄</span>
       </button>
-      <section class="server-overview" aria-labelledby="overviewTitle">
+      <button id="overviewLink" class="server-overview" type="button" aria-label="Abrir tela de visão geral do servidor">
         <h2 id="overviewTitle" class="overview-title">Visão geral</h2>
         <div id="overviewContent" class="overview-grid">
           <div class="overview-item overview-wide"><span class="overview-label">Servidor</span><span id="overviewName" class="overview-value">Selecione um servidor</span></div>
@@ -80,7 +80,7 @@
           <div class="overview-item"><span class="overview-label">Data de criação</span><span id="overviewCreated" class="overview-value">—</span></div>
           <div class="overview-item overview-wide"><span class="overview-label">Recursos do servidor</span><div id="overviewFeatures" class="overview-features"><span class="overview-chip">Aguardando dados</span></div></div>
         </div>
-      </section>
+      </button>
       <div id="serverOptions" class="server-options" hidden>
         <div id="serverStatus" class="server-status" role="status" aria-live="polite">Carregando servidores…</div>
       </div>
@@ -102,6 +102,7 @@
       const status = document.getElementById('serverStatus');
       const currentName = document.getElementById('currentServerName');
       const currentAvatar = document.getElementById('currentServerAvatar');
+      const overviewLink = document.getElementById('overviewLink');
       const overviewName = document.getElementById('overviewName');
       const overviewId = document.getElementById('overviewId');
       const overviewPermission = document.getElementById('overviewPermission');
@@ -286,6 +287,21 @@
           loaded = true;
         }
       }
+      overviewLink.addEventListener('click', () => {
+        const url = new URL('./visao-geral-servidor.html', window.location.href);
+        const params = new URLSearchParams(window.location.search);
+        ['guild','name'].forEach(key => { if (params.has(key)) url.searchParams.set(key, params.get(key)); });
+        const guild = guilds.find(item => item.id === params.get('guild'));
+        if (guild) {
+          url.searchParams.set('permission', document.getElementById('overviewPermission').textContent);
+          url.searchParams.set('owner', document.getElementById('overviewOwner').textContent);
+          url.searchParams.set('created', document.getElementById('overviewCreated').textContent);
+          url.searchParams.set('features', (guild.features || []).join(','));
+        }
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+        window.location.href = url.pathname + url.search;
+      });
       toggle.addEventListener('click', () => {
         const opening = menu.hidden;
         menu.hidden = !opening;
