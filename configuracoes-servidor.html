@@ -226,8 +226,8 @@
             if (idMatch) {
               const kind = isChannel ? 'channel' : 'role';
               const found = mentionItemsCache[kind].find(item => item.id === idMatch[1]);
-              mention.textContent = (isChannel ? '#' : '@') + (found ? found.name : idMatch[1]);
-              mention.title = found ? found.name : (isChannel ? 'Canal do Discord' : 'Cargo do Discord');
+              mention.textContent = (isChannel ? '#' : '@') + (found ? found.name : 'ID ' + idMatch[1]);
+              mention.title = found ? found.name : (isChannel ? 'Canal não carregado — verifique a API e o servidor selecionado' : 'Cargo não carregado — verifique a API e o servidor selecionado');
             } else {
               mention.textContent = token;
             }
@@ -294,35 +294,39 @@
         }
         mentionMenu.hidden = false;
       }
+      let resourcesPromise = null;
+      let resourcesGuildId = '';
       async function loadMentionItems(kind) {
         let selected = null;
         try { selected = JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) {}
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         const token = getToken();
         if (!selected?.id || !apiBase || !token) return [];
-        try {
-          const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(selected.id) + '/resources', {
+        if (!resourcesPromise || resourcesGuildId !== String(selected.id)) {
+          resourcesGuildId = String(selected.id);
+          resourcesPromise = fetch(apiBase + '/api/guilds/' + encodeURIComponent(selected.id) + '/resources', {
             method: 'GET',
             headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' },
             cache: 'no-store'
+          }).then(async response => {
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) throw new Error(data.detail || 'Falha ao carregar recursos (' + response.status + ')');
+            const normalize = list => (Array.isArray(list) ? list : []).map(item => ({
+              id: String(item.id || ''),
+              name: String(item.name || item.label || ''),
+              type: item.type
+            })).filter(item => item.id && item.name);
+            mentionItemsCache.channel = normalize(data.channels).filter(item => item.type !== 4);
+            mentionItemsCache.role = normalize(data.roles);
+            return true;
+          }).catch(error => {
+            resourcesPromise = null;
+            console.warn('[Painel Yukina] Não foi possível carregar canais/cargos:', error);
+            return false;
           });
-          const data = await response.json().catch(() => ({}));
-          if (!response.ok) {
-            console.warn('[Painel Yukina] Falha ao carregar recursos:', response.status, data.detail || '');
-            return [];
-          }
-          const list = kind === 'channel' ? data.channels : data.roles;
-          const normalized = (Array.isArray(list) ? list : []).map(item => ({
-            id: String(item.id || ''),
-            name: String(item.name || ''),
-            type: item.type
-          })).filter(item => item.id && item.name && (kind !== 'channel' || item.type !== 4));
-          mentionItemsCache[kind] = normalized;
-          return normalized;
-        } catch (error) {
-          console.warn('[Painel Yukina] API indisponível ao buscar recursos:', error);
-          return [];
         }
+        const ok = await resourcesPromise;
+        return ok ? mentionItemsCache[kind] : [];
       }
       async function updateMentionMenu() {
         const input = commandMessageBody;
