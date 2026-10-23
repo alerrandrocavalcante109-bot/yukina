@@ -19,8 +19,7 @@
     *{box-sizing:border-box}
     body{margin:0;min-height:100vh;display:grid;place-items:center;padding:28px;background:radial-gradient(ellipse at 12% 0%,#173d5b 0,transparent 38%),radial-gradient(ellipse at 90% 15%,#29244f 0,transparent 32%),var(--bg);font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#f8f4ff}
     .server-menu{position:fixed;top:18px;left:18px;z-index:10}
-    .menu-toggle{width:56px;height:56px;display:block;padding:0;overflow:hidden;border:2px solid #a7d8f0aa;border-radius:14px;background:#171020e8;cursor:pointer;box-shadow:0 8px 26px #0007;backdrop-filter:blur(12px)}
-    .menu-toggle img{display:block;width:100%;height:100%;object-fit:cover}
+    .menu-toggle{width:56px;height:56px;display:grid;place-items:center;padding:0;border:2px solid #a7d8f0aa;border-radius:14px;background:#171020e8;color:#a7d8f0;font-size:34px;line-height:1;cursor:pointer;box-shadow:0 8px 26px #0007;backdrop-filter:blur(12px)}
     .menu-panel{position:absolute;top:52px;left:0;width:min(56vw,420px);min-width:min(280px,calc(100vw - 36px));padding:12px;border:1px solid #8edcff55;border-radius:16px;background:#171020f5;box-shadow:0 16px 44px #0008;backdrop-filter:blur(16px)}
     .menu-panel[hidden],.server-options[hidden]{display:none}
     .server-current{display:flex;align-items:center;gap:12px;padding:4px 4px 12px}
@@ -49,7 +48,7 @@
 </head>
 <body>
   <div class="server-menu">
-    <button id="menuToggle" class="menu-toggle" type="button" aria-label="Abrir menu de servidores" aria-expanded="false" aria-controls="serverMenu"><img id="menuServerAvatar" src="https://yukina-6uo.pages.dev/assets/yukina-bg.png" alt=""></button>
+    <button id="menuToggle" class="menu-toggle" type="button" aria-label="Abrir menu de servidores" aria-expanded="false" aria-controls="serverMenu">≡</button>
     <section id="serverMenu" class="menu-panel" aria-label="Seletor de servidores" hidden>
       <div class="server-current">
         <img id="currentServerAvatar" class="server-avatar" src="https://yukina-6uo.pages.dev/assets/yukina-bg.png" alt="Ícone do servidor">
@@ -82,7 +81,6 @@
       const status = document.getElementById('serverStatus');
       const currentName = document.getElementById('currentServerName');
       const currentAvatar = document.getElementById('currentServerAvatar');
-      const menuAvatar = document.getElementById('menuServerAvatar');
       const fallbackAvatar = 'https://yukina-6uo.pages.dev/assets/yukina-bg.png';
       const ADMIN = 0x8n;
       const MANAGE_GUILD = 0x20n;
@@ -257,7 +255,6 @@
         }
       });
       currentAvatar.onerror = () => { currentAvatar.onerror = null; currentAvatar.src = fallbackAvatar; };
-      menuAvatar.onerror = () => { menuAvatar.onerror = null; menuAvatar.src = fallbackAvatar; };
       loadGuilds();
     })();
   </script>
