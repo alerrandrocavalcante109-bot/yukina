@@ -609,7 +609,7 @@
       async function getCommandSettings() {
         const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
         const token = getToken();
-        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
         const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
         const data = await response.json().catch(()=>({}));
