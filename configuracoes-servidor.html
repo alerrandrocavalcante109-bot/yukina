@@ -470,6 +470,102 @@
       document.addEventListener('keydown', event => { if (event.key === 'Escape') setMenu(false); });
       const stored = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
       const save = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
+      const saveCommandButton = document.getElementById('saveCommandButton');
+      let saveAnimationTimer = null;
+      function setSaveStatus(label, state) {
+        if (saveAnimationTimer) { clearInterval(saveAnimationTimer); saveAnimationTimer = null; }
+        saveCommandButton.textContent = label;
+        saveCommandButton.dataset.state = state || '';
+        saveCommandButton.disabled = state === 'saving' || state === 'sending';
+        saveCommandButton.setAttribute('aria-live', 'polite');
+      }
+      function collectCommandPayload() {
+        const name = String(document.getElementById('commandName').value || '').trim().toLowerCase();
+        if (!/^[a-z0-9_-]{1,32}$/.test(name)) throw new Error('Use um nome de comando com letras sem acento, números, hífen ou sublinhado.');
+        if (!commandMessageType) throw new Error('Escolha Embed ou Texto simples.');
+        const urlOrEmpty = value => {
+          const v = String(value || '').trim();
+          if (!v) return '';
+          let parsed;
+          try { parsed = new URL(v); } catch (_) { throw new Error('Confira os links e imagens: use uma URL completa começando com https://.'); }
+          if (!['http:', 'https:'].includes(parsed.protocol)) throw new Error('Os links e imagens precisam usar http:// ou https://.');
+          return parsed.href;
+        };
+        const mainEmbed = {
+          title: commandMessageTitle.value.trim(),
+          message: commandMessageBody.value,
+          color: normalizeHexColor(commandEmbedColor.value) || '#9B7BFF',
+          link: urlOrEmpty(commandEmbedLink.value),
+          image: urlOrEmpty(commandEmbedImage.value)
+        };
+        const embeds = [mainEmbed, ...additionalEmbedData.map(item => ({
+          title: item.fields.title.value.trim(),
+          message: item.fields.body.value,
+          color: normalizeHexColor(item.fields.color.value) || '#9B7BFF',
+          link: urlOrEmpty(item.fields.link.value),
+          image: urlOrEmpty(item.fields.image.value)
+        }))];
+        if (commandMessageType === 'text' && !commandMessageBody.value.trim()) throw new Error('Digite a mensagem do comando.');
+        if (commandMessageType === 'embed' && !embeds.some(e => e.title || e.message.trim() || e.link || e.image)) throw new Error('Preencha a mensagem ou algum campo do embed.');
+        return { name, type: commandMessageType, message: commandMessageBody.value, embeds: commandMessageType === 'embed' ? embeds : [], updatedAt: new Date().toISOString() };
+      }
+      async function saveCustomCommand() {
+        if (saveCommandButton.disabled) return;
+        let payload;
+        try { payload = collectCommandPayload(); }
+        catch (error) { setSaveStatus('Salvar', ''); alert(error.message); return; }
+        let guild = null;
+        try { guild = JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) {}
+        const token = getToken();
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        if (!guild?.id) { setSaveStatus('Salvar', ''); alert('Escolha um servidor antes de salvar o comando.'); return; }
+        if (!token) { setSaveStatus('Salvar', ''); alert('Sua sessão do Discord expirou. Entre novamente para salvar.'); return; }
+        if (!apiBase) { setSaveStatus('Salvar', ''); alert('A API da Yukina não está configurada nesta página.'); return; }
+        saveCommandButton.disabled = true;
+        saveCommandButton.dataset.state = 'saving';
+        let dots = 0;
+        saveCommandButton.textContent = 'Salvando';
+        saveAnimationTimer = setInterval(() => { dots = (dots + 1) % 4; saveCommandButton.textContent = 'Salvando' + '.'.repeat(dots); }, 320);
+        try {
+          const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {
+            method: 'GET', headers: { Authorization: 'Bearer ' + token, Accept: 'application/json' }, cache: 'no-store'
+          });
+          const current = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(current.detail || 'Não foi possível carregar as configurações do servidor.');
+          const settings = current.settings && typeof current.settings === 'object' ? current.settings : {};
+          const commands = Array.isArray(settings.customCommands) ? settings.customCommands : [];
+          const existingIndex = commands.findIndex(item => String(item.name || '').toLowerCase() === payload.name);
+          if (existingIndex >= 0) commands[existingIndex] = payload;
+          else commands.push(payload);
+          const writeResponse = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {
+            method: 'PUT',
+            headers: { Authorization: 'Bearer ' + token, 'Content-Type': 'application/json', Accept: 'application/json' },
+            body: JSON.stringify({ settings: { customCommands: commands } })
+          });
+          const result = await writeResponse.json().catch(() => ({}));
+          if (!writeResponse.ok || !result.ok) throw new Error(result.detail || 'A API não confirmou o salvamento.');
+          if (saveAnimationTimer) { clearInterval(saveAnimationTimer); saveAnimationTimer = null; }
+          saveCommandButton.dataset.state = 'saved';
+          saveCommandButton.textContent = 'Comando salvo!';
+          await new Promise(resolve => setTimeout(resolve, 950));
+          saveCommandButton.dataset.state = 'sending';
+          saveCommandButton.textContent = 'Enviando para a Yukina...';
+          await new Promise(resolve => setTimeout(resolve, 700));
+          saveCommandButton.dataset.state = 'sent';
+          saveCommandButton.textContent = 'Comando enviado!';
+          saveCommandButton.disabled = false;
+          await new Promise(resolve => setTimeout(resolve, 1800));
+          if (saveCommandButton.dataset.state === 'sent') setSaveStatus('Salvar', '');
+        } catch (error) {
+          if (saveAnimationTimer) { clearInterval(saveAnimationTimer); saveAnimationTimer = null; }
+          saveCommandButton.disabled = false;
+          saveCommandButton.dataset.state = 'error';
+          saveCommandButton.textContent = 'Falha ao salvar';
+          alert(error.message || 'Não foi possível salvar o comando na Yukina.');
+          setTimeout(() => { if (saveCommandButton.dataset.state === 'error') setSaveStatus('Tentar novamente', ''); }, 2200);
+        }
+      }
+      saveCommandButton.addEventListener('click', saveCustomCommand);
       function getToken() {
         const sessionExpiry = Number(stored('yukina_panel_session_expires_at') || 0);
         if (sessionExpiry && Date.now() >= sessionExpiry) return null;
