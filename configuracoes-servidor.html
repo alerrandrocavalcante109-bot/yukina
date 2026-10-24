@@ -1409,5 +1409,82 @@
       loadUserProfile();
     })();
   </script>
+  <script>
+    // Camada de recuperação para navegação e seleção de servidor.
+    // Mantém esses controles operacionais mesmo se um módulo de tela falhar.
+    (() => {
+      const $ = id => document.getElementById(id);
+      const menu = $('sideMenu'), toggle = $('menuToggle'), scrim = $('menuScrim');
+      const closeMenu = () => {
+        menu?.classList.remove('open');
+        scrim?.classList.remove('open');
+        menu?.setAttribute('aria-hidden', 'true');
+        scrim?.setAttribute('aria-hidden', 'true');
+        toggle?.setAttribute('aria-expanded', 'false');
+        toggle?.setAttribute('aria-label', 'Abrir menu');
+      };
+      if (toggle && menu && !toggle.dataset.recoveryBound) {
+        toggle.dataset.recoveryBound = '1';
+        toggle.addEventListener('click', event => {
+          event.preventDefault();
+          const open = !menu.classList.contains('open');
+          menu.classList.toggle('open', open);
+          scrim?.classList.toggle('open', open);
+          menu.setAttribute('aria-hidden', String(!open));
+          scrim?.setAttribute('aria-hidden', String(!open));
+          toggle.setAttribute('aria-expanded', String(open));
+          toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+        });
+        scrim?.addEventListener('click', closeMenu);
+      }
+      const modal = $('serverModal'), list = $('serverList');
+      $('chooseServer')?.addEventListener('click', async () => {
+        if (!modal || !list) return;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        const read = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
+        let token = read('yukina_discord_token');
+        const expiry = Number(read('yukina_discord_token_expires_at') || 0);
+        if (expiry && Date.now() >= expiry) token = null;
+        if (!token) {
+          list.textContent = '';
+          const p = document.createElement('p'); p.className = 'server-empty'; p.textContent = 'Sua sessão do Discord expirou. Entre novamente para escolher um servidor.'; list.append(p); return;
+        }
+        list.textContent = '';
+        const loading = document.createElement('p'); loading.className = 'server-empty'; loading.textContent = 'Carregando servidores...'; list.append(loading);
+        try {
+          const response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {headers:{Authorization:'Bearer '+token},cache:'no-store'});
+          if (!response.ok) throw new Error(response.status === 401 ? 'Sua sessão do Discord expirou. Entre novamente.' : 'Não foi possível carregar os servidores.');
+          const guilds = await response.json();
+          const allowed = guilds.filter(g => g.owner || (Number(g.permissions) & 32) === 32);
+          list.replaceChildren();
+          if (!allowed.length) { const p=document.createElement('p');p.className='server-empty';p.textContent='Nenhum servidor administrável encontrado.';list.append(p);return; }
+          allowed.forEach(guild => {
+            const button=document.createElement('button');button.type='button';button.className='server-option';
+            const img=document.createElement('img');img.alt='';img.src=guild.icon?'https://cdn.discordapp.com/icons/'+guild.id+'/'+guild.icon+'.png?size=128':'https://cdn.discordapp.com/embed/avatars/0.png';
+            const label=document.createElement('span');label.textContent=guild.name;button.append(img,label);
+            button.addEventListener('click',()=>{
+              try { localStorage.setItem('yukina_selected_guild',JSON.stringify({id:guild.id,name:guild.name,icon:guild.icon||null})); } catch (_) {}
+              const icon=$('selectedServerIcon'), name=$('selectedServerName'), selected=$('selectedServer');
+              if(icon){icon.src=img.src;icon.alt='Foto do servidor '+guild.name;}
+              if(name)name.textContent=guild.name;
+              if(selected){selected.hidden=false;selected.style.display='flex';}
+              modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
+              // Recarrega a tela atualmente aberta para usar o servidor escolhido.
+              const active=document.querySelector('.system-screen.open');
+              if(active?.id==='customCommandsScreen')$('customCommands')?.click();
+              else if(active?.id==='xpRolesScreen')$('xpRolesMenu')?.click();
+              else if(active?.id==='temporalRolesScreen')$('temporalRolesMenu')?.click();
+            });
+            list.append(button);
+          });
+        } catch(error) {
+          list.replaceChildren();const p=document.createElement('p');p.className='server-empty';p.textContent=error.message||'Não foi possível carregar os servidores.';list.append(p);
+        }
+      });
+      $('serverModalClose')?.addEventListener('click',()=>{modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');});
+      document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeMenu();modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');}});
+    })();
+  </script>
 </body>
 </html>
