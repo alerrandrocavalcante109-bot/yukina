@@ -25,6 +25,39 @@ const TOKEN = (process.env.TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
 const AI_MODEL = (process.env.AI_MODEL || "meta-llama/llama-3.3-70b-instruct:free").trim();
 
+const DAILY_TIME_ZONE = "America/Sao_Paulo";
+
+function getDailyDateParts(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: DAILY_TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+  }).formatToParts(date);
+  return Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, Number(part.value)]));
+}
+
+function getDailyDayKey(date = new Date()) {
+  const parts = getDailyDateParts(date);
+  return String(parts.year).padStart(4, "0") + "-" + String(parts.month).padStart(2, "0") + "-" + String(parts.day).padStart(2, "0");
+}
+
+function saoPauloMidnightUtc(year, month, day) {
+  const targetUtc = Date.UTC(year, month - 1, day, 0, 0, 0);
+  let guess = targetUtc;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const parts = getDailyDateParts(new Date(guess));
+    const representedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    const adjustment = targetUtc - representedUtc;
+    guess += adjustment;
+    if (adjustment === 0) break;
+  }
+  return new Date(guess);
+}
+
+function getNextDailyReset(date = new Date()) {
+  const parts = getDailyDateParts(date);
+  return saoPauloMidnightUtc(parts.year, parts.month, parts.day + 1).toISOString();
+}
+
 if (!TOKEN) {
   console.error("❌ [Yukina] Token do Discord ausente. Configure TOKEN nas variáveis de ambiente do Render.");
   process.exit(1);
@@ -1031,9 +1064,9 @@ async function panelApi(req, res, url) {
       const daily = settingsMongoClient.db(MONGODB_DB).collection("daily_claims");
       await daily.createIndex({ guildId: 1, userId: 1, day: 1 }, { unique: true });
       const now = new Date();
-      const day = now.toISOString().slice(0, 10);
+      const day = getDailyDayKey(now);
       const previous = await daily.findOne({ guildId, userId: String(user.id), day });
-      if (!isClaim) return sendJson(res, 200, { ok: true, claimed: Boolean(previous), nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
+      if (!isClaim) return sendJson(res, 200, { ok: true, claimed: Boolean(previous), nextReset: getNextDailyReset(now) });
       if (previous) return sendJson(res, 409, { ok: false, claimed: true, detail: "Você já coletou seu Daily hoje! Volte amanhã para coletar novamente." });
       const body = await readBody(req);
       const captchaToken = String(body.token || "").trim();
