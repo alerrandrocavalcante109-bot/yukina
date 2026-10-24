@@ -14,11 +14,11 @@
     main{width:min(100%,760px)}
     h1{margin:0;font-size:clamp(2rem,6vw,3.5rem);font-weight:750;letter-spacing:-.04em;text-shadow:0 3px 24px #170b3866}
     p{max-width:650px;margin:22px auto 0;font-size:clamp(1rem,2.5vw,1.15rem);line-height:1.8;color:#f5edff}
-    .menu-toggle{position:fixed;top:18px;left:18px;z-index:12;width:50px;height:50px;display:grid;place-items:center;border:1px solid #ffffff70;border-radius:13px;background:#85858de8;color:#fff;font-size:30px;line-height:1;cursor:pointer;box-shadow:0 8px 24px #180b3b44;backdrop-filter:blur(10px)}
+    .menu-toggle{position:fixed;top:18px;left:18px;z-index:10001;pointer-events:auto;touch-action:manipulation;width:50px;height:50px;display:grid;place-items:center;border:1px solid #ffffff70;border-radius:13px;background:#85858de8;color:#fff;font-size:30px;line-height:1;cursor:pointer;box-shadow:0 8px 24px #180b3b44;backdrop-filter:blur(10px)}
     .menu-toggle:hover{background:#707078}
     .menu-toggle:focus-visible{outline:3px solid #fff;outline-offset:3px}
-    .side-menu{position:fixed;inset:0 auto 0 0;width:56vw;height:100vh;height:100dvh;z-index:10;padding:86px 20px 24px;background:#777780f5;border-right:1px solid #ffffff55;box-shadow:12px 0 36px #160a2c55;backdrop-filter:blur(18px);transform:translateX(-102%);transition:transform .24s ease;overflow-y:auto;text-align:left}
-    .side-menu.open{transform:translateX(0)}
+    .side-menu{position:fixed;inset:0 auto 0 0;visibility:visible;pointer-events:none;width:56vw;height:100vh;height:100dvh;z-index:10;padding:86px 20px 24px;background:#777780f5;border-right:1px solid #ffffff55;box-shadow:12px 0 36px #160a2c55;backdrop-filter:blur(18px);transform:translateX(-102%);transition:transform .24s ease;overflow-y:auto;text-align:left}
+    .side-menu.open{transform:translateX(0);pointer-events:auto}
     .side-menu h2{margin:0;color:#fff;font-size:1.15rem;font-weight:700}
     .server-avatar{width:90px;height:90px;object-fit:cover;border-radius:15px;background:#51445f}
     #selectedServerName{font-size:1rem;font-weight:600;line-height:1.3;color:#fff;overflow-wrap:anywhere}
@@ -362,19 +362,31 @@
         const setOpen = open => {
           menu.classList.toggle('open', open);
           scrim.classList.toggle('open', open);
+          menu.style.transform = open ? 'translateX(0)' : 'translateX(-102%)';
+          menu.style.visibility = 'visible';
+          menu.style.pointerEvents = open ? 'auto' : 'none';
+          scrim.style.opacity = open ? '1' : '0';
+          scrim.style.visibility = open ? 'visible' : 'hidden';
+          scrim.style.pointerEvents = open ? 'auto' : 'none';
           menu.setAttribute('aria-hidden', String(!open));
           scrim.setAttribute('aria-hidden', String(!open));
           toggle.setAttribute('aria-expanded', String(open));
           toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
         };
-        toggle.addEventListener('click', event => {
+        // Capture no documento evita que outro handler interrompa o clique.
+        document.addEventListener('click', event => {
+          const button = event.target && event.target.closest ? event.target.closest('#menuToggle') : null;
+          if (!button) return;
           event.preventDefault();
+          event.stopPropagation();
           setOpen(!menu.classList.contains('open'));
-        });
+        }, true);
         scrim.addEventListener('click', () => setOpen(false));
         document.addEventListener('keydown', event => {
           if (event.key === 'Escape') setOpen(false);
         });
+        // Estado inicial explícito para não depender apenas da folha de estilos.
+        setOpen(false);
       }
 
       const profile = document.getElementById('userProfile');
