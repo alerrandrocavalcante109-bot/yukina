@@ -614,8 +614,8 @@
           if(!force && dropRolesLoadedFor===guild.id) { renderDropExtraRoles(); return; }
           setDropStatus('Carregando cargos e configurações...');
           const [rr,sr]=await Promise.all([
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)})
           ]);
           const resources=await rr.json().catch(()=>({})); const data=await sr.json().catch(()=>({}));
           if(!rr.ok) throw new Error(resources.detail||'Não foi possível carregar os cargos.');
@@ -715,8 +715,8 @@
           if (!force && xpRolesLoadedFor === guild.id) { renderXpRules(); return; }
           setXpStatus('Carregando cargos e configurações...');
           const [resourcesResponse,settingsResponse]=await Promise.all([
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)})
           ]);
           const resources=await resourcesResponse.json().catch(()=>({}));
           const data=await settingsResponse.json().catch(()=>({}));
@@ -799,8 +799,8 @@
           if (!force && multiplierLoadedFor === guild.id) { renderXpMultipliers(); return; }
           setXpMultiplierStatus('Carregando cargos e configurações...');
           const [resourcesResponse,settingsResponse]=await Promise.all([
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)})
           ]);
           const resources=await resourcesResponse.json().catch(()=>({}));
           const data=await settingsResponse.json().catch(()=>({}));
@@ -870,8 +870,8 @@
           if (!force && temporalRolesLoadedFor === guild.id) { renderTemporalRules(); return; }
           setTemporalStatus('Carregando cargos e configurações...');
           const [resourcesResponse,settingsResponse]=await Promise.all([
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
-            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)})
           ]);
           const resources=await resourcesResponse.json().catch(()=>({}));
           const data=await settingsResponse.json().catch(()=>({}));
@@ -1294,7 +1294,7 @@
         const token = getToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
-        const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'});
+        const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
         const data = await response.json().catch(()=>({}));
         if (!response.ok) throw new Error(data.detail || 'Não foi possível carregar os comandos.');
         return {guild,token,apiBase,settings:data.settings && typeof data.settings === 'object' ? data.settings : {}};
@@ -1536,7 +1536,7 @@
         list.textContent = '';
         const loading = document.createElement('p'); loading.className = 'server-empty'; loading.textContent = 'Carregando servidores...'; list.append(loading);
         try {
-          const response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {headers:{Authorization:'Bearer '+token},cache:'no-store'});
+          const response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {headers:{Authorization:'Bearer '+token},cache:'no-store',signal:AbortSignal.timeout(15000)});
           if (!response.ok) throw new Error(response.status === 401 ? 'Sua sessão do Discord expirou. Entre novamente.' : 'Não foi possível carregar os servidores.');
           const guilds = await response.json();
           const allowed = guilds.filter(g => g.owner || (Number(g.permissions) & 32) === 32);
