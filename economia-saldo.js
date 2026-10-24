@@ -58,7 +58,7 @@ function getLocalStats(data, guildId, userId) {
 function format(value) {
   return Math.floor(value).toLocaleString("pt-BR");
 }
-async function run({ guild, target, reply }) {
+async function run({ guild, target, requesterId, reply }) {
   if (!guild) return reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor." });
   let stats;
   try {
@@ -68,7 +68,7 @@ async function run({ guild, target, reply }) {
   }
   if (!stats) stats = getLocalStats(await readData(), guild.id, target.id);
 
-  const isSelf = !target.__saldoRequestedBy || target.id === target.__saldoRequestedBy;
+  const isSelf = target.id === requesterId;
   const subject = isSelf ? "Você" : `**${target.globalName || target.username}**`;
   const balanceLine = isSelf
     ? `💰 Você tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`
@@ -82,14 +82,11 @@ function makeCommand(name, description) {
       .addUserOption(option => option.setName("usuario").setDescription("Veja o saldo de outra pessoa").setRequired(false)),
     async execute(interaction) {
       const target = interaction.options.getUser("usuario") || interaction.user;
-      const requestedBy = interaction.user.id;
-      target.__saldoRequestedBy = requestedBy;
-      await run({ guild: interaction.guild, target, reply: payload => interaction.reply(payload) });
+      await run({ guild: interaction.guild, target, requesterId: interaction.user.id, reply: payload => interaction.reply(payload) });
     },
     async prefixExecute(message, args = []) {
       const target = message.mentions.users.first() || (args[0] ? await message.client.users.fetch(args[0].replace(/[<@!>]/g, "")).catch(() => null) : null) || message.author;
-      target.__saldoRequestedBy = message.author.id;
-      await run({ guild: message.guild, target, reply: payload => message.reply(payload) });
+      await run({ guild: message.guild, target, requesterId: message.author.id, reply: payload => message.reply(payload) });
     }
   };
 }
