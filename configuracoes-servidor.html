@@ -35,6 +35,18 @@
     #addXpLevel:hover{background:#0b8276}
     #saveXpRoles{background:#16a34a;border-color:#4ade80}
     #saveXpRoles:hover{background:#15803d}
+    #addXpLevel{background:#0f9f8f;border-color:#41d9c6}
+    #addXpLevel:hover{background:#0b8276}
+    #saveXpRoles{background:#16a34a;border-color:#4ade80}
+    #saveXpRoles:hover{background:#15803d}
+    #addTemporalRule{background:#7c3aed;border-color:#c4b5fd}
+    #addTemporalRule:hover{background:#6d28d9}
+    #saveTemporalRules{background:#0ea5e9;border-color:#7dd3fc}
+    #saveTemporalRules:hover{background:#0284c7}
+    #addXpMultiplier{background:#c026d3;border-color:#f0abfc}
+    #addXpMultiplier:hover{background:#a21caf}
+    #saveXpMultipliers{background:#16a34a;border-color:#4ade80}
+    #saveXpMultipliers:hover{background:#15803d}
     .xp-note{margin-top:14px!important;font-size:.9rem!important;color:#eadbff!important}
     @media(max-width:480px){.xp-level-row{grid-template-columns:1fr;gap:8px}}
     .system-screen{display:none;width:min(100%,760px);padding:0;border:0;border-radius:0;background:transparent;backdrop-filter:none;text-align:left}
@@ -152,6 +164,7 @@
     <button id="customCommands" class="system-picker" type="button">Personalização de comandos <span aria-hidden="true">›</span></button>
     <button id="xpRolesMenu" class="system-picker" type="button">❄️ Cargos por XP <span aria-hidden="true">›</span></button>
     <button id="temporalRolesMenu" class="system-picker" type="button">⏳ Hierarquia temporal <span aria-hidden="true">›</span></button>
+    <button id="xpMultiplierMenu" class="system-picker" type="button">✨ Multiplicador de XP <span aria-hidden="true">›</span></button>
   </aside>
   <div id="serverModal" class="server-modal" aria-hidden="true"><section class="server-modal-card" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle"><div class="server-modal-heading"><h3 id="serverModalTitle">Escolher outro servidor</h3><button id="serverModalClose" type="button" aria-label="Fechar">×</button></div><div id="serverList" class="server-list"><p class="server-empty">Carregando servidores...</p></div></section></div>
   <div id="userProfile" class="user-profile" aria-label="Usuário conectado" hidden>
@@ -193,6 +206,24 @@
     </div>
     <div id="temporalRuleList" class="xp-level-list" aria-live="polite"><p class="custom-command-empty">Escolha um servidor para ver a hierarquia temporal.</p></div>
     <p id="temporalStatus" class="xp-note" role="status"></p>
+  </section>
+  <section id="xpMultiplierScreen" class="system-screen" aria-labelledby="xpMultiplierTitle">
+    <h1 id="xpMultiplierTitle">Multiplicador de XP</h1>
+    <p>Configure multiplicadores para cargos. Quando um membro tiver um dos cargos configurados, o ganho de XP será multiplicado pelo valor definido.</p>
+    <div class="command-name-editor">
+      <label for="multiplierRoleSelect">Cargo</label>
+      <select id="multiplierRoleSelect" class="xp-role-select"><option value="">Carregando cargos do servidor...</option></select>
+      <label for="multiplierValueInput">Multiplicador</label>
+      <select id="multiplierValueInput" class="xp-role-select">
+        <option value="1.5">1,5× XP</option><option value="2">2× XP</option><option value="3">3× XP</option><option value="4">4× XP</option><option value="5">5× XP</option>
+      </select>
+    </div>
+    <div class="xp-interface-actions">
+      <button id="addXpMultiplier" class="create-command-button" type="button">＋ Adicionar multiplicador</button>
+      <button id="saveXpMultipliers" class="create-command-button" type="button">Salvar configurações</button>
+    </div>
+    <div id="xpMultiplierList" class="xp-level-list" aria-live="polite"><p class="custom-command-empty">Escolha um servidor para configurar multiplicadores.</p></div>
+    <p id="xpMultiplierStatus" class="xp-note" role="status"></p>
   </section>
   <section id="customCommandsScreen" class="system-screen" aria-labelledby="customCommandsTitle">
     <h1 id="customCommandsTitle">Personalização de comandos</h1>
@@ -294,11 +325,13 @@
       const commandTypeScreen = document.getElementById('commandTypeScreen');
       const xpRolesScreen = document.getElementById('xpRolesScreen');
       const temporalRolesScreen = document.getElementById('temporalRolesScreen');
+      const xpMultiplierScreen = document.getElementById('xpMultiplierScreen');
       function closeAllSystemScreens() {
         customCommandsScreen.classList.remove('open');
         commandTypeScreen.classList.remove('open');
         xpRolesScreen.classList.remove('open');
         temporalRolesScreen.classList.remove('open');
+        xpMultiplierScreen.classList.remove('open');
       }
       document.getElementById('customCommands').addEventListener('click', () => {
         setMenu(false);
@@ -320,6 +353,13 @@
         closeAllSystemScreens();
         temporalRolesScreen.classList.add('open');
         loadTemporalRules();
+      });
+      document.getElementById('xpMultiplierMenu').addEventListener('click', () => {
+        setMenu(false);
+        welcomeScreen.style.display = 'none';
+        closeAllSystemScreens();
+        xpMultiplierScreen.classList.add('open');
+        loadXpMultipliers();
       });
       const xpLevelList = document.getElementById('xpLevelList');
       const xpLevelInput = document.getElementById('xpLevelInput');
@@ -403,6 +443,77 @@
           if(!response.ok||!result.ok)throw new Error(result.detail||'A API não confirmou o salvamento.');
           setXpStatus('Configurações de cargos por XP salvas.');await loadXpRoles(true);
         }catch(error){setXpStatus(error.message||'Não foi possível salvar as configurações.');alert(error.message||'Falha ao salvar.');}
+        finally{button.disabled=false;}
+      });
+      const multiplierRoleSelect = document.getElementById('multiplierRoleSelect');
+      const multiplierValueInput = document.getElementById('multiplierValueInput');
+      const xpMultiplierList = document.getElementById('xpMultiplierList');
+      const xpMultiplierStatus = document.getElementById('xpMultiplierStatus');
+      let multiplierRules = [];
+      let multiplierLoadedFor = '';
+      let editingMultiplierRole = null;
+      function setXpMultiplierStatus(text) { xpMultiplierStatus.textContent = text || ''; }
+      async function getXpMultiplierContext() {
+        const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
+        const token = getToken();
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+        if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
+        return {guild,token,apiBase};
+      }
+      async function loadXpMultipliers(force = false) {
+        try {
+          const {guild,token,apiBase}=await getXpMultiplierContext();
+          if (!force && multiplierLoadedFor === guild.id) { renderXpMultipliers(); return; }
+          setXpMultiplierStatus('Carregando cargos e configurações...');
+          const [resourcesResponse,settingsResponse]=await Promise.all([
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/resources',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'}),
+            fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store'})
+          ]);
+          const resources=await resourcesResponse.json().catch(()=>({}));
+          const data=await settingsResponse.json().catch(()=>({}));
+          if(!resourcesResponse.ok) throw new Error(resources.detail||'Não foi possível carregar os cargos do servidor.');
+          if(!settingsResponse.ok) throw new Error(data.detail||'Não foi possível carregar as configurações.');
+          multiplierRoleSelect.replaceChildren(new Option('Selecione um cargo',''));
+          (Array.isArray(resources.roles)?resources.roles:[]).forEach(role=>multiplierRoleSelect.add(new Option(role.name,role.id)));
+          const settings=data.settings&&typeof data.settings==='object'?data.settings:{};
+          multiplierRules=(Array.isArray(settings.multiplierRules)?settings.multiplierRules:[]).map(rule=>({role:String(rule.role||rule.roleId||''),multiplier:Number(rule.multiplier)})).filter(rule=>rule.role&&Number.isFinite(rule.multiplier)&&rule.multiplier>1);
+          multiplierLoadedFor=guild.id;renderXpMultipliers();
+          setXpMultiplierStatus('Selecione um cargo e um multiplicador. As alterações só entram em vigor após salvar.');
+        } catch(error) {
+          setXpMultiplierStatus(error.message||'Não foi possível carregar os multiplicadores.');
+          xpMultiplierList.replaceChildren();const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent=error.message||'Falha ao carregar.';xpMultiplierList.append(empty);
+        }
+      }
+      function renderXpMultipliers() {
+        xpMultiplierList.replaceChildren();
+        if(!multiplierRules.length){const empty=document.createElement('p');empty.className='custom-command-empty';empty.textContent='Nenhum multiplicador configurado ainda.';xpMultiplierList.append(empty);return;}
+        multiplierRules.forEach(rule=>{
+          const row=document.createElement('div');row.className='custom-command-row';
+          const edit=document.createElement('button');edit.type='button';edit.className='custom-command-edit';edit.textContent=(multiplierRoleSelect.querySelector('option[value="'+CSS.escape(rule.role)+'"]')?.textContent||'Cargo não encontrado')+' — '+String(rule.multiplier).replace('.',',')+'× XP';
+          edit.addEventListener('click',()=>{editingMultiplierRole=rule.role;multiplierRoleSelect.value=rule.role;multiplierValueInput.value=String(rule.multiplier);document.getElementById('addXpMultiplier').textContent='Salvar edição';setXpMultiplierStatus('Editando multiplicador do cargo.');multiplierRoleSelect.focus();});
+          const remove=document.createElement('button');remove.type='button';remove.className='custom-command-delete';remove.textContent='Deletar';
+          remove.addEventListener('click',()=>{if(!confirm('Deletar o multiplicador deste cargo?'))return;multiplierRules=multiplierRules.filter(item=>item.role!==rule.role);if(editingMultiplierRole===rule.role){editingMultiplierRole=null;multiplierRoleSelect.value='';multiplierValueInput.value='2';document.getElementById('addXpMultiplier').textContent='＋ Adicionar multiplicador';}renderXpMultipliers();setXpMultiplierStatus('Multiplicador removido da lista. Clique em Salvar configurações para aplicar.');});
+          row.append(edit,remove);xpMultiplierList.append(row);
+        });
+      }
+      document.getElementById('addXpMultiplier').addEventListener('click',()=>{
+        const role=multiplierRoleSelect.value;const multiplier=Number(multiplierValueInput.value);
+        if(!role){alert('Selecione um cargo.');return;}
+        if(!Number.isFinite(multiplier)||multiplier<=1||multiplier>5){alert('Escolha um multiplicador entre 1,5× e 5×.');return;}
+        if(multiplierRules.some(rule=>rule.role===role&&editingMultiplierRole!==role)){alert('Esse cargo já tem um multiplicador. Clique nele para editar.');return;}
+        multiplierRules=multiplierRules.filter(rule=>rule.role!==editingMultiplierRole&&rule.role!==role);
+        multiplierRules.push({role,multiplier});editingMultiplierRole=null;multiplierRoleSelect.value='';multiplierValueInput.value='2';
+        document.getElementById('addXpMultiplier').textContent='＋ Adicionar multiplicador';renderXpMultipliers();setXpMultiplierStatus('Multiplicador adicionado à lista. Clique em Salvar configurações para aplicar.');
+      });
+      document.getElementById('saveXpMultipliers').addEventListener('click',async()=>{
+        const button=document.getElementById('saveXpMultipliers');if(button.disabled)return;button.disabled=true;setXpMultiplierStatus('Salvando...');
+        try{
+          const {guild,token,apiBase}=await getXpMultiplierContext();
+          const response=await fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({settings:{multiplierRules:multiplierRules.map(rule=>({role:rule.role,multiplier:rule.multiplier}))}})});
+          const result=await response.json().catch(()=>({}));
+          if(!response.ok||!result.ok)throw new Error(result.detail||'A API não confirmou o salvamento.');
+          setXpMultiplierStatus('Multiplicadores de XP salvos.');await loadXpMultipliers(true);
+        }catch(error){setXpMultiplierStatus(error.message||'Não foi possível salvar os multiplicadores.');alert(error.message||'Falha ao salvar.');}
         finally{button.disabled=false;}
       });
       const temporalDaysInput = document.getElementById('temporalDaysInput');
