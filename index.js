@@ -962,12 +962,14 @@ async function authorizePanel(req, guildId) {
   // O endpoint de servidores tem limite próprio. Reutilizamos a resposta válida
   // por 60 s para evitar uma chamada ao Discord em cada requisição do painel.
   const userPromise = fetch("https://discord.com/api/users/@me", {
-    headers: { Authorization: "Bearer " + accessToken }
+    headers: { Authorization: "Bearer " + accessToken },
+    signal: AbortSignal.timeout(10000)
   });
   let guildsPromise = null;
   if (!cachedGuilds || cachedGuilds.freshUntil <= now) {
     guildsPromise = fetch("https://discord.com/api/users/@me/guilds", {
-      headers: { Authorization: "Bearer " + accessToken }
+      headers: { Authorization: "Bearer " + accessToken },
+      signal: AbortSignal.timeout(10000)
     });
   }
 
