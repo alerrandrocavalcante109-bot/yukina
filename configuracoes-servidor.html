@@ -60,8 +60,15 @@
     .drop-role-row{display:flex;align-items:center;gap:8px;padding:10px;border:1px solid #ffffff38;border-radius:10px;background:#211b32}
     .drop-role-name{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:650}
     .drop-role-move,.drop-role-delete{flex:0 0 auto;width:38px;height:38px;border:1px solid;border-radius:9px;color:#fff;font-size:1rem}
-    .drop-role-move{background:#2563eb;border-color:#93c5fd}
-    .drop-role-move:hover{background:#1d4ed8}
+    .drop-role-move{background:#6d28d9;border-color:#c4b5fd}
+    .drop-role-move:hover{background:#5b21b6}
+    .drop-text-input{display:block;width:100%;margin-top:7px;padding:11px 12px;border:1px solid #ffffff55;border-radius:9px;background:#211b32;color:#fff;font:inherit}
+    .drop-giveaway-preview{padding:16px;border-left:4px solid #db2777;border-radius:8px;background:#2b2d31;color:#f2f3f5;text-align:left;overflow-wrap:anywhere}
+    .drop-preview-author{display:flex;align-items:center;gap:9px;font-size:.85rem;font-weight:700}
+    .drop-preview-author img{width:28px;height:28px;border-radius:50%;object-fit:cover}
+    .drop-preview-image-wrap{margin-top:12px}
+    .drop-preview-image-wrap img{display:block;max-width:100%;max-height:280px;border-radius:6px;object-fit:contain;object-position:left}
+    .drop-preview-footer{margin-top:12px;padding-top:10px;border-top:1px solid #ffffff24;color:#b5bac1;font-size:.8rem}
     .drop-role-delete{background:#dc2626;border-color:#fda4af}
     .drop-role-delete:hover{background:#b91c1c}
     .drop-toggle{display:flex;align-items:center;gap:10px;margin:15px 0;padding:12px;border:1px solid #ffffff30;border-radius:10px;background:#211b32;cursor:pointer}
@@ -271,6 +278,25 @@
       <label for="dropForbiddenRole">Cargo proibido</label>
       <select id="dropForbiddenRole" class="xp-role-select"><option value="">Nenhum cargo selecionado</option></select>
     </div>
+    <div class="drop-panel">
+      <h2>🎨 Aparência da mensagem do sorteio</h2>
+      <p>Personalize o rodapé e as imagens. A prévia abaixo é atualizada enquanto você edita.</p>
+      <label for="dropGiveawayFooter">Rodapé</label>
+      <input id="dropGiveawayFooter" class="drop-text-input" type="text" maxlength="2048" placeholder="Ex.: Boa sorte a todos!">
+      <label for="dropGiveawayImage">Imagem ou GIF (URL)</label>
+      <input id="dropGiveawayImage" class="drop-text-input" type="url" placeholder="https://exemplo.com/imagem.gif">
+      <label for="dropGiveawayAuthorImage">Imagem do autor (URL)</label>
+      <input id="dropGiveawayAuthorImage" class="drop-text-input" type="url" placeholder="https://exemplo.com/avatar.png">
+    </div>
+    <div class="drop-panel">
+      <h2>👀 Pré-visualização em tempo real</h2>
+      <div id="dropGiveawayPreview" class="drop-giveaway-preview">
+        <div class="drop-preview-author"><img id="dropPreviewAuthorImage" alt="" hidden><span>Prévia do sorteio</span></div>
+        <p>🎉 **Sorteio**</p>
+        <div id="dropPreviewImageWrap" class="drop-preview-image-wrap" hidden><img id="dropPreviewImage" alt="Prévia da imagem do sorteio"></div>
+        <div id="dropPreviewFooter" class="drop-preview-footer" hidden></div>
+      </div>
+    </div>
     <div class="xp-interface-actions"><button id="saveDropGiveaway" class="create-command-button" type="button">Salvar configurações</button></div>
     <p id="dropGiveawayStatus" class="xp-note" role="status"></p>
   </section>
@@ -463,7 +489,10 @@
           fillDropRoleSelect(dropForbiddenRole,'Nenhum cargo selecionado',String(saved.forbiddenRole||''));
           document.getElementById('dropDmWinnerNotice').checked=Boolean(saved.dmWinnerNotice);
           document.getElementById('dropIgnoreRequirementsEnabled').checked=Boolean(saved.ignoreRequirementsEnabled);
-          dropRolesLoadedFor=guild.id; renderDropExtraRoles();
+          document.getElementById('dropGiveawayFooter').value=String(saved.footer||'');
+          document.getElementById('dropGiveawayImage').value=String(saved.imageUrl||'');
+          document.getElementById('dropGiveawayAuthorImage').value=String(saved.authorImageUrl||'');
+          dropRolesLoadedFor=guild.id; renderDropExtraRoles(); renderDropGiveawayPreview(saved);
           setDropStatus('Configurações carregadas.');
         } catch(error) { setDropStatus(error.message||'Não foi possível carregar Drop & Sorteio.'); }
       }
@@ -474,6 +503,7 @@
           const role=dropAvailableRoles.find(item=>item.id===id);
           const row=document.createElement('div');row.className='drop-role-row';
           const name=document.createElement('span');name.className='drop-role-name';name.textContent=role?role.name:'Cargo não encontrado ('+id+')';
+          if(role?.color && role.color !== '#000000') { name.style.color=role.color; row.style.borderColor=role.color; }
           const up=document.createElement('button');up.type='button';up.className='drop-role-move';up.textContent='↑';up.title='Mover para cima';up.disabled=index===0;up.setAttribute('aria-label','Mover '+name.textContent+' para cima');
           up.addEventListener('click',()=>{[dropExtraRoles[index-1],dropExtraRoles[index]]=[dropExtraRoles[index],dropExtraRoles[index-1]];renderDropExtraRoles();});
           const down=document.createElement('button');down.type='button';down.className='drop-role-move';down.textContent='↓';down.title='Mover para baixo';down.disabled=index===dropExtraRoles.length-1;down.setAttribute('aria-label','Mover '+name.textContent+' para baixo');
@@ -489,12 +519,28 @@
         if(dropExtraRoles.includes(id)){alert('Esse cargo já está na lista.');return;}
         dropExtraRoles.push(id);renderDropExtraRoles();setDropStatus('Cargo adicionado à lista. Salve para aplicar.');
       });
+      function renderDropGiveawayPreview(saved={}) {
+        const footer=document.getElementById('dropGiveawayFooter').value.trim();
+        const imageUrl=document.getElementById('dropGiveawayImage').value.trim();
+        const authorUrl=document.getElementById('dropGiveawayAuthorImage').value.trim();
+        const footerNode=document.getElementById('dropPreviewFooter');
+        footerNode.textContent=footer; footerNode.hidden=!footer;
+        const image=document.getElementById('dropPreviewImage');
+        const imageWrap=document.getElementById('dropPreviewImageWrap');
+        if(imageUrl && /^https?:\/\//i.test(imageUrl)) { image.src=imageUrl; imageWrap.hidden=false; image.onerror=()=>{imageWrap.hidden=true;}; }
+        else { image.removeAttribute('src'); imageWrap.hidden=true; }
+        const authorImage=document.getElementById('dropPreviewAuthorImage');
+        if(authorUrl && /^https?:\/\//i.test(authorUrl)) { authorImage.src=authorUrl; authorImage.hidden=false; authorImage.onerror=()=>{authorImage.hidden=true;}; }
+        else { authorImage.removeAttribute('src'); authorImage.hidden=true; }
+      }
+      ['dropGiveawayFooter','dropGiveawayImage','dropGiveawayAuthorImage'].forEach(id=>document.getElementById(id).addEventListener('input',()=>renderDropGiveawayPreview()));
       document.getElementById('saveDropGiveaway').addEventListener('click',async()=>{
         const button=document.getElementById('saveDropGiveaway');if(button.disabled)return;
         button.disabled=true;setDropStatus('Salvando configurações...');
         try {
           const {guild,token,apiBase}=await getDropContext();
-          const payload={extraEntryRoles:[...dropExtraRoles],dmWinnerNotice:document.getElementById('dropDmWinnerNotice').checked,ignoreRequirementsEnabled:document.getElementById('dropIgnoreRequirementsEnabled').checked,ignoreRequirementsRole:dropIgnoreRequirementsRole.value||'',forbiddenRole:dropForbiddenRole.value||''};
+          const payload={extraEntryRoles:[...dropExtraRoles],dmWinnerNotice:document.getElementById('dropDmWinnerNotice').checked,ignoreRequirementsEnabled:document.getElementById('dropIgnoreRequirementsEnabled').checked,ignoreRequirementsRole:dropIgnoreRequirementsRole.value||'',forbiddenRole:dropForbiddenRole.value||'',footer:document.getElementById('dropGiveawayFooter').value.trim(),imageUrl:document.getElementById('dropGiveawayImage').value.trim(),authorImageUrl:document.getElementById('dropGiveawayAuthorImage').value.trim()};
+          for(const key of ['imageUrl','authorImageUrl']) { if(payload[key] && !/^https?:\/\//i.test(payload[key])) throw new Error('As imagens precisam usar uma URL começando com http:// ou https://.'); }
           if(payload.ignoreRequirementsEnabled&&!payload.ignoreRequirementsRole) throw new Error('Selecione o cargo que ignora os requisitos.');
           const response=await fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({settings:{dropGiveawaySettings:payload}})});
           const result=await response.json().catch(()=>({}));
