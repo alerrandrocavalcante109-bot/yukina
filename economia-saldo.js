@@ -73,8 +73,10 @@ async function run({ guild, target, requesterId, reply }) {
   const balanceLine = isSelf
     ? `💰 Você tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`
     : `💰 **${target.globalName || target.username}** tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`;
-  const rankLine = `🏆 **Rank no servidor:** #${stats.rank} de ${stats.total} membro(s) no ranking.`;
-  return reply({ content: `${balanceLine}\n${rankLine}` });
+  const rankLine = stats.balance > 0
+    ? `\n🏆 **Rank no servidor:** #${stats.rank} de ${stats.total} membro(s) no ranking.`
+    : "";
+  return reply({ content: `${balanceLine}${rankLine}` });
 }
 function makeCommand(name, description) {
   return {
