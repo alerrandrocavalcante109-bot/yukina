@@ -944,6 +944,8 @@ function readBody(req) {
 const oauthGuildCache = new Map();
 const OAUTH_GUILD_CACHE_TTL_MS = 60 * 1000;
 const OAUTH_GUILD_CACHE_STALE_MS = 5 * 60 * 1000;
+const GUILD_RESOURCES_CACHE_TTL_MS = 30 * 1000;
+const guildResourcesCache = new Map();
 
 async function authorizePanel(req, guildId) {
   const auth = String(req.headers.authorization || "");
@@ -1365,22 +1367,21 @@ async function panelApi(req, res, url) {
   try {
     const { guild } = await authorizePanel(req, guildId);
     if (section === "resources" && req.method === "GET") {
-      // Buscar cargos e canais separadamente: uma falha ao listar canais não deve
-      // impedir o painel de receber os cargos do servidor.
+      // Resposta curta em cache: os vários sistemas do painel compartilham os mesmos cargos/canais.
+      const cached = guildResourcesCache.get(guildId);
+      if (cached && cached.expiresAt > Date.now()) return sendJson(res, 200, cached.payload);
+
       let rolesFetchError = null;
       let channelsFetchError = null;
-      try {
-        await guild.roles.fetch();
-      } catch (error) {
-        rolesFetchError = error;
-        console.error("[API painel] Falha ao buscar cargos do Discord:", { guildId, code: error.code, message: error.message });
-      }
-      try {
-        await guild.channels.fetch();
-      } catch (error) {
-        channelsFetchError = error;
-        console.error("[API painel] Falha ao buscar canais do Discord:", { guildId, code: error.code, message: error.message });
-      }
+      // O cliente Discord normalmente já tem esses dados em cache após GUILD_CREATE.
+      // Só consulta a API do Discord quando o cache local está vazio, em paralelo.
+      const fetches = [];
+      if (guild.roles.cache.size <= 1) fetches.push(guild.roles.fetch().catch(error => { rolesFetchError = error; }));
+      if (guild.channels.cache.size === 0) fetches.push(guild.channels.fetch().catch(error => { channelsFetchError = error; }));
+      await Promise.all(fetches);
+      if (rolesFetchError) console.error("[API painel] Falha ao buscar cargos do Discord:", { guildId, code: rolesFetchError.code, message: rolesFetchError.message });
+      if (channelsFetchError) console.error("[API painel] Falha ao buscar canais do Discord:", { guildId, code: channelsFetchError.code, message: channelsFetchError.message });
+
       const roles = [...guild.roles.cache.values()]
         .filter(role => role.id !== guild.id && !role.managed)
         .sort((a, b) => b.position - a.position)
@@ -1393,18 +1394,22 @@ async function panelApi(req, res, url) {
         .filter(channel => channel.type === ChannelType.GuildCategory)
         .sort((a, b) => a.rawPosition - b.rawPosition)
         .map(channel => ({ id: channel.id, name: channel.name }));
-      return sendJson(res, 200, {
+      const payload = {
         guild: { id: guild.id, name: guild.name, icon: guild.iconURL({ size: 128 }) },
-        roles,
-        channels,
-        categories,
+        roles, channels, categories,
         diagnostics: {
           rolesFetchFailed: Boolean(rolesFetchError),
           channelsFetchFailed: Boolean(channelsFetchError),
           roleCount: roles.length,
           channelCount: channels.length
         }
-      });
+      };
+      guildResourcesCache.set(guildId, { payload, expiresAt: Date.now() + GUILD_RESOURCES_CACHE_TTL_MS });
+      if (guildResourcesCache.size > 200) {
+        for (const [key, value] of guildResourcesCache) if (value.expiresAt <= Date.now()) guildResourcesCache.delete(key);
+        if (guildResourcesCache.size > 200) guildResourcesCache.delete(guildResourcesCache.keys().next().value);
+      }
+      return sendJson(res, 200, payload);
     }
     if (section !== "settings") return sendJson(res, 404, { detail: "Rota não encontrada." });
     const collection = await getSettingsCollection();
