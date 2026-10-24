@@ -163,8 +163,8 @@
     @keyframes preview-change{from{opacity:.55;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}
     @media(prefers-reduced-motion:reduce){.preview-update{animation:none}}
     .system-back{margin-bottom:22px;padding:10px 14px;border:1px solid #ffffff66;border-radius:10px;background:#62626c;color:#fff;font:inherit;cursor:pointer}
-    .server-modal{position:fixed;inset:0;z-index:30;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;transition:.18s}
-    .server-modal.open{opacity:1;visibility:visible}
+    .server-modal{position:fixed;inset:0;z-index:10002;display:grid;place-items:center;padding:20px;background:#12091f9c;opacity:0;visibility:hidden;pointer-events:none;transition:.18s}
+    .server-modal.open{opacity:1;visibility:visible;pointer-events:auto}
     .server-modal-card{width:min(100%,480px);max-height:75vh;overflow:auto;padding:20px;border-radius:18px;background:#393744;color:white;text-align:left}
     .server-modal-heading{display:flex;justify-content:space-between;align-items:center}
     .server-list{display:grid;gap:9px}
@@ -1498,6 +1498,25 @@
         } catch (_) {}
       }
       loadUserProfile();
+    })();
+  </script>
+  <script>
+    // Abre o modal mesmo se algum módulo anterior do painel falhar.
+    (() => {
+      const button = document.getElementById('chooseServer');
+      const modal = document.getElementById('serverModal');
+      const list = document.getElementById('serverList');
+      if (!button || !modal || !list) return;
+      button.addEventListener('click', () => {
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        if (!list.children.length) {
+          const p = document.createElement('p');
+          p.className = 'server-empty';
+          p.textContent = 'Carregando servidores...';
+          list.appendChild(p);
+        }
+      }, true);
     })();
   </script>
   <script>
