@@ -351,6 +351,76 @@
     </div>
   </section>
   <script>
+    // Inicialização independente para manter menu e perfil disponíveis mesmo
+    // se algum recurso secundário da página falhar.
+    (() => {
+      const menu = document.getElementById('sideMenu');
+      const toggle = document.getElementById('menuToggle');
+      const scrim = document.getElementById('menuScrim');
+      if (menu && toggle && scrim && !toggle.dataset.menuRescueBound) {
+        toggle.dataset.menuRescueBound = '1';
+        const setOpen = open => {
+          menu.classList.toggle('open', open);
+          scrim.classList.toggle('open', open);
+          menu.setAttribute('aria-hidden', String(!open));
+          scrim.setAttribute('aria-hidden', String(!open));
+          toggle.setAttribute('aria-expanded', String(open));
+          toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
+        };
+        toggle.addEventListener('click', event => {
+          event.preventDefault();
+          setOpen(!menu.classList.contains('open'));
+        });
+        scrim.addEventListener('click', () => setOpen(false));
+        document.addEventListener('keydown', event => {
+          if (event.key === 'Escape') setOpen(false);
+        });
+      }
+
+      const profile = document.getElementById('userProfile');
+      const name = document.getElementById('loggedUserName');
+      const avatar = document.getElementById('loggedUserAvatar');
+      if (!profile || !name || !avatar) return;
+      const fallbackAvatar = 'https://cdn.discordapp.com/embed/avatars/0.png';
+      try {
+        const cached = JSON.parse(localStorage.getItem('yukina_discord_user') || 'null');
+        if (cached && cached.id) {
+          name.textContent = cached.global_name || cached.username || 'Usuário Discord';
+          avatar.src = cached.avatar || fallbackAvatar;
+          profile.hidden = false;
+        }
+      } catch (_) {}
+      const token = (() => {
+        try {
+          const expiry = Number(localStorage.getItem('yukina_discord_token_expires_at') || 0);
+          if (expiry && Date.now() >= expiry) return null;
+          return localStorage.getItem('yukina_discord_token');
+        } catch (_) { return null; }
+      })();
+      if (!token) return;
+      fetch('https://discord.com/api/users/@me', {
+        headers: { Authorization: 'Bearer ' + token },
+        cache: 'no-store'
+      }).then(response => {
+        if (!response.ok) throw new Error('Discord profile unavailable');
+        return response.json();
+      }).then(user => {
+        name.textContent = user.global_name || user.username || 'Usuário Discord';
+        avatar.src = user.avatar
+          ? 'https://cdn.discordapp.com/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.png?size=128'
+          : fallbackAvatar;
+        avatar.onerror = () => { avatar.onerror = null; avatar.src = fallbackAvatar; };
+        profile.hidden = false;
+        try {
+          localStorage.setItem('yukina_discord_user', JSON.stringify({
+            id: user.id, username: user.username, global_name: user.global_name || null,
+            avatar: avatar.src
+          }));
+        } catch (_) {}
+      }).catch(() => {});
+    })();
+  </script>
+  <script>
     (() => {
       const menu = document.getElementById('sideMenu');
       const toggle = document.getElementById('menuToggle');
