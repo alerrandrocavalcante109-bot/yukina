@@ -267,16 +267,21 @@
     </div>
     <div class="drop-panel">
       <h2>🔔 Avisos e requisitos</h2>
-      <label class="drop-toggle"><input id="dropDmWinnerNotice" type="checkbox"><span>Ativar aviso de ganho na DM</span></label>
+      <label class="drop-toggle"><input id="dropDmWinnerNotice" type="checkbox"><span>Enviar mensagem de vencedor na DM dos ganhadores</span></label>
       <label class="drop-toggle"><input id="dropIgnoreRequirementsEnabled" type="checkbox"><span>Ativar cargo que ignora os requisitos dos sorteios</span></label>
-      <label for="dropIgnoreRequirementsRole">Cargo que ignora os requisitos</label>
-      <select id="dropIgnoreRequirementsRole" class="xp-role-select"><option value="">Selecione um cargo</option></select>
+      <div id="dropIgnoreRequirementsFields" hidden>
+        <label for="dropIgnoreRequirementsRole">Cargo que ignora os requisitos</label>
+        <select id="dropIgnoreRequirementsRole" class="xp-role-select"><option value="">Selecione um cargo</option></select>
+      </div>
     </div>
     <div class="drop-panel">
-      <h2>🚫 Cargo impedido de participar</h2>
-      <p>Membros com este cargo não poderão participar dos sorteios.</p>
-      <label for="dropForbiddenRole">Cargo proibido</label>
-      <select id="dropForbiddenRole" class="xp-role-select"><option value="">Nenhum cargo selecionado</option></select>
+      <h2>🚫 Participação no sorteio</h2>
+      <label class="drop-toggle"><input id="dropForbiddenRoleEnabled" type="checkbox"><span>Ativar cargo que não pode participar dos sorteios</span></label>
+      <div id="dropForbiddenRoleFields" hidden>
+        <p>Membros com este cargo não poderão participar dos sorteios.</p>
+        <label for="dropForbiddenRole">Cargo proibido</label>
+        <select id="dropForbiddenRole" class="xp-role-select"><option value="">Nenhum cargo selecionado</option></select>
+      </div>
     </div>
     <div class="drop-panel">
       <h2>🎨 Aparência da mensagem do sorteio</h2>
@@ -489,6 +494,9 @@
           fillDropRoleSelect(dropForbiddenRole,'Nenhum cargo selecionado',String(saved.forbiddenRole||''));
           document.getElementById('dropDmWinnerNotice').checked=Boolean(saved.dmWinnerNotice);
           document.getElementById('dropIgnoreRequirementsEnabled').checked=Boolean(saved.ignoreRequirementsEnabled);
+          document.getElementById('dropForbiddenRoleEnabled').checked=Boolean(saved.forbiddenRoleEnabled || saved.forbiddenRole);
+          document.getElementById('dropIgnoreRequirementsFields').hidden=!document.getElementById('dropIgnoreRequirementsEnabled').checked;
+          document.getElementById('dropForbiddenRoleFields').hidden=!document.getElementById('dropForbiddenRoleEnabled').checked;
           document.getElementById('dropGiveawayFooter').value=String(saved.footer||'');
           document.getElementById('dropGiveawayImage').value=String(saved.imageUrl||'');
           document.getElementById('dropGiveawayAuthorImage').value=String(saved.authorImageUrl||'');
@@ -519,6 +527,8 @@
         if(dropExtraRoles.includes(id)){alert('Esse cargo já está na lista.');return;}
         dropExtraRoles.push(id);renderDropExtraRoles();setDropStatus('Cargo adicionado à lista. Salve para aplicar.');
       });
+      document.getElementById('dropIgnoreRequirementsEnabled').addEventListener('change',event=>{document.getElementById('dropIgnoreRequirementsFields').hidden=!event.target.checked;});
+      document.getElementById('dropForbiddenRoleEnabled').addEventListener('change',event=>{document.getElementById('dropForbiddenRoleFields').hidden=!event.target.checked;});
       function renderDropGiveawayPreview(saved={}) {
         const footer=document.getElementById('dropGiveawayFooter').value.trim();
         const imageUrl=document.getElementById('dropGiveawayImage').value.trim();
@@ -539,7 +549,7 @@
         button.disabled=true;setDropStatus('Salvando configurações...');
         try {
           const {guild,token,apiBase}=await getDropContext();
-          const payload={extraEntryRoles:[...dropExtraRoles],dmWinnerNotice:document.getElementById('dropDmWinnerNotice').checked,ignoreRequirementsEnabled:document.getElementById('dropIgnoreRequirementsEnabled').checked,ignoreRequirementsRole:dropIgnoreRequirementsRole.value||'',forbiddenRole:dropForbiddenRole.value||'',footer:document.getElementById('dropGiveawayFooter').value.trim(),imageUrl:document.getElementById('dropGiveawayImage').value.trim(),authorImageUrl:document.getElementById('dropGiveawayAuthorImage').value.trim()};
+          const payload={extraEntryRoles:[...dropExtraRoles],dmWinnerNotice:document.getElementById('dropDmWinnerNotice').checked,ignoreRequirementsEnabled:document.getElementById('dropIgnoreRequirementsEnabled').checked,ignoreRequirementsRole:dropIgnoreRequirementsRole.value||'',forbiddenRoleEnabled:document.getElementById('dropForbiddenRoleEnabled').checked,forbiddenRole:document.getElementById('dropForbiddenRoleEnabled').checked?(dropForbiddenRole.value||''):'',footer:document.getElementById('dropGiveawayFooter').value.trim(),imageUrl:document.getElementById('dropGiveawayImage').value.trim(),authorImageUrl:document.getElementById('dropGiveawayAuthorImage').value.trim()};
           for(const key of ['imageUrl','authorImageUrl']) { if(payload[key] && !/^https?:\/\//i.test(payload[key])) throw new Error('As imagens precisam usar uma URL começando com http:// ou https://.'); }
           if(payload.ignoreRequirementsEnabled&&!payload.ignoreRequirementsRole) throw new Error('Selecione o cargo que ignora os requisitos.');
           const response=await fetch(apiBase+'/api/guilds/'+encodeURIComponent(guild.id)+'/settings',{method:'PUT',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json',Accept:'application/json'},body:JSON.stringify({settings:{dropGiveawaySettings:payload}})});
