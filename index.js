@@ -1043,6 +1043,14 @@ async function authorizePanel(req, guildId) {
   return { user, guild: botGuild };
 }
 async function panelApi(req, res, url) {
+  // Configure CORS antes de qualquer rota, inclusive /api/oauth/guilds.
+  const origin = String(req.headers.origin || "");
+  if (origin && PANEL_ORIGINS.includes(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
+
   if (url.pathname === "/api/oauth/guilds") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para listar servidores." });
     const auth = String(req.headers.authorization || "");
@@ -1071,12 +1079,6 @@ async function panelApi(req, res, url) {
       return sendJson(res, 502, { detail: "A API não conseguiu consultar os servidores no Discord. Tente novamente." });
     }
   }
-  const origin = String(req.headers.origin || "");
-  if (origin && PANEL_ORIGINS.includes(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
-  res.setHeader("Vary", "Origin");
-  res.setHeader("Access-Control-Allow-Headers", "Authorization, Content-Type");
-  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-  if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
   if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
   if (url.pathname === "/api/daily/status" || url.pathname === "/api/daily/claim") {
     const isClaim = url.pathname === "/api/daily/claim";
