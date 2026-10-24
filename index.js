@@ -1043,6 +1043,34 @@ async function authorizePanel(req, guildId) {
   return { user, guild: botGuild };
 }
 async function panelApi(req, res, url) {
+  if (url.pathname === "/api/oauth/guilds") {
+    if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para listar servidores." });
+    const auth = String(req.headers.authorization || "");
+    const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord para listar os servidores." });
+    try {
+      const response = await fetch("https://discord.com/api/users/@me/guilds?limit=200", {
+        headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(12000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const status = response.status === 401 ? 401 : response.status === 403 ? 403 : response.status === 429 ? 429 : 502;
+        console.warn("[API painel] Falha ao listar servidores OAuth:", JSON.stringify({ status: response.status, detail: data.message || data.error || "" }));
+        return sendJson(res, status, {
+          detail: status === 401 ? "Sua sessão do Discord expirou. Entre novamente."
+            : status === 403 ? "A sessão não tem permissão para listar servidores. Entre novamente e autorize a permissão de servidores."
+            : status === 429 ? "O Discord limitou temporariamente a lista de servidores. Aguarde um minuto e tente novamente."
+            : "O Discord está temporariamente indisponível para listar servidores."
+        });
+      }
+      return sendJson(res, 200, Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error("[API painel] Erro ao consultar servidores OAuth:", error.message || error);
+      return sendJson(res, 502, { detail: "A API não conseguiu consultar os servidores no Discord. Tente novamente." });
+    }
+  }
   const origin = String(req.headers.origin || "");
   if (origin && PANEL_ORIGINS.includes(origin)) res.setHeader("Access-Control-Allow-Origin", origin);
   res.setHeader("Vary", "Origin");
