@@ -598,7 +598,7 @@
       function setDropStatus(text) { dropGiveawayStatus.textContent = text || ''; }
       async function getDropContext() {
         const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
-        const token = getToken();
+        const token = await getValidToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
         return {guild,token,apiBase};
@@ -704,7 +704,7 @@
       function setXpStatus(text) { xpStatus.textContent = text || ''; }
       async function getXpContext() {
         const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
-        const token = getToken();
+        const token = await getValidToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
         return {guild,token,apiBase};
@@ -788,7 +788,7 @@
       function setXpMultiplierStatus(text) { xpMultiplierStatus.textContent = text || ''; }
       async function getXpMultiplierContext() {
         const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
-        const token = getToken();
+        const token = await getValidToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
         return {guild,token,apiBase};
@@ -859,7 +859,7 @@
       function setTemporalStatus(text) { temporalStatus.textContent = text || ''; }
       async function getTemporalContext() {
         const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
-        const token = getToken();
+        const token = await getValidToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
         return {guild,token,apiBase};
@@ -1048,7 +1048,7 @@
         let selected = null;
         try { selected = JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) {}
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
-        const token = getToken();
+        const token = await getValidToken();
         if (!selected?.id || !apiBase || !token) return [];
         if (!resourcesPromise || resourcesGuildId !== String(selected.id)) {
           resourcesGuildId = String(selected.id);
@@ -1241,7 +1241,7 @@
         catch (error) { setSaveStatus('Salvar', ''); alert(error.message); return; }
         let guild = null;
         try { guild = JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) {}
-        const token = getToken();
+        const token = await getValidToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id) { setSaveStatus('Salvar', ''); alert('Escolha um servidor antes de salvar o comando.'); return; }
         if (!token) { setSaveStatus('Salvar', ''); alert('Sua sessão do Discord expirou. Entre novamente para salvar.'); return; }
@@ -1291,7 +1291,7 @@
       let editingCommandName = null;
       async function getCommandSettings() {
         const guild = (() => { try { return JSON.parse(stored('yukina_selected_guild') || 'null'); } catch (_) { return null; } })();
-        const token = getToken();
+        const token = await getValidToken();
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
         if (!guild?.id || !token || !apiBase) throw new Error(!guild?.id ? 'Escolha um servidor antes.' : !token ? 'Sua sessão do Discord expirou. Entre novamente.' : 'A API da Yukina não está configurada.');
         const response = await fetch(apiBase + '/api/guilds/' + encodeURIComponent(guild.id) + '/settings', {headers:{Authorization:'Bearer '+token,Accept:'application/json'},cache:'no-store',signal:AbortSignal.timeout(15000)});
@@ -1445,6 +1445,16 @@
           return true;
         } catch (_) { return false; }
       }
+      async function getValidToken() {
+        let token = getToken();
+        const panelExpiry = Number(stored('yukina_panel_session_expires_at') || 0);
+        if (panelExpiry && Date.now() >= panelExpiry) return null;
+        if (!token && stored('yukina_discord_refresh_token')) {
+          await refreshToken();
+          token = getToken();
+        }
+        return token;
+      }
       async function loadUserProfile() {
         let token = getToken();
         if (!token && stored('yukina_discord_refresh_token')) { await refreshToken(); token = getToken(); }
@@ -1521,50 +1531,7 @@
         toggle?.setAttribute('aria-label', 'Abrir menu');
       }, true);
       const modal = $('serverModal'), list = $('serverList');
-      $('chooseServer')?.addEventListener('click', async () => {
-        if (!modal || !list) return;
-        modal.classList.add('open');
-        modal.setAttribute('aria-hidden', 'false');
-        const read = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
-        let token = read('yukina_discord_token');
-        const expiry = Number(read('yukina_discord_token_expires_at') || 0);
-        if (expiry && Date.now() >= expiry) token = null;
-        if (!token) {
-          list.textContent = '';
-          const p = document.createElement('p'); p.className = 'server-empty'; p.textContent = 'Sua sessão do Discord expirou. Entre novamente para escolher um servidor.'; list.append(p); return;
-        }
-        list.textContent = '';
-        const loading = document.createElement('p'); loading.className = 'server-empty'; loading.textContent = 'Carregando servidores...'; list.append(loading);
-        try {
-          const response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {headers:{Authorization:'Bearer '+token},cache:'no-store',signal:AbortSignal.timeout(15000)});
-          if (!response.ok) throw new Error(response.status === 401 ? 'Sua sessão do Discord expirou. Entre novamente.' : 'Não foi possível carregar os servidores.');
-          const guilds = await response.json();
-          const allowed = guilds.filter(g => g.owner || (Number(g.permissions) & 32) === 32);
-          list.replaceChildren();
-          if (!allowed.length) { const p=document.createElement('p');p.className='server-empty';p.textContent='Nenhum servidor administrável encontrado.';list.append(p);return; }
-          allowed.forEach(guild => {
-            const button=document.createElement('button');button.type='button';button.className='server-option';
-            const img=document.createElement('img');img.alt='';img.src=guild.icon?'https://cdn.discordapp.com/icons/'+guild.id+'/'+guild.icon+'.png?size=128':'https://cdn.discordapp.com/embed/avatars/0.png';
-            const label=document.createElement('span');label.textContent=guild.name;button.append(img,label);
-            button.addEventListener('click',()=>{
-              try { localStorage.setItem('yukina_selected_guild',JSON.stringify({id:guild.id,name:guild.name,icon:guild.icon||null})); } catch (_) {}
-              const icon=$('selectedServerIcon'), name=$('selectedServerName'), selected=$('selectedServer');
-              if(icon){icon.src=img.src;icon.alt='Foto do servidor '+guild.name;}
-              if(name)name.textContent=guild.name;
-              if(selected){selected.hidden=false;selected.style.display='flex';}
-              modal.classList.remove('open');modal.setAttribute('aria-hidden','true');
-              // Recarrega a tela atualmente aberta para usar o servidor escolhido.
-              const active=document.querySelector('.system-screen.open');
-              if(active?.id==='customCommandsScreen')$('customCommands')?.click();
-              else if(active?.id==='xpRolesScreen')$('xpRolesMenu')?.click();
-              else if(active?.id==='temporalRolesScreen')$('temporalRolesMenu')?.click();
-            });
-            list.append(button);
-          });
-        } catch(error) {
-          list.replaceChildren();const p=document.createElement('p');p.className='server-empty';p.textContent=error.message||'Não foi possível carregar os servidores.';list.append(p);
-        }
-      });
+      // O seletor principal já trata cache, renovação OAuth e atualização das telas.
       $('serverModalClose')?.addEventListener('click',()=>{modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');});
       document.addEventListener('keydown',event=>{if(event.key==='Escape'){closeMenu();modal?.classList.remove('open');modal?.setAttribute('aria-hidden','true');}});
     })();
