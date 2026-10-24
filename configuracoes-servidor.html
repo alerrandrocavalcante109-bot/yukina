@@ -1449,6 +1449,34 @@
         });
         scrim?.addEventListener('click', closeMenu);
       }
+      // Navegação de emergência: abre as telas mesmo se o script principal falhar antes de registrar os eventos.
+      document.addEventListener('click', event => {
+        const button = event.target && event.target.closest ? event.target.closest('#customCommands, #xpRolesMenu, #temporalRolesMenu, #xpMultiplierMenu, #dropGiveawayMenu') : null;
+        if (!button) return;
+        const screens = {
+          customCommands: 'customCommandsScreen',
+          xpRolesMenu: 'xpRolesScreen',
+          temporalRolesMenu: 'temporalRolesScreen',
+          xpMultiplierMenu: 'xpMultiplierScreen',
+          dropGiveawayMenu: 'dropGiveawayScreen'
+        };
+        const targetId = screens[button.id];
+        const target = $(targetId);
+        if (!target) return;
+        event.preventDefault();
+        // Não interrompe o evento: os handlers normais continuam carregando os dados.
+        $('welcomeScreen')?.style.setProperty('display', 'none');
+        document.querySelectorAll('.system-screen').forEach(screen => screen.classList.remove('open'));
+        target.classList.add('open');
+        menu?.classList.remove('open');
+        scrim?.classList.remove('open');
+        menu?.setAttribute('aria-hidden', 'true');
+        scrim?.setAttribute('aria-hidden', 'true');
+        if (menu) { menu.style.transform = 'translateX(-102%)'; menu.style.pointerEvents = 'none'; }
+        if (scrim) { scrim.style.opacity = '0'; scrim.style.visibility = 'hidden'; scrim.style.pointerEvents = 'none'; }
+        toggle?.setAttribute('aria-expanded', 'false');
+        toggle?.setAttribute('aria-label', 'Abrir menu');
+      }, true);
       const modal = $('serverModal'), list = $('serverList');
       $('chooseServer')?.addEventListener('click', async () => {
         if (!modal || !list) return;
