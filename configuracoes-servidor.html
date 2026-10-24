@@ -444,20 +444,22 @@
       const selectedServerName = document.getElementById('selectedServerName');
       document.getElementById('chooseServer').addEventListener('click', async () => {
         serverModal.classList.add('open'); serverModal.setAttribute('aria-hidden','false');
-        let token = getToken();
-        if (!token) { serverList.innerHTML = '<p class="server-empty">Conecte sua conta do Discord para listar os servidores.</p>'; return; }
-        serverList.innerHTML = '<p class="server-empty">Carregando servidores...</p>';
+        const cacheKey = 'yukina_guilds_cache';
+        let cachedGuilds = [];
         try {
-          const response = await fetch('https://discord.com/api/users/@me/guilds?limit=200',{headers:{Authorization:'Bearer '+token}});
-          if (response.status === 403) { serverList.innerHTML = '<p class="server-empty">Sua conexão do Discord precisa da permissão de servidores (guilds).</p>'; return; }
-          if (!response.ok) throw new Error();
-          const guilds = await response.json();
-          const allowed = guilds.filter(g => g.owner || (Number(g.permissions) & 32) === 32);
+          const saved = JSON.parse(localStorage.getItem(cacheKey) || 'null');
+          if (Array.isArray(saved?.guilds)) cachedGuilds = saved.guilds;
+        } catch (_) {}
+        const renderGuilds = guilds => {
+          const allowed = guilds.filter(g => g.owner || (BigInt(g.permissions || '0') & 32n) === 32n || (BigInt(g.permissions || '0') & 8n) === 8n);
           serverList.replaceChildren();
-          if (!allowed.length) { serverList.innerHTML = '<p class="server-empty">Nenhum servidor administrável encontrado.</p>'; return; }
+          if (!allowed.length) {
+            const p = document.createElement('p'); p.className='server-empty'; p.textContent='Nenhum servidor administrável encontrado.'; serverList.append(p); return;
+          }
           allowed.forEach(guild => {
             const button = document.createElement('button'); button.type='button'; button.className='server-option';
-            const img = document.createElement('img'); img.alt=''; img.src=guild.icon ? 'https://cdn.discordapp.com/icons/'+guild.id+'/'+guild.icon+'.png?size=128' : 'https://cdn.discordapp.com/embed/avatars/0.png';
+            const img = document.createElement('img'); img.alt='';
+            img.src = guild.icon ? 'https://cdn.discordapp.com/icons/'+guild.id+'/'+guild.icon+'.png?size=128' : 'https://cdn.discordapp.com/embed/avatars/0.png';
             const name = document.createElement('span'); name.textContent=guild.name;
             button.append(img,name);
             button.addEventListener('click', () => {
@@ -465,10 +467,51 @@
               selectedServerName.textContent=guild.name; selectedServer.hidden=false; selectedServer.style.display='flex';
               try { localStorage.setItem('yukina_selected_guild',JSON.stringify({id:guild.id,name:guild.name,icon:guild.icon||null})); } catch (_) {}
               serverModal.classList.remove('open'); serverModal.setAttribute('aria-hidden','true');
+              // Atualiza a tela aberta com o servidor selecionado.
+              const active = document.querySelector('.system-screen.open');
+              if (active?.id === 'customCommandsScreen') document.getElementById('customCommands')?.click();
+              else if (active?.id === 'xpRolesScreen') document.getElementById('xpRolesMenu')?.click();
+              else if (active?.id === 'temporalRolesScreen') document.getElementById('temporalRolesMenu')?.click();
+              else if (active?.id === 'xpMultiplierScreen') document.getElementById('xpMultiplierMenu')?.click();
+              else if (active?.id === 'dropGiveawayScreen') document.getElementById('dropGiveawayMenu')?.click();
             });
             serverList.append(button);
           });
-        } catch (_) { serverList.innerHTML='<p class="server-empty">Não foi possível carregar os servidores. Tente novamente.</p>'; }
+        };
+        // Mostra imediatamente a última lista conhecida enquanto atualiza a sessão.
+        if (cachedGuilds.length) renderGuilds(cachedGuilds);
+        else { serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';p.textContent='Conectando ao Discord…';serverList.append(p); }
+        let token = getToken();
+        if (!token && stored('yukina_discord_refresh_token')) {
+          await refreshToken();
+          token = getToken();
+        }
+        if (!token) {
+          if (!cachedGuilds.length) { serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';p.textContent='Sua sessão expirou. Entre novamente com o Discord para listar os servidores.';serverList.append(p); }
+          return;
+        }
+        try {
+          let response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {
+            headers:{Authorization:'Bearer '+token}, cache:'no-store', signal:AbortSignal.timeout(12000)
+          });
+          if (response.status === 401 && await refreshToken()) {
+            token = getToken();
+            if (token) response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {
+              headers:{Authorization:'Bearer '+token}, cache:'no-store', signal:AbortSignal.timeout(12000)
+            });
+          }
+          if (response.status === 403) throw new Error('O Discord não concedeu a permissão para listar servidores. Entre novamente e autorize a permissão de servidores.');
+          if (!response.ok) throw new Error(response.status === 401 ? 'Sua sessão expirou. Entre novamente com o Discord.' : 'O Discord está temporariamente indisponível ('+response.status+').');
+          const guilds = await response.json();
+          try { localStorage.setItem(cacheKey, JSON.stringify({guilds, savedAt:Date.now()})); } catch (_) {}
+          renderGuilds(guilds);
+        } catch (error) {
+          if (!cachedGuilds.length) {
+            serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';
+            p.textContent=error.name==='TimeoutError' ? 'O Discord demorou para responder. Tente novamente.' : (error.message || 'Não foi possível carregar os servidores.');
+            serverList.append(p);
+          }
+        }
       });
       const closeServerModal = () => { serverModal.classList.remove('open'); serverModal.setAttribute('aria-hidden','true'); };
       document.getElementById('serverModalClose').addEventListener('click',closeServerModal);
