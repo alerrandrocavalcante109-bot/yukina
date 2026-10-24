@@ -3,7 +3,34 @@ const { MongoClient } = require("mongodb");
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
 const DAILY_URL = (process.env.DAILY_PANEL_URL || "https://yukina-6uo.pages.dev/daily.html").trim();
-const DAY_MS = 24 * 60 * 60 * 1000;
+const TIME_ZONE = "America/Sao_Paulo";
+
+function getLocalDateTime(date = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TIME_ZONE, year: "numeric", month: "2-digit", day: "2-digit",
+    hour: "2-digit", minute: "2-digit", second: "2-digit", hourCycle: "h23"
+  }).formatToParts(date);
+  return Object.fromEntries(parts.filter(part => part.type !== "literal").map(part => [part.type, Number(part.value)]));
+}
+
+function localDayKey(parts) {
+  return String(parts.year).padStart(4, "0") + "-" + String(parts.month).padStart(2, "0") + "-" + String(parts.day).padStart(2, "0");
+}
+
+function saoPauloMidnightUtc(year, month, day) {
+  const targetUtc = Date.UTC(year, month - 1, day, 0, 0, 0);
+  let guess = targetUtc;
+  for (let attempt = 0; attempt < 4; attempt++) {
+    const parts = getLocalDateTime(new Date(guess));
+    const representedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+    const adjustment = targetUtc - representedUtc;
+    guess += adjustment;
+    if (adjustment === 0) break;
+  }
+  return new Date(guess);
+}
+
+let lastCycleDay = null;
 
 const SEQUENCE = [
   { title: "❄️ Sua recompensa diária está esperando!", phrase: "Até a neve mais delicada volta a brilhar a cada novo amanhecer. Passe no Daily e resgate suas Kizunas de hoje." },
@@ -18,9 +45,13 @@ const SEQUENCE = [
 let mongoClient;
 let running = false;
 
-async function runDailyReminders(client) {
+async function runDailyReminders(client, scheduled = false) {
   if (running || !MONGODB_URI || !client.isReady()) return;
+  const localNow = getLocalDateTime();
+  const day = localDayKey(localNow);
+  if ((!scheduled && (localNow.hour !== 0 || localNow.minute !== 0)) || lastCycleDay === day) return;
   running = true;
+  let cycleCompleted = false;
   try {
     if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Daily-Reminders", serverSelectionTimeoutMS: 10000 });
     await mongoClient.connect();
@@ -29,7 +60,7 @@ async function runDailyReminders(client) {
     const reminders = db.collection("daily_reminder_state");
     await reminders.createIndex({ guildId: 1, userId: 1 }, { unique: true });
     const now = new Date();
-    const day = now.toISOString().slice(0, 10);
+    const day = localDayKey(getLocalDateTime(now));
     const guildId = (process.env.VIP_GUILD_ID || "").trim();
     if (!/^\d{17,20}$/.test(guildId)) {
       console.warn("[Daily Reminder] VIP_GUILD_ID não configurado; lembretes ignorados.");
@@ -79,12 +110,25 @@ async function runDailyReminders(client) {
   }
 }
 
+function scheduleNextMidnight(client) {
+  const now = new Date();
+  const local = getLocalDateTime(now);
+  const nextCalendarDay = new Date(Date.UTC(local.year, local.month - 1, local.day + 1));
+  const nextMidnight = saoPauloMidnightUtc(nextCalendarDay.getUTCFullYear(), nextCalendarDay.getUTCMonth() + 1, nextCalendarDay.getUTCDate());
+  const delay = Math.max(1000, nextMidnight.getTime() - Date.now());
+  const timer = setTimeout(async () => {
+    await runDailyReminders(client, true);
+    scheduleNextMidnight(client);
+  }, delay);
+  timer.unref();
+}
+
 module.exports = function startDailyReminders(client) {
   if (!MONGODB_URI) {
     console.warn("[Daily Reminder] MONGODB_URI ausente; lembretes diários desativados.");
     return;
   }
+  console.log("[Daily Reminder] Agendado diariamente para 00:00 (America/Sao_Paulo).");
   runDailyReminders(client);
-  const timer = setInterval(() => runDailyReminders(client), 15 * 60 * 1000);
-  timer.unref();
+  scheduleNextMidnight(client);
 };
