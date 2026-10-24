@@ -1,25 +1,29 @@
 "use strict";
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { EmbedBuilder, SlashCommandBuilder } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const { MongoClient } = require("mongodb");
 
 const FILE = path.join(process.cwd(), "data", "economia.json");
-const COLOR = 0xA7D8F0;
 const CURRENCY = "Kizunas";
 const SYMBOL = "KZ";
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 let mongoClient;
 let cache;
-let writes = Promise.resolve();
 
-async function getMongoBalance(guildId, userId) {
+async function getMongoStats(guildId, userId) {
   if (!MONGODB_URI) return null;
   if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Economia", serverSelectionTimeoutMS: 10000 });
   await mongoClient.connect();
-  const doc = await mongoClient.db(MONGODB_DB).collection("economy_balances").findOne({ guildId: String(guildId), userId: String(userId) });
-  return doc ? Math.max(0, Number(doc.balance) || 0) : null;
+  const collection = mongoClient.db(MONGODB_DB).collection("economy_balances");
+  const docs = await collection.find({ guildId: String(guildId) }, { projection: { userId: 1, balance: 1, _id: 0 } }).toArray();
+  if (!docs.length) return null;
+  const balances = new Map(docs.map(doc => [String(doc.userId), Math.max(0, Number(doc.balance) || 0)]));
+  const balance = balances.has(String(userId)) ? balances.get(String(userId)) : 0;
+  balances.set(String(userId), balance);
+  const sorted = [...balances.values()].sort((a, b) => b - a);
+  return { balance, rank: sorted.findIndex(value => value <= balance) + 1, total: sorted.length };
 }
 async function readData() {
   if (cache) return cache;
@@ -32,43 +36,45 @@ async function readData() {
   }
   return cache;
 }
-function getBalance(data, guildId, userId) {
-  const guild = data[String(guildId)] || {};
-  const record = guild[String(userId)] ?? data[String(userId)] ?? {};
-  const value = typeof record === "number" ? record : (record.balance ?? record.saldo ?? record.wallet ?? record.kizunas ?? 0);
+function readRecordBalance(record) {
+  const value = typeof record === "number" ? record : (record?.balance ?? record?.saldo ?? record?.wallet ?? record?.kizunas ?? 0);
   const balance = Number(value);
   return Number.isFinite(balance) && balance > 0 ? balance : 0;
+}
+function getLocalStats(data, guildId, userId) {
+  const guild = data[String(guildId)] || {};
+  const balances = new Map(Object.entries(guild).map(([id, record]) => [String(id), readRecordBalance(record)]));
+  if (!balances.size) {
+    for (const [id, record] of Object.entries(data)) {
+      if (id === String(guildId) || !/^\d{15,22}$/.test(id)) continue;
+      balances.set(id, readRecordBalance(record));
+    }
+  }
+  const balance = balances.get(String(userId)) ?? readRecordBalance(data[String(userId)]);
+  balances.set(String(userId), balance);
+  const sorted = [...balances.values()].sort((a, b) => b - a);
+  return { balance, rank: sorted.findIndex(value => value <= balance) + 1, total: sorted.length };
 }
 function format(value) {
   return Math.floor(value).toLocaleString("pt-BR");
 }
-function buildEmbed(user, balance, guildName) {
-  return new EmbedBuilder()
-    .setColor(COLOR)
-    .setAuthor({ name: "Yukina · Carteira", iconURL: user.displayAvatarURL({ size: 128 }) })
-    .setTitle("💰 Saldo de Kizunas")
-    .setDescription("Confira as riquezas reunidas por **" + (user.globalName || user.username) + "**.")
-    .addFields(
-      { name: "🪙 Saldo disponível", value: "**" + format(balance) + " " + CURRENCY + "**", inline: true },
-      { name: "💠 Símbolo", value: "**" + SYMBOL + "**", inline: true }
-    )
-    .setThumbnail(user.displayAvatarURL({ size: 256 }))
-    .setFooter({ text: "❄️ Yukina · Economia de " + String(guildName || "este servidor").slice(0, 150) })
-    .setTimestamp();
-}
-async function run({ guild, user, target, reply }) {
-  if (!guild) return reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor.", ephemeral: true });
-  let balance;
+async function run({ guild, target, reply }) {
+  if (!guild) return reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor." });
+  let stats;
   try {
-    balance = await getMongoBalance(guild.id, target.id);
+    stats = await getMongoStats(guild.id, target.id);
   } catch (error) {
-    console.error("[Yukina Economia] Falha ao consultar saldo no MongoDB:", error.message);
+    console.error("[Yukina Economia] Falha ao consultar ranking no MongoDB:", error.message);
   }
-  if (balance === null || balance === undefined) {
-    const data = await readData();
-    balance = getBalance(data, guild.id, target.id);
-  }
-  return reply({ embeds: [buildEmbed(target, balance, guild.name)] });
+  if (!stats) stats = getLocalStats(await readData(), guild.id, target.id);
+
+  const isSelf = !target.__saldoRequestedBy || target.id === target.__saldoRequestedBy;
+  const subject = isSelf ? "Você" : `**${target.globalName || target.username}**`;
+  const balanceLine = isSelf
+    ? `💰 Você tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`
+    : `💰 **${target.globalName || target.username}** tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`;
+  const rankLine = `🏆 **Rank no servidor:** #${stats.rank} de ${stats.total} membro(s) no ranking.`;
+  return reply({ content: `${balanceLine}\n${rankLine}` });
 }
 function makeCommand(name, description) {
   return {
@@ -76,11 +82,14 @@ function makeCommand(name, description) {
       .addUserOption(option => option.setName("usuario").setDescription("Veja o saldo de outra pessoa").setRequired(false)),
     async execute(interaction) {
       const target = interaction.options.getUser("usuario") || interaction.user;
-      await run({ guild: interaction.guild, user: interaction.user, target, reply: payload => interaction.reply(payload) });
+      const requestedBy = interaction.user.id;
+      target.__saldoRequestedBy = requestedBy;
+      await run({ guild: interaction.guild, target, reply: payload => interaction.reply(payload) });
     },
     async prefixExecute(message, args = []) {
       const target = message.mentions.users.first() || (args[0] ? await message.client.users.fetch(args[0].replace(/[<@!>]/g, "")).catch(() => null) : null) || message.author;
-      await run({ guild: message.guild, user: message.author, target, reply: payload => message.reply(payload) });
+      target.__saldoRequestedBy = message.author.id;
+      await run({ guild: message.guild, target, reply: payload => message.reply(payload) });
     }
   };
 }
