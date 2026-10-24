@@ -442,6 +442,32 @@
       const selectedServer = document.getElementById('selectedServer');
       const selectedServerIcon = document.getElementById('selectedServerIcon');
       const selectedServerName = document.getElementById('selectedServerName');
+      // Helpers locais: este script não compartilha o escopo das funções OAuth do script principal.
+      const readStored = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
+      const readDiscordToken = () => {
+        const sessionExpiry = Number(readStored('yukina_panel_session_expires_at') || 0);
+        const tokenExpiry = Number(readStored('yukina_discord_token_expires_at') || 0);
+        if ((sessionExpiry && Date.now() >= sessionExpiry) || (tokenExpiry && Date.now() >= tokenExpiry)) return null;
+        return readStored('yukina_discord_token');
+      };
+      const refreshDiscordToken = async () => {
+        const refresh = readStored('yukina_discord_refresh_token');
+        const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
+        if (!refresh || !apiBase) return false;
+        try {
+          const response = await fetch(apiBase + '/api/oauth/refresh', {
+            method: 'POST', headers: {'Content-Type':'application/json'},
+            body: JSON.stringify({refresh_token: refresh}), cache: 'no-store',
+            signal: AbortSignal.timeout(12000)
+          });
+          const data = await response.json().catch(() => ({}));
+          if (!response.ok || !data.access_token) return false;
+          localStorage.setItem('yukina_discord_token', data.access_token);
+          if (data.refresh_token) localStorage.setItem('yukina_discord_refresh_token', data.refresh_token);
+          localStorage.setItem('yukina_discord_token_expires_at', String(Date.now() + Math.max(60000, Number(data.expires_in || 3600) * 1000 - 60000)));
+          return true;
+        } catch (_) { return false; }
+      };
       document.getElementById('chooseServer').addEventListener('click', async () => {
         serverModal.classList.add('open'); serverModal.setAttribute('aria-hidden','false');
         const cacheKey = 'yukina_guilds_cache';
@@ -481,10 +507,10 @@
         // Mostra imediatamente a última lista conhecida enquanto atualiza a sessão.
         if (cachedGuilds.length) renderGuilds(cachedGuilds);
         else { serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';p.textContent='Conectando ao Discord…';serverList.append(p); }
-        let token = getToken();
-        if (!token && stored('yukina_discord_refresh_token')) {
-          await refreshToken();
-          token = getToken();
+        let token = readDiscordToken();
+        if (!token && readStored('yukina_discord_refresh_token')) {
+          await refreshDiscordToken();
+          token = readDiscordToken();
         }
         if (!token) {
           if (!cachedGuilds.length) { serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';p.textContent='Sua sessão expirou. Entre novamente com o Discord para listar os servidores.';serverList.append(p); }
@@ -494,8 +520,8 @@
           let response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {
             headers:{Authorization:'Bearer '+token}, cache:'no-store', signal:AbortSignal.timeout(12000)
           });
-          if (response.status === 401 && await refreshToken()) {
-            token = getToken();
+          if (response.status === 401 && await refreshDiscordToken()) {
+            token = readDiscordToken();
             if (token) response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {
               headers:{Authorization:'Bearer '+token}, cache:'no-store', signal:AbortSignal.timeout(12000)
             });
