@@ -1419,7 +1419,9 @@ async function panelApi(req, res, url) {
       const doc = await collection.findOne({ guildId });
       const settings = { ...(doc?.settings || {}) };
       let temporalConfig = await temporalStorage.get(guildId, "config", null);
-      // Migra a hierarquia temporal existente sem perder as regras salvas anteriormente no painel.
+      // Reconcile o armazenamento do sistema com as configurações antigas do painel.
+      // Se um armazenamento tiver uma lista vazia e o outro ainda tiver regras,
+      // preserva as regras existentes em vez de mostrar uma configuração em branco.
       if (!temporalConfig && (Array.isArray(settings.timeRules) || Array.isArray(settings.timeManagedRoleIds))) {
         temporalConfig = {
           timeRules: Array.isArray(settings.timeRules) ? settings.timeRules : [],
@@ -1429,11 +1431,19 @@ async function panelApi(req, res, url) {
         console.log("[Armazenamento] Hierarquia temporal migrada para system-storage no servidor " + guildId + ".");
       }
       if (temporalConfig && typeof temporalConfig === "object") {
+        const storedRules = Array.isArray(temporalConfig.timeRules) ? temporalConfig.timeRules : [];
+        const legacyRules = Array.isArray(settings.timeRules) ? settings.timeRules : [];
+        const storedManaged = Array.isArray(temporalConfig.timeManagedRoleIds) ? temporalConfig.timeManagedRoleIds : [];
+        const legacyManaged = Array.isArray(settings.timeManagedRoleIds) ? settings.timeManagedRoleIds : [];
+        if (!storedRules.length && legacyRules.length) temporalConfig.timeRules = legacyRules;
+        if (!storedManaged.length && legacyManaged.length) temporalConfig.timeManagedRoleIds = legacyManaged;
         if (Array.isArray(temporalConfig.timeRules)) settings.timeRules = temporalConfig.timeRules;
         if (Array.isArray(temporalConfig.timeManagedRoleIds)) settings.timeManagedRoleIds = temporalConfig.timeManagedRoleIds;
+        if ((!storedRules.length && legacyRules.length) || (!storedManaged.length && legacyManaged.length)) {
+          await temporalStorage.set(guildId, "config", temporalConfig);
+        }
       }
       let xpConfig = await xpStorage.get(guildId, "config", null);
-      // Migra as regras de XP antigas uma única vez para o armazenamento compartilhado.
       if (!xpConfig && (Array.isArray(settings.xpRules) || Array.isArray(settings.xpManagedRoleIds))) {
         xpConfig = {
           xpRules: Array.isArray(settings.xpRules) ? settings.xpRules : [],
@@ -1443,8 +1453,17 @@ async function panelApi(req, res, url) {
         console.log("[Armazenamento] Cargos por XP migrados para system-storage no servidor " + guildId + ".");
       }
       if (xpConfig && typeof xpConfig === "object") {
+        const storedRules = Array.isArray(xpConfig.xpRules) ? xpConfig.xpRules : [];
+        const legacyRules = Array.isArray(settings.xpRules) ? settings.xpRules : [];
+        const storedManaged = Array.isArray(xpConfig.xpManagedRoleIds) ? xpConfig.xpManagedRoleIds : [];
+        const legacyManaged = Array.isArray(settings.xpManagedRoleIds) ? settings.xpManagedRoleIds : [];
+        if (!storedRules.length && legacyRules.length) xpConfig.xpRules = legacyRules;
+        if (!storedManaged.length && legacyManaged.length) xpConfig.xpManagedRoleIds = legacyManaged;
         if (Array.isArray(xpConfig.xpRules)) settings.xpRules = xpConfig.xpRules;
         if (Array.isArray(xpConfig.xpManagedRoleIds)) settings.xpManagedRoleIds = xpConfig.xpManagedRoleIds;
+        if ((!storedRules.length && legacyRules.length) || (!storedManaged.length && legacyManaged.length)) {
+          await xpStorage.set(guildId, "config", xpConfig);
+        }
       }
       let multiplierConfig = await xpMultiplierStorage.get(guildId, "config", null);
       if (!multiplierConfig && Array.isArray(settings.multiplierRules)) {
@@ -1453,6 +1472,12 @@ async function panelApi(req, res, url) {
         console.log("[Armazenamento] Multiplicadores de XP migrados para system-storage no servidor " + guildId + ".");
       }
       if (multiplierConfig && typeof multiplierConfig === "object" && Array.isArray(multiplierConfig.multiplierRules)) {
+        const storedRules = multiplierConfig.multiplierRules;
+        const legacyRules = Array.isArray(settings.multiplierRules) ? settings.multiplierRules : [];
+        if (!storedRules.length && legacyRules.length) {
+          multiplierConfig.multiplierRules = legacyRules;
+          await xpMultiplierStorage.set(guildId, "config", multiplierConfig);
+        }
         settings.multiplierRules = multiplierConfig.multiplierRules;
       }
       return sendJson(res, 200, { settings, updatedAt: doc?.updatedAt || null });
