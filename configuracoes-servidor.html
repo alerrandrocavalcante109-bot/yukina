@@ -294,28 +294,30 @@
       const commandTypeScreen = document.getElementById('commandTypeScreen');
       const xpRolesScreen = document.getElementById('xpRolesScreen');
       const temporalRolesScreen = document.getElementById('temporalRolesScreen');
+      function closeAllSystemScreens() {
+        customCommandsScreen.classList.remove('open');
+        commandTypeScreen.classList.remove('open');
+        xpRolesScreen.classList.remove('open');
+        temporalRolesScreen.classList.remove('open');
+      }
       document.getElementById('customCommands').addEventListener('click', () => {
         setMenu(false);
         welcomeScreen.style.display = 'none';
-        commandTypeScreen.classList.remove('open');
-        xpRolesScreen.classList.remove('open');
+        closeAllSystemScreens();
         customCommandsScreen.classList.add('open');
         loadCustomCommands();
       });
       document.getElementById('xpRolesMenu').addEventListener('click', () => {
         setMenu(false);
         welcomeScreen.style.display = 'none';
-        customCommandsScreen.classList.remove('open');
-        commandTypeScreen.classList.remove('open');
+        closeAllSystemScreens();
         xpRolesScreen.classList.add('open');
         loadXpRoles();
       });
       document.getElementById('temporalRolesMenu').addEventListener('click', () => {
         setMenu(false);
         welcomeScreen.style.display = 'none';
-        customCommandsScreen.classList.remove('open');
-        commandTypeScreen.classList.remove('open');
-        xpRolesScreen.classList.remove('open');
+        closeAllSystemScreens();
         temporalRolesScreen.classList.add('open');
         loadTemporalRules();
       });
