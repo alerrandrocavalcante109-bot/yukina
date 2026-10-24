@@ -400,6 +400,16 @@
         toggle.setAttribute('aria-expanded', String(open));
         toggle.setAttribute('aria-label', open ? 'Fechar menu' : 'Abrir menu');
       }
+      // O menu precisa ter seus eventos conectados explicitamente.
+      toggle.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        setMenu(!menu.classList.contains('open'));
+      });
+      scrim.addEventListener('click', () => setMenu(false));
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape') setMenu(false);
+      });
       const welcomeScreen = document.getElementById('welcomeScreen');
       const customCommandsScreen = document.getElementById('customCommandsScreen');
       const commandTypeScreen = document.getElementById('commandTypeScreen');
@@ -1246,6 +1256,56 @@
         if (expiry && Date.now() >= expiry) return null;
         return stored('yukina_discord_token');
       }
+      // Carrega e exibe o perfil real da conta autenticada no Discord.
+      async function loadLoggedUser() {
+        const profile = document.getElementById('userProfile');
+        const name = document.getElementById('loggedUserName');
+        const image = document.getElementById('loggedUserAvatar');
+        let accessToken = getToken();
+        if (!accessToken && await refreshToken()) accessToken = getToken();
+        if (!accessToken) {
+          profile.hidden = true;
+          return;
+        }
+        try {
+          let response = await fetch('https://discord.com/api/users/@me', {
+            headers: {Authorization: 'Bearer ' + accessToken},
+            cache: 'no-store'
+          });
+          if (response.status === 401 && await refreshToken()) {
+            accessToken = getToken();
+            if (accessToken) response = await fetch('https://discord.com/api/users/@me', {
+              headers: {Authorization: 'Bearer ' + accessToken},
+              cache: 'no-store'
+            });
+          }
+          if (!response.ok) throw new Error('Não foi possível carregar o perfil do Discord.');
+          const user = await response.json();
+          name.textContent = user.global_name || user.username || 'Usuário Discord';
+          image.src = user.avatar
+            ? 'https://cdn.discordapp.com/avatars/' + encodeURIComponent(user.id) + '/' + encodeURIComponent(user.avatar) + '.png?size=128'
+            : 'https://cdn.discordapp.com/embed/avatars/' + (Number(user.discriminator || 0) % 5) + '.png';
+          image.onerror = () => { image.onerror = null; image.src = 'https://cdn.discordapp.com/embed/avatars/0.png'; };
+          profile.hidden = false;
+          try {
+            localStorage.setItem('yukina_discord_user', JSON.stringify({
+              id: user.id, username: user.username, global_name: user.global_name || null,
+              avatar: image.src
+            }));
+          } catch (_) {}
+        } catch (_) {
+          // Se o perfil já tiver sido carregado antes, mantém o cache visível.
+          try {
+            const cached = JSON.parse(localStorage.getItem('yukina_discord_user') || 'null');
+            if (cached && cached.id) {
+              name.textContent = cached.global_name || cached.username || 'Usuário Discord';
+              image.src = cached.avatar || 'https://cdn.discordapp.com/embed/avatars/0.png';
+              profile.hidden = false;
+            }
+          } catch (_) { profile.hidden = true; }
+        }
+      }
+      loadLoggedUser();
       async function refreshToken() {
         const refresh = stored('yukina_discord_refresh_token');
         const apiBase = String(window.YUKINA_API_URL || '').replace(/\/$/, '');
