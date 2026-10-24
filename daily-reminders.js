@@ -70,9 +70,11 @@ async function runDailyReminders(client) {
         }
       }
     }
+    cycleCompleted = true;
   } catch (error) {
     console.error("[Daily Reminder] Falha no ciclo:", error?.message || error);
   } finally {
+    if (cycleCompleted) lastCycleDay = day;
     running = false;
   }
 }
