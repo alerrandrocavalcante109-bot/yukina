@@ -517,24 +517,28 @@
           return;
         }
         try {
-          let response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {
-            headers:{Authorization:'Bearer '+token}, cache:'no-store', signal:AbortSignal.timeout(12000)
+          const apiBase = String(window.YUKINA_API_URL || '').replace(/\\/$/, '');
+          if (!apiBase) throw new Error('A URL da API da Yukina não foi configurada.');
+          const requestGuilds = currentToken => fetch(apiBase + '/api/oauth/guilds', {
+            headers:{Authorization:'Bearer '+currentToken,Accept:'application/json'},
+            cache:'no-store', signal:AbortSignal.timeout(15000)
           });
+          let response = await requestGuilds(token);
           if (response.status === 401 && await refreshDiscordToken()) {
             token = readDiscordToken();
-            if (token) response = await fetch('https://discord.com/api/users/@me/guilds?limit=200', {
-              headers:{Authorization:'Bearer '+token}, cache:'no-store', signal:AbortSignal.timeout(12000)
-            });
+            if (token) response = await requestGuilds(token);
           }
-          if (response.status === 403) throw new Error('O Discord não concedeu a permissão para listar servidores. Entre novamente e autorize a permissão de servidores.');
-          if (!response.ok) throw new Error(response.status === 401 ? 'Sua sessão expirou. Entre novamente com o Discord.' : 'O Discord está temporariamente indisponível ('+response.status+').');
-          const guilds = await response.json();
+          const payload = await response.json().catch(() => ({}));
+          if (!response.ok) throw new Error(payload.detail || (response.status === 401
+            ? 'Sua sessão expirou. Entre novamente com o Discord.'
+            : 'Não foi possível listar os servidores (HTTP '+response.status+').'));
+          const guilds = Array.isArray(payload) ? payload : [];
           try { localStorage.setItem(cacheKey, JSON.stringify({guilds, savedAt:Date.now()})); } catch (_) {}
           renderGuilds(guilds);
         } catch (error) {
           if (!cachedGuilds.length) {
             serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';
-            p.textContent=error.name==='TimeoutError' ? 'O Discord demorou para responder. Tente novamente.' : (error.message || 'Não foi possível carregar os servidores.');
+            p.textContent=error.name==='TimeoutError' ? 'A API demorou para responder. Tente novamente.' : (error.message || 'Não foi possível carregar os servidores.');
             serverList.append(p);
           }
         }
