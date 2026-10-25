@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="theme-color" content="#34205f">
+  <meta name="theme-color" content="#071a36">
   <link rel="icon" type="image/png" href="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
   <title>Configurações dos Servidores • Yukina</title>
   <script src="./api-config.js"></script>
@@ -180,6 +180,45 @@
     .user-profile-label{font-size:.68rem;color:#eadbff}
     @media(max-width:480px){.menu-toggle{top:12px;left:12px;width:44px;height:44px}.side-menu{padding:76px 16px 20px}.user-profile{top:12px;right:12px;gap:6px;padding:5px 9px 5px 5px}.user-profile img{width:32px;height:32px;flex-basis:32px}.user-profile-name{max-width:115px;font-size:.8rem}}
     @media(prefers-reduced-motion:reduce){.side-menu,.menu-scrim{transition:none}}
+    /* Redesign azul Yukina */
+    html,body{background:#06152d}
+    body{background:radial-gradient(ellipse at 15% 10%,#123e79 0%,transparent 42%),radial-gradient(ellipse at 90% 85%,#075985 0%,transparent 38%),linear-gradient(145deg,#06152d,#071a36 55%,#0a2347);background-attachment:fixed}
+    .menu-toggle{background:linear-gradient(135deg,#1677e8,#0e4ea8);border-color:#60a5fa;box-shadow:0 8px 28px #02081799}
+    .menu-toggle:hover{background:linear-gradient(135deg,#2587f5,#155fc2)}
+    .side-menu{background:linear-gradient(180deg,#081b37f7,#0b2b52f7);border-right:1px solid #3b82f655;box-shadow:12px 0 36px #02081799}
+    .server-picker,.system-picker{background:#0d2c53;border-color:#2563a6}
+    .server-picker:hover,.system-picker:hover{background:#124078}
+    .system-picker:focus-visible,.server-picker:focus-visible{outline:2px solid #60a5fa;outline-offset:2px}
+    .server-avatar{border:2px solid #3b82f6;background:#0b2344}
+    .user-profile{background:#071a36eF;border-color:#2563a6;box-shadow:0 8px 26px #02081799}
+    .user-profile-label{color:#93c5fd}
+    .xp-level-row,.drop-panel,.custom-command-row,.command-preview-card,.message-editor{background:#081b37d9;border-color:#24558a}
+    .xp-role-select,.drop-text-input,.message-editor input,.message-editor textarea,.command-name-editor input,.additional-embed-editor input,.additional-embed-editor textarea{background:#06152d;border-color:#2563a6}
+    .create-command-button,.command-type-button{background:#0d2c53;border-color:#2563a6}
+    #createCommandButton,#commandTypeText{background:#1769d2;border-color:#60a5fa}
+    #createCommandButton:hover,#commandTypeText:hover{background:#0f55b5}
+    #commandTypeEmbed{background:#1257a5;border-color:#60a5fa}
+    #serverModal{background:#020817c9;backdrop-filter:blur(8px)}
+    .server-modal-card{width:min(100%,520px);max-height:min(82dvh,760px);padding:0;overflow:hidden;border:1px solid #2563a6;border-radius:22px;background:linear-gradient(160deg,#0c2445,#07152b 72%);box-shadow:0 28px 90px #0009;color:#f8fbff}
+    .server-modal-heading{padding:22px 22px 16px;border-bottom:1px solid #1d416c;gap:12px}
+    #serverModalTitle{margin:0;font-size:1.2rem;letter-spacing:-.02em}
+    .server-modal-subtitle{margin:6px 0 0;color:#9bbce4;font-size:.88rem;line-height:1.5}
+    #serverModalClose{flex:0 0 36px;background:#102f56;border-color:#2d65a0;color:#dbeafe}
+    #serverModalClose:hover{background:#164477}
+    .server-search-wrap{padding:16px 18px 8px}
+    #serverSearch{width:100%;padding:13px 14px;border:1px solid #24558a;border-radius:12px;outline:none;background:#06152d;color:#f8fbff;font:inherit}
+    #serverSearch::placeholder{color:#7f9fc7}
+    #serverSearch:focus{border-color:#60a5fa;box-shadow:0 0 0 3px #3b82f633}
+    .server-list{display:grid;gap:8px;max-height:calc(min(82dvh,760px) - 170px);overflow-y:auto;padding:10px 18px 20px;overscroll-behavior:contain}
+    .server-option{min-width:0;width:100%;padding:11px 12px;border:1px solid #1c416b;border-radius:13px;background:#0a1e39;color:#eff6ff;transition:background .16s,border-color .16s,transform .16s}
+    .server-option:hover{background:#10335e;border-color:#3b82f6;transform:translateY(-1px)}
+    .server-option:focus-visible{outline:2px solid #60a5fa;outline-offset:2px}
+    .server-option img{width:46px;height:46px;flex:0 0 46px;border:1px solid #24558a;border-radius:13px;background:#071a36}
+    .server-option span{min-width:0;font-weight:650;overflow-wrap:anywhere}
+    .server-empty{margin:0;padding:20px 12px;color:#a9c4e8;text-align:center;line-height:1.6}
+    .server-loading-dot{display:inline-block;width:7px;height:7px;margin-right:8px;border-radius:50%;background:#60a5fa;box-shadow:0 0 14px #3b82f6}
+    .server-count{padding:0 20px 10px;color:#7f9fc7;font-size:.78rem}
+    @media(max-width:480px){.server-modal{padding:12px}.server-modal-card{max-height:86dvh;border-radius:18px}.server-modal-heading{padding:18px 16px 14px}.server-search-wrap{padding:13px 14px 6px}.server-list{max-height:calc(86dvh - 165px);padding:8px 14px 16px}.server-option{padding:10px}.server-option img{width:42px;height:42px;flex-basis:42px}}
   </style>
 </head>
 <body>
@@ -195,7 +234,7 @@
     <button id="xpMultiplierMenu" class="system-picker" type="button">✨ Multiplicador de XP <span aria-hidden="true">›</span></button>
     <button id="dropGiveawayMenu" class="system-picker" type="button">🎁 Drop &amp; Sorteio <span aria-hidden="true">›</span></button>
   </aside>
-  <div id="serverModal" class="server-modal" aria-hidden="true"><section class="server-modal-card" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle"><div class="server-modal-heading"><h3 id="serverModalTitle">Escolher outro servidor</h3><button id="serverModalClose" type="button" aria-label="Fechar">×</button></div><div id="serverList" class="server-list"><p class="server-empty">Carregando servidores...</p></div></section></div>
+  <div id="serverModal" class="server-modal" aria-hidden="true"><section class="server-modal-card" role="dialog" aria-modal="true" aria-labelledby="serverModalTitle"><div class="server-modal-heading"><div><h3 id="serverModalTitle">Escolher servidor</h3><p class="server-modal-subtitle">Selecione um servidor para configurar sua Yukina.</p></div><button id="serverModalClose" type="button" aria-label="Fechar">×</button></div><div class="server-search-wrap"><input id="serverSearch" type="search" placeholder="Buscar servidor pelo nome..." autocomplete="off" aria-label="Buscar servidor"></div><div id="serverCount" class="server-count">Preparando lista de servidores…</div><div id="serverList" class="server-list"><p class="server-empty">Carregando servidores...</p></div></section></div>
   <div id="userProfile" class="user-profile" aria-label="Usuário conectado" hidden>
     <img id="loggedUserAvatar" alt="Foto do usuário" src="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
     <div><div id="loggedUserName" class="user-profile-name"></div><div class="user-profile-label">Conta conectada</div></div>
@@ -492,17 +531,30 @@
           const saved = JSON.parse(localStorage.getItem(cacheKey) || 'null');
           if (Array.isArray(saved?.guilds)) cachedGuilds = saved.guilds;
         } catch (_) {}
+        const serverSearch = document.getElementById('serverSearch');
+        const serverCount = document.getElementById('serverCount');
+        let availableGuilds = [];
         const renderGuilds = guilds => {
-          const allowed = guilds.filter(g => g.owner || (BigInt(g.permissions || '0') & 32n) === 32n || (BigInt(g.permissions || '0') & 8n) === 8n);
+          availableGuilds = guilds.filter(g => {
+            try { const permissions = BigInt(g.permissions || '0'); return !!g.owner || (permissions & 32n) === 32n || (permissions & 8n) === 8n; }
+            catch (_) { return !!g.owner; }
+          });
+          const query = String(serverSearch?.value || '').trim().toLocaleLowerCase('pt-BR');
+          const filtered = availableGuilds.filter(g => String(g.name || '').toLocaleLowerCase('pt-BR').includes(query));
           serverList.replaceChildren();
-          if (!allowed.length) {
-            const p = document.createElement('p'); p.className='server-empty'; p.textContent='Nenhum servidor administrável encontrado.'; serverList.append(p); return;
+          if (serverCount) serverCount.textContent = query ? filtered.length + ' de ' + availableGuilds.length + ' servidores' : availableGuilds.length + ' servidor(es) disponível(is)';
+          if (!filtered.length) {
+            const p = document.createElement('p'); p.className='server-empty';
+            p.textContent = availableGuilds.length ? 'Nenhum servidor corresponde à sua busca.' : 'Nenhum servidor administrável encontrado.';
+            serverList.append(p); return;
           }
-          allowed.forEach(guild => {
+          filtered.forEach(guild => {
             const button = document.createElement('button'); button.type='button'; button.className='server-option';
             const img = document.createElement('img'); img.alt='';
+            img.loading='lazy';
             img.src = guild.icon ? 'https://cdn.discordapp.com/icons/'+guild.id+'/'+guild.icon+'.png?size=128' : 'https://cdn.discordapp.com/embed/avatars/0.png';
-            const name = document.createElement('span'); name.textContent=guild.name;
+            img.onerror = () => { img.onerror=null; img.src='https://cdn.discordapp.com/embed/avatars/0.png'; };
+            const name = document.createElement('span'); name.textContent=guild.name || 'Servidor sem nome';
             button.append(img,name);
             button.addEventListener('click', () => {
               selectedServerIcon.src=img.src; selectedServerIcon.alt='Foto do servidor '+guild.name;
@@ -520,9 +572,10 @@
             serverList.append(button);
           });
         };
+        serverSearch?.addEventListener('input', () => renderGuilds(availableGuilds));
         // Mostra imediatamente a última lista conhecida enquanto atualiza a sessão.
         if (cachedGuilds.length) renderGuilds(cachedGuilds);
-        else { serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';p.textContent='Conectando ao Discord…';serverList.append(p); }
+        else { serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';p.innerHTML='<span class="server-loading-dot"></span>Conectando ao Discord…';serverList.append(p); if (serverCount) serverCount.textContent='Buscando seus servidores'; }
         let token = readDiscordToken();
         if (!token && readStored('yukina_discord_refresh_token')) {
           await refreshDiscordToken();
@@ -554,8 +607,10 @@
         } catch (error) {
           if (!cachedGuilds.length) {
             serverList.replaceChildren(); const p=document.createElement('p');p.className='server-empty';
-            p.textContent=error.name==='TimeoutError' ? 'A API demorou para responder. Tente novamente.' : (error.message || 'Não foi possível carregar os servidores.');
+            p.textContent=error.name==='TimeoutError' || error.name==='AbortError' ? 'A API demorou para responder. Confira sua conexão e tente novamente.' : (error.message || 'Não foi possível carregar os servidores.');
             serverList.append(p);
+          } else if (serverCount) {
+            serverCount.textContent='Exibindo a última lista salva; não foi possível atualizar agora.';
           }
         }
       });
