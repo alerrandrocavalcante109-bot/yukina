@@ -914,7 +914,7 @@ client.on("messageCreate", async (message) => {
 });
 
 // API do painel: OAuth do Discord + permissões do servidor + persistência no MongoDB.
-const PANEL_ORIGINS = (process.env.PANEL_ORIGINS || "https://yukina-6uo.pages.dev").split(",").map(v => v.trim()).filter(Boolean);
+const PANEL_ORIGINS = [...new Set(["https://yukina-6uo.pages.dev", ...(process.env.PANEL_ORIGINS || "").split(",")].map(v => v.trim().replace(/\/$/, "")).filter(Boolean))];
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 let settingsMongoClient = null;
