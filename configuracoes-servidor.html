@@ -14,7 +14,8 @@
     body{min-height:100vh;min-height:100dvh;background:linear-gradient(135deg,#432078 0%,#245aa8 50%,#c34c9b 100%);background-attachment:fixed}
     button,a{-webkit-tap-highlight-color:transparent}
     button{font:inherit;cursor:pointer}
-    .profile[hidden],.login-button[hidden],.drawer-user[hidden],.menu-link[hidden]{display:none!important}\n    .topbar{position:fixed;z-index:30;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px)}
+    .profile[hidden],.login-button[hidden]{display:none!important}
+    .topbar{position:fixed;z-index:30;top:max(12px,env(safe-area-inset-top));left:max(12px,env(safe-area-inset-left));right:max(12px,env(safe-area-inset-right));display:flex;align-items:center;justify-content:space-between;gap:10px;max-width:none;width:auto}
     .profile{display:flex;align-items:center;gap:9px;min-width:0;max-width:min(56vw,320px);padding:7px 12px 7px 7px;border:1px solid var(--line);border-radius:999px;background:#21153bd9;color:#fff;text-decoration:none;box-shadow:0 8px 28px #160a2c35;backdrop-filter:blur(14px)}
     .profile img{width:36px;height:36px;flex:0 0 36px;object-fit:cover;border-radius:50%;background:#6d5a88}
     .profile-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;font-weight:700}
@@ -24,7 +25,7 @@
     .menu-toggle svg{width:24px;height:24px}
     .shade{position:fixed;inset:0;z-index:39;background:#09051180;opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s;touch-action:pan-y}
     .shade.open{opacity:1;visibility:visible}
-    .drawer{position:fixed;z-index:40;top:0;right:0;width:min( min(360px,88vw),420px);height:100vh;height:100dvh;padding:max(78px,calc(env(safe-area-inset-top) + 70px)) 18px max(22px,env(safe-area-inset-bottom));background:var(--glass);border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0 0 0 22px;box-shadow:-18px 0 48px #0a061955;backdrop-filter:blur(22px);transform:translateX(105%);visibility:hidden;transition:transform .25s ease,visibility .25s;overflow-y:auto;overscroll-behavior:contain}
+    .drawer{position:fixed;z-index:40;top:0;right:0;width:min( min(360px,88vw),420px);height:100vh;height:100dvh;padding:0;background:var(--glass);border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0 0 0 22px;box-shadow:-18px 0 48px #0a061955;backdrop-filter:blur(22px);transform:translateX(105%);visibility:hidden;transition:transform .25s ease,visibility .25s;overflow-y:auto;overscroll-behavior:contain}
     .drawer.open{transform:translateX(0);visibility:visible}
     .drawer-heading{margin:0 0 18px;font-size:1.05rem;letter-spacing:.02em}
     .drawer-user{display:flex;align-items:center;gap:12px;padding:13px;margin-bottom:18px;border:1px solid var(--line);border-radius:15px;background:#ffffff0a;overflow:hidden}
@@ -53,33 +54,19 @@
   </header>
 
   <div class="shade" id="shade" aria-hidden="true"></div>
-  <aside class="drawer" id="drawer" aria-label="Menu principal" aria-hidden="true">
-    <h2 class="drawer-heading">Menu da Yukina</h2>
-    <div class="drawer-user" id="drawerUser" hidden>
-      <img id="drawerAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png">
-      <div><strong id="drawerName"></strong><small>Conectado com Discord</small></div>
-    </div>
-    <nav class="menu-links" aria-label="Navegação principal">
-      <a class="menu-link" href="./index.html"><span class="symbol" aria-hidden="true">⌂</span> Página inicial</a>
-      <a class="menu-link" href="./configuracoes.html"><span class="symbol" aria-hidden="true">▦</span> Selecionar servidor</a>
-      <a class="menu-link" href="./termos.html"><span class="symbol" aria-hidden="true">▤</span> Termos de uso</a>
-      <a class="menu-link" href="./privacidade.html"><span class="symbol" aria-hidden="true">♧</span> Privacidade</a>
-      <button class="menu-link" id="logoutButton" type="button" hidden><span class="symbol" aria-hidden="true">↪</span> Sair da conta</button>
-    </nav>
-    <p class="drawer-hint">Toque fora do menu para fechar. No celular, deslize para a direita para abrir e para a esquerda para fechar.</p>
-  </aside>
+  <aside class="drawer" id="drawer" aria-label="Menu lateral vazio" aria-hidden="true"></aside>
 
   <script>
   (() => {
     const API_BASE = (window.YUKINA_API_URL || "https://yukina-jspa.onrender.com").replace(/\/$/, "");
     const $ = id => document.getElementById(id);
     const profile = $("profile"), profileAvatar = $("profileAvatar"), profileName = $("profileName");
-    const loginButton = $("loginButton"), drawerUser = $("drawerUser"), drawerAvatar = $("drawerAvatar"), drawerName = $("drawerName"), logoutButton = $("logoutButton");
+    const loginButton = $("loginButton");
     const drawer = $("drawer"), shade = $("shade"), menuToggle = $("menuToggle");
     let touchStartX = null, touchStartY = null;
     function token(){return localStorage.getItem("yukina_discord_token") || ""}
     function showLoggedOut(){
-      profile.hidden = true; loginButton.hidden = false; drawerUser.hidden = true; logoutButton.hidden = true;
+      profile.hidden = true; loginButton.hidden = false;
     }
     function showUser(user){
       const name = user.global_name || user.username || "Usuário do Discord";
@@ -88,8 +75,6 @@
         : "https://cdn.discordapp.com/embed/avatars/" + (Number(user.discriminator || 0) % 5) + ".png";
       profileAvatar.src = avatar; profileAvatar.alt = "Foto de " + name; profileName.textContent = name;
       profile.href = "#perfil"; profile.hidden = false; loginButton.hidden = true;
-      drawerAvatar.src = avatar; drawerAvatar.alt = "Foto de " + name; drawerName.textContent = name;
-      drawerUser.hidden = false; logoutButton.hidden = false;
     }
     async function refreshAccessToken(){
       const refreshToken = localStorage.getItem("yukina_discord_refresh_token") || "";
@@ -112,14 +97,22 @@
       let accessToken = token();
       if(!accessToken){showLoggedOut();return}
       try{
-        let response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
-        if(response.status===401){
-          accessToken = await refreshAccessToken();
-          if(!accessToken) throw new Error("Sessão inválida");
-          response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+        let user = null;
+        try {
+          let response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+          if(response.status===401){
+            accessToken = await refreshAccessToken();
+            if(!accessToken) throw new Error("Sessão inválida");
+            response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+          }
+          if(response.ok) user = await response.json();
+        } catch(error) {}
+        // Fallback para o endpoint oficial se a API própria ainda não estiver atualizada.
+        if(!user || !user.id || !user.username){
+          const response = await fetch("https://discord.com/api/users/@me",{headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+          if(!response.ok) throw new Error("Sessão inválida");
+          user = await response.json();
         }
-        if(!response.ok) throw new Error("Sessão inválida");
-        const user = await response.json();
         if(!user || !user.id || !user.username) throw new Error("Perfil indisponível");
         showUser(user);
       }catch(error){showLoggedOut()}
@@ -140,10 +133,6 @@
     document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
     loginButton.addEventListener("click",()=>location.assign("./login.html"));
     profile.addEventListener("click",e=>{if(profile.getAttribute("href")==="#perfil"){e.preventDefault();openMenu()}});
-    logoutButton.addEventListener("click",()=>{
-      ["yukina_discord_token","yukina_discord_refresh_token","yukina_discord_token_expires_at","yukina_panel_session_expires_at"].forEach(key=>localStorage.removeItem(key));
-      showLoggedOut();closeMenu();
-    });
     document.addEventListener("touchstart",e=>{
       if(!e.touches || !e.touches.length)return;
       touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;
