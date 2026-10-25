@@ -1103,7 +1103,19 @@ async function panelApi(req, res, url) {
             : "O Discord está temporariamente indisponível para listar servidores."
         });
       }
-      return sendJson(res, 200, Array.isArray(data) ? data : []);
+      const userGuilds = Array.isArray(data) ? data : [];
+      // Retorna somente servidores onde a Yukina está presente e o usuário pode gerenciar.
+      const manageableGuilds = userGuilds.filter(g => {
+        try {
+          const permissions = BigInt(g.permissions || "0");
+          const canManage = (permissions & 0x8n) !== 0n || (permissions & 0x20n) !== 0n;
+          return canManage && client.guilds.cache.has(String(g.id));
+        } catch (_) { return false; }
+      }).map(g => {
+        const botGuild = client.guilds.cache.get(String(g.id));
+        return { id: String(g.id), name: String(g.name || botGuild.name), icon: g.icon || null, permissions: String(g.permissions || "0") };
+      });
+      return sendJson(res, 200, manageableGuilds);
     } catch (error) {
       console.error("[API painel] Erro ao consultar servidores OAuth:", error.message || error);
       return sendJson(res, 502, { detail: "A API não conseguiu consultar os servidores no Discord. Tente novamente." });
