@@ -37,6 +37,17 @@
     .drawer-server-name{display:block;margin:0 0 16px;overflow-wrap:anywhere;font-size:1.3rem;line-height:1.3;text-align:center}
     .drawer-current-server-avatar{display:block;width:148px;height:148px;object-fit:cover;border-radius:24px;margin:0 auto 16px;background:#6d5a88;border:1px solid var(--line)}
     .drawer-section-label{text-align:center}
+    .prefix-system{margin:0 18px 22px;color:var(--text)}
+    .prefix-system-title{margin:0 0 8px;font-size:1rem;font-weight:800}
+    .prefix-system-description,.prefix-system-help{margin:0;color:var(--muted);font-size:.84rem;line-height:1.55}
+    .prefix-current{display:flex;align-items:center;gap:10px;width:100%;margin:12px 0 8px;padding:10px 12px;border:1px solid #c4b5fd88;border-radius:10px;background:transparent;color:#fff;text-align:left}
+    .prefix-current-label{color:var(--muted);font-size:.82rem}
+    .prefix-current-value{margin-left:auto;font-size:1rem;font-weight:850}
+    .prefix-edit{display:flex;gap:8px;margin:10px 0}
+    .prefix-edit[hidden]{display:none}
+    .prefix-input{width:100%;min-width:0;padding:9px 10px;border:1px solid #c4b5fd88;border-radius:9px;background:#140d24;color:#fff;font:inherit}
+    .prefix-save{padding:9px 12px;border:1px solid #c4b5fd88;border-radius:9px;background:#c4b5fd20;color:#fff;font-weight:750}
+    .prefix-status{min-height:1.2em;margin:6px 0;color:#e7d9ff;font-size:.8rem}
     .drawer-category{margin:22px 18px 10px;padding:0 0 9px;border-bottom:1px solid #c4b5fd88;color:#e7d9ff;font-size:.82rem;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
     .drawer-select-server{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px 12px;border:1px solid #ffffff35;border-radius:12px;background:#ffffff10;color:#fff;text-align:left;font-weight:700}
     .server-picker-card{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:13px;background:#140d24}
@@ -85,6 +96,20 @@
       </div>
     </section>
     <div class="drawer-category" aria-label="Categoria Configurações gerais">⚙️ Configurações gerais</div>
+    <section class="prefix-system" aria-labelledby="prefixSystemTitle">
+      <h2 class="prefix-system-title" id="prefixSystemTitle">Troca de prefixo</h2>
+      <p class="prefix-system-description">Personalize o caractere ou texto que os membros usam antes dos comandos de texto da Yukina neste servidor.</p>
+      <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual">
+        <span class="prefix-current-label">Prefixo atual</span>
+        <span class="prefix-current-value" id="prefixCurrentValue">Y</span>
+      </button>
+      <div class="prefix-edit" id="prefixEdit" hidden>
+        <input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite o prefixo">
+        <button class="prefix-save" id="prefixSaveButton" type="button">Salvar</button>
+      </div>
+      <p class="prefix-system-help">Toque no prefixo atual para editá-lo. O novo prefixo deve ter de 1 a 5 caracteres. Espaços não são permitidos e ele não pode ficar vazio. Depois de digitar, toque em “Salvar”.</p>
+      <p class="prefix-status" id="prefixStatus" role="status" aria-live="polite"></p>
+    </section>
   </aside>
 
   <script>
@@ -192,7 +217,19 @@
       else if(!open&&dx<0)openMenu();
     },{passive:true});
     window.addEventListener("storage",loadUser);
+    const prefixCurrentButton = $("prefixCurrentButton");
+    const prefixCurrentValue = $("prefixCurrentValue");
+    const prefixEdit = $("prefixEdit");
+    const prefixInput = $("prefixInput");
+    const prefixSaveButton = $("prefixSaveButton");
+    const prefixStatus = $("prefixStatus");
+    function prefixStorageKey(){const guild=selectedGuild();return "yukina_prefix_"+(guild.id||"no_server");}
+    function loadPrefix(){const saved=localStorage.getItem(prefixStorageKey());prefixCurrentValue.textContent=saved||"Y";prefixInput.value=saved||"Y";prefixStatus.textContent="";}
+    prefixCurrentButton.addEventListener("click",()=>{prefixEdit.hidden=false;prefixInput.value=prefixCurrentValue.textContent;prefixInput.focus();prefixStatus.textContent="";});
+    prefixSaveButton.addEventListener("click",()=>{const value=prefixInput.value;if(!value.trim()){prefixStatus.textContent="Digite um prefixo antes de salvar.";return;}if(value.length>5){prefixStatus.textContent="O prefixo pode ter no máximo 5 caracteres.";return;}if(/\\s/.test(value)){prefixStatus.textContent="O prefixo não pode conter espaços.";return;}localStorage.setItem(prefixStorageKey(),value);prefixCurrentValue.textContent=value;prefixEdit.hidden=true;prefixStatus.textContent="Prefixo salvo neste navegador. A integração com os comandos da Yukina ainda precisa ser conectada.";});
+    prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter")prefixSaveButton.click();if(e.key==="Escape")prefixEdit.hidden=true;});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
+    loadPrefix();
     loadUser();
   })();
   </script>
