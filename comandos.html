@@ -38,5 +38,6 @@ a{color:inherit;text-decoration:none}.wrap{width:min(1080px,calc(100% - 36px));m
 <script>
 (()=>{const search=document.getElementById('search'),buttons=[...document.querySelectorAll('.filter')],cards=[...document.querySelectorAll('.card')],empty=document.getElementById('empty');let category='todos';function render(){const q=search.value.trim().toLocaleLowerCase('pt-BR');let shown=0;cards.forEach(card=>{const ok=(category==='todos'||card.dataset.category===category)&&card.innerText.toLocaleLowerCase('pt-BR').includes(q);card.hidden=!ok;if(ok)shown++});empty.style.display=shown?'none':'block'}search.addEventListener('input',render);buttons.forEach(b=>b.addEventListener('click',()=>{category=b.dataset.category;buttons.forEach(x=>x.classList.toggle('active',x===b));render()}));document.getElementById('year').textContent=new Date().getFullYear()})();
 </script>
+  <script src="./assets/pending-changes.js"></script>
 </body>
 </html>
