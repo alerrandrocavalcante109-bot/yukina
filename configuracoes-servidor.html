@@ -2,21 +2,144 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#34205f">
   <link rel="icon" type="image/png" href="https://yukina-6uo.pages.dev/assets/yukina-bg.png">
-  <title>Configurações dos Servidores • Yukina</title>
+  <title>Configurações • Yukina</title>
+  <script src="./api-config.js"></script>
   <style>
+    :root{color-scheme:dark;--glass:rgba(28,17,51,.94);--line:#ffffff30;--text:#fff;--muted:#e6d9f5;--accent:#c4b5fd}
     *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;background:#34205f}
-    body{
-      min-height:100vh;
-      background:linear-gradient(135deg,#432078 0%,#245aa8 50%,#c34c9b 100%);
-      background-attachment:fixed;
-      font-family:system-ui,-apple-system,"Segoe UI",sans-serif;
-    }
+    html,body{margin:0;min-height:100%;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;background:transparent;color:var(--text)}
+    body{min-height:100vh;min-height:100dvh;background:linear-gradient(135deg,#432078 0%,#245aa8 50%,#c34c9b 100%);background-attachment:fixed}
+    button,a{-webkit-tap-highlight-color:transparent}
+    button{font:inherit;cursor:pointer}
+    .topbar{position:fixed;z-index:30;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px)}
+    .profile{display:flex;align-items:center;gap:9px;min-width:0;max-width:min(56vw,320px);padding:7px 12px 7px 7px;border:1px solid var(--line);border-radius:999px;background:#21153bd9;color:#fff;text-decoration:none;box-shadow:0 8px 28px #160a2c35;backdrop-filter:blur(14px)}
+    .profile img{width:36px;height:36px;flex:0 0 36px;object-fit:cover;border-radius:50%;background:#6d5a88}
+    .profile-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;font-weight:700}
+    .login-button{padding:12px 15px;border:1px solid #ffffff55;border-radius:14px;background:#21153bd9;color:#fff;font-weight:750;box-shadow:0 8px 28px #160a2c35;backdrop-filter:blur(14px)}
+    .login-button:hover,.menu-toggle:hover{background:#382258}
+    .menu-toggle{display:grid;place-items:center;width:48px;height:48px;flex:0 0 48px;border:1px solid var(--line);border-radius:15px;background:#21153bd9;color:#fff;box-shadow:0 8px 28px #160a2c35;backdrop-filter:blur(14px)}
+    .menu-toggle svg{width:24px;height:24px}
+    .shade{position:fixed;inset:0;z-index:39;background:#09051180;opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s;touch-action:pan-y}
+    .shade.open{opacity:1;visibility:visible}
+    .drawer{position:fixed;z-index:40;top:0;right:0;width:min( min(360px,88vw),420px);height:100vh;height:100dvh;padding:max(78px,calc(env(safe-area-inset-top) + 70px)) 18px max(22px,env(safe-area-inset-bottom));background:var(--glass);border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0 0 0 22px;box-shadow:-18px 0 48px #0a061955;backdrop-filter:blur(22px);transform:translateX(105%);visibility:hidden;transition:transform .25s ease,visibility .25s;overflow-y:auto;overscroll-behavior:contain}
+    .drawer.open{transform:translateX(0);visibility:visible}
+    .drawer-heading{margin:0 0 18px;font-size:1.05rem;letter-spacing:.02em}
+    .drawer-user{display:flex;align-items:center;gap:12px;padding:13px;margin-bottom:18px;border:1px solid var(--line);border-radius:15px;background:#ffffff0a;overflow:hidden}
+    .drawer-user img{width:44px;height:44px;object-fit:cover;border-radius:50%;background:#6d5a88}
+    .drawer-user strong{display:block;overflow-wrap:anywhere}
+    .drawer-user small{display:block;margin-top:3px;color:var(--muted)}
+    .menu-links{display:grid;gap:9px}
+    .menu-link{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#ffffff0b;color:#fff;text-align:left;text-decoration:none;font-weight:650}
+    .menu-link:hover{background:#ffffff18}
+    .menu-link .symbol{width:24px;text-align:center;font-size:1.1rem}
+    .drawer-hint{margin:20px 4px 0;color:#e3d5f4;font-size:.8rem;line-height:1.55}
+    @media(max-width:480px){.topbar{gap:7px}.profile{max-width:43vw;padding-right:9px}.profile-name{font-size:.82rem}.profile img{width:32px;height:32px;flex-basis:32px}.login-button{padding:11px 10px;font-size:.85rem}.menu-toggle{width:44px;height:44px;flex-basis:44px}.drawer{width:min(340px,88vw)}}
+    @media(prefers-reduced-motion:reduce){.drawer,.shade{transition:none}}
   </style>
 </head>
 <body>
+  <header class="topbar" aria-label="Conta e menu">
+    <a class="profile" id="profile" href="./login.html" hidden aria-label="Perfil do Discord">
+      <img id="profileAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png">
+      <span class="profile-name" id="profileName"></span>
+    </a>
+    <button class="login-button" id="loginButton" type="button">Entrar com Discord</button>
+    <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="drawer">
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+    </button>
+  </header>
+
+  <div class="shade" id="shade" aria-hidden="true"></div>
+  <aside class="drawer" id="drawer" aria-label="Menu principal" aria-hidden="true">
+    <h2 class="drawer-heading">Menu da Yukina</h2>
+    <div class="drawer-user" id="drawerUser" hidden>
+      <img id="drawerAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png">
+      <div><strong id="drawerName"></strong><small>Conectado com Discord</small></div>
+    </div>
+    <nav class="menu-links" aria-label="Navegação principal">
+      <a class="menu-link" href="./index.html"><span class="symbol" aria-hidden="true">⌂</span> Página inicial</a>
+      <a class="menu-link" href="./configuracoes.html"><span class="symbol" aria-hidden="true">▦</span> Selecionar servidor</a>
+      <a class="menu-link" href="./termos.html"><span class="symbol" aria-hidden="true">▤</span> Termos de uso</a>
+      <a class="menu-link" href="./privacidade.html"><span class="symbol" aria-hidden="true">♧</span> Privacidade</a>
+      <button class="menu-link" id="logoutButton" type="button" hidden><span class="symbol" aria-hidden="true">↪</span> Sair da conta</button>
+    </nav>
+    <p class="drawer-hint">Toque fora do menu para fechar. No celular, deslize para a direita para abrir e para a esquerda para fechar.</p>
+  </aside>
+
+  <script>
+  (() => {
+    const API_BASE = (window.YUKINA_API_URL || "https://yukina-jspa.onrender.com").replace(/\/$/, "");
+    const $ = id => document.getElementById(id);
+    const profile = $("profile"), profileAvatar = $("profileAvatar"), profileName = $("profileName");
+    const loginButton = $("loginButton"), drawerUser = $("drawerUser"), drawerAvatar = $("drawerAvatar"), drawerName = $("drawerName"), logoutButton = $("logoutButton");
+    const drawer = $("drawer"), shade = $("shade"), menuToggle = $("menuToggle");
+    let touchStartX = null, touchStartY = null;
+    function token(){return localStorage.getItem("yukina_discord_token") || ""}
+    function showLoggedOut(){
+      profile.hidden = true; loginButton.hidden = false; drawerUser.hidden = true; logoutButton.hidden = true;
+    }
+    function showUser(user){
+      const name = user.global_name || user.username || "Usuário do Discord";
+      const avatar = user.avatar
+        ? "https://cdn.discordapp.com/avatars/" + encodeURIComponent(user.id) + "/" + encodeURIComponent(user.avatar) + (String(user.avatar).startsWith("a_") ? ".gif" : ".png") + "?size=128"
+        : "https://cdn.discordapp.com/embed/avatars/" + (Number(user.discriminator || 0) % 5) + ".png";
+      profileAvatar.src = avatar; profileAvatar.alt = "Foto de " + name; profileName.textContent = name;
+      profile.href = "#perfil"; profile.hidden = false; loginButton.hidden = true;
+      drawerAvatar.src = avatar; drawerAvatar.alt = "Foto de " + name; drawerName.textContent = name;
+      drawerUser.hidden = false; logoutButton.hidden = false;
+    }
+    async function loadUser(){
+      const accessToken = token();
+      if(!accessToken){showLoggedOut();return}
+      const expiresAt = Number(localStorage.getItem("yukina_discord_token_expires_at") || 0);
+      if(expiresAt && Date.now() >= expiresAt){showLoggedOut();return}
+      try{
+        const response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+        if(!response.ok) throw new Error("Sessão inválida");
+        const user = await response.json();
+        if(!user || !user.id || !user.username) throw new Error("Perfil indisponível");
+        showUser(user);
+      }catch(error){showLoggedOut()}
+    }
+    function openMenu(){
+      drawer.classList.add("open"); shade.classList.add("open");
+      drawer.setAttribute("aria-hidden","false"); shade.setAttribute("aria-hidden","false");
+      menuToggle.setAttribute("aria-expanded","true"); menuToggle.setAttribute("aria-label","Fechar menu");
+    }
+    function closeMenu(){
+      drawer.classList.remove("open"); shade.classList.remove("open");
+      drawer.setAttribute("aria-hidden","true"); shade.setAttribute("aria-hidden","true");
+      menuToggle.setAttribute("aria-expanded","false"); menuToggle.setAttribute("aria-label","Abrir menu");
+    }
+    function toggleMenu(){drawer.classList.contains("open") ? closeMenu() : openMenu()}
+    menuToggle.addEventListener("click",toggleMenu);
+    shade.addEventListener("click",closeMenu);
+    document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
+    loginButton.addEventListener("click",()=>location.assign("./login.html"));
+    profile.addEventListener("click",e=>{if(profile.getAttribute("href")==="#perfil"){e.preventDefault();openMenu()}});
+    logoutButton.addEventListener("click",()=>{
+      ["yukina_discord_token","yukina_discord_refresh_token","yukina_discord_token_expires_at","yukina_panel_session_expires_at"].forEach(key=>localStorage.removeItem(key));
+      showLoggedOut();closeMenu();
+    });
+    document.addEventListener("touchstart",e=>{
+      if(!e.touches || !e.touches.length)return;
+      touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;
+    },{passive:true});
+    document.addEventListener("touchend",e=>{
+      if(touchStartX===null||!e.changedTouches||!e.changedTouches.length)return;
+      const dx=e.changedTouches[0].clientX-touchStartX,dy=e.changedTouches[0].clientY-touchStartY;
+      const startX=touchStartX;touchStartX=null;touchStartY=null;
+      if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;
+      const open=drawer.classList.contains("open");
+      if(open&&dx<0)closeMenu();
+      else if(!open&&dx>0&&startX<Math.min(100,window.innerWidth*.18))openMenu();
+    },{passive:true});
+    window.addEventListener("storage",loadUser);
+    loadUser();
+  })();
+  </script>
 </body>
 </html>
