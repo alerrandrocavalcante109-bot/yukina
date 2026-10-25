@@ -66,7 +66,20 @@
     .menu-link .symbol{width:24px;text-align:center;font-size:1.1rem}
     .drawer-hint{margin:20px 4px 0;color:#e3d5f4;font-size:.8rem;line-height:1.55}
     @media(max-width:480px){.topbar{gap:7px}.profile{max-width:43vw;padding-right:9px}.profile-name{font-size:.82rem}.profile img{width:32px;height:32px;flex-basis:32px}.login-button{padding:11px 10px;font-size:.85rem}.menu-toggle{width:44px;height:44px;flex-basis:44px}.drawer{width:min(340px,88vw)}}
-    @media(prefers-reduced-motion:reduce){.drawer,.shade{transition:none}}
+
+    .workspace{width:min(100% - 32px,1000px);margin:0 auto;padding:112px 0 120px;min-height:100vh}
+    .system-screen{animation:screen-in .18s ease both}.system-screen[hidden]{display:none}
+    .eyebrow{margin:0 0 10px;color:#eadcff;font-size:.72rem;font-weight:850;letter-spacing:.16em}
+    .system-screen h1{margin:0;font-size:clamp(1.8rem,5vw,2.7rem);line-height:1.15;letter-spacing:-.035em}
+    .screen-description{max-width:680px;margin:14px 0 28px;color:#f0e8fa;font-size:1rem;line-height:1.65}
+    .welcome-panel,.system-placeholder{padding:clamp(20px,4vw,32px);border:1px solid #ffffff32;border-radius:22px;background:rgba(28,17,51,.68);box-shadow:0 16px 42px #140b2a30;backdrop-filter:blur(16px)}
+    .welcome-icon{font-size:2rem}.welcome-panel h2,.system-placeholder h2{margin:12px 0 8px;font-size:1.2rem}.welcome-panel p,.system-placeholder p{color:var(--muted);line-height:1.65}
+    .primary-action{margin-top:8px;padding:11px 16px;border:1px solid #c4b5fd;border-radius:12px;background:#c4b5fd;color:#24133e;font-weight:800}
+    .menu-link[aria-current="page"]{border-color:#c4b5fd;background:#c4b5fd20}
+    .prefix-panel{max-width:700px}.prefix-current{max-width:420px}
+    @keyframes screen-in{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    @media(max-width:600px){.workspace{width:calc(100% - 24px);padding-top:100px}.system-screen h1{font-size:1.8rem}.screen-description{font-size:.94rem}}
+    @media(prefers-reduced-motion:reduce){.drawer,.shade{transition:none}.system-screen{animation:none}}
   </style>
 </head>
 <body>
@@ -96,22 +109,36 @@
       </div>
     </section>
     <div class="drawer-category" aria-label="Categoria Configurações gerais">⚙️ Configurações gerais</div>
-    <section class="prefix-system" aria-labelledby="prefixSystemTitle">
-      <h2 class="prefix-system-title" id="prefixSystemTitle">Troca de prefixo</h2>
-      <p class="prefix-system-description">Personalize o caractere ou texto que os membros usam antes dos comandos de texto da Yukina neste servidor.</p>
-      <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual">
-        <span class="prefix-current-label">Prefixo atual</span>
-        <span class="prefix-current-value" id="prefixCurrentValue">Y</span>
-      </button>
-      <div class="prefix-edit" id="prefixEdit" hidden>
-        <input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite o prefixo">
-        <button class="prefix-save" id="prefixSaveButton" type="button">Salvar</button>
-      </div>
-      <p class="prefix-system-help">Toque no prefixo atual para editá-lo. O novo prefixo deve ter de 1 a 5 caracteres. Espaços não são permitidos e ele não pode ficar vazio. Depois de digitar, toque em “Salvar”.</p>
-      <p class="prefix-status" id="prefixStatus" role="status" aria-live="polite"></p>
-    </section>
+    <nav class="menu-links" id="systemNavigation" aria-label="Sistemas">
+      <button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>XP e níveis</span></button>
+      <button class="menu-link" type="button" data-screen="cargos"><span class="symbol">🎭</span><span>Cargos</span></button>
+      <button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button>
+      <button class="menu-link" type="button" data-screen="anuncios"><span class="symbol">📣</span><span>Anúncios e notificações</span></button>
+      <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
+    </nav>
   </aside>
 
+
+  <main class="workspace" id="workspace" aria-live="polite">
+    <section class="system-screen active" data-screen-panel="inicio">
+      <p class="eyebrow">CENTRAL DO SERVIDOR</p><h1 id="screenTitle">Configurações do servidor</h1>
+      <p class="screen-description">Escolha um sistema no menu para abrir suas configurações aqui, sem sair desta página.</p>
+      <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Seu espaço, do seu jeito</h2><p>Selecione uma opção no menu lateral para começar.</p><button type="button" class="primary-action" id="openSystems">Ver sistemas</button></div>
+    </section>
+    <section class="system-screen" data-screen-panel="xp" hidden><p class="eyebrow">PROGRESSÃO</p><h1>XP e níveis</h1><p class="screen-description">Configurações de experiência, níveis e progressão dos membros.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para receber os controles de XP e níveis. Os ajustes ainda precisam ser conectados ao salvamento da API.</p></div></section>
+    <section class="system-screen" data-screen-panel="cargos" hidden><p class="eyebrow">PERSONALIZAÇÃO</p><h1>Cargos</h1><p class="screen-description">Gerencie os cargos vinculados aos sistemas da Yukina.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para os controles de cargos. As opções ainda precisam ser conectadas ao salvamento da API.</p></div></section>
+    <section class="system-screen" data-screen-panel="temporal" hidden><p class="eyebrow">PROGRESSÃO POR TEMPO</p><h1>Hierarquia temporal</h1><p class="screen-description">Configure a progressão dos membros com base no tempo no servidor.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para os controles de hierarquia temporal. As opções ainda precisam ser conectadas ao salvamento da API.</p></div></section>
+    <section class="system-screen" data-screen-panel="anuncios" hidden><p class="eyebrow">COMUNICAÇÃO</p><h1>Anúncios e notificações</h1><p class="screen-description">Organize os avisos automáticos e anúncios de promoção.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para os controles de anúncios e notificações. As opções ainda precisam ser conectadas ao salvamento da API.</p></div></section>
+    <section class="system-screen" data-screen-panel="prefixo" hidden>
+      <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
+      <p class="screen-description">Personalize o caractere ou texto usado antes dos comandos de texto da Yukina neste servidor.</p>
+      <div class="system-placeholder prefix-panel"><h2>Prefixo dos comandos</h2><p class="prefix-system-description">Toque no prefixo atual para editá-lo. Use de 1 a 5 caracteres, sem espaços.</p>
+        <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual"><span class="prefix-current-label">Prefixo atual</span><span class="prefix-current-value" id="prefixCurrentValue">Y</span></button>
+        <div class="prefix-edit" id="prefixEdit" hidden><input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite o prefixo"><button class="prefix-save" id="prefixSaveButton" type="button">Pronto</button></div>
+        <p class="prefix-system-help">Depois de editar, use a barra inferior para confirmar as alterações.</p><p class="prefix-status" id="prefixStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
+  </main>
   <script>
   (() => {
     const API_BASE = (window.YUKINA_API_URL || "https://yukina-jspa.onrender.com").replace(/\/$/, "");
@@ -198,6 +225,21 @@
       menuToggle.setAttribute("aria-expanded","false"); menuToggle.setAttribute("aria-label","Abrir menu");
     }
     function toggleMenu(){drawer.classList.contains("open") ? closeMenu() : openMenu()}
+    const systemNavigation = $("systemNavigation");
+    const screenPanels = [...document.querySelectorAll("[data-screen-panel]")];
+    function showScreen(id){
+      const target = screenPanels.find(panel => panel.dataset.screenPanel === id) || screenPanels[0];
+      screenPanels.forEach(panel => {panel.hidden = panel !== target; panel.classList.toggle("active",panel === target);});
+      systemNavigation.querySelectorAll("[data-screen]").forEach(button => {
+        if(button.dataset.screen === target.dataset.screenPanel) button.setAttribute("aria-current","page");
+        else button.removeAttribute("aria-current");
+      });
+      const title=target.querySelector("h1");if(title)document.title=title.textContent+" • Yukina";
+      closeMenu();
+    }
+    systemNavigation.addEventListener("click",event=>{const button=event.target.closest("[data-screen]");if(button)showScreen(button.dataset.screen);});
+    $("openSystems").addEventListener("click",openMenu);
+
     menuToggle.addEventListener("click",toggleMenu);
     shade.addEventListener("click",closeMenu);
     document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
