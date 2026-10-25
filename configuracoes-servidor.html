@@ -30,7 +30,7 @@
     .drawer-heading{margin:0 0 18px;font-size:1.05rem;letter-spacing:.02em}
     .drawer-user{display:flex;align-items:center;gap:12px;padding:13px;margin-bottom:18px;border:1px solid var(--line);border-radius:15px;background:#ffffff0a;overflow:hidden}
     .drawer-user img{width:44px;height:44px;object-fit:cover;border-radius:50%;background:#6d5a88}
-    .drawer-user strong{display:block;overflow-wrap:anywhere}
+    .drawer-user strong{display:block;overflow-wrap:anywhere}.drawer-user{margin:18px 14px;padding:13px}.drawer-user img{flex:0 0 44px}
     .drawer-user small{display:block;margin-top:3px;color:var(--muted)}
     .menu-links{display:grid;gap:9px}
     .menu-link{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#ffffff0b;color:#fff;text-align:left;text-decoration:none;font-weight:650}
@@ -54,13 +54,14 @@
   </header>
 
   <div class="shade" id="shade" aria-hidden="true"></div>
-  <aside class="drawer" id="drawer" aria-label="Menu lateral vazio" aria-hidden="true"></aside>
+  <aside class="drawer" id="drawer" aria-label="Menu lateral" aria-hidden="true"><div class="drawer-user" id="drawerUser"><img id="drawerAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png"><div><strong id="drawerName">Usuário do Discord</strong><small>Conta conectada</small></div></div></aside>
 
   <script>
   (() => {
     const API_BASE = (window.YUKINA_API_URL || "https://yukina-jspa.onrender.com").replace(/\/$/, "");
     const $ = id => document.getElementById(id);
     const profile = $("profile"), profileAvatar = $("profileAvatar"), profileName = $("profileName");
+    const drawerAvatar = $("drawerAvatar"), drawerName = $("drawerName");
     const loginButton = $("loginButton");
     const drawer = $("drawer"), shade = $("shade"), menuToggle = $("menuToggle");
     let touchStartX = null, touchStartY = null;
@@ -74,6 +75,7 @@
         ? "https://cdn.discordapp.com/avatars/" + encodeURIComponent(user.id) + "/" + encodeURIComponent(user.avatar) + (String(user.avatar).startsWith("a_") ? ".gif" : ".png") + "?size=128"
         : "https://cdn.discordapp.com/embed/avatars/" + (Number(user.discriminator || 0) % 5) + ".png";
       profileAvatar.src = avatar; profileAvatar.alt = "Foto de " + name; profileName.textContent = name;
+      drawerAvatar.src = avatar; drawerAvatar.alt = "Foto de " + name; drawerName.textContent = name;
       profile.href = "#perfil"; profile.hidden = false; loginButton.hidden = true;
     }
     async function refreshAccessToken(){
