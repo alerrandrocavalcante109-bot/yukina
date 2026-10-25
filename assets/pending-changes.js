@@ -32,4 +32,21 @@
     refresh:update
   };
   document.addEventListener("input",e=>{if(e.target.matches("[data-yukina-track]"))update();});
+  function valueOf(el){if(el.type==="checkbox"||el.type==="radio")return el.checked;return el.value;}
+  function restore(el,value){if(el.type==="checkbox"||el.type==="radio")el.checked=value;else el.value=value;}
+  document.querySelectorAll("form").forEach((form,index)=>{
+    const fields=[...form.querySelectorAll("input,select,textarea")].filter(el=>!["button","submit","reset","file"].includes(el.type));
+    const initial=fields.map(valueOf);
+    if(!fields.length)return;
+    const entry={
+      id:"form-"+index,
+      isDirty:()=>fields.some((el,i)=>valueOf(el)!==initial[i]),
+      reset:()=>{fields.forEach((el,i)=>restore(el,initial[i]));form.reset();},
+      save:async()=>{if(typeof form.requestSubmit==="function")form.requestSubmit();else form.dispatchEvent(new Event("submit",{bubbles:true,cancelable:true}));}
+    };
+    systems.set(entry.id,entry);
+    form.addEventListener("input",update);
+    form.addEventListener("change",update);
+  });
+  update();
 })();
