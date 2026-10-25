@@ -14,7 +14,7 @@
     body{min-height:100vh;min-height:100dvh;background:linear-gradient(135deg,#432078 0%,#245aa8 50%,#c34c9b 100%);background-attachment:fixed}
     button,a{-webkit-tap-highlight-color:transparent}
     button{font:inherit;cursor:pointer}
-    .topbar{position:fixed;z-index:30;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px)}
+    .profile[hidden],.login-button[hidden],.drawer-user[hidden],.menu-link[hidden]{display:none!important}\n    .topbar{position:fixed;z-index:30;top:max(12px,env(safe-area-inset-top));right:max(12px,env(safe-area-inset-right));display:flex;align-items:center;gap:10px;max-width:calc(100vw - 24px)}
     .profile{display:flex;align-items:center;gap:9px;min-width:0;max-width:min(56vw,320px);padding:7px 12px 7px 7px;border:1px solid var(--line);border-radius:999px;background:#21153bd9;color:#fff;text-decoration:none;box-shadow:0 8px 28px #160a2c35;backdrop-filter:blur(14px)}
     .profile img{width:36px;height:36px;flex:0 0 36px;object-fit:cover;border-radius:50%;background:#6d5a88}
     .profile-name{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.92rem;font-weight:700}
@@ -91,13 +91,33 @@
       drawerAvatar.src = avatar; drawerAvatar.alt = "Foto de " + name; drawerName.textContent = name;
       drawerUser.hidden = false; logoutButton.hidden = false;
     }
-    async function loadUser(){
-      const accessToken = token();
-      if(!accessToken){showLoggedOut();return}
-      const expiresAt = Number(localStorage.getItem("yukina_discord_token_expires_at") || 0);
-      if(expiresAt && Date.now() >= expiresAt){showLoggedOut();return}
+    async function refreshAccessToken(){
+      const refreshToken = localStorage.getItem("yukina_discord_refresh_token") || "";
+      if(!refreshToken) return "";
       try{
-        const response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+        const response = await fetch(API_BASE + "/api/oauth/refresh", {
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"
+        });
+        const data = await response.json().catch(()=>({}));
+        if(!response.ok || !data.access_token) return "";
+        localStorage.setItem("yukina_discord_token",data.access_token);
+        if(data.refresh_token)localStorage.setItem("yukina_discord_refresh_token",data.refresh_token);
+        localStorage.setItem("yukina_discord_token_expires_at",String(Date.now()+Math.max(60000,Number(data.expires_in||3600)*1000-60000)));
+        localStorage.setItem("yukina_panel_session_expires_at",String(Date.now()+7*24*60*60*1000));
+        return data.access_token;
+      }catch(error){return ""}
+    }
+    async function loadUser(){
+      let accessToken = token();
+      if(!accessToken){showLoggedOut();return}
+      try{
+        let response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+        if(response.status===401){
+          accessToken = await refreshAccessToken();
+          if(!accessToken) throw new Error("Sessão inválida");
+          response = await fetch(API_BASE + "/api/oauth/me", {headers:{Authorization:"Bearer " + accessToken},cache:"no-store"});
+        }
         if(!response.ok) throw new Error("Sessão inválida");
         const user = await response.json();
         if(!user || !user.id || !user.username) throw new Error("Perfil indisponível");
@@ -135,7 +155,7 @@
       if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;
       const open=drawer.classList.contains("open");
       if(open&&dx<0)closeMenu();
-      else if(!open&&dx>0&&startX<Math.min(100,window.innerWidth*.18))openMenu();
+      else if(!open&&dx>0)openMenu();
     },{passive:true});
     window.addEventListener("storage",loadUser);
     loadUser();
