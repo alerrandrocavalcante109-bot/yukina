@@ -25,7 +25,7 @@
     .menu-toggle svg{width:24px;height:24px}
     .shade{position:fixed;inset:0;z-index:39;background:#09051180;opacity:0;visibility:hidden;transition:opacity .22s,visibility .22s;touch-action:pan-y}
     .shade.open{opacity:1;visibility:visible}
-    .drawer{position:fixed;z-index:40;top:0;right:0;width:min( min(360px,88vw),420px);height:100vh;height:100dvh;padding:0;background:var(--glass);border-left:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0 0 0 22px;box-shadow:-18px 0 48px #0a061955;backdrop-filter:blur(22px);transform:translateX(105%);visibility:hidden;transition:transform .25s ease,visibility .25s;overflow-y:auto;overscroll-behavior:contain}
+    .drawer{position:fixed;z-index:40;top:0;left:0;width:min( min(360px,88vw),420px);height:100vh;height:100dvh;padding:0;background:var(--glass);border-right:1px solid var(--line);border-bottom:1px solid var(--line);border-radius:0 0 22px 0;box-shadow:18px 0 48px #0a061955;backdrop-filter:blur(22px);transform:translateX(-105%);visibility:hidden;transition:transform .25s ease,visibility .25s;overflow-y:auto;overscroll-behavior:contain}
     .drawer.open{transform:translateX(0);visibility:visible}
     .drawer-heading{margin:0 0 18px;font-size:1.05rem;letter-spacing:.02em}
     .drawer-user{display:flex;align-items:center;gap:12px;padding:13px;margin-bottom:18px;border:1px solid var(--line);border-radius:15px;background:#ffffff0a;overflow:hidden}
@@ -145,8 +145,8 @@
       const startX=touchStartX;touchStartX=null;touchStartY=null;
       if(Math.abs(dx)<65||Math.abs(dx)<Math.abs(dy)*1.25)return;
       const open=drawer.classList.contains("open");
-      if(open&&dx<0)closeMenu();
-      else if(!open&&dx>0)openMenu();
+      if(open&&dx>0)closeMenu();
+      else if(!open&&dx<0)openMenu();
     },{passive:true});
     window.addEventListener("storage",loadUser);
     loadUser();
