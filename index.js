@@ -1051,6 +1051,36 @@ async function panelApi(req, res, url) {
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
+
+  if (url.pathname === "/api/oauth/me") {
+    if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para consultar o perfil." });
+    const auth = String(req.headers.authorization || "");
+    const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+    if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord para consultar o perfil." });
+    try {
+      const response = await fetch("https://discord.com/api/users/@me", {
+        headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000)
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const status = response.status === 401 ? 401 : response.status === 403 ? 403 : 502;
+        return sendJson(res, status, { detail: status === 401 ? "Sua sessão do Discord expirou. Entre novamente." : "Não foi possível consultar o perfil do Discord." });
+      }
+      return sendJson(res, 200, {
+        id: String(data.id || ""),
+        username: String(data.username || ""),
+        global_name: data.global_name || null,
+        avatar: data.avatar || null,
+        discriminator: String(data.discriminator || "0")
+      });
+    } catch (error) {
+      console.error("[API painel] Erro ao consultar perfil OAuth:", error.message || error);
+      return sendJson(res, 502, { detail: "A API não conseguiu consultar o perfil do Discord." });
+    }
+  }
+
   if (url.pathname === "/api/oauth/guilds") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para listar servidores." });
     const auth = String(req.headers.authorization || "");
