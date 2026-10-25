@@ -470,6 +470,22 @@
       };
       document.getElementById('chooseServer').addEventListener('click', async () => {
         serverModal.classList.add('open'); serverModal.setAttribute('aria-hidden','false');
+        // Nunca deixe o usuário preso indefinidamente na mensagem de carregamento.
+        // Esse watchdog também cobre falhas em redes/navegadores que não respeitam AbortSignal.timeout.
+        setTimeout(() => {
+          const loading = serverList.querySelector('.server-empty');
+          if (!loading || !/Conectando ao Discord|Carregando servidores/i.test(loading.textContent || '')) return;
+          serverList.replaceChildren();
+          const message = document.createElement('p');
+          message.className = 'server-empty';
+          message.textContent = 'A lista demorou para responder. Confira sua conexão e tente novamente.';
+          const retry = document.createElement('button');
+          retry.type = 'button';
+          retry.className = 'server-option';
+          retry.textContent = 'Tentar novamente';
+          retry.addEventListener('click', () => document.getElementById('chooseServer').click());
+          serverList.append(message, retry);
+        }, 18000);
         const cacheKey = 'yukina_guilds_cache';
         let cachedGuilds = [];
         try {
