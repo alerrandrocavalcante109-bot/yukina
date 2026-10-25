@@ -32,6 +32,20 @@
     .drawer-user img{width:44px;height:44px;object-fit:cover;border-radius:50%;background:#6d5a88}
     .drawer-user strong{display:block;overflow-wrap:anywhere}.drawer-user{margin:18px 14px;padding:13px}.drawer-user img{flex:0 0 44px}
     .drawer-user small{display:block;margin-top:3px;color:var(--muted)}
+    .drawer-server{margin:0 14px 18px;padding:14px;border:1px solid var(--line);border-radius:16px;background:#ffffff08}
+    .drawer-section-label{margin-bottom:8px;color:#d9c8f0;font-size:.7rem;font-weight:800;letter-spacing:.14em}
+    .drawer-server-name{display:block;margin-bottom:12px;overflow-wrap:anywhere;font-size:1rem}
+    .drawer-select-server{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;padding:11px 12px;border:1px solid #ffffff35;border-radius:12px;background:#ffffff10;color:#fff;text-align:left;font-weight:700}
+    .server-picker-card{margin-top:10px;padding:10px;border:1px solid var(--line);border-radius:13px;background:#140d24}
+    .server-picker-card[hidden]{display:none}
+    .server-picker-title{font-weight:800;margin:2px 2px 8px}
+    .server-picker-status{padding:8px 2px;color:var(--muted);font-size:.82rem;line-height:1.45}
+    .server-picker-list{display:grid;gap:6px;max-height:230px;overflow:auto}
+    .server-choice{display:flex;align-items:center;gap:9px;width:100%;padding:10px;border:1px solid transparent;border-radius:10px;background:#ffffff0b;color:#fff;text-align:left}
+    .server-choice:hover{border-color:#c4b5fd66;background:#ffffff14}
+    .server-choice img{width:32px;height:32px;flex:0 0 32px;border-radius:9px;object-fit:cover;background:#6d5a88}
+    .server-choice span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.9rem}
+    .server-choice[aria-current="true"]{border-color:#c4b5fd;background:#c4b5fd18}
     .menu-links{display:grid;gap:9px}
     .menu-link{display:flex;align-items:center;gap:12px;width:100%;padding:13px 14px;border:1px solid var(--line);border-radius:13px;background:#ffffff0b;color:#fff;text-align:left;text-decoration:none;font-weight:650}
     .menu-link:hover{background:#ffffff18}
@@ -54,7 +68,19 @@
   </header>
 
   <div class="shade" id="shade" aria-hidden="true"></div>
-  <aside class="drawer" id="drawer" aria-label="Menu lateral" aria-hidden="true"><div class="drawer-user" id="drawerUser"><img id="drawerAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png"><div><strong id="drawerName">Usuário do Discord</strong><small>Conta conectada</small></div></div></aside>
+  <aside class="drawer" id="drawer" aria-label="Menu lateral" aria-hidden="true">
+    <div class="drawer-user" id="drawerUser"><img id="drawerAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png"><div><strong id="drawerName">Usuário do Discord</strong><small>Conta conectada</small></div></div>
+    <section class="drawer-server" aria-label="Servidor selecionado">
+      <div class="drawer-section-label">SERVIDOR</div>
+      <strong class="drawer-server-name" id="drawerServerName">Nenhum servidor selecionado</strong>
+      <button class="drawer-select-server" id="selectServerButton" type="button">Selecionar servidor <span aria-hidden="true">⌄</span></button>
+      <div class="server-picker-card" id="serverPickerCard" hidden>
+        <div class="server-picker-title">Escolha um servidor</div>
+        <div id="serverPickerStatus" class="server-picker-status" role="status" aria-live="polite">Carregando servidores…</div>
+        <div id="serverPickerList" class="server-picker-list"></div>
+      </div>
+    </section>
+  </aside>
 
   <script>
   (() => {
@@ -62,6 +88,16 @@
     const $ = id => document.getElementById(id);
     const profile = $("profile"), profileAvatar = $("profileAvatar"), profileName = $("profileName");
     const drawerAvatar = $("drawerAvatar"), drawerName = $("drawerName");
+    const drawerServerName = $("drawerServerName"), selectServerButton = $("selectServerButton");
+    const serverPickerCard = $("serverPickerCard"), serverPickerStatus = $("serverPickerStatus"), serverPickerList = $("serverPickerList");
+    let serverListLoaded = false, serverListLoading = false, availableGuilds = [];
+    const ADMIN = 0x8n, MANAGE_GUILD = 0x20n;
+    function selectedGuild(){const p=new URLSearchParams(location.search);return {id:p.get("guild")||localStorage.getItem("yukina_selected_guild_id")||"",name:p.get("name")||localStorage.getItem("yukina_selected_guild_name")||""};}
+    function updateSelectedGuild(g){drawerServerName.textContent=g.name||"Nenhum servidor selecionado";if(g.id){localStorage.setItem("yukina_selected_guild_id",g.id);localStorage.setItem("yukina_selected_guild_name",g.name||"");const p=new URLSearchParams(location.search);p.set("guild",g.id);if(g.name)p.set("name",g.name);history.replaceState({}, "", location.pathname+"?"+p.toString()+location.hash);}renderGuildChoices();}
+    function canManageGuild(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n;}catch(_){return false;}}
+    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
+    async function loadGuildChoices(){if(serverListLoading)return;serverListLoading=true;serverPickerStatus.textContent="Carregando servidores…";serverPickerList.replaceChildren();try{let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();if(!accessToken)throw new Error("Entre com o Discord para carregar seus servidores.");const request=()=>fetch(API_BASE+"/api/oauth/guilds",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});let response=await request();if(response.status===401){accessToken=await refreshAccessToken();if(accessToken)response=await request();}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.detail||"Não foi possível carregar os servidores.");availableGuilds=(Array.isArray(payload)?payload:[]).filter(canManageGuild).sort((a,b)=>(a.name||"").localeCompare(b.name||""));serverListLoaded=true;serverPickerStatus.textContent=availableGuilds.length? "Selecione um servidor que você pode gerenciar.":"Nenhum servidor com permissão de gerenciamento foi encontrado.";renderGuildChoices();}catch(e){serverPickerStatus.textContent=e.message||"Erro ao carregar servidores.";}finally{serverListLoading=false;}}
+    selectServerButton.addEventListener("click",()=>{const opening=serverPickerCard.hidden;serverPickerCard.hidden=!opening;selectServerButton.setAttribute("aria-expanded",String(opening));if(opening&&!serverListLoaded)loadGuildChoices();});
     const loginButton = $("loginButton");
     const drawer = $("drawer"), shade = $("shade"), menuToggle = $("menuToggle");
     let touchStartX = null, touchStartY = null;
@@ -76,6 +112,7 @@
         : "https://cdn.discordapp.com/embed/avatars/" + (Number(user.discriminator || 0) % 5) + ".png";
       profileAvatar.src = avatar; profileAvatar.alt = "Foto de " + name; profileName.textContent = name;
       drawerAvatar.src = avatar; drawerAvatar.alt = "Foto de " + name; drawerName.textContent = name;
+      const chosen = selectedGuild(); drawerServerName.textContent = chosen.name || "Nenhum servidor selecionado";
       profile.href = "#perfil"; profile.hidden = false; loginButton.hidden = true;
     }
     async function refreshAccessToken(){
@@ -149,6 +186,7 @@
       else if(!open&&dx<0)openMenu();
     },{passive:true});
     window.addEventListener("storage",loadUser);
+    const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado";
     loadUser();
   })();
   </script>
