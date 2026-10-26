@@ -118,7 +118,7 @@
       <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
     </nav>
     <div class="drawer-category" aria-label="Categoria Cargos &amp; XP">🏅 Cargos &amp; XP</div>
-    <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button></nav>
+    <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="multiplier"><span class="symbol">⚡</span><span>Multiplicador de XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
@@ -161,6 +161,17 @@
       </div>
       <div class="system-placeholder" style="margin-top:16px"><h2>Cargos &amp; XP configurados</h2><div id="xpRulesList"><p>Carregando…</p></div></div>
     </section>
+    <section class="system-screen" data-screen-panel="multiplier" hidden>
+      <p class="eyebrow">PROGRESSÃO DA COMUNIDADE</p><h1>Multiplicador de XP</h1>
+      <p class="screen-description">Dê mais XP aos membros que possuem determinados cargos, como VIP, apoiador ou colaborador. Se alguém tiver mais de um cargo com multiplicador, a Yukina aplica somente o maior valor, sem somá-los.</p>
+      <div class="system-placeholder">
+        <h2 id="multiplierFormTitle">Adicionar multiplicador</h2>
+        <label for="multiplierRoleSelect">Cargo existente</label><select id="multiplierRoleSelect" class="prefix-input"><option value="">Carregando cargos…</option></select>
+        <label for="multiplierValueInput">Multiplicador</label><select id="multiplierValueInput" class="prefix-input"><option value="1.25">1,25× — +25% de XP</option><option value="1.5">1,5× — +50% de XP</option><option value="2">2× — XP em dobro</option><option value="3">3× — XP triplo</option><option value="5">5× — XP cinco vezes maior</option><option value="10">10× — XP dez vezes maior</option></select>
+        <button type="button" class="primary-action" id="multiplierAddButton">Adicionar</button><p class="prefix-status" id="multiplierStatus" role="status" aria-live="polite"></p>
+      </div>
+      <div class="system-placeholder" style="margin-top:16px"><h2>Multiplicadores configurados</h2><div id="multiplierRulesList"><p>Carregando…</p></div></div>
+    </section>
     <section class="system-screen" data-screen-panel="temporal" hidden>
       <p class="eyebrow">HIERARQUIA DA COMUNIDADE</p><h1>Hierarquia temporal</h1>
       <p class="screen-description">Associe cargos existentes ao tempo de permanência no servidor. A Yukina atualizará o cargo conforme os dias desde a entrada do membro.</p>
@@ -197,7 +208,7 @@
     function selectedGuild(){const p=new URLSearchParams(location.search);return {id:p.get("guild")||localStorage.getItem("yukina_selected_guild_id")||"",name:p.get("name")||localStorage.getItem("yukina_selected_guild_name")||""};}
     function updateSelectedGuild(g){drawerServerName.textContent=g.name||"Nenhum servidor selecionado";drawerCurrentServerAvatar.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"https://cdn.discordapp.com/embed/avatars/0.png";if(g.id){localStorage.setItem("yukina_selected_guild_id",g.id);localStorage.setItem("yukina_selected_guild_name",g.name||"");localStorage.setItem("yukina_selected_guild_icon",g.icon||"");const p=new URLSearchParams(location.search);p.set("guild",g.id);if(g.name)p.set("name",g.name);history.replaceState({}, "", location.pathname+"?"+p.toString()+location.hash);}renderGuildChoices();}
     function canManageGuild(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n;}catch(_){return false;}}
-    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
+    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
     async function loadGuildChoices(){if(serverListLoading)return;serverListLoading=true;serverPickerStatus.textContent="Carregando servidores…";serverPickerList.replaceChildren();try{let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();if(!accessToken)throw new Error("Entre com o Discord para carregar seus servidores.");const request=()=>fetch(API_BASE+"/api/oauth/guilds",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});let response=await request();if(response.status===401){accessToken=await refreshAccessToken();if(accessToken)response=await request();}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.detail||"Não foi possível carregar os servidores.");availableGuilds=(Array.isArray(payload)?payload:[]).filter(canManageGuild).sort((a,b)=>(a.name||"").localeCompare(b.name||""));serverListLoaded=true;serverPickerStatus.textContent=availableGuilds.length? "Selecione um servidor que você pode gerenciar.":"Nenhum servidor com permissão de gerenciamento foi encontrado.";renderGuildChoices();}catch(e){serverPickerStatus.textContent=e.message||"Erro ao carregar servidores.";}finally{serverListLoading=false;}}
     selectServerButton.addEventListener("click",()=>{const opening=serverPickerCard.hidden;serverPickerCard.hidden=!opening;selectServerButton.setAttribute("aria-expanded",String(opening));if(opening&&!serverListLoaded)loadGuildChoices();});
     const loginButton = $("loginButton");
@@ -429,6 +440,38 @@
     }
     timeAddButton.addEventListener("click",()=>{const id=timeRoleSelect.value,days=Number(timeDaysInput.value);if(!id){timeStatus.textContent="Escolha um cargo existente.";return;}if(!Number.isInteger(days)||days<1||days>3650){timeStatus.textContent="O tempo deve ser um número inteiro entre 1 e 3650 dias.";return;}if(timeRules.some(x=>Number(x.days)===days&&String(x.roleId||x.role_id||x.role)!==id)){timeStatus.textContent="Esse prazo já está associado a outro cargo.";return;}timeRules=timeRules.filter(x=>String(x.roleId||x.role_id||x.role)!==id);timeRules.push({roleId:id,days});timeManagedRoleIds=[...new Set([...timeManagedRoleIds,id])];timeRoleSelect.value="";timeDaysInput.value="";timeFormTitle.textContent="Adicionar cargo temporal";timeAddButton.textContent="Adicionar";delete timeAddButton.dataset.editing;renderTimeRules();timeStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
     window.YukinaPendingChanges?.register({id:"hierarquia-temporal",isDirty:()=>JSON.stringify({timeRules,timeManagedRoleIds})!==originalTimeConfig,reset:()=>loadTimeRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{timeRules:timeRules.map(x=>({roleId:String(x.roleId),days:Number(x.days)})),timeManagedRoleIds}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar a hierarquia temporal.");originalTimeConfig=JSON.stringify({timeRules,timeManagedRoleIds});timeStatus.textContent="Hierarquia temporal salva."; }});
+    const multiplierRoleSelect=$("multiplierRoleSelect"),multiplierValueInput=$("multiplierValueInput"),multiplierAddButton=$("multiplierAddButton"),multiplierStatus=$("multiplierStatus"),multiplierRulesList=$("multiplierRulesList"),multiplierFormTitle=$("multiplierFormTitle");
+    let multiplierRoles=[],multiplierRules=[],originalMultiplierConfig="[]";
+    function renderMultiplierRules(){
+      multiplierRulesList.replaceChildren();
+      if(!multiplierRules.length){const p=document.createElement("p");p.textContent="Nenhum multiplicador configurado.";multiplierRulesList.appendChild(p);return;}
+      multiplierRules.slice().sort((a,b)=>Number(a.multiplier)-Number(b.multiplier)).forEach(rule=>{
+        const id=String(rule.role||rule.roleId||rule.role_id||"");const role=multiplierRoles.find(r=>String(r.id)===id);
+        const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff30";
+        const edit=document.createElement("button");edit.type="button";edit.style.cssText="flex:1;text-align:left;background:transparent;border:0;color:inherit;padding:8px";
+        const dot=document.createElement("span");dot.textContent="⚡ ";dot.style.color="#f4d58d";
+        const name=document.createElement("span");name.textContent=(role?"@"+role.name:"Cargo não encontrado")+" — "+Number(rule.multiplier)+"× XP";edit.append(dot,name);
+        edit.addEventListener("click",()=>{multiplierRoleSelect.value=id;multiplierValueInput.value=String(rule.multiplier);multiplierFormTitle.textContent="Editar multiplicador";multiplierAddButton.textContent="Salvar edição";multiplierAddButton.dataset.editing=id;});
+        const del=document.createElement("button");del.type="button";del.textContent="🗑";del.title="Excluir regra";del.setAttribute("aria-label","Excluir multiplicador");del.style.cssText="background:transparent;border:0;padding:8px";
+        del.addEventListener("click",()=>{multiplierRules=multiplierRules.filter(x=>String(x.role||x.roleId||x.role_id)!==id);renderMultiplierRules();window.YukinaPendingChanges?.refresh();});
+        row.append(edit,del);multiplierRulesList.appendChild(row);
+      });
+    }
+    async function loadMultiplierRoles(){
+      const guild=selectedGuild();if(!guild.id){multiplierStatus.textContent="Selecione um servidor no menu lateral.";return;}
+      try{
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Entre com o Discord para carregar os cargos.");
+        const h={Authorization:"Bearer "+t,Accept:"application/json"};
+        const [a,b]=await Promise.all([fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers:h,cache:"no-store"}),fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:h,cache:"no-store"})]);
+        const s=await a.json().catch(()=>({})),d=await b.json().catch(()=>({}));if(!a.ok)throw new Error(s.detail||"Erro ao carregar configurações.");if(!b.ok)throw new Error(d.detail||"Erro ao carregar cargos.");
+        multiplierRoles=Array.isArray(d.roles)?d.roles:[];multiplierRules=Array.isArray(s.settings?.multiplierRules)?s.settings.multiplierRules.map(x=>({...x,role:String(x.role||x.roleId||x.role_id||"")})):[];
+        multiplierRoleSelect.replaceChildren();const empty=document.createElement("option");empty.value="";empty.textContent="Escolha um cargo";multiplierRoleSelect.appendChild(empty);
+        multiplierRoles.filter(x=>!x.managed).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).forEach(role=>{const o=document.createElement("option");o.value=role.id;o.textContent=role.name;multiplierRoleSelect.appendChild(o);});
+        originalMultiplierConfig=JSON.stringify(multiplierRules);renderMultiplierRules();multiplierStatus.textContent="Escolha um cargo e o multiplicador desejado.";
+      }catch(e){multiplierStatus.textContent=e.message||"Não foi possível carregar os cargos.";}
+    }
+    multiplierAddButton.addEventListener("click",()=>{const id=multiplierRoleSelect.value,value=Number(multiplierValueInput.value);if(!id){multiplierStatus.textContent="Escolha um cargo existente.";return;}if(!Number.isFinite(value)||value<1||value>10){multiplierStatus.textContent="Escolha um multiplicador entre 1× e 10×.";return;}if(multiplierRules.some(x=>String(x.role||x.roleId||x.role_id)!==id&&Number(x.multiplier)===value)){/* valores iguais em cargos diferentes são permitidos */}multiplierRules=multiplierRules.filter(x=>String(x.role||x.roleId||x.role_id)!==id);multiplierRules.push({role:id,multiplier:value});multiplierRoleSelect.value="";multiplierFormTitle.textContent="Adicionar multiplicador";multiplierAddButton.textContent="Adicionar";delete multiplierAddButton.dataset.editing;renderMultiplierRules();multiplierStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    window.YukinaPendingChanges?.register({id:"multiplicador-xp",isDirty:()=>JSON.stringify(multiplierRules)!==originalMultiplierConfig,reset:()=>loadMultiplierRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const cleanRules=multiplierRules.map(x=>({role:String(x.role||x.roleId||x.role_id),multiplier:Number(x.multiplier)}));const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{multiplierRules:cleanRules}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar os multiplicadores.");multiplierRules=cleanRules;originalMultiplierConfig=JSON.stringify(multiplierRules);multiplierStatus.textContent="Multiplicadores de XP salvos."; }});
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
@@ -488,6 +531,7 @@
     loadPrefix();
     loadCounting();
     loadXpRoles();
+    loadMultiplierRoles();
     loadTimeRoles();
     loadUser();
   })();
