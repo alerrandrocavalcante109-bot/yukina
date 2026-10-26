@@ -62,18 +62,24 @@ function startPrefixEngine(client, getSettingsCollection) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
     let configuredPrefix = "Y";
-    try {
-      if (typeof getSettingsCollection === "function") {
-        const collection = await getSettingsCollection();
-        const doc = await collection.findOne(
-          { guildId: message.guild.id },
-          { projection: { "settings.prefix": 1 } }
-        );
-        const candidate = String(doc?.settings?.prefix || "").trim();
-        if (candidate && candidate.length <= 5 && !/\s/.test(candidate)) configuredPrefix = candidate;
+    const cachedPrefix = prefixCache.get(message.guild.id);
+    if (cachedPrefix && cachedPrefix.expiresAt > Date.now()) {
+      configuredPrefix = cachedPrefix.prefix;
+    } else {
+      try {
+        if (typeof getSettingsCollection === "function") {
+          const collection = await getSettingsCollection();
+          const doc = await collection.findOne(
+            { guildId: message.guild.id },
+            { projection: { "settings.prefix": 1 } }
+          );
+          const candidate = String(doc?.settings?.prefix || "").trim();
+          if (candidate && candidate.length <= 5 && !/\s/.test(candidate)) configuredPrefix = candidate;
+        }
+        prefixCache.set(message.guild.id, { prefix: configuredPrefix, expiresAt: Date.now() + 30000 });
+      } catch (error) {
+        console.error("[Prefixo] Não foi possível carregar o prefixo do servidor:", error?.message || error);
       }
-    } catch (error) {
-      console.error("[Prefixo] Não foi possível carregar o prefixo do servidor:", error?.message || error);
     }
     // Mantém Y/y como compatibilidade quando o servidor usa o prefixo padrão.
     const prefixes = configuredPrefix === "Y" ? ["Y", "y"] : [configuredPrefix];
