@@ -1023,6 +1023,7 @@ async function authorizePanel(req, guildId) {
   return { user, guild: botGuild };
 }
 async function publishTicketPanel(req, res) {
+  console.info("[Tickets] Requisição recebida:", req.method, req.url, "origin:", req.headers.origin || "sem origin");
   const auth = String(req.headers.authorization || "");
   const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord antes de publicar o painel." });
@@ -1032,6 +1033,7 @@ async function publishTicketPanel(req, res) {
   const body = await readBody(req);
   const guildId = String(body.guildId || "");
   const channelId = String(body.channelId || "");
+  console.info("[Tickets] Validando publicação:", { guildId, channelId, hasTitle: Boolean(body.title) });
   if (!/^\d{17,20}$/.test(guildId) || !/^\d{17,20}$/.test(channelId)) return sendJson(res, 400, { detail: "Selecione um servidor e um canal válidos." });
   const guild = client.guilds.cache.get(guildId);
   if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
@@ -1058,7 +1060,9 @@ async function publishTicketPanel(req, res) {
   if (imageRight) embed.setThumbnail(imageRight);
   embed.setFooter({ text: "Yukina • Atendimento" });
   try {
+    console.info("[Tickets] Enviando embed para o canal:", channel.id);
     const sent = await channel.send({ embeds: [embed] });
+    console.info("[Tickets] Painel publicado com sucesso:", { guildId, channelId: channel.id, messageId: sent.id });
     return sendJson(res, 200, { ok: true, messageId: sent.id, channelId: channel.id, channelName: channel.name, guildId });
   } catch (error) {
     console.error("[Painel atendimento] Falha ao publicar:", error.message || error);
@@ -1078,7 +1082,8 @@ async function panelApi(req, res, url) {
 
   if (url.pathname === "/api/tickets/publish") {
     if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para publicar o painel." });
-    try { return await publishTicketPanel(req, res); } catch (error) { console.error("[Painel atendimento]", error.message || error); return sendJson(res, 500, { detail: "Falha ao publicar o painel de atendimento." }); }
+    console.info("[Tickets] Rota /api/tickets/publish acionada.");
+    try { return await publishTicketPanel(req, res); } catch (error) { console.error("[Tickets] Erro na rota de publicação:", error.stack || error.message || error); return sendJson(res, 500, { detail: "Falha ao publicar o painel de atendimento: " + String(error.message || "erro interno").slice(0, 180) }); }
   }
   if (url.pathname === "/api/oauth/me") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para consultar o perfil." });
