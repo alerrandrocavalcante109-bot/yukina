@@ -641,15 +641,17 @@
       ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=true;ticketStartCard.hidden=false;
       let embed=$("ticketSavedEmbedPreview");if(!embed){embed=document.createElement("div");embed.id="ticketSavedEmbedPreview";embed.className="ticket-embed-preview";ticketStartCard.appendChild(embed);}
       embed.replaceChildren();embed.style.setProperty("--ticket-embed-color",config.embedColor||"#c4b5fd");const title=document.createElement("strong");title.textContent=config.title||"🎫 Central de Atendimento";embed.appendChild(title);const message=document.createElement("p");message.textContent=config.message||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";embed.appendChild(message);
-      const savedBody=document.createElement("div");savedBody.style.cssText="display:flex;align-items:flex-start;gap:12px;margin-top:10px;min-width:0";
-      const savedCopy=document.createElement("div");savedCopy.style.cssText="flex:1;min-width:0;overflow-wrap:anywhere";
-      const savedTop=config.images.top;if(savedTop){const img=document.createElement("img");img.src=savedTop;img.alt="Imagem do topo";img.style.cssText="display:block;width:100%;max-height:170px;object-fit:cover;border-radius:8px;margin-bottom:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
+      const makePreviewImage=(url,alt,cssText,parent)=>{if(!url)return;const img=document.createElement("img");img.alt=alt;img.hidden=true;img.style.cssText=cssText;img.onload=()=>{img.hidden=false;};img.onerror=()=>img.remove();img.src=url;if(parent)parent.appendChild(img);return img;};
+      makePreviewImage(config.images.top,"Imagem do topo","display:block;width:100%;max-width:100%;max-height:170px;object-fit:cover;border-radius:8px;margin:10px 0",embed);
+      const savedBody=document.createElement("div");savedBody.style.cssText="display:flex;align-items:flex-start;gap:12px;width:100%;max-width:100%;min-width:0;box-sizing:border-box;margin-top:10px";
+      const savedCopy=document.createElement("div");savedCopy.style.cssText="display:block;flex:1 1 0%;width:0;min-width:0;max-width:100%;box-sizing:border-box;overflow-wrap:anywhere;word-break:normal";
+      message.style.cssText="margin:8px 0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal;max-width:100%";
       savedCopy.appendChild(message);
-      const savedMiddle=config.images.middle;if(savedMiddle){const img=document.createElement("img");img.src=savedMiddle;img.alt="Imagem no meio";img.style.cssText="display:block;width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();savedCopy.appendChild(img);}
-      const footerText=document.createElement("small");footerText.textContent="Yukina • Atendimento";footerText.style.color="#c7b8df";savedCopy.appendChild(footerText);savedBody.appendChild(savedCopy);
-      const savedRight=config.images.right;if(savedRight){const img=document.createElement("img");img.src=savedRight;img.alt="Imagem lateral";img.style.cssText="flex:0 0 84px;width:84px;max-height:120px;object-fit:cover;border-radius:8px";img.onerror=()=>img.remove();savedBody.appendChild(img);}
+      makePreviewImage(config.images.middle,"Imagem no meio","display:block;width:100%;max-width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-top:10px",savedCopy);
+      const footerText=document.createElement("small");footerText.textContent="Yukina • Atendimento";footerText.style.cssText="display:block;margin-top:12px;color:#c7b8df";savedCopy.appendChild(footerText);savedBody.appendChild(savedCopy);
+      makePreviewImage(config.images.right,"Imagem lateral","display:block;flex:0 0 84px;width:84px;min-width:84px;max-width:84px;height:auto;max-height:120px;object-fit:cover;border-radius:8px;box-sizing:border-box",savedBody);
       embed.appendChild(savedBody);
-      const savedFooter=config.images.footer;if(savedFooter){const img=document.createElement("img");img.src=savedFooter;img.alt="Imagem do rodapé";img.style.cssText="display:block;width:100%;max-height:90px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
+      makePreviewImage(config.images.footer,"Imagem do rodapé","display:block;width:100%;max-width:100%;max-height:90px;object-fit:cover;border-radius:8px;margin-top:10px",embed);}
       $("createTicketPanelButton").textContent="Editar painel de atendimento";
       status.textContent="Rascunho preparado. Nenhuma mensagem foi publicada no Discord.";
     });
