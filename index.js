@@ -563,36 +563,21 @@ async function registerSlashCommands() {
 }
 
 async function ensurePromotionNotifyRole() {
+  // Nunca cria cargos automaticamente. O cargo de avisos deve ser escolhido/criado
+  // manualmente no Discord e configurado pelo ID nas variáveis ou no painel.
   const roleName = (process.env.PROMOTION_NOTIFY_ROLE_NAME || "📣・Avisos de promoção").trim();
   const configuredId = (process.env.PROMOTION_NOTIFY_ROLE_ID || "").trim();
 
   for (const guild of client.guilds.cache.values()) {
-    if (!guild.members.me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
-      console.warn("[Promoções] Sem Gerenciar cargos em " + guild.name + "; não foi possível conferir/criar o cargo de avisos.");
-      continue;
-    }
-
-    let role = configuredId ? await guild.roles.fetch(configuredId).catch(() => null) : null;
-    if (!role) role = guild.roles.cache.find((item) => item.name === roleName) || null;
+    const role = configuredId
+      ? await guild.roles.fetch(configuredId).catch(() => null)
+      : guild.roles.cache.find((item) => item.name === roleName) || null;
 
     if (!role) {
-      try {
-        role = await guild.roles.create({
-          name: roleName,
-          color: "#C7E7FF",
-          hoist: false,
-          mentionable: true,
-          permissions: [],
-          reason: "Cargo de notificação dos anúncios de promoção da Yukina",
-        });
-        console.log("[Promoções] Cargo criado: " + role.name + " (" + role.id + ") no servidor " + guild.name);
-      } catch (error) {
-        console.error("[Promoções] Não consegui criar o cargo de avisos em " + guild.name + ":", error.message);
-        continue;
-      }
+      console.warn("[Promoções] O cargo de avisos não existe ou não foi encontrado em " + guild.name + "; nenhum cargo será criado.");
+      continue;
     }
-
-    console.log("[Promoções] Cargo de notificação disponível em " + guild.name + ": " + role.name + " (" + role.id + ")");
+    console.log("[Promoções] Usando cargo de avisos existente em " + guild.name + ": " + role.name + " (" + role.id + ")");
   }
 }
 
