@@ -83,8 +83,8 @@
     .menu-link[aria-current="page"]{border-color:#c4b5fd;background:#c4b5fd20}
     .prefix-panel{max-width:700px}.prefix-current{max-width:420px}
     @keyframes screen-in{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-    .ticket-embed-preview{margin-top:20px;padding:16px;border:1px solid #ffffff30;border-left:4px solid #c4b5fd;border-radius:12px;background:#171322;color:#fff;overflow:hidden;min-width:0}
-    .ticket-embed-preview [hidden]{display:none!important}
+    .ticket-embed-preview{margin-top:20px;padding:16px;border:1px solid #ffffff30;border-left:4px solid var(--ticket-embed-color,#c4b5fd);border-radius:12px;background:#171322;color:#fff;overflow:hidden;min-width:0}
+    .ticket-color-control{display:flex;align-items:center;gap:12px;margin:8px 0 4px}.ticket-color-control input[type="color"]{width:58px;height:46px;padding:4px;border:1px solid #ffffff40;border-radius:10px;background:#171322;cursor:pointer}.ticket-color-control .prefix-input{flex:1;min-width:0}\n    .ticket-embed-preview [hidden]{display:none!important}
     .ticket-embed-top img,.ticket-embed-body img,.ticket-embed-preview>div>img{display:block;max-width:100%;border-radius:8px;object-fit:cover}
     .ticket-embed-body{min-width:0}.ticket-embed-copy{width:100%;min-width:0;overflow-wrap:anywhere}.ticket-embed-copy p{white-space:pre-wrap;overflow-wrap:anywhere;word-break:normal}.ticket-embed-body>img:not([hidden]){flex:0 0 84px;width:84px}
     .ticket-embed-top img{width:100%;max-height:170px}.ticket-embed-body{display:flex;align-items:flex-start;gap:12px;margin-top:12px}.ticket-embed-copy{min-width:0;flex:1}.ticket-embed-copy strong{font-size:1rem}.ticket-embed-copy p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;color:#e8e2f3}.ticket-embed-copy small{color:#c7b8df}.ticket-embed-body>img{width:84px;max-height:120px}.ticket-embed-copy #ticketPreviewMiddle{width:100%;max-height:150px;margin:12px 0}.ticket-embed-preview>div>img{width:100%;max-height:90px;margin-top:12px}
@@ -263,6 +263,12 @@
         <label for="ticketImageFooter">Imagem no rodapé (URL)</label>
         <input id="ticketImageFooter" class="prefix-input" type="url" placeholder="https://…">
         <p class="prefix-system-help">Use links diretos para imagens públicas (PNG, JPG, GIF ou WebP). A posição no canto direito será exibida como miniatura lateral na prévia.</p>
+        <label for="ticketEmbedColor">Cor do embed</label>
+        <div class="ticket-color-control">
+          <input id="ticketEmbedColor" type="color" value="#c4b5fd" aria-label="Escolher cor do embed">
+          <input id="ticketEmbedColorHex" class="prefix-input" type="text" value="#C4B5FD" maxlength="7" spellcheck="false" aria-label="Código hexadecimal da cor">
+        </div>
+        <p class="prefix-system-help">Escolha a cor da faixa lateral do embed ou informe um código hexadecimal. A prévia muda automaticamente.</p>
         <div class="ticket-embed-preview" id="ticketEmbedPreview">
           <div class="ticket-embed-top" id="ticketPreviewTopWrap" hidden><img id="ticketPreviewTop" alt="Imagem do topo"></div>
           <div class="ticket-embed-body"><div class="ticket-embed-copy"><strong id="ticketPreviewTitle">🎫 Central de Atendimento</strong><p id="ticketPreviewMessage">Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.</p><div id="ticketPreviewMiddleWrap" hidden><img id="ticketPreviewMiddle" alt="Imagem no meio"></div><small id="ticketPreviewFooterText">Yukina • Atendimento</small></div><img id="ticketPreviewRight" alt="Imagem lateral" hidden></div>
@@ -597,6 +603,17 @@
     });
     $("ticketWizardPrevious").addEventListener("click",()=>{ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=false;});
     const ticketPanelTitle=$("ticketPanelTitle"),ticketPanelMessage=$("ticketPanelMessage");
+    const ticketEmbedColor=$("ticketEmbedColor"),ticketEmbedColorHex=$("ticketEmbedColorHex");
+    function applyTicketEmbedColor(value){
+      if(!/^#[0-9a-fA-F]{6}$/.test(value))return false;
+      const color=value.toLowerCase();ticketEmbedColor.value=color;ticketEmbedColorHex.value=color.toUpperCase();
+      $("ticketEmbedPreview").style.setProperty("--ticket-embed-color",color);
+      const saved=$("ticketSavedEmbedPreview");if(saved)saved.style.setProperty("--ticket-embed-color",color);
+      return true;
+    }
+    ticketEmbedColor.addEventListener("input",()=>applyTicketEmbedColor(ticketEmbedColor.value));
+    ticketEmbedColorHex.addEventListener("change",()=>{if(!applyTicketEmbedColor(ticketEmbedColorHex.value.trim()))ticketEmbedColorHex.value=ticketEmbedColor.value.toUpperCase();});
+
     const ticketImageFields={top:$("ticketImageTop"),middle:$("ticketImageMiddle"),right:$("ticketImageRight"),footer:$("ticketImageFooter")};
     function updateTicketEmbedPreview(){
       $("ticketPreviewTitle").textContent=ticketPanelTitle.value.trim()||"🎫 Central de Atendimento";
@@ -610,16 +627,16 @@
       const imageUrls=Object.values(ticketImageFields).map(input=>input.value.trim()).filter(Boolean);
       if(imageUrls.some(url=>{try{return !["http:","https:"].includes(new URL(url).protocol)}catch(_){return true}})){status.textContent="Use URLs válidas começando com https:// ou http://.";return;}
       status.textContent="A mensagem e a prévia estão prontas. A publicação real no Discord ainda precisa ser conectada ao backend.";
-      const config={guild:selectedGuild(),publishChannelId:ticketPublishChannel.value,createChannel:ticketCreateChannel.checked,useThreads:ticketUseThreads.checked,channelAtTop:ticketChannelAtTop.checked,categoryId:ticketUseCategory.checked?ticketCategorySelect.value:"",title:ticketPanelTitle.value.trim(),message:ticketPanelMessage.value.trim(),images:Object.fromEntries(Object.entries(ticketImageFields).map(([key,input])=>[key,input.value.trim()]))};
+      const config={guild:selectedGuild(),embedColor:ticketEmbedColor.value,publishChannelId:ticketPublishChannel.value,createChannel:ticketCreateChannel.checked,useThreads:ticketUseThreads.checked,channelAtTop:ticketChannelAtTop.checked,categoryId:ticketUseCategory.checked?ticketCategorySelect.value:"",title:ticketPanelTitle.value.trim(),message:ticketPanelMessage.value.trim(),images:Object.fromEntries(Object.entries(ticketImageFields).map(([key,input])=>[key,input.value.trim()]))};
       window.yukinaTicketDraft=config;
       ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=true;ticketStartCard.hidden=false;
       let embed=$("ticketSavedEmbedPreview");if(!embed){embed=document.createElement("div");embed.id="ticketSavedEmbedPreview";embed.className="ticket-embed-preview";ticketStartCard.appendChild(embed);}
-      embed.replaceChildren();const title=document.createElement("strong");title.textContent=config.title||"🎫 Central de Atendimento";embed.appendChild(title);const message=document.createElement("p");message.textContent=config.message||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";embed.appendChild(message);
+      embed.replaceChildren();embed.style.setProperty("--ticket-embed-color",config.embedColor||"#c4b5fd");const title=document.createElement("strong");title.textContent=config.title||"🎫 Central de Atendimento";embed.appendChild(title);const message=document.createElement("p");message.textContent=config.message||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";embed.appendChild(message);
       for(const key of ["top","middle","right","footer"]){const url=config.images[key];if(!url)continue;const img=document.createElement("img");img.src=url;img.alt="Imagem "+key;img.style.cssText="display:block;max-width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
       $("createTicketPanelButton").textContent="Editar painel de atendimento";
       status.textContent="Rascunho preparado. Nenhuma mensagem foi publicada no Discord.";
     });
-    updateTicketEmbedPreview();
+    applyTicketEmbedColor(ticketEmbedColor.value);\n    updateTicketEmbedPreview();
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
