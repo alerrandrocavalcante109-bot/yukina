@@ -258,7 +258,12 @@
       const title=target.querySelector("h1");if(title)document.title=title.textContent+" • Yukina";
       closeMenu();
     }
-    for(const navigation of [systemNavigation,gamesNavigation]) navigation.addEventListener("click",event=>{const button=event.target.closest("[data-screen]");if(button)showScreen(button.dataset.screen);});
+    document.addEventListener("click",event=>{
+      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen]");
+      if(!button)return;
+      event.preventDefault();
+      showScreen(button.dataset.screen);
+    });
     $("openSystems").addEventListener("click",openMenu);
 
     menuToggle.addEventListener("click",toggleMenu);
