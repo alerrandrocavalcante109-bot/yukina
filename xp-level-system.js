@@ -7,34 +7,11 @@ const memberData = require("./member-data");
 const { getGuildSettings } = require("./guild-settings-store");
 const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const CHECK_INTERVAL_MS = 10 * 60_000;
-const roleCache = new Map();
 const updateLocks = new Set();
 
-const LEVEL_ROLES = [
-  { level: 1, name: "❄️・Nível 1 | Iniciante", xp: 0, color: 0xA7D8F0 },
-  { level: 5, name: "🌱・Nível 5 | Aprendiz", xp: 500, color: 0xB7E4C7 },
-  { level: 10, name: "🌸・Nível 10 | Explorador", xp: 1500, color: 0xF2A7C6 },
-  { level: 15, name: "🩵・Nível 15 | Participante", xp: 3000, color: 0x83D6C5 },
-  { level: 20, name: "🌙・Nível 20 | Dedicado", xp: 5000, color: 0x8ECAE6 },
-  { level: 25, name: "✨・Nível 25 | Experiente", xp: 7500, color: 0xF4D58D },
-  { level: 30, name: "💎・Nível 30 | Veterano", xp: 10500, color: 0x7DA0FA },
-  { level: 40, name: "🪻・Nível 40 | Elite", xp: 15000, color: 0xB9A7E8 },
-  { level: 50, name: "👑・Nível 50 | Mestre", xp: 20000, color: 0xFFD166 },
-  { level: 60, name: "🌌・Nível 60 | Lendário", xp: 26000, color: 0x6C63FF },
-  { level: 75, name: "🔮・Nível 75 | Mítico", xp: 35000, color: 0xC77DFF },
-  { level: 100, name: "♾️・Nível 100 | Imortal", xp: 50000, color: 0xE0FBFC },
-];
-
-function getLevelRole(xp) {
-  let selected = LEVEL_ROLES[0];
-  for (const item of LEVEL_ROLES) {
-    if (xp >= item.xp) selected = item;
-  }
-  return selected;
-}
-
 function getCurrentLevel(xp) {
-  return getLevelRole(xp).level;
+  const value = Math.max(0, Number(xp) || 0);
+  return Math.min(100, Math.floor(Math.sqrt(value / 50)) + 1);
 }
 
 const knownConfiguredRoleIds = new Map();
@@ -57,7 +34,7 @@ async function resolveXpRoles(guild) {
   // Uma lista vazia também é uma configuração explícita do painel.
   if (Array.isArray(settings.xpRules)) {
     const validRules = settings.xpRules
-      .map((rule) => ({ level: Number(rule?.level), roleId: String(rule?.role || "") }))
+      .map((rule) => ({ level: Number(rule?.level), roleId: String(rule?.roleId || rule?.role_id || rule?.role || "") }))
       .filter((rule) => Number.isInteger(rule.level) && rule.level >= 1 && rule.roleId);
     const roles = new Map();
     const remembered = knownConfiguredRoleIds.get(guild.id) || new Set();
@@ -74,53 +51,14 @@ async function resolveXpRoles(guild) {
           " não pode ser gerenciado pela Yukina. Confira permissões e hierarquia.");
       }
     }
-    // Também limpa cargos padrão antigos, caso o servidor tenha migrado do modo automático
-    // para regras personalizadas no painel.
-    const legacyRoleIds = guild.roles.cache
-      .filter(role => LEVEL_ROLES.some(item => item.name === role.name))
-      .map(role => role.id);
     knownConfiguredRoleIds.set(guild.id, remembered);
-    return { configured: true, roles, managedIds: new Set([...remembered, ...legacyRoleIds, ...validRules.map(rule => rule.roleId), ...(Array.isArray(settings.xpManagedRoleIds) ? settings.xpManagedRoleIds.map(String) : [])]) };
+    return { configured: true, roles, managedIds: new Set([...remembered, ...validRules.map(rule => rule.roleId), ...(Array.isArray(settings.xpManagedRoleIds) ? settings.xpManagedRoleIds.map(String) : [])]) };
   }
 
-  const roles = await ensureLevelRoles(guild);
-  return { configured: false, roles: roles || new Map(), managedIds: new Set([...(roles || new Map()).values()].map(role => role.id)) };
-}
-
-async function ensureLevelRoles(guild) {
-  const cached = roleCache.get(guild.id);
-  if (cached && cached.every(([level, role]) => guild.roles.cache.has(role.id))) return new Map(cached);
-  const me = guild.members.me;
-  if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
-    console.warn("[Níveis XP] Yukina precisa da permissão Gerenciar cargos em " + guild.name + ".");
-    return null;
-  }
-
-  const roles = new Map();
-  for (const item of LEVEL_ROLES) {
-    let role = guild.roles.cache.find((role) => role.name === item.name);
-    if (!role) {
-      try {
-        role = await guild.roles.create({
-          name: item.name,
-          color: item.color,
-          hoist: false,
-          mentionable: false,
-          permissions: [],
-          reason: "Progressão automática de nível por XP da Yukina",
-        });
-      } catch (error) {
-        console.error("[Níveis XP] Falha ao criar " + item.name + ":", error.message);
-        return null;
-      }
-    }
-    if (role.managed || role.position >= me.roles.highest.position) {
-      console.warn("[Níveis XP] Coloque o cargo da Yukina acima de " + role.name + ".");
-      return null;
-    }
-    roles.set(item.level, role);
-  }
-  return roles;
+  // Sem regras salvas, o sistema fica inativo: nunca cria cargos automaticamente.
+  settings = { xpRules: [], xpManagedRoleIds: [] };
+  await xpStorage.set(guild.id, "config", settings);
+  return { configured: true, roles: new Map(), managedIds: new Set() };
 }
 
 async function updateLevel(member, announce = false) {
@@ -177,8 +115,7 @@ function startXpLevelSystem(client) {
   const initializeXpLevels = async () => {
     await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
-      const settings = await xpStorage.get(guild.id, "config", null) || await getGuildSettings(guild.id);
-      if (!Array.isArray(settings.xpRules)) await ensureLevelRoles(guild);
+      await resolveXpRoles(guild);
       for (const member of guild.members.cache.values()) {
         if (!member.user.bot) await updateLevel(member, false);
       }
