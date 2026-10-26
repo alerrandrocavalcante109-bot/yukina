@@ -110,10 +110,6 @@
     </section>
     <div class="drawer-category" aria-label="Categoria Configurações gerais">⚙️ Configurações gerais</div>
     <nav class="menu-links" id="systemNavigation" aria-label="Sistemas">
-      <button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>XP e níveis</span></button>
-      <button class="menu-link" type="button" data-screen="cargos"><span class="symbol">🎭</span><span>Cargos</span></button>
-      <button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button>
-      <button class="menu-link" type="button" data-screen="anuncios"><span class="symbol">📣</span><span>Anúncios e notificações</span></button>
       <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
     </nav>
   </aside>
@@ -122,13 +118,9 @@
   <main class="workspace" id="workspace" aria-live="polite">
     <section class="system-screen active" data-screen-panel="inicio">
       <p class="eyebrow">CENTRAL DO SERVIDOR</p><h1 id="screenTitle">Configurações do servidor</h1>
-      <p class="screen-description">Escolha um sistema no menu para abrir suas configurações aqui, sem sair desta página.</p>
-      <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Seu espaço, do seu jeito</h2><p>Selecione uma opção no menu lateral para começar.</p><button type="button" class="primary-action" id="openSystems">Ver sistemas</button></div>
+      <p class="screen-description">Abra o menu para acessar a configuração disponível nesta área.</p>
+      <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Configurações gerais</h2><p>Selecione “Troca de prefixo” no menu lateral para editar o prefixo dos comandos.</p><button type="button" class="primary-action" id="openSystems">Ver configuração</button></div>
     </section>
-    <section class="system-screen" data-screen-panel="xp" hidden><p class="eyebrow">PROGRESSÃO</p><h1>XP e níveis</h1><p class="screen-description">Configurações de experiência, níveis e progressão dos membros.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para receber os controles de XP e níveis. Os ajustes ainda precisam ser conectados ao salvamento da API.</p></div></section>
-    <section class="system-screen" data-screen-panel="cargos" hidden><p class="eyebrow">PERSONALIZAÇÃO</p><h1>Cargos</h1><p class="screen-description">Gerencie os cargos vinculados aos sistemas da Yukina.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para os controles de cargos. As opções ainda precisam ser conectadas ao salvamento da API.</p></div></section>
-    <section class="system-screen" data-screen-panel="temporal" hidden><p class="eyebrow">PROGRESSÃO POR TEMPO</p><h1>Hierarquia temporal</h1><p class="screen-description">Configure a progressão dos membros com base no tempo no servidor.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para os controles de hierarquia temporal. As opções ainda precisam ser conectadas ao salvamento da API.</p></div></section>
-    <section class="system-screen" data-screen-panel="anuncios" hidden><p class="eyebrow">COMUNICAÇÃO</p><h1>Anúncios e notificações</h1><p class="screen-description">Organize os avisos automáticos e anúncios de promoção.</p><div class="system-placeholder"><h2>Configuração do sistema</h2><p>A área está preparada para os controles de anúncios e notificações. As opções ainda precisam ser conectadas ao salvamento da API.</p></div></section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
       <p class="screen-description">Personalize o caractere ou texto usado antes dos comandos de texto da Yukina neste servidor.</p>
