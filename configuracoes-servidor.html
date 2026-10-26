@@ -138,6 +138,7 @@
         <span class="welcome-icon">❄️</span><h2>Escolha onde contar</h2>
         <p>Selecione um canal de texto para ativar o jogo. A configuração só será aplicada depois que você clicar em <strong>Salvar</strong> na barra inferior.</p>
         <button type="button" class="primary-action" id="openCounting" aria-expanded="false" aria-controls="countingPickerCard">Escolher canal da contagem</button>
+        <p class="prefix-status" id="countingSelectedChannel" role="status" aria-live="polite">Canal selecionado: nenhum</p>
         <div class="counting-picker-card" id="countingPickerCard" hidden>
           <h3>❄️ Canal da contagem</h3>
           <p>Escolha um dos canais de texto disponíveis neste servidor.</p>
@@ -286,7 +287,13 @@
     },{passive:true});
     window.addEventListener("storage",loadUser);
     const countingChannelSelect = $("countingChannelSelect");
+    const countingSelectedChannel = $("countingSelectedChannel");
     const countingStatus = $("countingStatus");
+    function updateCountingSelectedChannel(){
+      if(!countingSelectedChannel||!countingChannelSelect)return;
+      const option=countingChannelSelect.options[countingChannelSelect.selectedIndex];
+      countingSelectedChannel.textContent="Canal selecionado: "+(countingChannelSelect.value?(option?.textContent||"Canal selecionado"):"nenhum");
+    }
     const countingPickerCard = $("countingPickerCard");
     const openCountingButton = $("openCounting");
     let originalCounting = { enabled: false, channelId: "", currentNumber: 0, lastUserId: "" };
@@ -322,8 +329,8 @@
       }catch(error){countingStatus.textContent=error.message||"Não foi possível carregar os canais.";}
     }
     if(openCountingButton)openCountingButton.addEventListener("click",()=>{countingPickerCard.hidden=!countingPickerCard.hidden;if(!countingPickerCard.hidden){countingPickerCard.scrollIntoView({behavior:"smooth",block:"nearest"});if(!selectedGuild().id)countingStatus.textContent="Escolha um servidor no menu lateral antes de selecionar o canal.";}openCountingButton.setAttribute("aria-expanded",String(!countingPickerCard.hidden));});
-    if(countingChannelSelect)countingChannelSelect.addEventListener("change",()=>{countingStatus.textContent=countingChannelSelect.value?"Salve para aplicar o canal escolhido.":"Salve para desativar o jogo de contagem.";window.YukinaPendingChanges?.refresh();});
-    const countingPendingRegistration=window.YukinaPendingChanges?.register({id:"contagem",isDirty:countingIsDirty,reset:()=>{countingChannelSelect.value=originalCounting.enabled?originalCounting.channelId:"";countingStatus.textContent="Alteração descartada.";},save:async()=>{
+    if(countingChannelSelect)countingChannelSelect.addEventListener("change",()=>{updateCountingSelectedChannel();countingStatus.textContent=countingChannelSelect.value?"Salve para aplicar o canal escolhido.":"Salve para desativar o jogo de contagem.";window.YukinaPendingChanges?.refresh();});
+    const countingPendingRegistration=window.YukinaPendingChanges?.register({id:"contagem",isDirty:countingIsDirty,reset:()=>{countingChannelSelect.value=originalCounting.enabled?originalCounting.channelId:"";updateCountingSelectedChannel();countingStatus.textContent="Alteração descartada.";},save:async()=>{
       const guild=selectedGuild();if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
       let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
       if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
@@ -332,7 +339,7 @@
       const nextConfig=channelId?{enabled:true,channelId,currentNumber:originalCounting.channelId===channelId?originalCounting.currentNumber:0,lastUserId:originalCounting.channelId===channelId?originalCounting.lastUserId:""}:{enabled:false,channelId:"",currentNumber:0,lastUserId:""};
       const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{countingSystem:nextConfig}}),cache:"no-store"});
       const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar a contagem.");
-      originalCounting=nextConfig;countingStatus.textContent=nextConfig.enabled?"Pronto! A contagem ficará ativa em #"+(availableTextChannels.find(ch=>ch.id===channelId)?.name||"canal escolhido")+".":"O jogo de contagem foi desativado."; 
+      originalCounting=nextConfig;updateCountingSelectedChannel();countingStatus.textContent=nextConfig.enabled?"Pronto! A contagem ficará ativa em #"+(availableTextChannels.find(ch=>ch.id===channelId)?.name||"canal escolhido")+".":"O jogo de contagem foi desativado."; 
     }});
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
