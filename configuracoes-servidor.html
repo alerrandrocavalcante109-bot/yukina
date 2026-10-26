@@ -125,8 +125,25 @@
     <section class="system-screen active" data-screen-panel="inicio">
       <p class="eyebrow">SEU ESPAÇO DE CONFIGURAÇÃO</p><h1 id="screenTitle">Configurações do seu servidor</h1>
       <p class="screen-description">Este é o espaço de cuidado da sua comunidade. Pelo menu, você pode acessar as opções de configuração que já estão disponíveis para este servidor.</p>
-      <div class="welcome-panel"><span class="welcome-icon">🔢</span><h2>Jogo de contagem</h2><p>Transforme um canal da sua comunidade em um pequeno desafio coletivo. Os membros devem enviar os números em ordem, um por mensagem. A Yukina acompanha a sequência e reinicia o jogo quando alguém erra ou envia dois números seguidos.</p><p>Para começar, escolha abaixo o canal de texto em que a brincadeira vai acontecer. Depois, use <strong>Salvar</strong> na barra inferior para aplicar a configuração.</p><button type="button" class="primary-action" id="openCounting">Escolher canal da contagem</button><div class="counting-picker-card" id="countingPickerCard" hidden><h3>❄️ Onde vamos contar?</h3><p>Selecione um canal de texto deste servidor. O jogo ficará ativo somente no canal escolhido.</p><label for="countingChannelSelect">Canal da contagem</label><select id="countingChannelSelect" class="prefix-input" aria-label="Canal do jogo de contagem"><option value="">Carregando canais…</option></select><p class="prefix-system-help">Dica da Yukina: um canal dedicado ajuda todos a acompanhar os números sem misturar a contagem com outras conversas.</p><p class="prefix-status" id="countingStatus" role="status" aria-live="polite"></p></div></div>
+      
       <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Configurações gerais</h2><p>Vamos começar pelo prefixo? Escolha “Troca de prefixo” no menu lateral para personalizar como você chama os comandos de texto da Yukina neste servidor.</p><button type="button" class="primary-action" id="openSystems">Personalizar prefixo</button></div>
+    </section>
+    <section class="system-screen" data-screen-panel="contagem" hidden>
+      <p class="eyebrow">JOGO DA COMUNIDADE</p><h1>Jogo de contagem</h1>
+      <p class="screen-description">Transforme um canal em um desafio coletivo: cada pessoa envia o próximo número da sequência, uma mensagem por vez. A Yukina acompanha a contagem e reinicia o jogo se alguém errar ou enviar dois números seguidos.</p>
+      <div class="welcome-panel">
+        <span class="welcome-icon">❄️</span><h2>Escolha onde contar</h2>
+        <p>Selecione um canal de texto para ativar o jogo. A configuração só será aplicada depois que você clicar em <strong>Salvar</strong> na barra inferior.</p>
+        <button type="button" class="primary-action" id="openCounting" aria-expanded="false" aria-controls="countingPickerCard">Escolher canal da contagem</button>
+        <div class="counting-picker-card" id="countingPickerCard" hidden>
+          <h3>❄️ Canal da contagem</h3>
+          <p>Escolha um dos canais de texto disponíveis neste servidor.</p>
+          <label for="countingChannelSelect">Canal</label>
+          <select id="countingChannelSelect" class="prefix-input" aria-label="Canal do jogo de contagem"><option value="">Carregando canais…</option></select>
+          <p class="prefix-system-help">Dica da Yukina: um canal dedicado ajuda todos a acompanhar os números com facilidade.</p>
+          <p class="prefix-status" id="countingStatus" role="status" aria-live="polite"></p>
+        </div>
+      </div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
@@ -288,7 +305,7 @@
         availableTextChannels=(Array.isArray(resourcesData.channels)?resourcesData.channels:[]).filter(ch=>Number(ch.type)===0);
         countingChannelSelect.replaceChildren();
         const empty=document.createElement("option");empty.value="";empty.textContent="Não configurar agora";countingChannelSelect.appendChild(empty);
-        for(const channel of availableTextChannels){const option=document.createElement("option");option.value=channel.id;option.textContent="# "+channel.name+(channel.parentName?" · "+channel.parentName:"");countingChannelSelect.appendChild(option);}
+        for(const channel of availableTextChannels){const option=document.createElement("option");option.value=channel.id;option.textContent="# "+channel.name;countingChannelSelect.appendChild(option);}
         countingChannelSelect.value=originalCounting.enabled?originalCounting.channelId:"";
         if(originalCounting.enabled&&!availableTextChannels.some(ch=>ch.id===originalCounting.channelId)){const missing=document.createElement("option");missing.value=originalCounting.channelId;missing.textContent="Canal salvo (não encontrado)";countingChannelSelect.appendChild(missing);countingChannelSelect.value=originalCounting.channelId;}
         countingStatus.textContent=originalCounting.enabled?"A contagem está configurada. A sequência atual é "+originalCounting.currentNumber+".":"Escolha um canal e salve para ativar o jogo.";
