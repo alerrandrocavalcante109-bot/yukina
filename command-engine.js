@@ -59,6 +59,10 @@ function startInteractionEngine(client) {
   });
 }
 function startPrefixEngine(client, getSettingsCollection) {
+  client.on("yukinaPrefixUpdated", (guildId, prefix) => {
+    prefixCache.set(String(guildId), { prefix: String(prefix || "Y"), expiresAt: Date.now() + 30000 });
+    console.log(`[Prefixo] Motor principal atualizado para ${prefix} no servidor ${guildId}`);
+  });
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
     let configuredPrefix = "Y";
