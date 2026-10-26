@@ -279,6 +279,26 @@
           <input id="ticketEmbedColorHex" class="prefix-input" type="text" value="#C4B5FD" maxlength="7" spellcheck="false" aria-label="Código hexadecimal da cor">
         </div>
         <p class="prefix-system-help">Escolha a cor da faixa lateral do embed ou informe um código hexadecimal. A prévia muda automaticamente.</p>
+        <div class="system-placeholder" id="ticketButtonsEditor" style="margin:16px 0">
+          <h3>🔘 Botões do painel</h3>
+          <p class="prefix-system-help">Configure até cinco botões. Os botões de atendimento criam canais privados; os personalizados respondem com uma mensagem privada.</p>
+          <div class="ticket-button-config" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0">
+            <label>Emoji<input class="prefix-input" id="ticketButtonEmoji0" maxlength="32" value="🎫"></label>
+            <label>Nome<input class="prefix-input" id="ticketButtonLabel0" maxlength="80" value="Suporte"></label>
+            <label>Ação<select class="prefix-input" id="ticketButtonType0"><option value="ticket">Abrir ticket</option><option value="custom">Botão personalizado</option></select></label>
+            <label>Estilo<select class="prefix-input" id="ticketButtonStyle0"><option value="Primary">Azul</option><option value="Secondary">Cinza</option><option value="Success">Verde</option><option value="Danger">Vermelho</option></select></label>
+            <label style="grid-column:1/-1">Resposta do botão personalizado<input class="prefix-input" id="ticketButtonReply0" maxlength="1000" placeholder="Mensagem privada (opcional)"></label>
+          </div>
+          <div class="ticket-button-config" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0">
+            <label>Emoji<input class="prefix-input" id="ticketButtonEmoji1" maxlength="32" value="🌙"></label>
+            <label>Nome<input class="prefix-input" id="ticketButtonLabel1" maxlength="80" value="Falar com a equipe"></label>
+            <label>Ação<select class="prefix-input" id="ticketButtonType1"><option value="ticket">Abrir ticket</option><option value="custom">Botão personalizado</option></select></label>
+            <label>Estilo<select class="prefix-input" id="ticketButtonStyle1"><option value="Primary">Azul</option><option value="Secondary" selected>Cinza</option><option value="Success">Verde</option><option value="Danger">Vermelho</option></select></label>
+            <label style="grid-column:1/-1">Resposta do botão personalizado<input class="prefix-input" id="ticketButtonReply1" maxlength="1000" placeholder="Mensagem privada (opcional)"></label>
+          </div>
+          <button type="button" class="prefix-save" id="ticketAddButtonConfig">＋ Adicionar botão</button>
+          <p class="prefix-status" id="ticketButtonsStatus" role="status" aria-live="polite"></p>
+        </div>
         <div class="ticket-embed-preview" id="ticketEmbedPreview">
           <div class="ticket-embed-top" id="ticketPreviewTopWrap" hidden><img id="ticketPreviewTop" alt="Imagem do topo"></div>
           <div class="ticket-embed-body"><div class="ticket-embed-copy"><strong id="ticketPreviewTitle">🎫 Central de Atendimento</strong><p id="ticketPreviewMessage">Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.</p><div id="ticketPreviewMiddleWrap" hidden><img id="ticketPreviewMiddle" alt="Imagem no meio"></div><small id="ticketPreviewFooterText">Yukina • Atendimento</small></div><img id="ticketPreviewRight" alt="Imagem lateral" hidden></div>
@@ -625,6 +645,26 @@
     ticketEmbedColorHex.addEventListener("change",()=>{if(!applyTicketEmbedColor(ticketEmbedColorHex.value.trim()))ticketEmbedColorHex.value=ticketEmbedColor.value.toUpperCase();});
 
     const ticketImageFields={top:$("ticketImageTop"),middle:$("ticketImageMiddle"),right:$("ticketImageRight"),footer:$("ticketImageFooter")};
+    let ticketButtonCount=2;
+    function collectTicketButtons(){
+      const buttons=[];
+      for(let i=0;i<ticketButtonCount;i++){
+        const label=$("ticketButtonLabel"+i)?.value.trim();
+        if(!label)continue;
+        buttons.push({label,emoji:$("ticketButtonEmoji"+i)?.value.trim()||"",type:$("ticketButtonType"+i)?.value||"ticket",style:$("ticketButtonStyle"+i)?.value||"Primary",customReply:$("ticketButtonReply"+i)?.value.trim()||""});
+      }
+      return buttons;
+    }
+    $("ticketAddButtonConfig").addEventListener("click",()=>{
+      const status=$("ticketButtonsStatus");
+      if(ticketButtonCount>=5){status.textContent="O limite deste painel é cinco botões.";return;}
+      const i=ticketButtonCount++;
+      const group=document.createElement("div");group.className="ticket-button-config";group.style.cssText="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin:12px 0";
+      group.innerHTML='<label>Emoji<input class="prefix-input" id="ticketButtonEmoji'+i+'" maxlength="32" placeholder="✨"></label><label>Nome<input class="prefix-input" id="ticketButtonLabel'+i+'" maxlength="80" placeholder="Nome do botão"></label><label>Ação<select class="prefix-input" id="ticketButtonType'+i+'"><option value="ticket">Abrir ticket</option><option value="custom">Botão personalizado</option></select></label><label>Estilo<select class="prefix-input" id="ticketButtonStyle'+i+'"><option value="Primary">Azul</option><option value="Secondary">Cinza</option><option value="Success">Verde</option><option value="Danger">Vermelho</option></select></label><label style="grid-column:1/-1">Resposta do botão personalizado<input class="prefix-input" id="ticketButtonReply'+i+'" maxlength="1000" placeholder="Mensagem privada (opcional)"></label>';
+      $("ticketButtonsEditor").insertBefore(group,$("ticketAddButtonConfig"));
+      status.textContent="Novo botão adicionado.";
+    });
+
     function updateTicketEmbedPreview(){
       $("ticketPreviewTitle").textContent=ticketPanelTitle.value.trim()||"🎫 Central de Atendimento";
       $("ticketPreviewMessage").textContent=ticketPanelMessage.value.trim()||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";
@@ -652,7 +692,7 @@
       if(!accessToken){status.textContent="Sua sessão do Discord expirou. Entre novamente para publicar.";return;}
       const publishButton=$("ticketPublishButton");publishButton.disabled=true;publishButton.textContent="Publicando…";status.textContent="A Yukina está publicando o painel no Discord…";
       try{
-        const response=await fetch(API_BASE+"/api/tickets/publish",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:config.guild.id,channelId:config.publishChannelId,title:config.title,message:config.message,embedColor:config.embedColor,images:config.images}),cache:"no-store"});
+        const response=await fetch(API_BASE+"/api/tickets/publish",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:config.guild.id,channelId:config.publishChannelId,title:config.title,message:config.message,embedColor:config.embedColor,images:config.images,buttons:collectTicketButtons(),createChannel:config.createChannel,useThreads:config.useThreads,channelAtTop:config.channelAtTop,categoryId:config.categoryId}),cache:"no-store"});
         const result=await response.json().catch(()=>({}));
         if(!response.ok)throw new Error(result.detail||"Não foi possível publicar o painel.");
         window.yukinaTicketDraft={...config,published:true,messageId:result.messageId};
