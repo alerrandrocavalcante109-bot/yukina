@@ -1022,6 +1022,50 @@ async function authorizePanel(req, guildId) {
   if (!botGuild) throw Object.assign(new Error("A Yukina ainda não está neste servidor. Adicione o bot e tente novamente."), { status: 409 });
   return { user, guild: botGuild };
 }
+client.on("interactionCreate", async interaction => {
+  if (!interaction.isButton() || !String(interaction.customId || "").startsWith("ykticket:")) return;
+  const [, panelMessageId, buttonIndexRaw] = interaction.customId.split(":");
+  try {
+    if (!interaction.guild || !interaction.member) return interaction.reply({ content: "Este botão só funciona dentro do servidor.", ephemeral: true });
+    if (panelMessageId === "close") {
+      const channelId = buttonIndexRaw;
+      const channel = interaction.guild.channels.cache.get(channelId);
+      const isOwner = channel?.topic?.includes("usuário " + interaction.user.id + " ");
+      const canManage = interaction.memberPermissions?.has(PermissionsBitField.Flags.ManageChannels);
+      if (!channel || (!isOwner && !canManage)) return interaction.reply({ content: "Somente quem abriu o ticket ou a equipe pode fechá-lo.", ephemeral: true });
+      await interaction.reply({ content: "🔒 Este atendimento será fechado em alguns segundos." });
+      await channel.delete("Atendimento fechado por " + interaction.user.tag).catch(() => {});
+      return;
+    }
+    const collection = await getSettingsCollection();
+    const doc = await collection.findOne({ guildId: interaction.guild.id });
+    const panels = Array.isArray(doc?.settings?.ticketPanels) ? doc.settings.ticketPanels : [];
+    const panel = panels.find(item => String(item.messageId || item.id) === panelMessageId);
+    const button = panel?.buttons?.[Number(buttonIndexRaw)];
+    if (!panel || !button) return interaction.reply({ content: "Este painel não está mais configurado. Avise a equipe do servidor.", ephemeral: true });
+    if (button.type === "custom") return interaction.reply({ content: button.customReply || "🌙 A Yukina recebeu sua escolha. Em breve alguém da equipe poderá ajudar você.", ephemeral: true });
+    const member = await interaction.guild.members.fetch(interaction.user.id);
+    const safeName = String(button.label || "atendimento").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "").slice(0, 35) || "atendimento";
+    const username = interaction.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 12);
+    const channel = await interaction.guild.channels.create({
+      name: (safeName + "-" + username).slice(0, 90), type: ChannelType.GuildText,
+      parent: panel.categoryId && interaction.guild.channels.cache.has(panel.categoryId) ? panel.categoryId : undefined,
+      topic: "Ticket da Yukina • usuário " + interaction.user.id + " • painel " + panelMessageId,
+      permissionOverwrites: [
+        { id: interaction.guild.roles.everyone.id, deny: [PermissionsBitField.Flags.ViewChannel] },
+        { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.AttachFiles, PermissionsBitField.Flags.EmbedLinks] },
+        { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.EmbedLinks] }
+      ]
+    });
+    const row = new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("ykticket:close:" + channel.id).setLabel("Fechar atendimento").setStyle(ButtonStyle.Danger).setEmoji("🔒"));
+    await channel.send({ content: "<@" + member.id + "> " + (button.emoji || "🎫") + " **" + button.label + "**\nExplique sua solicitação aqui. A equipe poderá continuar o atendimento neste canal.", components: [row] });
+    await interaction.reply({ content: "🌙 Seu atendimento foi criado: " + channel, ephemeral: true });
+  } catch (error) {
+    console.error("[Tickets] Erro ao abrir atendimento:", error.stack || error.message || error);
+    if (!interaction.replied && !interaction.deferred) await interaction.reply({ content: "Não consegui abrir o atendimento. Verifique as permissões da Yukina.", ephemeral: true }).catch(() => {});
+  }
+});
+
 async function publishTicketPanel(req, res) {
   console.info("[Tickets] Requisição recebida:", req.method, req.url, "origin:", req.headers.origin || "sem origin");
   const auth = String(req.headers.authorization || "");
