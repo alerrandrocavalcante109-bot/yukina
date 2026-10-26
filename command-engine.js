@@ -4,7 +4,6 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
-const PREFIXES = ["Y", "y"];
 function findFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -61,7 +60,23 @@ function startInteractionEngine(client) {
 function startPrefixEngine(client) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
-    const prefix = PREFIXES.find((value) => message.content.startsWith(value));
+    let configuredPrefix = "Y";
+    try {
+      if (typeof getSettingsCollection === "function") {
+        const collection = await getSettingsCollection();
+        const doc = await collection.findOne(
+          { guildId: message.guild.id },
+          { projection: { "settings.prefix": 1 } }
+        );
+        const candidate = String(doc?.settings?.prefix || "").trim();
+        if (candidate && candidate.length <= 5 && !/\s/.test(candidate)) configuredPrefix = candidate;
+      }
+    } catch (error) {
+      console.error("[Prefixo] Não foi possível carregar o prefixo do servidor:", error?.message || error);
+    }
+    // Mantém Y/y como compatibilidade quando o servidor usa o prefixo padrão.
+    const prefixes = configuredPrefix === "Y" ? ["Y", "y"] : [configuredPrefix];
+    const prefix = prefixes.find((value) => message.content.startsWith(value));
     if (!prefix) return;
     const body = message.content.slice(prefix.length).trim();
     if (!body) return;
@@ -116,7 +131,7 @@ function startPrefixEngine(client) {
     }
   });
 }
-module.exports = function startCommandEngine(client) {
+module.exports = function startCommandEngine(client, getSettingsCollection) {
   loadCommands(client);
   startInteractionEngine(client);
   startPrefixEngine(client);
