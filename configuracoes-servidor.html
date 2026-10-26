@@ -619,7 +619,16 @@
       $("ticketPreviewTitle").textContent=ticketPanelTitle.value.trim()||"🎫 Central de Atendimento";
       $("ticketPreviewMessage").textContent=ticketPanelMessage.value.trim()||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";
       const pairs=[["top","ticketPreviewTopWrap","ticketPreviewTop"],["middle","ticketPreviewMiddleWrap","ticketPreviewMiddle"],["right",null,"ticketPreviewRight"],["footer","ticketPreviewFooterWrap","ticketPreviewFooter"]];
-      for(const [key,wrapId,imgId] of pairs){const url=ticketImageFields[key].value.trim();const img=$(imgId);let valid=false;try{const parsed=new URL(url);valid=!!url&&["http:","https:"].includes(parsed.protocol);}catch(_){valid=false;}if(!valid){img.hidden=true;if(wrapId)$(wrapId).hidden=true;img.removeAttribute("src");continue;}img.hidden=true;img.onload=()=>{img.hidden=false;if(wrapId)$(wrapId).hidden=false;};img.onerror=()=>{img.hidden=true;if(wrapId)$(wrapId).hidden=true;};img.src=url;}
+      for(const [key,wrapId,imgId] of pairs){
+        const url=ticketImageFields[key].value.trim(),img=$(imgId),wrap=wrapId?$(wrapId):null;
+        let valid=false;try{const parsed=new URL(url);valid=!!url&&["http:","https:"].includes(parsed.protocol);}catch(_){valid=false;}
+        if(!valid){img.hidden=true;if(wrap)wrap.hidden=true;img.removeAttribute("src");img.onload=null;img.onerror=null;continue;}
+        if(img.dataset.previewUrl===url&&img.complete&&img.naturalWidth>0){img.hidden=false;if(wrap)wrap.hidden=false;continue;}
+        img.hidden=true;if(wrap)wrap.hidden=true;img.dataset.previewUrl=url;
+        img.onload=()=>{if(img.dataset.previewUrl===url){img.hidden=false;if(wrap)wrap.hidden=false;}};
+        img.onerror=()=>{if(img.dataset.previewUrl===url){img.hidden=true;if(wrap)wrap.hidden=true;}};
+        if(img.src!==url)img.src=url;
+      }
     }
     [ticketPanelTitle,ticketPanelMessage,...Object.values(ticketImageFields)].forEach(input=>input.addEventListener("input",updateTicketEmbedPreview));
     $("ticketPublishButton").addEventListener("click",()=>{
@@ -632,7 +641,15 @@
       ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=true;ticketStartCard.hidden=false;
       let embed=$("ticketSavedEmbedPreview");if(!embed){embed=document.createElement("div");embed.id="ticketSavedEmbedPreview";embed.className="ticket-embed-preview";ticketStartCard.appendChild(embed);}
       embed.replaceChildren();embed.style.setProperty("--ticket-embed-color",config.embedColor||"#c4b5fd");const title=document.createElement("strong");title.textContent=config.title||"🎫 Central de Atendimento";embed.appendChild(title);const message=document.createElement("p");message.textContent=config.message||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";embed.appendChild(message);
-      for(const key of ["top","middle","right","footer"]){const url=config.images[key];if(!url)continue;const img=document.createElement("img");img.src=url;img.alt="Imagem "+key;img.style.cssText="display:block;max-width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
+      const savedBody=document.createElement("div");savedBody.style.cssText="display:flex;align-items:flex-start;gap:12px;margin-top:10px;min-width:0";
+      const savedCopy=document.createElement("div");savedCopy.style.cssText="flex:1;min-width:0;overflow-wrap:anywhere";
+      const savedTop=config.images.top;if(savedTop){const img=document.createElement("img");img.src=savedTop;img.alt="Imagem do topo";img.style.cssText="display:block;width:100%;max-height:170px;object-fit:cover;border-radius:8px;margin-bottom:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
+      savedCopy.appendChild(message);
+      const savedMiddle=config.images.middle;if(savedMiddle){const img=document.createElement("img");img.src=savedMiddle;img.alt="Imagem no meio";img.style.cssText="display:block;width:100%;max-height:150px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();savedCopy.appendChild(img);}
+      const footerText=document.createElement("small");footerText.textContent="Yukina • Atendimento";footerText.style.color="#c7b8df";savedCopy.appendChild(footerText);savedBody.appendChild(savedCopy);
+      const savedRight=config.images.right;if(savedRight){const img=document.createElement("img");img.src=savedRight;img.alt="Imagem lateral";img.style.cssText="flex:0 0 84px;width:84px;max-height:120px;object-fit:cover;border-radius:8px";img.onerror=()=>img.remove();savedBody.appendChild(img);}
+      embed.appendChild(savedBody);
+      const savedFooter=config.images.footer;if(savedFooter){const img=document.createElement("img");img.src=savedFooter;img.alt="Imagem do rodapé";img.style.cssText="display:block;width:100%;max-height:90px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
       $("createTicketPanelButton").textContent="Editar painel de atendimento";
       status.textContent="Rascunho preparado. Nenhuma mensagem foi publicada no Discord.";
     });
