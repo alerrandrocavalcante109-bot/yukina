@@ -110,6 +110,7 @@
     </section>
     <div class="drawer-category" aria-label="Categoria Configurações gerais">⚙️ Configurações gerais</div>
     <nav class="menu-links" id="systemNavigation" aria-label="Sistemas">
+      <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
       <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
     </nav>
   </aside>
@@ -119,11 +120,26 @@
     <section class="system-screen active" data-screen-panel="inicio">
       <p class="eyebrow">SEU ESPAÇO DE CONFIGURAÇÃO</p><h1 id="screenTitle">Configurações do seu servidor</h1>
       <p class="screen-description">Este é o espaço de cuidado da sua comunidade. Pelo menu, você pode acessar as opções de configuração que já estão disponíveis para este servidor.</p>
+      <div class="welcome-panel"><span class="welcome-icon">🔢</span><h2>Jogo de contagem</h2><p>Escolha um canal de texto para a comunidade contar em conjunto. A Yukina acompanhará a sequência nesse canal e reiniciará a contagem quando alguém errar ou contar duas vezes seguidas.</p><button type="button" class="primary-action" id="openCounting">Configurar contagem</button></div>
       <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Configurações gerais</h2><p>Vamos começar pelo prefixo? Escolha “Troca de prefixo” no menu lateral para personalizar como você chama os comandos de texto da Yukina neste servidor.</p><button type="button" class="primary-action" id="openSystems">Personalizar prefixo</button></div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
       <p class="screen-description">Escolha com carinho o prefixo que combina com a organização da sua comunidade. Ele será usado antes dos comandos de texto da Yukina neste servidor.</p>
+      <section class="system-placeholder counting-panel" data-screen-panel="contagem" hidden>
+        <p class="eyebrow">JOGO DA COMUNIDADE</p><h1>Jogo de contagem</h1>
+        <p class="screen-description">Escolha onde a brincadeira vai acontecer. A Yukina cuidará da sequência de números nesse canal, enquanto vocês contam juntos.</p>
+        <div class="system-placeholder">
+          <h2>Canal da contagem</h2>
+          <p>Selecione um canal de texto do servidor. A contagem ficará ativa somente nele; os outros canais continuarão funcionando normalmente.</p>
+          <label for="countingChannelSelect">Canal escolhido</label>
+          <select id="countingChannelSelect" class="prefix-input" aria-label="Canal do jogo de contagem">
+            <option value="">Carregando canais…</option>
+          </select>
+          <p class="prefix-system-help">Dica da Yukina: escolha um canal dedicado para manter os números organizados e deixar a brincadeira fácil de acompanhar.</p>
+          <p class="prefix-status" id="countingStatus" role="status" aria-live="polite"></p>
+        </div>
+      </section>
       <div class="system-placeholder prefix-panel"><h2>Prefixo dos comandos</h2><p class="prefix-system-description">Toque no prefixo atual para editá-lo. Você pode usar de 1 a 5 caracteres, sem espaços — escolha algo simples de lembrar e fácil de digitar.</p>
         <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual"><span class="prefix-current-label">Prefixo em uso</span><span class="prefix-current-value" id="prefixCurrentValue">Y</span></button>
         <div class="prefix-edit" id="prefixEdit" hidden><input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite seu novo prefixo"><button class="prefix-save" id="prefixSaveButton" type="button">Confirmar</button></div>
@@ -252,6 +268,54 @@
       else if(!open&&dx<0)openMenu();
     },{passive:true});
     window.addEventListener("storage",loadUser);
+    const countingChannelSelect = $("countingChannelSelect");
+    const countingStatus = $("countingStatus");
+    const openCountingButton = $("openCounting");
+    let originalCounting = { enabled: false, channelId: "", currentNumber: 0, lastUserId: "" };
+    let availableTextChannels = [];
+    function countingIsDirty(){return Boolean(countingChannelSelect && countingChannelSelect.value !== (originalCounting.enabled ? originalCounting.channelId : ""));}
+    async function loadCounting(){
+      if(!countingChannelSelect)return;
+      const guild=selectedGuild();
+      if(!guild.id){countingChannelSelect.innerHTML='<option value="">Selecione um servidor primeiro</option>';return;}
+      try{
+        let accessToken=token();
+        if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Entre com o Discord para carregar os canais.");
+        const headers={Authorization:"Bearer "+accessToken,Accept:"application/json"};
+        const [settingsResponse,resourcesResponse]=await Promise.all([
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers,cache:"no-store"}),
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"})
+        ]);
+        const settingsData=await settingsResponse.json().catch(()=>({}));
+        const resourcesData=await resourcesResponse.json().catch(()=>({}));
+        if(!settingsResponse.ok)throw new Error(settingsData.detail||"Não foi possível carregar a configuração da contagem.");
+        if(!resourcesResponse.ok)throw new Error(resourcesData.detail||"Não foi possível carregar os canais do servidor.");
+        const saved=settingsData.settings?.countingSystem||{};
+        originalCounting={enabled:Boolean(saved.enabled&&saved.channelId),channelId:String(saved.channelId||""),currentNumber:Number(saved.currentNumber)||0,lastUserId:String(saved.lastUserId||"")};
+        availableTextChannels=(Array.isArray(resourcesData.channels)?resourcesData.channels:[]).filter(ch=>Number(ch.type)===0);
+        countingChannelSelect.replaceChildren();
+        const empty=document.createElement("option");empty.value="";empty.textContent="Não configurar agora";countingChannelSelect.appendChild(empty);
+        for(const channel of availableTextChannels){const option=document.createElement("option");option.value=channel.id;option.textContent="# "+channel.name+(channel.parentName?" · "+channel.parentName:"");countingChannelSelect.appendChild(option);}
+        countingChannelSelect.value=originalCounting.enabled?originalCounting.channelId:"";
+        if(originalCounting.enabled&&!availableTextChannels.some(ch=>ch.id===originalCounting.channelId)){const missing=document.createElement("option");missing.value=originalCounting.channelId;missing.textContent="Canal salvo (não encontrado)";countingChannelSelect.appendChild(missing);countingChannelSelect.value=originalCounting.channelId;}
+        countingStatus.textContent=originalCounting.enabled?"A contagem está configurada. A sequência atual é "+originalCounting.currentNumber+".":"Escolha um canal e salve para ativar o jogo.";
+        window.YukinaPendingChanges?.refresh();
+      }catch(error){countingStatus.textContent=error.message||"Não foi possível carregar os canais.";}
+    }
+    if(openCountingButton)openCountingButton.addEventListener("click",()=>showScreen("contagem"));
+    if(countingChannelSelect)countingChannelSelect.addEventListener("change",()=>{countingStatus.textContent=countingChannelSelect.value?"Salve para aplicar o canal escolhido.":"Salve para desativar o jogo de contagem.";window.YukinaPendingChanges?.refresh();});
+    const countingPendingRegistration=window.YukinaPendingChanges?.register({id:"contagem",isDirty:countingIsDirty,reset:()=>{countingChannelSelect.value=originalCounting.enabled?originalCounting.channelId:"";countingStatus.textContent="Alteração descartada.";},save:async()=>{
+      const guild=selectedGuild();if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
+      let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+      if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+      const channelId=countingChannelSelect.value;
+      if(channelId&&!availableTextChannels.some(ch=>ch.id===channelId)&&channelId!==originalCounting.channelId)throw new Error("Escolha um canal de texto válido deste servidor.");
+      const nextConfig=channelId?{enabled:true,channelId,currentNumber:originalCounting.channelId===channelId?originalCounting.currentNumber:0,lastUserId:originalCounting.channelId===channelId?originalCounting.lastUserId:""}:{enabled:false,channelId:"",currentNumber:0,lastUserId:""};
+      const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{countingSystem:nextConfig}}),cache:"no-store"});
+      const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar a contagem.");
+      originalCounting=nextConfig;countingStatus.textContent=nextConfig.enabled?"Pronto! A contagem ficará ativa em #"+(availableTextChannels.find(ch=>ch.id===channelId)?.name||"canal escolhido")+".":"O jogo de contagem foi desativado."; 
+    }});
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
@@ -309,6 +373,7 @@
     prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar.";}if(e.key==="Escape"){prefixInput.value=originalPrefix;prefixEdit.hidden=true;window.YukinaPendingChanges?.refresh();}});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
     loadPrefix();
+    loadCounting();
     loadUser();
   })();
   </script>
