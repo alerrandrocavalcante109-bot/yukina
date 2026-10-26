@@ -258,15 +258,54 @@
     const prefixInput = $("prefixInput");
     const prefixSaveButton = $("prefixSaveButton");
     const prefixStatus = $("prefixStatus");
-    function prefixStorageKey(){const guild=selectedGuild();return "yukina_prefix_"+(guild.id||"no_server");}
     let originalPrefix="Y";
-    function validPrefix(value){return value.length>=1&&value.length<=5&&!/\\s/.test(value);}
-    function loadPrefix(){const saved=localStorage.getItem(prefixStorageKey());originalPrefix=saved||"Y";prefixCurrentValue.textContent=originalPrefix;prefixInput.value=originalPrefix;prefixStatus.textContent="";window.YukinaPendingChanges?.refresh();}
+    let prefixLoadVersion=0;
+    function validPrefix(value){return value.length>=1&&value.length<=5&&!/\s/.test(value);}
+    async function loadPrefix(){
+      const version=++prefixLoadVersion;
+      const guild=selectedGuild();
+      prefixStatus.textContent="";
+      if(!guild.id){originalPrefix="Y";prefixCurrentValue.textContent="Y";prefixInput.value="Y";prefixStatus.textContent="Selecione um servidor para carregar suas configurações.";window.YukinaPendingChanges?.refresh();return;}
+      try{
+        let accessToken=token();
+        if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Entre com o Discord para carregar as configurações.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{
+          headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"
+        });
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.detail||"Não foi possível carregar o prefixo deste servidor.");
+        if(version!==prefixLoadVersion)return;
+        const value=String(data.settings?.prefix||"Y");
+        originalPrefix=validPrefix(value)?value:"Y";
+        prefixCurrentValue.textContent=originalPrefix;prefixInput.value=originalPrefix;
+        window.YukinaPendingChanges?.refresh();
+      }catch(error){
+        if(version!==prefixLoadVersion)return;
+        prefixStatus.textContent=error.message||"Erro ao carregar as configurações.";
+      }
+    }
     function prefixIsDirty(){return prefixInput.value!==originalPrefix;}
     prefixCurrentButton.addEventListener("click",()=>{prefixEdit.hidden=false;prefixInput.value=prefixCurrentValue.textContent;prefixInput.focus();prefixStatus.textContent="";});
-    prefixInput.addEventListener("input",()=>{prefixStatus.textContent=prefixInput.value.length>5?"O prefixo pode ter no máximo 5 caracteres.":(/\\s/.test(prefixInput.value)?"Não use espaços no prefixo.":"");window.YukinaPendingChanges?.refresh();});
+    prefixInput.addEventListener("input",()=>{prefixStatus.textContent=prefixInput.value.length>5?"O prefixo pode ter no máximo 5 caracteres.":(/\s/.test(prefixInput.value)?"Não use espaços no prefixo.":"");window.YukinaPendingChanges?.refresh();});
     prefixSaveButton.addEventListener("click",()=>{prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar as alterações.";});
-    const prefixPendingRegistration=window.YukinaPendingChanges?.register({id:"prefixo",isDirty:prefixIsDirty,reset:()=>{prefixInput.value=originalPrefix;prefixCurrentValue.textContent=originalPrefix;prefixEdit.hidden=true;prefixStatus.textContent="Alterações descartadas.";},save:async()=>{const value=prefixInput.value;if(!validPrefix(value))throw new Error("O prefixo deve ter de 1 a 5 caracteres e não pode conter espaços.");localStorage.setItem(prefixStorageKey(),value);originalPrefix=value;prefixCurrentValue.textContent=value;prefixEdit.hidden=true;prefixStatus.textContent="Prefixo guardado neste navegador. A integração com a API e o motor de comandos do Discord ainda precisa ser feita.";}}); 
+    const prefixPendingRegistration=window.YukinaPendingChanges?.register({id:"prefixo",isDirty:prefixIsDirty,reset:()=>{prefixInput.value=originalPrefix;prefixCurrentValue.textContent=originalPrefix;prefixEdit.hidden=true;prefixStatus.textContent="Alterações descartadas.";},save:async()=>{
+      const value=prefixInput.value;
+      if(!validPrefix(value))throw new Error("O prefixo deve ter de 1 a 5 caracteres e não pode conter espaços.");
+      const guild=selectedGuild();
+      if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
+      let accessToken=token();
+      if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+      if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+      const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{
+        method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},
+        body:JSON.stringify({settings:{prefix:value}}),cache:"no-store"
+      });
+      const data=await response.json().catch(()=>({}));
+      if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações.");
+      originalPrefix=value;prefixCurrentValue.textContent=value;prefixEdit.hidden=true;
+      prefixStatus.textContent="Configurações salvas para este servidor.";
+    }});
     prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar.";}if(e.key==="Escape"){prefixInput.value=originalPrefix;prefixEdit.hidden=true;window.YukinaPendingChanges?.refresh();}});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
     loadPrefix();
