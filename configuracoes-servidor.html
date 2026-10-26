@@ -555,7 +555,7 @@
       let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");
       const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{ticketSystem:config}}),cache:"no-store"});
       const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.detail||"Não foi possível salvar os tickets.");
-      ticketConfig=config;originalTicketConfig=JSON.stringify(config);ticketStatus.textContent=config.enabled?"Configuração salva. O sistema está marcado como ativo.":"Configuração salva. Para ativar, escolha uma categoria, um canal do painel e um cargo de atendimento.";});
+      ticketConfig=config;originalTicketConfig=JSON.stringify(config);ticketStatus.textContent=config.enabled?"Configuração salva. O sistema está marcado como ativo.":"Configuração salva. Para ativar, escolha uma categoria, um canal do painel e um cargo de atendimento.";}});
         const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
