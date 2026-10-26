@@ -83,6 +83,7 @@
     .menu-link[aria-current="page"]{border-color:#c4b5fd;background:#c4b5fd20}
     .prefix-panel{max-width:700px}.prefix-current{max-width:420px}
     @keyframes screen-in{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .ticket-panel-management-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:10px;padding:13px;border:1px solid #ffffff2b;border-radius:13px;background:#ffffff08}.ticket-panel-management-actions{display:flex;gap:7px;flex-wrap:wrap}.ticket-panel-management-actions button{padding:8px 10px;border:1px solid #ffffff35;border-radius:9px;background:#ffffff10;color:#fff;font-weight:700}.ticket-panel-management-actions .danger{border-color:#ff8b9a66;color:#ffc2cb}.ticket-panel-management-row small{display:block;color:var(--muted);margin-top:4px;overflow-wrap:anywhere}
     .ticket-embed-preview{display:block;box-sizing:border-box;width:100%;max-width:100%;margin-top:20px;padding:16px;border:1px solid #ffffff30;border-left:4px solid var(--ticket-embed-color,#c4b5fd);border-radius:12px;background:#171322;color:#fff;overflow:hidden;min-width:0}
     [hidden]{display:none!important}
     .ticket-embed-preview *{box-sizing:border-box;min-width:0}
@@ -216,6 +217,7 @@
       <p class="eyebrow">ATENDIMENTO DA COMUNIDADE</p>
       <h1>🎫 Painel de atendimento</h1>
       <p class="screen-description">Crie um painel para que os membros encontrem ajuda facilmente. Configure onde ele será publicado e como a Yukina organizará os atendimentos.</p>
+      <div class="system-placeholder" id="ticketPublishedPanels" style="margin-top:16px"><h2>📋 Painéis publicados</h2><p class="prefix-system-description">Seus painéis ficam salvos e podem ser gerenciados depois de atualizar a página.</p><div id="ticketPublishedPanelsStatus" class="prefix-status" role="status" aria-live="polite">Selecione um servidor para carregar os painéis.</div><div id="ticketPublishedPanelsList"></div></div>
       <div class="welcome-panel" id="ticketStartCard">
         <span class="welcome-icon">🌙</span>
         <h2>Atendimento da Yukina</h2>
@@ -666,6 +668,31 @@
       status.textContent="Novo botão adicionado.";
     });
 
+    async function loadPublishedTicketPanels(){
+      const status=$("ticketPublishedPanelsStatus"),list=$("ticketPublishedPanelsList"),guild=selectedGuild();
+      if(!status||!list)return;list.replaceChildren();
+      if(!guild.id){status.textContent="Selecione um servidor no menu lateral.";return;}
+      let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token")){try{accessToken=await refreshAccessToken();}catch(_){}}
+      if(!accessToken){status.textContent="Entre com o Discord para ver os painéis publicados.";return;}
+      status.textContent="Carregando painéis publicados…";
+      try{
+        const response=await fetch(API_BASE+"/api/tickets/manage?guildId="+encodeURIComponent(guild.id),{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível carregar os painéis.");
+        const panels=Array.isArray(data.panels)?data.panels:[];
+        if(!panels.length){status.textContent="Nenhum painel publicado foi encontrado neste servidor.";return;}
+        status.textContent=panels.length+" painel(is) publicado(s).";
+        for(const panel of panels){
+          const row=document.createElement("div");row.className="ticket-panel-management-row";
+          const info=document.createElement("div"),name=document.createElement("strong"),meta=document.createElement("small");
+          name.textContent=panel.title||"🎫 Central de Atendimento";meta.textContent="#"+(panel.channelName||"canal desconhecido")+" • "+(panel.publishedAt?new Date(panel.publishedAt).toLocaleString("pt-BR"):"publicado");
+          info.append(name,meta);const actions=document.createElement("div");actions.className="ticket-panel-management-actions";
+          const edit=document.createElement("button");edit.type="button";edit.textContent="✏️ Editar";edit.addEventListener("click",()=>{window.yukinaTicketDraft={...panel,guild:{id:guild.id,name:guild.name},publishChannelId:panel.channelId,images:panel.images||{}};ticketPanelTitle.value=panel.title||"";ticketPanelMessage.value=panel.message||"";ticketEmbedColor.value=panel.embedColor||"#c4b5fd";applyTicketEmbedColor(ticketEmbedColor.value);for(const [key,input] of Object.entries(ticketImageFields))input.value=(panel.images||{})[key]||"";updateTicketEmbedPreview();ticketStartCard.hidden=true;ticketWizardStep1.hidden=false;ticketWizardStep2.hidden=true;$("ticketWizardStatus").textContent="Rascunho carregado. Para editar a mensagem publicada, salve as alterações no painel.";});
+          const duplicate=document.createElement("button");duplicate.type="button";duplicate.textContent="⧉ Duplicar";duplicate.addEventListener("click",()=>{window.yukinaTicketDraft=null;ticketPanelTitle.value=(panel.title||"🎫 Central de Atendimento")+" (cópia)";ticketPanelMessage.value=panel.message||"";ticketEmbedColor.value=panel.embedColor||"#c4b5fd";applyTicketEmbedColor(ticketEmbedColor.value);for(const [key,input] of Object.entries(ticketImageFields))input.value=(panel.images||{})[key]||"";updateTicketEmbedPreview();ticketStartCard.hidden=true;ticketWizardStep1.hidden=false;ticketWizardStep2.hidden=true;$("ticketWizardStatus").textContent="Cópia preparada. Escolha o canal e publique para criar outro painel.";});
+          const del=document.createElement("button");del.type="button";del.className="danger";del.textContent="🗑 Excluir";del.addEventListener("click",async()=>{if(!confirm("Excluir o painel publicado no Discord?"))return;del.disabled=true;try{let t=token();if(!t)t=await refreshAccessToken();const res=await fetch(API_BASE+"/api/tickets/manage",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json"},body:JSON.stringify({guildId:guild.id,messageId:String(panel.messageId),action:"delete"})});const result=await res.json().catch(()=>({}));if(!res.ok)throw new Error(result.detail||"Falha ao excluir painel.");await loadPublishedTicketPanels();}catch(e){status.textContent=e.message||"Falha ao excluir painel.";}finally{del.disabled=false;}});
+          actions.append(edit,duplicate,del);row.append(info,actions);list.appendChild(row);
+        }
+      }catch(error){status.textContent=error.message||"Falha ao carregar os painéis publicados.";}
+    }
     function updateTicketEmbedPreview(){
       $("ticketPreviewTitle").textContent=ticketPanelTitle.value.trim()||"🎫 Central de Atendimento";
       $("ticketPreviewMessage").textContent=ticketPanelMessage.value.trim()||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";
