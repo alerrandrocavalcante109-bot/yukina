@@ -65,6 +65,7 @@ function daysSince(date) {
 }
 
 async function ensureRankRoles(guild) {
+  // A hierarquia nunca cria cargos automaticamente: usa apenas cargos já existentes.
   const me = guild.members.me;
   if (!me?.permissions.has(PermissionFlagsBits.ManageRoles)) {
     console.warn("[Hierarquia] Yukina precisa da permissão Gerenciar cargos em " + guild.name + ".");
@@ -73,21 +74,10 @@ async function ensureRankRoles(guild) {
 
   const roles = new Map();
   for (const rank of RANKS) {
-    let role = guild.roles.cache.find((item) => item.name === rank.name);
+    const role = guild.roles.cache.find((item) => item.name === rank.name);
     if (!role) {
-      try {
-        role = await guild.roles.create({
-          name: rank.name,
-          color: rank.color,
-          hoist: false,
-          mentionable: false,
-          permissions: [],
-          reason: "Hierarquia automática de membros da Yukina",
-        });
-      } catch (error) {
-        console.error("[Hierarquia] Não consegui criar " + rank.name + " em " + guild.name + ":", error.message);
-        return null;
-      }
+      console.warn("[Hierarquia] O cargo " + rank.name + " não existe em " + guild.name + "; não será criado automaticamente.");
+      return null;
     }
     if (role.managed || role.position >= me.roles.highest.position) {
       console.warn("[Hierarquia] O cargo " + role.name + " está acima do cargo da Yukina; ajuste a hierarquia no Discord.");
