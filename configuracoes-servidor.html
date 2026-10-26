@@ -113,9 +113,12 @@
         <div id="serverPickerList" class="server-picker-list"></div>
       </div>
     </section>
-    <div class="drawer-category" aria-label="Categoria Configurações gerais">⚙️ Configurações gerais</div>
-    <nav class="menu-links" id="systemNavigation" aria-label="Sistemas">
+    <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
+    <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
+    </nav>
+    <div class="drawer-category" aria-label="Categoria Configurações gerais">⚙️ Configurações gerais</div>
+    <nav class="menu-links" id="systemNavigation" aria-label="Configurações gerais">
       <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
     </nav>
   </aside>
@@ -243,18 +246,19 @@
     }
     function toggleMenu(){drawer.classList.contains("open") ? closeMenu() : openMenu()}
     const systemNavigation = $("systemNavigation");
+    const gamesNavigation = $("gamesNavigation");
     const screenPanels = [...document.querySelectorAll("[data-screen-panel]")];
     function showScreen(id){
       const target = screenPanels.find(panel => panel.dataset.screenPanel === id) || screenPanels[0];
       screenPanels.forEach(panel => {panel.hidden = panel !== target; panel.classList.toggle("active",panel === target);});
-      systemNavigation.querySelectorAll("[data-screen]").forEach(button => {
+      document.querySelectorAll("#systemNavigation [data-screen], #gamesNavigation [data-screen]").forEach(button => {
         if(button.dataset.screen === target.dataset.screenPanel) button.setAttribute("aria-current","page");
         else button.removeAttribute("aria-current");
       });
       const title=target.querySelector("h1");if(title)document.title=title.textContent+" • Yukina";
       closeMenu();
     }
-    systemNavigation.addEventListener("click",event=>{const button=event.target.closest("[data-screen]");if(button)showScreen(button.dataset.screen);});
+    for(const navigation of [systemNavigation,gamesNavigation]) navigation.addEventListener("click",event=>{const button=event.target.closest("[data-screen]");if(button)showScreen(button.dataset.screen);});
     $("openSystems").addEventListener("click",openMenu);
 
     menuToggle.addEventListener("click",toggleMenu);
