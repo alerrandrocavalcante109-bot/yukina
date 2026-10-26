@@ -9,9 +9,17 @@ const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const updateLocks = new Set();
 
+const LEVEL_THRESHOLDS = [
+  [1, 0], [5, 500], [10, 1500], [15, 3000], [20, 5000], [25, 7500],
+  [30, 10500], [40, 15000], [50, 20000], [60, 26000], [75, 35000], [100, 50000],
+];
 function getCurrentLevel(xp) {
   const value = Math.max(0, Number(xp) || 0);
-  return Math.min(100, Math.floor(Math.sqrt(value / 50)) + 1);
+  let level = 1;
+  for (const [thresholdLevel, thresholdXp] of LEVEL_THRESHOLDS) {
+    if (value >= thresholdXp) level = thresholdLevel;
+  }
+  return level;
 }
 
 const knownConfiguredRoleIds = new Map();
