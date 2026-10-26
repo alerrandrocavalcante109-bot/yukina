@@ -4,6 +4,7 @@
  */
 const fs = require("node:fs");
 const path = require("node:path");
+const prefixCache = new Map();
 function findFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -57,7 +58,7 @@ function startInteractionEngine(client) {
     }
   });
 }
-function startPrefixEngine(client) {
+function startPrefixEngine(client, getSettingsCollection) {
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
     let configuredPrefix = "Y";
@@ -134,7 +135,7 @@ function startPrefixEngine(client) {
 module.exports = function startCommandEngine(client, getSettingsCollection) {
   loadCommands(client);
   startInteractionEngine(client);
-  startPrefixEngine(client);
+  startPrefixEngine(client, getSettingsCollection);
   const all = [...client.commands.entries()];
   const slash = all.filter(([, c]) => c?.data?.name).map(([, c]) => `/${c.data.name}`);
   const prefix = all.filter(([, c]) => typeof c.prefixExecute === "function" || typeof c.executePrefix === "function")
