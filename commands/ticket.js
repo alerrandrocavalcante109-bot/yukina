@@ -11,7 +11,13 @@ async function ensureCategory(guild) {
 }
 async function ensureLogChannel(guild, category, staffRoleId) {
   let channel = guild.channels.cache.find(c => c.type === ChannelType.GuildText && c.name === LOG_NAME);
-  if (channel) { if (channel.parentId !== category.id) await channel.setParent(category.id, { lockPermissions: false }).catch(() => {}); return channel; }
+  if (channel) {
+    if (channel.parentId !== category.id) await channel.setParent(category.id, { lockPermissions: false }).catch(() => {});
+    await channel.permissionOverwrites.edit(guild.id, { ViewChannel: false }).catch(() => {});
+    await channel.permissionOverwrites.edit(guild.client.user.id, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true, EmbedLinks: true, ManageChannels: true }).catch(() => {});
+    if (staffRoleId && guild.roles.cache.has(staffRoleId)) await channel.permissionOverwrites.edit(staffRoleId, { ViewChannel: true, SendMessages: true, ReadMessageHistory: true, AttachFiles: true, EmbedLinks: true }).catch(() => {});
+    return channel;
+  }
   const overwrites = [
     { id: guild.id, deny: [PermissionFlagsBits.ViewChannel] },
     { id: guild.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.AttachFiles, PermissionFlagsBits.EmbedLinks, PermissionFlagsBits.ManageChannels] }
