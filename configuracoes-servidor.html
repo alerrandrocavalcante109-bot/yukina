@@ -75,6 +75,11 @@
     .welcome-panel,.system-placeholder{padding:clamp(20px,4vw,32px);border:1px solid #ffffff32;border-radius:22px;background:rgba(28,17,51,.68);box-shadow:0 16px 42px #140b2a30;backdrop-filter:blur(16px)}
     .welcome-icon{font-size:2rem}.welcome-panel h2,.system-placeholder h2{margin:12px 0 8px;font-size:1.2rem}.welcome-panel p,.system-placeholder p{color:var(--muted);line-height:1.65}
     .primary-action{margin-top:8px;padding:11px 16px;border:1px solid #c4b5fd;border-radius:12px;background:#c4b5fd;color:#24133e;font-weight:800}
+    .counting-picker-card{margin-top:16px;padding:18px;border:1px solid #c4b5fd88;border-radius:16px;background:rgba(15,9,30,.62);animation:screen-in .18s ease both}
+    .counting-picker-card[hidden]{display:none}
+    .counting-picker-card h3{margin:0 0 8px;font-size:1.05rem}
+    .counting-picker-card p{margin:8px 0;color:var(--muted);line-height:1.55}
+    .counting-picker-card label{display:block;margin-top:14px;font-size:.88rem;font-weight:750}
     .menu-link[aria-current="page"]{border-color:#c4b5fd;background:#c4b5fd20}
     .prefix-panel{max-width:700px}.prefix-current{max-width:420px}
     @keyframes screen-in{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
@@ -120,26 +125,12 @@
     <section class="system-screen active" data-screen-panel="inicio">
       <p class="eyebrow">SEU ESPAÇO DE CONFIGURAÇÃO</p><h1 id="screenTitle">Configurações do seu servidor</h1>
       <p class="screen-description">Este é o espaço de cuidado da sua comunidade. Pelo menu, você pode acessar as opções de configuração que já estão disponíveis para este servidor.</p>
-      <div class="welcome-panel"><span class="welcome-icon">🔢</span><h2>Jogo de contagem</h2><p>Escolha um canal de texto para a comunidade contar em conjunto. A Yukina acompanhará a sequência nesse canal e reiniciará a contagem quando alguém errar ou contar duas vezes seguidas.</p><button type="button" class="primary-action" id="openCounting">Configurar contagem</button></div>
+      <div class="welcome-panel"><span class="welcome-icon">🔢</span><h2>Jogo de contagem</h2><p>Transforme um canal da sua comunidade em um pequeno desafio coletivo. Os membros devem enviar os números em ordem, um por mensagem. A Yukina acompanha a sequência e reinicia o jogo quando alguém erra ou envia dois números seguidos.</p><p>Para começar, escolha abaixo o canal de texto em que a brincadeira vai acontecer. Depois, use <strong>Salvar</strong> na barra inferior para aplicar a configuração.</p><button type="button" class="primary-action" id="openCounting">Escolher canal da contagem</button><div class="counting-picker-card" id="countingPickerCard" hidden><h3>❄️ Onde vamos contar?</h3><p>Selecione um canal de texto deste servidor. O jogo ficará ativo somente no canal escolhido.</p><label for="countingChannelSelect">Canal da contagem</label><select id="countingChannelSelect" class="prefix-input" aria-label="Canal do jogo de contagem"><option value="">Carregando canais…</option></select><p class="prefix-system-help">Dica da Yukina: um canal dedicado ajuda todos a acompanhar os números sem misturar a contagem com outras conversas.</p><p class="prefix-status" id="countingStatus" role="status" aria-live="polite"></p></div></div>
       <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Configurações gerais</h2><p>Vamos começar pelo prefixo? Escolha “Troca de prefixo” no menu lateral para personalizar como você chama os comandos de texto da Yukina neste servidor.</p><button type="button" class="primary-action" id="openSystems">Personalizar prefixo</button></div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
       <p class="screen-description">Escolha com carinho o prefixo que combina com a organização da sua comunidade. Ele será usado antes dos comandos de texto da Yukina neste servidor.</p>
-      <section class="system-placeholder counting-panel" data-screen-panel="contagem" hidden>
-        <p class="eyebrow">JOGO DA COMUNIDADE</p><h1>Jogo de contagem</h1>
-        <p class="screen-description">Escolha onde a brincadeira vai acontecer. A Yukina cuidará da sequência de números nesse canal, enquanto vocês contam juntos.</p>
-        <div class="system-placeholder">
-          <h2>Canal da contagem</h2>
-          <p>Selecione um canal de texto do servidor. A contagem ficará ativa somente nele; os outros canais continuarão funcionando normalmente.</p>
-          <label for="countingChannelSelect">Canal escolhido</label>
-          <select id="countingChannelSelect" class="prefix-input" aria-label="Canal do jogo de contagem">
-            <option value="">Carregando canais…</option>
-          </select>
-          <p class="prefix-system-help">Dica da Yukina: escolha um canal dedicado para manter os números organizados e deixar a brincadeira fácil de acompanhar.</p>
-          <p class="prefix-status" id="countingStatus" role="status" aria-live="polite"></p>
-        </div>
-      </section>
       <div class="system-placeholder prefix-panel"><h2>Prefixo dos comandos</h2><p class="prefix-system-description">Toque no prefixo atual para editá-lo. Você pode usar de 1 a 5 caracteres, sem espaços — escolha algo simples de lembrar e fácil de digitar.</p>
         <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual"><span class="prefix-current-label">Prefixo em uso</span><span class="prefix-current-value" id="prefixCurrentValue">Y</span></button>
         <div class="prefix-edit" id="prefixEdit" hidden><input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite seu novo prefixo"><button class="prefix-save" id="prefixSaveButton" type="button">Confirmar</button></div>
@@ -270,6 +261,7 @@
     window.addEventListener("storage",loadUser);
     const countingChannelSelect = $("countingChannelSelect");
     const countingStatus = $("countingStatus");
+    const countingPickerCard = $("countingPickerCard");
     const openCountingButton = $("openCounting");
     let originalCounting = { enabled: false, channelId: "", currentNumber: 0, lastUserId: "" };
     let availableTextChannels = [];
@@ -303,7 +295,7 @@
         window.YukinaPendingChanges?.refresh();
       }catch(error){countingStatus.textContent=error.message||"Não foi possível carregar os canais.";}
     }
-    if(openCountingButton)openCountingButton.addEventListener("click",()=>showScreen("contagem"));
+    if(openCountingButton)openCountingButton.addEventListener("click",()=>{countingPickerCard.hidden=!countingPickerCard.hidden;if(!countingPickerCard.hidden){countingPickerCard.scrollIntoView({behavior:"smooth",block:"nearest"});if(!selectedGuild().id)countingStatus.textContent="Escolha um servidor no menu lateral antes de selecionar o canal.";}openCountingButton.setAttribute("aria-expanded",String(!countingPickerCard.hidden));});
     if(countingChannelSelect)countingChannelSelect.addEventListener("change",()=>{countingStatus.textContent=countingChannelSelect.value?"Salve para aplicar o canal escolhido.":"Salve para desativar o jogo de contagem.";window.YukinaPendingChanges?.refresh();});
     const countingPendingRegistration=window.YukinaPendingChanges?.register({id:"contagem",isDirty:countingIsDirty,reset:()=>{countingChannelSelect.value=originalCounting.enabled?originalCounting.channelId:"";countingStatus.textContent="Alteração descartada.";},save:async()=>{
       const guild=selectedGuild();if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
