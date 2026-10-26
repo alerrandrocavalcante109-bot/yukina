@@ -119,6 +119,8 @@
     </nav>
     <div class="drawer-category" aria-label="Categoria Cargos &amp; XP">🏅 Cargos &amp; XP</div>
     <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="multiplier"><span class="symbol">⚡</span><span>Multiplicador de XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button></nav>
+    <div class="drawer-category" aria-label="Categoria Suporte &amp; Tickets">🎫 Suporte &amp; Tickets</div>
+    <nav class="menu-links" id="ticketsNavigation" aria-label="Suporte &amp; Tickets"><button class="menu-link" type="button" data-screen="tickets"><span class="symbol">🎫</span><span>Suporte &amp; Tickets</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
@@ -183,6 +185,43 @@
       </div>
       <div class="system-placeholder" style="margin-top:16px"><h2>Cargos temporais configurados</h2><div id="timeRulesList"><p>Carregando…</p></div></div>
     </section>
+    <section class="system-screen" data-screen-panel="tickets" hidden>
+      <p class="eyebrow">ATENDIMENTO DA COMUNIDADE</p><h1>🎫 Suporte &amp; Tickets</h1>
+      <p class="screen-description">Monte o atendimento da Yukina usando os canais, categorias e cargos que já existem no seu servidor. Esta tela apenas configura o sistema: ela não cria nem altera canais, categorias ou cargos.</p>
+      <div class="system-placeholder">
+        <h2>1. Onde ficará o atendimento?</h2>
+        <label for="ticketCategorySelect">Categoria existente para os tickets</label>
+        <select id="ticketCategorySelect" class="prefix-input"><option value="">Carregando categorias…</option></select>
+        <label for="ticketPanelChannelSelect">Canal existente para publicar o painel</label>
+        <select id="ticketPanelChannelSelect" class="prefix-input"><option value="">Carregando canais…</option></select>
+        <label for="ticketLogChannelSelect">Canal existente para registros e transcrições</label>
+        <select id="ticketLogChannelSelect" class="prefix-input"><option value="">Não configurar agora</option></select>
+        <p class="prefix-system-help">Escolha apenas recursos existentes. A categoria escolhida será usada quando o sistema de tickets for ativado; a Yukina não criará canais por conta própria.</p>
+      </div>
+      <div class="system-placeholder" style="margin-top:16px">
+        <h2>2. Equipe de atendimento</h2>
+        <label for="ticketStaffRoleSelect">Cargo existente da equipe</label>
+        <select id="ticketStaffRoleSelect" class="prefix-input"><option value="">Selecione um cargo existente…</option></select>
+        <p class="prefix-system-help">Esse cargo será autorizado a visualizar e responder aos tickets. Nenhum cargo será criado nem modificado.</p>
+      </div>
+      <div class="system-placeholder" style="margin-top:16px">
+        <h2>3. Tipos de atendimento</h2>
+        <p>Marque as opções que deseja mostrar no painel público.</p>
+        <label style="display:flex;gap:10px;align-items:center;margin:14px 0"><input type="checkbox" id="ticketTypeSupport" checked> 🎫 Suporte geral</label>
+        <label style="display:flex;gap:10px;align-items:center;margin:14px 0"><input type="checkbox" id="ticketTypeReport" checked> 🛡️ Denúncia</label>
+        <label style="display:flex;gap:10px;align-items:center;margin:14px 0"><input type="checkbox" id="ticketTypePartner" checked> 🌸 Parcerias</label>
+        <label style="display:flex;gap:10px;align-items:center;margin:14px 0"><input type="checkbox" id="ticketTypeOther" checked> 💬 Outros assuntos</label>
+        <label for="ticketWelcomeMessage">Mensagem de boas-vindas</label>
+        <textarea id="ticketWelcomeMessage" class="prefix-input" rows="4" maxlength="1500" placeholder="Olá! Sou a Yukina. Escolha o tipo de atendimento para abrir uma solicitação privada."></textarea>
+        <p class="prefix-status" id="ticketStatus" role="status" aria-live="polite">Selecione um servidor para carregar os recursos.</p>
+      </div>
+      <div class="welcome-panel" style="margin-top:16px">
+        <span class="welcome-icon">🌙</span><h2>Prévia do painel</h2>
+        <p id="ticketPreviewMessage">Olá! Sou a Yukina. Escolha o tipo de atendimento para abrir uma solicitação privada.</p>
+        <div id="ticketPreviewTypes" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:12px"></div>
+        <p class="prefix-system-help">As alterações ficam pendentes até você clicar em <strong>Salvar</strong> na barra inferior.</p>
+      </div>
+    </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
       <p class="screen-description">Escolha com carinho o prefixo que combina com a organização da sua comunidade. Ele será usado antes dos comandos de texto da Yukina neste servidor.</p>
@@ -208,7 +247,7 @@
     function selectedGuild(){const p=new URLSearchParams(location.search);return {id:p.get("guild")||localStorage.getItem("yukina_selected_guild_id")||"",name:p.get("name")||localStorage.getItem("yukina_selected_guild_name")||""};}
     function updateSelectedGuild(g){drawerServerName.textContent=g.name||"Nenhum servidor selecionado";drawerCurrentServerAvatar.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"https://cdn.discordapp.com/embed/avatars/0.png";if(g.id){localStorage.setItem("yukina_selected_guild_id",g.id);localStorage.setItem("yukina_selected_guild_name",g.name||"");localStorage.setItem("yukina_selected_guild_icon",g.icon||"");const p=new URLSearchParams(location.search);p.set("guild",g.id);if(g.name)p.set("name",g.name);history.replaceState({}, "", location.pathname+"?"+p.toString()+location.hash);}renderGuildChoices();}
     function canManageGuild(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n;}catch(_){return false;}}
-    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
+    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();loadTicketSettings();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
     async function loadGuildChoices(){if(serverListLoading)return;serverListLoading=true;serverPickerStatus.textContent="Carregando servidores…";serverPickerList.replaceChildren();try{let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();if(!accessToken)throw new Error("Entre com o Discord para carregar seus servidores.");const request=()=>fetch(API_BASE+"/api/oauth/guilds",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});let response=await request();if(response.status===401){accessToken=await refreshAccessToken();if(accessToken)response=await request();}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.detail||"Não foi possível carregar os servidores.");availableGuilds=(Array.isArray(payload)?payload:[]).filter(canManageGuild).sort((a,b)=>(a.name||"").localeCompare(b.name||""));serverListLoaded=true;serverPickerStatus.textContent=availableGuilds.length? "Selecione um servidor que você pode gerenciar.":"Nenhum servidor com permissão de gerenciamento foi encontrado.";renderGuildChoices();}catch(e){serverPickerStatus.textContent=e.message||"Erro ao carregar servidores.";}finally{serverListLoading=false;}}
     selectServerButton.addEventListener("click",()=>{const opening=serverPickerCard.hidden;serverPickerCard.hidden=!opening;selectServerButton.setAttribute("aria-expanded",String(opening));if(opening&&!serverListLoaded)loadGuildChoices();});
     const loginButton = $("loginButton");
@@ -287,7 +326,7 @@
     function showScreen(id){
       const target = screenPanels.find(panel => panel.dataset.screenPanel === id) || screenPanels[0];
       screenPanels.forEach(panel => {panel.hidden = panel !== target; panel.classList.toggle("active",panel === target);});
-      document.querySelectorAll("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen]").forEach(button => {
+      document.querySelectorAll("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]").forEach(button => {
         if(button.dataset.screen === target.dataset.screenPanel) button.setAttribute("aria-current","page");
         else button.removeAttribute("aria-current");
       });
@@ -295,7 +334,7 @@
       closeMenu();
     }
     document.addEventListener("click",event=>{
-      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen]");
+      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]");
       if(!button)return;
       event.preventDefault();
       showScreen(button.dataset.screen);
@@ -472,7 +511,50 @@
     }
     multiplierAddButton.addEventListener("click",()=>{const id=multiplierRoleSelect.value,value=Number(multiplierValueInput.value);if(!id){multiplierStatus.textContent="Escolha um cargo existente.";return;}if(!Number.isFinite(value)||value<1||value>100){multiplierStatus.textContent="Digite um multiplicador entre 1× e 100×, por exemplo 1.3.";return;}if(multiplierRules.some(x=>String(x.role||x.roleId||x.role_id)!==id&&Number(x.multiplier)===value)){/* valores iguais em cargos diferentes são permitidos */}multiplierRules=multiplierRules.filter(x=>String(x.role||x.roleId||x.role_id)!==id);multiplierRules.push({role:id,multiplier:value});multiplierRoleSelect.value="";multiplierFormTitle.textContent="Adicionar multiplicador";multiplierAddButton.textContent="Adicionar";delete multiplierAddButton.dataset.editing;renderMultiplierRules();multiplierStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
     window.YukinaPendingChanges?.register({id:"multiplicador-xp",isDirty:()=>JSON.stringify(multiplierRules)!==originalMultiplierConfig,reset:()=>loadMultiplierRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const cleanRules=multiplierRules.map(x=>({role:String(x.role||x.roleId||x.role_id),multiplier:Number(x.multiplier)}));const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{multiplierRules:cleanRules}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar os multiplicadores.");multiplierRules=cleanRules;originalMultiplierConfig=JSON.stringify(multiplierRules);multiplierStatus.textContent="Multiplicadores de XP salvos."; }});
-    const prefixCurrentButton = $("prefixCurrentButton");
+    const ticketCategorySelect=$("ticketCategorySelect"),ticketPanelChannelSelect=$("ticketPanelChannelSelect"),ticketLogChannelSelect=$("ticketLogChannelSelect"),ticketStaffRoleSelect=$("ticketStaffRoleSelect"),ticketStatus=$("ticketStatus"),ticketWelcomeMessage=$("ticketWelcomeMessage");
+    const ticketTypeInputs={support:$("ticketTypeSupport"),report:$("ticketTypeReport"),partner:$("ticketTypePartner"),other:$("ticketTypeOther")};
+    let ticketCategories=[],ticketChannels=[],ticketRoles=[],ticketConfig={enabled:false,categoryId:"",panelChannelId:"",logChannelId:"",staffRoleId:"",types:{support:true,report:true,partner:true,other:true},welcomeMessage:"Olá! Sou a Yukina. Escolha o tipo de atendimento para abrir uma solicitação privada."},originalTicketConfig="";
+    function normalizedTicketConfig(){return {enabled:Boolean(ticketConfig.enabled),categoryId:ticketCategorySelect.value,panelChannelId:ticketPanelChannelSelect.value,logChannelId:ticketLogChannelSelect.value,staffRoleId:ticketStaffRoleSelect.value,types:Object.fromEntries(Object.entries(ticketTypeInputs).map(([k,v])=>[k,v.checked])),welcomeMessage:ticketWelcomeMessage.value.trim()};}
+    function renderTicketPreview(){const config=normalizedTicketConfig();ticketPreviewMessage.textContent=config.welcomeMessage||"Olá! Sou a Yukina. Escolha o tipo de atendimento para abrir uma solicitação privada.";ticketPreviewTypes.replaceChildren();const items=[["support","🎫 Suporte geral"],["report","🛡️ Denúncia"],["partner","🌸 Parcerias"],["other","💬 Outros assuntos"]];for(const [key,label] of items){if(!config.types[key])continue;const chip=document.createElement("span");chip.textContent=label;chip.style.cssText="padding:8px 11px;border:1px solid #ffffff35;border-radius:999px;background:#ffffff10;font-size:.88rem";ticketPreviewTypes.appendChild(chip);}if(!ticketPreviewTypes.childElementCount){const empty=document.createElement("span");empty.textContent="Selecione pelo menos um tipo de atendimento.";ticketPreviewTypes.appendChild(empty);}}
+    function fillTicketSelect(select,items,placeholder,selected,kind){select.replaceChildren();const empty=document.createElement("option");empty.value="";empty.textContent=placeholder;select.appendChild(empty);for(const item of items){const option=document.createElement("option");option.value=item.id;option.textContent=(kind==="channel"?"# ":kind==="category"?"▰ ":"@")+item.name;select.appendChild(option);}select.value=items.some(x=>String(x.id)===String(selected))?String(selected):"";}
+    async function loadTicketSettings(){
+      const guild=selectedGuild();ticketStatus.textContent="Carregando configurações de tickets…";
+      if(!guild.id){ticketStatus.textContent="Selecione um servidor no menu lateral.";return;}
+      try{
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Entre com o Discord para carregar as configurações.");
+        const h={Authorization:"Bearer "+t,Accept:"application/json"};
+        const [a,b]=await Promise.all([fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers:h,cache:"no-store"}),fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:h,cache:"no-store"})]);
+        const s=await a.json().catch(()=>({})),d=await b.json().catch(()=>({}));if(!a.ok)throw new Error(s.detail||"Não foi possível carregar as configurações.");if(!b.ok)throw new Error(d.detail||"Não foi possível carregar os recursos.");
+        const saved=s.settings?.ticketSystem||{};ticketConfig={enabled:Boolean(saved.enabled),categoryId:String(saved.categoryId||""),panelChannelId:String(saved.panelChannelId||""),logChannelId:String(saved.logChannelId||""),staffRoleId:String(saved.staffRoleId||""),types:{support:saved.types?.support!==false,report:saved.types?.report!==false,partner:saved.types?.partner!==false,other:saved.types?.other!==false},welcomeMessage:String(saved.welcomeMessage||"Olá! Sou a Yukina. Escolha o tipo de atendimento para abrir uma solicitação privada.")};
+        ticketCategories=(Array.isArray(d.categories)?d.categories:[]).map(x=>({id:String(x.id),name:String(x.name||"Categoria")}));
+        ticketChannels=(Array.isArray(d.channels)?d.channels:[]).filter(x=>Number(x.type)===0).map(x=>({id:String(x.id),name:String(x.name||"canal")}));
+        ticketRoles=(Array.isArray(d.roles)?d.roles:[]).map(x=>({id:String(x.id),name:String(x.name||"cargo")}));
+        fillTicketSelect(ticketCategorySelect,ticketCategories,"Selecione uma categoria existente…",ticketConfig.categoryId,"category");
+        fillTicketSelect(ticketPanelChannelSelect,ticketChannels,"Selecione o canal do painel…",ticketConfig.panelChannelId,"channel");
+        fillTicketSelect(ticketLogChannelSelect,ticketChannels,"Não configurar agora",ticketConfig.logChannelId,"channel");
+        fillTicketSelect(ticketStaffRoleSelect,ticketRoles,"Selecione um cargo existente…",ticketConfig.staffRoleId,"role");
+        for(const [key,input] of Object.entries(ticketTypeInputs))input.checked=ticketConfig.types[key];
+        ticketWelcomeMessage.value=ticketConfig.welcomeMessage;originalTicketConfig=JSON.stringify(normalizedTicketConfig());ticketStatus.textContent="Recursos carregados. Escolha os existentes e salve na barra inferior.";renderTicketPreview();window.YukinaPendingChanges?.refresh();
+      }catch(e){ticketStatus.textContent=e.message||"Não foi possível carregar as configurações de tickets.";}
+    }
+    const ticketPreviewMessage=$("ticketPreviewMessage"),ticketPreviewTypes=$("ticketPreviewTypes");
+    for(const input of [...Object.values(ticketTypeInputs),ticketWelcomeMessage])input.addEventListener("input",()=>{renderTicketPreview();window.YukinaPendingChanges?.refresh();});
+    for(const select of [ticketCategorySelect,ticketPanelChannelSelect,ticketLogChannelSelect,ticketStaffRoleSelect])select.addEventListener("change",()=>{renderTicketPreview();window.YukinaPendingChanges?.refresh();});
+    window.YukinaPendingChanges?.register({id:"suporte-tickets",isDirty:()=>JSON.stringify(normalizedTicketConfig())!==originalTicketConfig,reset:()=>loadTicketSettings(),save:async()=>{
+      const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");
+      const config=normalizedTicketConfig();
+      if(Object.values(config.types).every(v=>!v))throw new Error("Ative pelo menos um tipo de atendimento.");
+      if(config.welcomeMessage.length>1500)throw new Error("A mensagem deve ter no máximo 1500 caracteres.");
+      if(config.categoryId&&!ticketCategories.some(x=>x.id===config.categoryId))throw new Error("Selecione uma categoria existente.");
+      if(config.panelChannelId&&!ticketChannels.some(x=>x.id===config.panelChannelId))throw new Error("Selecione um canal de texto existente.");
+      if(config.logChannelId&&!ticketChannels.some(x=>x.id===config.logChannelId))throw new Error("Selecione um canal de registros existente.");
+      if(config.staffRoleId&&!ticketRoles.some(x=>x.id===config.staffRoleId))throw new Error("Selecione um cargo existente.");
+      if(!config.categoryId||!config.panelChannelId||!config.staffRoleId)config.enabled=false;
+      let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");
+      const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{ticketSystem:config}}),cache:"no-store"});
+      const data=await res.json().catch(()=>({}));if(!res.ok)throw new Error(data.detail||"Não foi possível salvar os tickets.");
+      ticketConfig=config;originalTicketConfig=JSON.stringify(config);ticketStatus.textContent=config.enabled?"Configuração salva. O sistema está marcado como ativo.":"Configuração salva. Para ativar, escolha uma categoria, um canal do painel e um cargo de atendimento.";});
+        const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
     const prefixInput = $("prefixInput");
