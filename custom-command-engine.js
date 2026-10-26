@@ -30,6 +30,10 @@ function renderEmbed(item) {
 module.exports = function startCustomCommandEngine(client, getSettingsCollection) {
   if (client.__yukinaCustomCommandEngine) return;
   client.__yukinaCustomCommandEngine = true;
+  client.on("yukinaPrefixUpdated", (guildId, prefix) => {
+    prefixCache.set(String(guildId), { prefix: String(prefix || "Y"), expiresAt: Date.now() + 30000 });
+    console.log(`[Comandos personalizados] Prefixo atualizado para ${prefix} no servidor ${guildId}`);
+  });
 
   client.on("messageCreate", async (message) => {
     if (message.author?.bot || !message.guild || !message.content) return;
