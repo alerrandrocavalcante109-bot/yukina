@@ -645,8 +645,20 @@
       const status=$("ticketStep2Status");
       const imageUrls=Object.values(ticketImageFields).map(input=>input.value.trim()).filter(Boolean);
       if(imageUrls.some(url=>{try{return !["http:","https:"].includes(new URL(url).protocol)}catch(_){return true}})){status.textContent="Use URLs válidas começando com https:// ou http://.";return;}
-      status.textContent="A mensagem e a prévia estão prontas. A publicação real no Discord ainda precisa ser conectada ao backend.";
       const config={guild:selectedGuild(),embedColor:ticketEmbedColor.value,publishChannelId:ticketPublishChannel.value,createChannel:ticketCreateChannel.checked,useThreads:ticketUseThreads.checked,channelAtTop:ticketChannelAtTop.checked,categoryId:ticketUseCategory.checked?ticketCategorySelect.value:"",title:ticketPanelTitle.value.trim(),message:ticketPanelMessage.value.trim(),images:Object.fromEntries(Object.entries(ticketImageFields).map(([key,input])=>[key,input.value.trim()]))};
+      if(!config.guild.id){status.textContent="Selecione um servidor antes de publicar.";return;}
+      if(!config.publishChannelId){status.textContent="Escolha o canal onde o painel será publicado.";return;}
+      let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token")){try{accessToken=await refreshAccessToken();}catch(_){}}
+      if(!accessToken){status.textContent="Sua sessão do Discord expirou. Entre novamente para publicar.";return;}
+      const publishButton=$("ticketPublishButton");publishButton.disabled=true;publishButton.textContent="Publicando…";status.textContent="A Yukina está publicando o painel no Discord…";
+      try{
+        const response=await fetch(API_BASE+"/api/tickets/publish",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:config.guild.id,channelId:config.publishChannelId,title:config.title,message:config.message,embedColor:config.embedColor,images:config.images}),cache:"no-store"});
+        const result=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(result.detail||"Não foi possível publicar o painel.");
+        window.yukinaTicketDraft={...config,published:true,messageId:result.messageId};
+        status.textContent="Painel publicado com sucesso em #"+(result.channelName||"canal escolhido")+"!";
+      }catch(error){status.textContent=error.message||"Falha ao publicar o painel.";return;}
+      finally{publishButton.disabled=false;publishButton.textContent="Criar & publicar";}
       window.yukinaTicketDraft=config;
       ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=true;ticketStartCard.hidden=false;
       let embed=$("ticketSavedEmbedPreview");if(!embed){embed=document.createElement("div");embed.id="ticketSavedEmbedPreview";embed.className="ticket-embed-preview";ticketStartCard.appendChild(embed);}
