@@ -1062,8 +1062,11 @@ async function publishTicketPanel(req, res) {
   try {
     console.info("[Tickets] Enviando embed para o canal:", channel.id);
     const sent = await channel.send({ embeds: [embed] });
-    console.info("[Tickets] Painel publicado com sucesso:", { guildId, channelId: channel.id, messageId: sent.id });
-    return sendJson(res, 200, { ok: true, messageId: sent.id, channelId: channel.id, channelName: channel.name, guildId });
+    const settingsCollection = await getSettingsCollection();
+    const saved = { id: sent.id, messageId: sent.id, guildId, guildName: guild.name, channelId: channel.id, channelName: channel.name, title, message, embedColor: hex, images: { top: imageTop, middle: imageMiddle, right: imageRight, footer: imageFooter }, createChannel: Boolean(body.createChannel), useThreads: Boolean(body.useThreads), channelAtTop: Boolean(body.channelAtTop), categoryId: String(body.categoryId || ""), publishedAt: new Date().toISOString() };
+    await settingsCollection.updateOne({ guildId }, { $set: { guildName: guild.name, updatedAt: new Date() }, $push: { "settings.ticketPanels": saved } }, { upsert: true });
+    console.info("[Tickets] Painel publicado e salvo:", { guildId, channelId: channel.id, messageId: sent.id });
+    return sendJson(res, 200, { ok: true, ...saved });
   } catch (error) {
     console.error("[Painel atendimento] Falha ao publicar:", error.message || error);
     return sendJson(res, 500, { detail: "Não consegui publicar o painel. Confira as permissões da Yukina e tente novamente." });
@@ -1080,6 +1083,58 @@ async function panelApi(req, res, url) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
 
+  if (url.pathname === "/api/tickets/manage") {
+    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para gerenciar painéis." });
+    try {
+      const auth = String(req.headers.authorization || "");
+      const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord para gerenciar painéis." });
+      const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
+      const user = userResponse.ok ? await userResponse.json().catch(() => null) : null;
+      if (!user?.id) return sendJson(res, 401, { detail: "Sua sessão do Discord expirou. Entre novamente." });
+      const body = await readBody(req);
+      const guildId = String(body.guildId || ""), messageId = String(body.messageId || ""), action = String(body.action || "");
+      if (!/^\d{17,20}$/.test(guildId) || !/^\d{17,20}$/.test(messageId) || !["edit","delete"].includes(action)) return sendJson(res, 400, { detail: "Dados do painel inválidos." });
+      const guild = client.guilds.cache.get(guildId);
+      if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
+      const requester = await guild.members.fetch(user.id).catch(() => null);
+      if (!requester || (!requester.permissions.has(PermissionsBitField.Flags.ManageGuild) && !requester.permissions.has(PermissionsBitField.Flags.Administrator))) return sendJson(res, 403, { detail: "Você precisa de Gerenciar servidor ou Administrador." });
+      const settingsCollection = await getSettingsCollection();
+      const doc = await settingsCollection.findOne({ guildId });
+      const panels = Array.isArray(doc?.settings?.ticketPanels) ? doc.settings.ticketPanels : [];
+      const panel = panels.find(item => String(item.messageId || item.id) === messageId);
+      if (!panel) return sendJson(res, 404, { detail: "Painel salvo não encontrado." });
+      if (action === "delete") {
+        const channel = await guild.channels.fetch(String(panel.channelId)).catch(() => null);
+        if (channel?.messages?.fetch) {
+          const message = await channel.messages.fetch(messageId).catch(() => null);
+          if (message) await message.delete();
+        }
+        await settingsCollection.updateOne({ guildId }, { $pull: { "settings.ticketPanels": { messageId } }, $set: { updatedAt: new Date() } });
+        return sendJson(res, 200, { ok: true, action, messageId });
+      }
+      const channel = await guild.channels.fetch(String(panel.channelId)).catch(() => null);
+      const message = channel?.messages?.fetch ? await channel.messages.fetch(messageId).catch(() => null) : null;
+      if (!message) return sendJson(res, 404, { detail: "A mensagem publicada não foi encontrada no Discord." });
+      const title = String(body.title || panel.title || "🎫 Central de Atendimento").slice(0,256);
+      const description = String(body.message || panel.message || "").slice(0,4000);
+      const hex = String(body.embedColor || panel.embedColor || "#c4b5fd");
+      const color = /^#[0-9a-fA-F]{6}$/.test(hex) ? parseInt(hex.slice(1),16) : 0xc4b5fd;
+      const images = body.images && typeof body.images === "object" ? body.images : (panel.images || {});
+      const validUrl = value => { try { const u = new URL(String(value || "")); return ["http:","https:"].includes(u.protocol) ? u.href : ""; } catch (_) { return ""; } };
+      const top=validUrl(images.top), middle=validUrl(images.middle), footer=validUrl(images.footer), right=validUrl(images.right);
+      const embed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(description).setFooter({text:"Yukina • Atendimento"});
+      if (top || middle || footer) embed.setImage(top || middle || footer);
+      if (right) embed.setThumbnail(right);
+      await message.edit({ embeds: [embed] });
+      const updated = { ...panel, title, message: description, embedColor: hex, images: {top,middle,right,footer}, updatedAt: new Date().toISOString() };
+      await settingsCollection.updateOne({ guildId, "settings.ticketPanels.messageId": messageId }, { $set: { "settings.ticketPanels.$": updated, updatedAt: new Date() } });
+      return sendJson(res, 200, { ok: true, panel: updated });
+    } catch (error) {
+      console.error("[Tickets] Falha ao gerenciar painel:", error.stack || error.message || error);
+      return sendJson(res, 500, { detail: "Não foi possível gerenciar o painel: " + String(error.message || "erro interno").slice(0,150) });
+    }
+  }
   if (url.pathname === "/api/tickets/publish") {
     if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para publicar o painel." });
     console.info("[Tickets] Rota /api/tickets/publish acionada.");
