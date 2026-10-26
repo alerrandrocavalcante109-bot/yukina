@@ -1549,6 +1549,31 @@ async function panelApi(req, res, url) {
         else if (Array.isArray(value)) clean[key] = value.slice(0, 100);
         else if (value && typeof value === "object") clean[key] = value;
       }
+      // Hierarquia temporal: aceitar somente IDs de cargos que já existem no servidor.
+      // Salvar configurações nunca deve criar cargos nem interpretar nomes como IDs.
+      if (Object.prototype.hasOwnProperty.call(clean, "timeRules")) {
+        if (!Array.isArray(clean.timeRules)) {
+          return sendJson(res, 400, { detail: "A hierarquia temporal deve ser uma lista de regras." });
+        }
+        const existingRoleIds = new Set(guild.roles.cache.map(role => role.id));
+        const invalidRule = clean.timeRules.find(rule => {
+          const roleId = String(rule?.roleId || rule?.role_id || rule?.role || "");
+          return !/^\\d{17,20}$/.test(roleId) || !existingRoleIds.has(roleId) ||
+            !Number.isInteger(Number(rule?.days)) || Number(rule.days) < 1 || Number(rule.days) > 3650;
+        });
+        if (invalidRule) {
+          return sendJson(res, 400, { detail: "Use apenas cargos já existentes no servidor e prazos inteiros entre 1 e 3650 dias. Nenhum cargo foi criado." });
+        }
+      }
+      if (Object.prototype.hasOwnProperty.call(clean, "timeManagedRoleIds")) {
+        if (!Array.isArray(clean.timeManagedRoleIds)) {
+          return sendJson(res, 400, { detail: "A lista de cargos gerenciados da hierarquia temporal é inválida." });
+        }
+        const existingRoleIds = new Set(guild.roles.cache.map(role => role.id));
+        if (clean.timeManagedRoleIds.some(id => !existingRoleIds.has(String(id)))) {
+          return sendJson(res, 400, { detail: "A hierarquia temporal aceita somente IDs de cargos existentes. Nenhum cargo foi criado." });
+        }
+      }
       const updatedAt = new Date();
       const patch = { guildId, guildName: guild.name, updatedAt };
       for (const [key, value] of Object.entries(clean)) patch["settings." + key] = value;
