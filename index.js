@@ -1033,12 +1033,12 @@ async function publishTicketPanel(req, res) {
   const guildId = String(body.guildId || "");
   const channelId = String(body.channelId || "");
   if (!/^\d{17,20}$/.test(guildId) || !/^\d{17,20}$/.test(channelId)) return sendJson(res, 400, { detail: "Selecione um servidor e um canal válidos." });
-  const guildsResponse = await fetch("https://discord.com/api/users/@me/guilds?limit=200", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
-  const guilds = guildsResponse.ok ? await guildsResponse.json().catch(() => []) : [];
-  const userGuild = Array.isArray(guilds) ? guilds.find(g => String(g.id) === guildId) : null;
-  let canManage = false;
-  try { const p = BigInt(userGuild?.permissions || "0"); canManage = (p & 0x8n) !== 0n || (p & 0x20n) !== 0n; } catch (_) {}
-  if (!userGuild || !canManage) return sendJson(res, 403, { detail: "Você precisa ter permissão para gerenciar o servidor." });
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
+  const requester = await guild.members.fetch(me.id).catch(() => null);
+  if (!requester || !requester.permissions.has(PermissionsBitField.Flags.ManageGuild) && !requester.permissions.has(PermissionsBitField.Flags.Administrator)) {
+    return sendJson(res, 403, { detail: "Sua conta precisa da permissão Gerenciar servidor ou Administrador nesse servidor." });
+  }
   const guild = client.guilds.cache.get(guildId);
   if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
   const channel = await guild.channels.fetch(channelId).catch(() => null);
