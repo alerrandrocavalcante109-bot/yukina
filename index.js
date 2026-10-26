@@ -1573,6 +1573,7 @@ async function panelApi(req, res, url) {
       const patch = { guildId, guildName: guild.name, updatedAt };
       for (const [key, value] of Object.entries(clean)) patch["settings." + key] = value;
       await collection.updateOne({ guildId }, { $set: patch }, { upsert: true });
+      if (Object.prototype.hasOwnProperty.call(clean, "prefix")) client.emit("yukinaPrefixUpdated", guildId, clean.prefix);
       // Mantém o endpoint antigo do painel compatível e grava a hierarquia temporal no armazenamento universal.
       if (Object.prototype.hasOwnProperty.call(clean, "timeRules") ||
           Object.prototype.hasOwnProperty.call(clean, "timeManagedRoleIds")) {
