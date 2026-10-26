@@ -1056,14 +1056,36 @@ async function publishTicketPanel(req, res) {
   const validUrl = value => { try { const u = new URL(String(value || "")); return ["http:", "https:"].includes(u.protocol) ? u.href : ""; } catch (_) { return ""; } };
   const imageTop = validUrl(images.top), imageMiddle = validUrl(images.middle), imageFooter = validUrl(images.footer), imageRight = validUrl(images.right);
   const embed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(message);
+  const rawButtons = Array.isArray(body.buttons) ? body.buttons.slice(0, 5) : [
+    { label: "Suporte", emoji: "🎫", style: "Primary", type: "ticket" },
+    { label: "Falar com a equipe", emoji: "🌙", style: "Secondary", type: "ticket" }
+  ];
+  const buttonStyleMap = { Primary: ButtonStyle.Primary, Secondary: ButtonStyle.Secondary, Success: ButtonStyle.Success, Danger: ButtonStyle.Danger };
+  const ticketButtons = rawButtons.map((item, index) => ({
+    label: String(item?.label || (index ? "Atendimento" : "Suporte")).slice(0, 80),
+    emoji: String(item?.emoji || "").slice(0, 32),
+    style: ["Primary", "Secondary", "Success", "Danger"].includes(item?.style) ? item.style : "Primary",
+    type: item?.type === "custom" ? "custom" : "ticket",
+    customReply: String(item?.customReply || "").slice(0, 1000)
+  }));
   if (imageTop || imageMiddle || imageFooter) embed.setImage(imageTop || imageMiddle || imageFooter);
   if (imageRight) embed.setThumbnail(imageRight);
   embed.setFooter({ text: "Yukina • Atendimento" });
   try {
     console.info("[Tickets] Enviando embed para o canal:", channel.id);
     const sent = await channel.send({ embeds: [embed] });
+    const buttonRows = [];
+    for (let offset = 0; offset < ticketButtons.length; offset += 5) {
+      buttonRows.push(new ActionRowBuilder().addComponents(ticketButtons.slice(offset, offset + 5).map((item, localIndex) => {
+        const index = offset + localIndex;
+        const button = new ButtonBuilder().setCustomId("ykticket:" + sent.id + ":" + index).setLabel(item.label).setStyle(buttonStyleMap[item.style]);
+        if (item.emoji) { try { button.setEmoji(item.emoji); } catch (_) {} }
+        return button;
+      })));
+    }
+    if (buttonRows.length) await sent.edit({ components: buttonRows });
     const settingsCollection = await getSettingsCollection();
-    const saved = { id: sent.id, messageId: sent.id, guildId, guildName: guild.name, channelId: channel.id, channelName: channel.name, title, message, embedColor: hex, images: { top: imageTop, middle: imageMiddle, right: imageRight, footer: imageFooter }, createChannel: Boolean(body.createChannel), useThreads: Boolean(body.useThreads), channelAtTop: Boolean(body.channelAtTop), categoryId: String(body.categoryId || ""), publishedAt: new Date().toISOString() };
+    const saved = { id: sent.id, messageId: sent.id, guildId, guildName: guild.name, channelId: channel.id, channelName: channel.name, title, message, embedColor: hex, images: { top: imageTop, middle: imageMiddle, right: imageRight, footer: imageFooter }, buttons: ticketButtons, createChannel: Boolean(body.createChannel), useThreads: Boolean(body.useThreads), channelAtTop: Boolean(body.channelAtTop), categoryId: String(body.categoryId || ""), publishedAt: new Date().toISOString() };
     await settingsCollection.updateOne({ guildId }, { $set: { guildName: guild.name, updatedAt: new Date() }, $push: { "settings.ticketPanels": saved } }, { upsert: true });
     console.info("[Tickets] Painel publicado e salvo:", { guildId, channelId: channel.id, messageId: sent.id });
     return sendJson(res, 200, { ok: true, ...saved });
