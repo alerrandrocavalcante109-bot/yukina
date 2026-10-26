@@ -641,7 +641,7 @@
       }
     }
     [ticketPanelTitle,ticketPanelMessage,...Object.values(ticketImageFields)].forEach(input=>input.addEventListener("input",updateTicketEmbedPreview));
-    $("ticketPublishButton").addEventListener("click",()=>{
+    $("ticketPublishButton").addEventListener("click",async ()=>{
       const status=$("ticketStep2Status");
       const imageUrls=Object.values(ticketImageFields).map(input=>input.value.trim()).filter(Boolean);
       if(imageUrls.some(url=>{try{return !["http:","https:"].includes(new URL(url).protocol)}catch(_){return true}})){status.textContent="Use URLs válidas começando com https:// ou http://.";return;}
