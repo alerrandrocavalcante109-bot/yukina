@@ -4,7 +4,6 @@
  */
 const { EmbedBuilder } = require("discord.js");
 
-const PREFIXES = ["Y", "y"];
 const URL_PATTERN = /^https?:\/\//i;
 
 function safeUrl(value) {
@@ -34,7 +33,20 @@ module.exports = function startCustomCommandEngine(client, getSettingsCollection
   client.on("messageCreate", async (message) => {
     if (message.author?.bot || !message.guild || !message.content) return;
 
-    const prefix = PREFIXES.find((value) => message.content.startsWith(value));
+    let configuredPrefix = "Y";
+    try {
+      const collection = await getSettingsCollection();
+      const doc = await collection.findOne(
+        { guildId: message.guild.id },
+        { projection: { "settings.prefix": 1 } }
+      );
+      const candidate = String(doc?.settings?.prefix || "").trim();
+      if (candidate && candidate.length <= 5 && !/\s/.test(candidate)) configuredPrefix = candidate;
+    } catch (error) {
+      console.error("[Comandos personalizados] Não foi possível carregar o prefixo do servidor:", error?.message || error);
+    }
+    const prefixes = configuredPrefix === "Y" ? ["Y", "y"] : [configuredPrefix];
+    const prefix = prefixes.find((value) => message.content.startsWith(value));
     if (!prefix) return;
 
     const body = message.content.slice(prefix.length).trim();
