@@ -83,7 +83,10 @@
     .menu-link[aria-current="page"]{border-color:#c4b5fd;background:#c4b5fd20}
     .prefix-panel{max-width:700px}.prefix-current{max-width:420px}
     @keyframes screen-in{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
-    .ticket-wizard{margin-top:16px}.ticket-wizard[hidden]{display:none}
+    .ticket-embed-preview{margin-top:20px;padding:16px;border:1px solid #ffffff30;border-left:4px solid #c4b5fd;border-radius:12px;background:#171322;color:#fff;overflow:hidden}
+    .ticket-embed-top img,.ticket-embed-body img,.ticket-embed-preview>div>img{display:block;max-width:100%;border-radius:8px;object-fit:cover}
+    .ticket-embed-top img{width:100%;max-height:170px}.ticket-embed-body{display:flex;align-items:flex-start;gap:12px;margin-top:12px}.ticket-embed-copy{min-width:0;flex:1}.ticket-embed-copy strong{font-size:1rem}.ticket-embed-copy p{white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.5;color:#e8e2f3}.ticket-embed-copy small{color:#c7b8df}.ticket-embed-body>img{width:84px;max-height:120px}.ticket-embed-copy #ticketPreviewMiddle{width:100%;max-height:150px;margin:12px 0}.ticket-embed-preview>div>img{width:100%;max-height:90px;margin-top:12px}
+        .ticket-wizard{margin-top:16px}.ticket-wizard[hidden]{display:none}
     .ticket-option{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:14px;padding:15px;border:1px solid #ffffff2b;border-radius:14px;background:#ffffff08}
     .ticket-option strong{display:block;font-size:.94rem}.ticket-option small{display:block;margin-top:5px;color:var(--muted);font-size:.82rem;line-height:1.5}
     .switch{position:relative;display:inline-flex;flex:0 0 52px;width:52px;height:30px;cursor:pointer}
@@ -243,13 +246,31 @@
       </div>
       <div class="system-placeholder ticket-wizard" id="ticketWizardStep2" hidden>
         <p class="eyebrow">ETAPA 2 DE 2</p>
-        <h2>Próxima etapa</h2>
-        <p>A primeira etapa foi preparada. Na próxima parte, vamos definir a aparência da mensagem, os tipos de atendimento e as permissões antes de criar o painel.</p>
-        <div class="ticket-wizard-actions">
-          <button type="button" class="prefix-save" id="ticketWizardPrevious">Voltar</button>
-          <button type="button" class="primary-action" id="ticketWizardContinue">Continuar configuração</button>
+        <h2>Personalize a mensagem do painel</h2>
+        <p>Edite o texto que os membros verão e adicione imagens nas posições que preferir. A prévia será atualizada enquanto você edita.</p>
+        <label for="ticketPanelTitle">Título</label>
+        <input id="ticketPanelTitle" class="prefix-input" maxlength="256" placeholder="🎫 Central de Atendimento">
+        <label for="ticketPanelMessage">Mensagem do painel</label>
+        <textarea id="ticketPanelMessage" class="prefix-input" rows="6" maxlength="4000" placeholder="Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa."></textarea>
+        <label for="ticketImageTop">Imagem no topo (URL)</label>
+        <input id="ticketImageTop" class="prefix-input" type="url" placeholder="https://…">
+        <label for="ticketImageMiddle">Imagem no meio (URL)</label>
+        <input id="ticketImageMiddle" class="prefix-input" type="url" placeholder="https://…">
+        <label for="ticketImageRight">Imagem no canto direito (URL)</label>
+        <input id="ticketImageRight" class="prefix-input" type="url" placeholder="https://…">
+        <label for="ticketImageFooter">Imagem no rodapé (URL)</label>
+        <input id="ticketImageFooter" class="prefix-input" type="url" placeholder="https://…">
+        <p class="prefix-system-help">Use links diretos para imagens públicas (PNG, JPG, GIF ou WebP). A posição no canto direito será exibida como miniatura lateral na prévia.</p>
+        <div class="ticket-embed-preview" id="ticketEmbedPreview">
+          <div class="ticket-embed-top" id="ticketPreviewTopWrap" hidden><img id="ticketPreviewTop" alt="Imagem do topo"></div>
+          <div class="ticket-embed-body"><div class="ticket-embed-copy"><strong id="ticketPreviewTitle">🎫 Central de Atendimento</strong><p id="ticketPreviewMessage">Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.</p><div id="ticketPreviewMiddleWrap" hidden><img id="ticketPreviewMiddle" alt="Imagem no meio"></div><small id="ticketPreviewFooterText">Yukina • Atendimento</small></div><img id="ticketPreviewRight" alt="Imagem lateral" hidden></div>
+          <div id="ticketPreviewFooterWrap" hidden><img id="ticketPreviewFooter" alt="Imagem do rodapé"></div>
         </div>
         <p class="prefix-status" id="ticketStep2Status" role="status" aria-live="polite"></p>
+        <div class="ticket-wizard-actions">
+          <button type="button" class="prefix-save" id="ticketWizardPrevious">Voltar</button>
+          <button type="button" class="primary-action" id="ticketPublishButton">Criar &amp; publicar</button>
+        </div>
       </div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
@@ -573,7 +594,30 @@
       ticketWizardStep1.hidden=true;ticketWizardStep2.hidden=false;
     });
     $("ticketWizardPrevious").addEventListener("click",()=>{ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=false;});
-    $("ticketWizardContinue").addEventListener("click",()=>{$("ticketStep2Status").textContent="A próxima etapa será implementada em seguida. Nenhuma alteração foi feita no servidor.";});
+    const ticketPanelTitle=$("ticketPanelTitle"),ticketPanelMessage=$("ticketPanelMessage");
+    const ticketImageFields={top:$("ticketImageTop"),middle:$("ticketImageMiddle"),right:$("ticketImageRight"),footer:$("ticketImageFooter")};
+    function updateTicketEmbedPreview(){
+      $("ticketPreviewTitle").textContent=ticketPanelTitle.value.trim()||"🎫 Central de Atendimento";
+      $("ticketPreviewMessage").textContent=ticketPanelMessage.value.trim()||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";
+      const pairs=[["top","ticketPreviewTopWrap","ticketPreviewTop"],["middle","ticketPreviewMiddleWrap","ticketPreviewMiddle"],["right",null,"ticketPreviewRight"],["footer","ticketPreviewFooterWrap","ticketPreviewFooter"]];
+      for(const [key,wrapId,imgId] of pairs){const url=ticketImageFields[key].value.trim();const img=$(imgId);if(!url){img.hidden=true;if(wrapId)$(wrapId).hidden=true;img.removeAttribute("src");continue;}img.src=url;img.hidden=false;if(wrapId)$(wrapId).hidden=false;img.onerror=()=>{img.hidden=true;if(wrapId)$(wrapId).hidden=true;};}
+    }
+    [ticketPanelTitle,ticketPanelMessage,...Object.values(ticketImageFields)].forEach(input=>input.addEventListener("input",updateTicketEmbedPreview));
+    $("ticketPublishButton").addEventListener("click",()=>{
+      const status=$("ticketStep2Status");
+      const imageUrls=Object.values(ticketImageFields).map(input=>input.value.trim()).filter(Boolean);
+      if(imageUrls.some(url=>{try{return !["http:","https:"].includes(new URL(url).protocol)}catch(_){return true}})){status.textContent="Use URLs válidas começando com https:// ou http://.";return;}
+      status.textContent="A mensagem e a prévia estão prontas. A publicação real no Discord ainda precisa ser conectada ao backend.";
+      const config={guild:selectedGuild(),publishChannelId:ticketPublishChannel.value,createChannel:ticketCreateChannel.checked,useThreads:ticketUseThreads.checked,channelAtTop:ticketChannelAtTop.checked,categoryId:ticketUseCategory.checked?ticketCategorySelect.value:"",title:ticketPanelTitle.value.trim(),message:ticketPanelMessage.value.trim(),images:Object.fromEntries(Object.entries(ticketImageFields).map(([key,input])=>[key,input.value.trim()]))};
+      window.yukinaTicketDraft=config;
+      ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=true;ticketStartCard.hidden=false;
+      let embed=$("ticketSavedEmbedPreview");if(!embed){embed=document.createElement("div");embed.id="ticketSavedEmbedPreview";embed.className="ticket-embed-preview";ticketStartCard.appendChild(embed);}
+      embed.replaceChildren();const title=document.createElement("strong");title.textContent=config.title||"🎫 Central de Atendimento";embed.appendChild(title);const message=document.createElement("p");message.textContent=config.message||"Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.";embed.appendChild(message);
+      for(const key of ["top","middle","right","footer"]){const url=config.images[key];if(!url)continue;const img=document.createElement("img");img.src=url;img.alt="Imagem "+key;img.style.cssText="display:block;max-width:100%;max-height:120px;object-fit:cover;border-radius:8px;margin-top:10px";img.onerror=()=>img.remove();embed.appendChild(img);}
+      $("createTicketPanelButton").textContent="Editar painel de atendimento";
+      status.textContent="Rascunho preparado. Nenhuma mensagem foi publicada no Discord.";
+    });
+    updateTicketEmbedPreview();
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
