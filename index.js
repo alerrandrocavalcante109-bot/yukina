@@ -1558,7 +1558,7 @@ async function panelApi(req, res, url) {
         const existingRoleIds = new Set(guild.roles.cache.map(role => role.id));
         const invalidRule = clean.timeRules.find(rule => {
           const roleId = String(rule?.roleId || rule?.role_id || rule?.role || "");
-          return !/^\\d{17,20}$/.test(roleId) || !existingRoleIds.has(roleId) ||
+          return !/^\d{17,20}$/.test(roleId) || !existingRoleIds.has(roleId) ||
             !Number.isInteger(Number(rule?.days)) || Number(rule.days) < 1 || Number(rule.days) > 3650;
         });
         if (invalidRule) {
