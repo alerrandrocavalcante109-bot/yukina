@@ -88,7 +88,7 @@
       <img id="profileAvatar" alt="" src="https://cdn.discordapp.com/embed/avatars/0.png">
       <span class="profile-name" id="profileName"></span>
     </a>
-    <button class="login-button" id="loginButton" type="button">Entrar com Discord</button>
+    <button class="login-button" id="loginButton" type="button">Entrar com o Discord</button>
     <button class="menu-toggle" id="menuToggle" type="button" aria-label="Abrir menu" aria-expanded="false" aria-controls="drawer">
       <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
     </button>
@@ -101,7 +101,7 @@
       <div class="drawer-section-label">SERVIDOR</div>
       <strong class="drawer-server-name" id="drawerServerName">Nenhum servidor selecionado</strong>
       <img class="drawer-current-server-avatar" id="drawerCurrentServerAvatar" src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Foto do servidor selecionado" width="98" height="98">
-      <button class="drawer-select-server" id="selectServerButton" type="button">Selecionar servidor <span aria-hidden="true">⌄</span></button>
+      <button class="drawer-select-server" id="selectServerButton" type="button">Escolher outro servidor <span aria-hidden="true">⌄</span></button>
       <div class="server-picker-card" id="serverPickerCard" hidden>
         <div class="server-picker-title">Escolha um servidor</div>
         <div id="serverPickerStatus" class="server-picker-status" role="status" aria-live="polite">Carregando servidores…</div>
@@ -117,17 +117,17 @@
 
   <main class="workspace" id="workspace" aria-live="polite">
     <section class="system-screen active" data-screen-panel="inicio">
-      <p class="eyebrow">CENTRAL DO SERVIDOR</p><h1 id="screenTitle">Configurações do servidor</h1>
-      <p class="screen-description">Abra o menu para acessar a configuração disponível nesta área.</p>
-      <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Configurações gerais</h2><p>Selecione “Troca de prefixo” no menu lateral para editar o prefixo dos comandos.</p><button type="button" class="primary-action" id="openSystems">Ver configuração</button></div>
+      <p class="eyebrow">SEU ESPAÇO DE CONFIGURAÇÃO</p><h1 id="screenTitle">Configurações do seu servidor</h1>
+      <p class="screen-description">Este é o espaço de cuidado da sua comunidade. Pelo menu, você pode acessar as opções de configuração que já estão disponíveis para este servidor.</p>
+      <div class="welcome-panel"><span class="welcome-icon">🌙</span><h2>Configurações gerais</h2><p>Vamos começar pelo prefixo? Escolha “Troca de prefixo” no menu lateral para personalizar como você chama os comandos de texto da Yukina neste servidor.</p><button type="button" class="primary-action" id="openSystems">Personalizar prefixo</button></div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
-      <p class="screen-description">Personalize o caractere ou texto usado antes dos comandos de texto da Yukina neste servidor.</p>
-      <div class="system-placeholder prefix-panel"><h2>Prefixo dos comandos</h2><p class="prefix-system-description">Toque no prefixo atual para editá-lo. Use de 1 a 5 caracteres, sem espaços.</p>
-        <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual"><span class="prefix-current-label">Prefixo atual</span><span class="prefix-current-value" id="prefixCurrentValue">Y</span></button>
-        <div class="prefix-edit" id="prefixEdit" hidden><input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite o prefixo"><button class="prefix-save" id="prefixSaveButton" type="button">Pronto</button></div>
-        <p class="prefix-system-help">Depois de editar, use a barra inferior para confirmar as alterações.</p><p class="prefix-status" id="prefixStatus" role="status" aria-live="polite"></p>
+      <p class="screen-description">Escolha com carinho o prefixo que combina com a organização da sua comunidade. Ele será usado antes dos comandos de texto da Yukina neste servidor.</p>
+      <div class="system-placeholder prefix-panel"><h2>Prefixo dos comandos</h2><p class="prefix-system-description">Toque no prefixo atual para editá-lo. Você pode usar de 1 a 5 caracteres, sem espaços — escolha algo simples de lembrar e fácil de digitar.</p>
+        <button class="prefix-current" id="prefixCurrentButton" type="button" aria-label="Editar prefixo atual"><span class="prefix-current-label">Prefixo em uso</span><span class="prefix-current-value" id="prefixCurrentValue">Y</span></button>
+        <div class="prefix-edit" id="prefixEdit" hidden><input class="prefix-input" id="prefixInput" type="text" maxlength="5" autocomplete="off" aria-label="Novo prefixo" placeholder="Digite seu novo prefixo"><button class="prefix-save" id="prefixSaveButton" type="button">Confirmar</button></div>
+        <p class="prefix-system-help">Quando terminar, selecione “Salvar” na barra inferior para aplicar a alteração. A Yukina cuidará do restante assim que a configuração for salva.</p><p class="prefix-status" id="prefixStatus" role="status" aria-live="polite"></p>
       </div>
     </section>
   </main>
