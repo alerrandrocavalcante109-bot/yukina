@@ -282,20 +282,15 @@ async function buildServer(guild, plan) {
     results.push(`Categoria criada: ${name}`);
   }
 
+  // O construtor não cria cargos automaticamente; os cargos devem existir no servidor.
   for (const item of plan.roles) {
     const name = String(item?.name || "").trim().slice(0, 100);
-    if (!name || guild.roles.cache.some((role) => role.name.toLocaleLowerCase() === name.toLocaleLowerCase())) continue;
-    let color = String(item?.color || "#5865F2");
-    if (!/^#[0-9a-f]{6}$/i.test(color)) color = "#5865F2";
-    await guild.roles.create({
-      name,
-      color,
-      hoist: Boolean(item?.hoist),
-      mentionable: Boolean(item?.mentionable),
-      permissions: [],
-      reason: "Cargo sugerido pela Yukina com IA",
-    });
-    results.push(`Cargo criado: ${name}`);
+    if (!name) continue;
+    const existing = guild.roles.cache.find((role) =>
+      role.name.toLocaleLowerCase() === name.toLocaleLowerCase()
+    );
+    if (existing) results.push(`Cargo existente reutilizado: ${existing.name}`);
+    else results.push(`Cargo ignorado (não existe no servidor): ${name}`);
   }
 
   const typeMap = {
