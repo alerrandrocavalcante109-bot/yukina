@@ -131,6 +131,7 @@
       </div>
     </section>
   </main>
+  <script src="./assets/pending-changes.js"></script>
   <script>
   (() => {
     const API_BASE = (window.YUKINA_API_URL || "https://yukina-jspa.onrender.com").replace(/\/$/, "");
@@ -145,7 +146,7 @@
     function selectedGuild(){const p=new URLSearchParams(location.search);return {id:p.get("guild")||localStorage.getItem("yukina_selected_guild_id")||"",name:p.get("name")||localStorage.getItem("yukina_selected_guild_name")||""};}
     function updateSelectedGuild(g){drawerServerName.textContent=g.name||"Nenhum servidor selecionado";drawerCurrentServerAvatar.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"https://cdn.discordapp.com/embed/avatars/0.png";if(g.id){localStorage.setItem("yukina_selected_guild_id",g.id);localStorage.setItem("yukina_selected_guild_name",g.name||"");localStorage.setItem("yukina_selected_guild_icon",g.icon||"");const p=new URLSearchParams(location.search);p.set("guild",g.id);if(g.name)p.set("name",g.name);history.replaceState({}, "", location.pathname+"?"+p.toString()+location.hash);}renderGuildChoices();}
     function canManageGuild(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n;}catch(_){return false;}}
-    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
+    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
     async function loadGuildChoices(){if(serverListLoading)return;serverListLoading=true;serverPickerStatus.textContent="Carregando servidores…";serverPickerList.replaceChildren();try{let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();if(!accessToken)throw new Error("Entre com o Discord para carregar seus servidores.");const request=()=>fetch(API_BASE+"/api/oauth/guilds",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});let response=await request();if(response.status===401){accessToken=await refreshAccessToken();if(accessToken)response=await request();}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.detail||"Não foi possível carregar os servidores.");availableGuilds=(Array.isArray(payload)?payload:[]).filter(canManageGuild).sort((a,b)=>(a.name||"").localeCompare(b.name||""));serverListLoaded=true;serverPickerStatus.textContent=availableGuilds.length? "Selecione um servidor que você pode gerenciar.":"Nenhum servidor com permissão de gerenciamento foi encontrado.";renderGuildChoices();}catch(e){serverPickerStatus.textContent=e.message||"Erro ao carregar servidores.";}finally{serverListLoading=false;}}
     selectServerButton.addEventListener("click",()=>{const opening=serverPickerCard.hidden;serverPickerCard.hidden=!opening;selectServerButton.setAttribute("aria-expanded",String(opening));if(opening&&!serverListLoaded)loadGuildChoices();});
     const loginButton = $("loginButton");
@@ -272,6 +273,5 @@
     loadUser();
   })();
   </script>
-  <script src="./assets/pending-changes.js"></script>
 </body>
 </html>
