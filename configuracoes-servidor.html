@@ -118,7 +118,7 @@
       <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
     </nav>
     <div class="drawer-category" aria-label="Categoria Hierarquia">🏅 Hierarquia</div>
-    <nav class="menu-links" id="hierarchyNavigation" aria-label="Hierarquia"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button></nav>
+    <nav class="menu-links" id="hierarchyNavigation" aria-label="Hierarquia"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
@@ -160,6 +160,17 @@
         <button type="button" class="primary-action" id="xpAddButton">Adicionar</button><p class="prefix-status" id="xpStatus" role="status" aria-live="polite"></p>
       </div>
       <div class="system-placeholder" style="margin-top:16px"><h2>Cargos &amp; XP configurados</h2><div id="xpRulesList"><p>Carregando…</p></div></div>
+    </section>
+    <section class="system-screen" data-screen-panel="temporal" hidden>
+      <p class="eyebrow">HIERARQUIA DA COMUNIDADE</p><h1>Hierarquia temporal</h1>
+      <p class="screen-description">Associe cargos existentes ao tempo de permanência no servidor. A Yukina atualizará o cargo conforme os dias desde a entrada do membro.</p>
+      <div class="system-placeholder">
+        <h2 id="timeFormTitle">Adicionar cargo temporal</h2>
+        <label for="timeRoleSelect">Cargo existente</label><select id="timeRoleSelect" class="prefix-input"><option value="">Carregando cargos…</option></select>
+        <label for="timeDaysInput">Tempo mínimo de permanência (dias)</label><input id="timeDaysInput" class="prefix-input" type="number" min="1" max="3650" step="1" placeholder="Ex.: 30">
+        <button type="button" class="primary-action" id="timeAddButton">Adicionar</button><p class="prefix-status" id="timeStatus" role="status" aria-live="polite"></p>
+      </div>
+      <div class="system-placeholder" style="margin-top:16px"><h2>Cargos temporais configurados</h2><div id="timeRulesList"><p>Carregando…</p></div></div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
@@ -386,6 +397,38 @@
     }
     xpAddButton.addEventListener("click",()=>{const id=xpRoleSelect.value,level=Number(xpLevelInput.value);if(!id){xpStatus.textContent="Escolha um cargo.";return;}if(!Number.isInteger(level)||level<1||level>100){xpStatus.textContent="O nível deve estar entre 1 e 100.";return;}if(xpRules.some(x=>Number(x.level)===level&&String(x.roleId||x.role_id)!==id)){xpStatus.textContent="Esse nível já está associado a outro cargo.";return;}xpRules=xpRules.filter(x=>String(x.roleId||x.role_id)!==id);xpRules.push({roleId:id,level});xpManagedRoleIds=[...new Set([...xpManagedRoleIds,id])];xpRoleSelect.value="";xpLevelInput.value="";xpFormTitle.textContent="Adicionar cargo por XP";xpAddButton.textContent="Adicionar";delete xpAddButton.dataset.editing;renderXpRules();xpStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
     window.YukinaPendingChanges?.register({id:"xp-cargos",isDirty:()=>JSON.stringify({xpRules,xpManagedRoleIds})!==originalXpConfig,reset:()=>loadXpRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{xpRules:xpRules.map(x=>({roleId:String(x.roleId),level:Number(x.level)})),xpManagedRoleIds}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar os cargos por XP.");originalXpConfig=JSON.stringify({xpRules,xpManagedRoleIds});xpStatus.textContent="Cargos &amp; XP salvos.";}});
+    const timeRoleSelect=$("timeRoleSelect"),timeDaysInput=$("timeDaysInput"),timeAddButton=$("timeAddButton"),timeStatus=$("timeStatus"),timeRulesList=$("timeRulesList"),timeFormTitle=$("timeFormTitle");
+    let timeRoles=[],timeRules=[],timeManagedRoleIds=[],originalTimeConfig="";
+    function renderTimeRules(){
+      timeRulesList.replaceChildren();
+      if(!timeRules.length){const p=document.createElement("p");p.textContent="Nenhum cargo temporal configurado.";timeRulesList.appendChild(p);return;}
+      timeRules.slice().sort((a,b)=>Number(a.days)-Number(b.days)).forEach(rule=>{
+        const id=String(rule.roleId||rule.role_id||rule.role||"");const role=timeRoles.find(r=>String(r.id)===id);
+        const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid #ffffff30";
+        const edit=document.createElement("button");edit.type="button";edit.style.cssText="flex:1;text-align:left;background:transparent;border:0;color:inherit;padding:8px";
+        const dot=document.createElement("span");dot.textContent="⏳ ";dot.style.color="#c4b5fd";
+        const name=document.createElement("span");name.textContent=(role?"@"+role.name:"Cargo não encontrado")+" — "+rule.days+" dia(s)";edit.append(dot,name);
+        edit.addEventListener("click",()=>{timeRoleSelect.value=id;timeDaysInput.value=rule.days;timeFormTitle.textContent="Editar cargo temporal";timeAddButton.textContent="Salvar edição";timeAddButton.dataset.editing=id;});
+        const del=document.createElement("button");del.type="button";del.textContent="🗑";del.title="Excluir regra";del.setAttribute("aria-label","Excluir regra temporal");del.style.cssText="background:transparent;border:0;padding:8px";
+        del.addEventListener("click",()=>{timeRules=timeRules.filter(x=>String(x.roleId||x.role_id||x.role)!==id);timeManagedRoleIds=timeManagedRoleIds.filter(x=>String(x)!==id);renderTimeRules();window.YukinaPendingChanges?.refresh();});
+        row.append(edit,del);timeRulesList.appendChild(row);
+      });
+    }
+    async function loadTimeRoles(){
+      const guild=selectedGuild();if(!guild.id){timeStatus.textContent="Selecione um servidor no menu lateral.";return;}
+      try{
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Entre com o Discord para carregar os cargos.");
+        const h={Authorization:"Bearer "+t,Accept:"application/json"};
+        const [a,b]=await Promise.all([fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers:h,cache:"no-store"}),fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:h,cache:"no-store"})]);
+        const s=await a.json().catch(()=>({})),d=await b.json().catch(()=>({}));if(!a.ok)throw new Error(s.detail||"Erro ao carregar configurações.");if(!b.ok)throw new Error(d.detail||"Erro ao carregar cargos.");
+        timeRoles=Array.isArray(d.roles)?d.roles:[];timeRules=Array.isArray(s.settings?.timeRules)?s.settings.timeRules.map(x=>({...x,roleId:String(x.roleId||x.role_id||x.role||"")})):[];timeManagedRoleIds=Array.isArray(s.settings?.timeManagedRoleIds)?s.settings.timeManagedRoleIds.map(String):timeRules.map(x=>x.roleId);
+        timeRoleSelect.replaceChildren();const empty=document.createElement("option");empty.value="";empty.textContent="Escolha um cargo";timeRoleSelect.appendChild(empty);
+        timeRoles.filter(x=>!x.managed).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).forEach(role=>{const o=document.createElement("option");o.value=role.id;o.textContent=role.name;timeRoleSelect.appendChild(o);});
+        originalTimeConfig=JSON.stringify({timeRules,timeManagedRoleIds});renderTimeRules();timeStatus.textContent="Escolha um cargo e o tempo mínimo em dias.";
+      }catch(e){timeStatus.textContent=e.message||"Não foi possível carregar os cargos.";}
+    }
+    timeAddButton.addEventListener("click",()=>{const id=timeRoleSelect.value,days=Number(timeDaysInput.value);if(!id){timeStatus.textContent="Escolha um cargo existente.";return;}if(!Number.isInteger(days)||days<1||days>3650){timeStatus.textContent="O tempo deve ser um número inteiro entre 1 e 3650 dias.";return;}if(timeRules.some(x=>Number(x.days)===days&&String(x.roleId||x.role_id||x.role)!==id)){timeStatus.textContent="Esse prazo já está associado a outro cargo.";return;}timeRules=timeRules.filter(x=>String(x.roleId||x.role_id||x.role)!==id);timeRules.push({roleId:id,days});timeManagedRoleIds=[...new Set([...timeManagedRoleIds,id])];timeRoleSelect.value="";timeDaysInput.value="";timeFormTitle.textContent="Adicionar cargo temporal";timeAddButton.textContent="Adicionar";delete timeAddButton.dataset.editing;renderTimeRules();timeStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    window.YukinaPendingChanges?.register({id:"hierarquia-temporal",isDirty:()=>JSON.stringify({timeRules,timeManagedRoleIds})!==originalTimeConfig,reset:()=>loadTimeRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{timeRules:timeRules.map(x=>({roleId:String(x.roleId),days:Number(x.days)})),timeManagedRoleIds}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar a hierarquia temporal.");originalTimeConfig=JSON.stringify({timeRules,timeManagedRoleIds});timeStatus.textContent="Hierarquia temporal salva."; }});
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
