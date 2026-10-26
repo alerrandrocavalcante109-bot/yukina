@@ -1560,6 +1560,9 @@ async function panelApi(req, res, url) {
       const clean = {};
       for (const [key, value] of Object.entries(settings)) {
         if (!/^[a-zA-Z0-9_-]{1,80}$/.test(key)) continue;
+        if (key === "prefix" && (typeof value !== "string" || value.length < 1 || value.length > 5 || /\s/.test(value))) {
+          return sendJson(res, 400, { detail: "O prefixo deve ter de 1 a 5 caracteres e não pode conter espaços." });
+        }
         if (typeof value === "string") clean[key] = value.slice(0, 2000);
         else if (typeof value === "number" && Number.isFinite(value)) clean[key] = value;
         else if (typeof value === "boolean" || value === null) clean[key] = value;
