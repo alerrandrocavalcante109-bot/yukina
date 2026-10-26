@@ -15,11 +15,19 @@ const LEVEL_THRESHOLDS = [
 ];
 function getCurrentLevel(xp) {
   const value = Math.max(0, Number(xp) || 0);
-  let level = 1;
-  for (const [thresholdLevel, thresholdXp] of LEVEL_THRESHOLDS) {
-    if (value >= thresholdXp) level = thresholdLevel;
+  // Interpola entre os marcos de XP para que qualquer nível de 1 a 100
+  // configurado no painel possa realmente conceder o cargo selecionado.
+  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
+    const [nextLevel, nextXp] = LEVEL_THRESHOLDS[i];
+    const [previousLevel, previousXp] = LEVEL_THRESHOLDS[i - 1];
+    if (value < nextXp) {
+      const xpPerLevel = (nextXp - previousXp) / (nextLevel - previousLevel);
+      return Math.min(nextLevel - 1, previousLevel + Math.floor((value - previousXp) / xpPerLevel));
+    }
   }
-  return level;
+  const [lastLevel, lastXp] = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
+  if (value >= lastXp) return Math.min(100, lastLevel + Math.floor((value - lastXp) / 1000));
+  return 1;
 }
 
 const knownConfiguredRoleIds = new Map();
