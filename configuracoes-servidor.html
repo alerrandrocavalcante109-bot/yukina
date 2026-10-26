@@ -421,6 +421,7 @@
       });
       const title=target.querySelector("h1");if(title)document.title=title.textContent+" • Yukina";
       closeMenu();
+      if(screen==="tickets") loadPublishedTicketPanels();
     }
     document.addEventListener("click",event=>{
       const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]");
