@@ -273,7 +273,7 @@
       closeMenu();
     }
     document.addEventListener("click",event=>{
-      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen]");
+      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen]");
       if(!button)return;
       event.preventDefault();
       showScreen(button.dataset.screen);
@@ -385,7 +385,7 @@
       }catch(e){xpStatus.textContent=e.message||"Não foi possível carregar os cargos.";}
     }
     xpAddButton.addEventListener("click",()=>{const id=xpRoleSelect.value,level=Number(xpLevelInput.value);if(!id){xpStatus.textContent="Escolha um cargo.";return;}if(!Number.isInteger(level)||level<1||level>100){xpStatus.textContent="O nível deve estar entre 1 e 100.";return;}if(xpRules.some(x=>Number(x.level)===level&&String(x.roleId||x.role_id)!==id)){xpStatus.textContent="Esse nível já está associado a outro cargo.";return;}xpRules=xpRules.filter(x=>String(x.roleId||x.role_id)!==id);xpRules.push({roleId:id,level});xpManagedRoleIds=[...new Set([...xpManagedRoleIds,id])];xpRoleSelect.value="";xpLevelInput.value="";xpFormTitle.textContent="Adicionar cargo por XP";xpAddButton.textContent="Adicionar";delete xpAddButton.dataset.editing;renderXpRules();xpStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
-    window.YukinaPendingChanges?.register({id:"xp-cargos",isDirty:()=>true,reset:()=>loadXpRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{xpRules:xpRules.map(x=>({roleId:String(x.roleId),level:Number(x.level)})),xpManagedRoleIds}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar os cargos por XP.");xpStatus.textContent="Cargos por XP salvos.";});
+    window.YukinaPendingChanges?.register({id:"xp-cargos",isDirty:()=>true,reset:()=>loadXpRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{xpRules:xpRules.map(x=>({roleId:String(x.roleId),level:Number(x.level)})),xpManagedRoleIds}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar os cargos por XP.");xpStatus.textContent="Cargos por XP salvos.";}});
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
