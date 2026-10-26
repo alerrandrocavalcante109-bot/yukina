@@ -1022,6 +1022,52 @@ async function authorizePanel(req, guildId) {
   if (!botGuild) throw Object.assign(new Error("A Yukina ainda não está neste servidor. Adicione o bot e tente novamente."), { status: 409 });
   return { user, guild: botGuild };
 }
+async function publishTicketPanel(req, res) {
+  const auth = String(req.headers.authorization || "");
+  const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+  if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord antes de publicar o painel." });
+  const meResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
+  const me = meResponse.ok ? await meResponse.json().catch(() => null) : null;
+  if (!me?.id) return sendJson(res, 401, { detail: "Sua sessão do Discord expirou. Entre novamente." });
+  const body = await readBody(req);
+  const guildId = String(body.guildId || "");
+  const channelId = String(body.channelId || "");
+  if (!/^\d{17,20}$/.test(guildId) || !/^\d{17,20}$/.test(channelId)) return sendJson(res, 400, { detail: "Selecione um servidor e um canal válidos." });
+  const guildsResponse = await fetch("https://discord.com/api/users/@me/guilds?limit=200", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
+  const guilds = guildsResponse.ok ? await guildsResponse.json().catch(() => []) : [];
+  const userGuild = Array.isArray(guilds) ? guilds.find(g => String(g.id) === guildId) : null;
+  let canManage = false;
+  try { const p = BigInt(userGuild?.permissions || "0"); canManage = (p & 0x8n) !== 0n || (p & 0x20n) !== 0n; } catch (_) {}
+  if (!userGuild || !canManage) return sendJson(res, 403, { detail: "Você precisa ter permissão para gerenciar o servidor." });
+  const guild = client.guilds.cache.get(guildId);
+  if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
+  const channel = await guild.channels.fetch(channelId).catch(() => null);
+  if (!channel || !channel.isTextBased() || !channel.send) return sendJson(res, 400, { detail: "O canal escolhido não aceita mensagens." });
+  const meMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+  const perms = meMember && channel.permissionsFor(meMember);
+  if (!perms?.has(PermissionsBitField.Flags.ViewChannel) || !perms?.has(PermissionsBitField.Flags.SendMessages) || !perms?.has(PermissionsBitField.Flags.EmbedLinks)) {
+    return sendJson(res, 403, { detail: "A Yukina precisa de Ver canal, Enviar mensagens e Incorporar links no canal escolhido." });
+  }
+  const hex = String(body.embedColor || "#c4b5fd");
+  const color = /^#[0-9a-fA-F]{6}$/.test(hex) ? parseInt(hex.slice(1), 16) : 0xc4b5fd;
+  const title = String(body.title || "🎫 Central de Atendimento").slice(0, 256);
+  const message = String(body.message || "Olá! Sou a Yukina. Escolha abaixo o tipo de atendimento que você precisa.").slice(0, 4000);
+  const images = body.images && typeof body.images === "object" ? body.images : {};
+  const validUrl = value => { try { const u = new URL(String(value || "")); return ["http:", "https:"].includes(u.protocol) ? u.href : ""; } catch (_) { return ""; } };
+  const imageTop = validUrl(images.top), imageMiddle = validUrl(images.middle), imageFooter = validUrl(images.footer), imageRight = validUrl(images.right);
+  const embed = new EmbedBuilder().setColor(color).setTitle(title).setDescription(message);
+  if (imageTop || imageMiddle || imageFooter) embed.setImage(imageTop || imageMiddle || imageFooter);
+  if (imageRight) embed.setThumbnail(imageRight);
+  embed.setFooter({ text: "Yukina • Atendimento" });
+  try {
+    const sent = await channel.send({ embeds: [embed] });
+    return sendJson(res, 200, { ok: true, messageId: sent.id, channelId: channel.id, channelName: channel.name, guildId });
+  } catch (error) {
+    console.error("[Painel atendimento] Falha ao publicar:", error.message || error);
+    return sendJson(res, 500, { detail: "Não consegui publicar o painel. Confira as permissões da Yukina e tente novamente." });
+  }
+}
+
 async function panelApi(req, res, url) {
   // Configure CORS antes de qualquer rota, inclusive /api/oauth/guilds.
   const origin = String(req.headers.origin || "");
@@ -1032,7 +1078,7 @@ async function panelApi(req, res, url) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
 
-  if (url.pathname === "/api/oauth/me") {
+  if (url.pathname === "/api/tickets/publish") {\n    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para publicar o painel." });\n    try { return await publishTicketPanel(req, res); } catch (error) { console.error("[Painel atendimento]", error.message || error); return sendJson(res, 500, { detail: "Falha ao publicar o painel de atendimento." }); }\n  }\n  if (url.pathname === "/api/oauth/me") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para consultar o perfil." });
     const auth = String(req.headers.authorization || "");
     const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
