@@ -8,7 +8,7 @@
     #yukina-pending-bar.visible{opacity:1;visibility:visible;transform:translate(-50%,0)}
     #yukina-pending-bar .ypb-message{margin:0 0 11px;font-size:.92rem;font-weight:750;text-align:center}
     #yukina-pending-bar .ypb-actions{display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap}
-    #yukina-pending-bar .ypb-result{flex:1 0 100%;min-height:1.2em;text-align:center;font-size:.82rem;color:#d9fbe5}
+    #yukina-pending-bar .ypb-result{flex:0 1 auto;max-width:100%;min-height:1.2em;text-align:center;font-size:.82rem;color:#d9fbe5}
     #yukina-pending-bar .ypb-result.error{color:#fecaca}
     #yukina-pending-bar button{min-width:104px;padding:9px 15px;border-radius:10px;font:inherit;font-weight:750;cursor:pointer}
     #yukina-pending-reset{border:1px solid #ffffff38;background:transparent;color:#fff}
