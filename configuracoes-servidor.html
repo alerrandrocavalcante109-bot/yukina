@@ -83,6 +83,18 @@
     .menu-link[aria-current="page"]{border-color:#c4b5fd;background:#c4b5fd20}
     .prefix-panel{max-width:700px}.prefix-current{max-width:420px}
     @keyframes screen-in{from{opacity:.5;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
+    .ticket-wizard{margin-top:16px}.ticket-wizard[hidden]{display:none}
+    .ticket-option{display:flex;align-items:center;justify-content:space-between;gap:18px;margin-top:14px;padding:15px;border:1px solid #ffffff2b;border-radius:14px;background:#ffffff08}
+    .ticket-option strong{display:block;font-size:.94rem}.ticket-option small{display:block;margin-top:5px;color:var(--muted);font-size:.82rem;line-height:1.5}
+    .switch{position:relative;display:inline-flex;flex:0 0 52px;width:52px;height:30px;cursor:pointer}
+    .switch input{position:absolute;width:1px;height:1px;opacity:0}
+    .switch span{position:absolute;inset:0;border:1px solid #ffffff50;border-radius:999px;background:#252039;transition:background .18s}
+    .switch span:before{content:"";position:absolute;top:3px;left:3px;width:22px;height:22px;border-radius:50%;background:#f2eaff;transition:transform .18s}
+    .switch input:checked+span{background:#315bd4;border-color:#8ba8ff}
+    .switch input:checked+span:before{transform:translateX(22px);background:#fff}
+    .switch input:focus-visible+span{outline:2px solid #fff;outline-offset:3px}
+    .ticket-wizard-actions{display:flex;justify-content:space-between;gap:10px;margin-top:22px}
+    .ticket-wizard-actions button{min-width:100px}
     @media(max-width:600px){.workspace{width:calc(100% - 24px);padding-top:100px}.system-screen h1{font-size:1.8rem}.screen-description{font-size:.94rem}}
     @media(prefers-reduced-motion:reduce){.drawer,.shade{transition:none}.system-screen{animation:none}}
   </style>
@@ -188,13 +200,56 @@
     <section class="system-screen" data-screen-panel="tickets" hidden>
       <p class="eyebrow">ATENDIMENTO DA COMUNIDADE</p>
       <h1>🎫 Painel de atendimento</h1>
-      <p class="screen-description">Crie um painel de atendimento para sua comunidade. Com ele, os membros poderão solicitar ajuda à equipe de forma organizada e acolhedora, com o estilo da Yukina. Vamos reconstruir este sistema do zero, com uma configuração mais simples.</p>
-      <div class="welcome-panel">
+      <p class="screen-description">Crie um painel para que os membros encontrem ajuda facilmente. Configure onde ele será publicado e como a Yukina organizará os atendimentos.</p>
+      <div class="welcome-panel" id="ticketStartCard">
         <span class="welcome-icon">🌙</span>
         <h2>Atendimento da Yukina</h2>
-        <p>Comece criando o painel de atendimento. As opções de configuração serão apresentadas no próximo passo.</p>
+        <p>Vamos preparar seu painel passo a passo, sem alterar nada no servidor antes da confirmação final.</p>
         <button type="button" class="primary-action" id="createTicketPanelButton">Criar painel de atendimento</button>
-        <p class="prefix-status" id="ticketCreateStatus" role="status" aria-live="polite"></p>
+      </div>
+      <div class="system-placeholder ticket-wizard" id="ticketWizardStep1" hidden>
+        <p class="eyebrow">ETAPA 1 DE 2</p>
+        <h2>Onde o painel será publicado?</h2>
+        <p>Escolha o canal de publicação e como os atendimentos serão organizados.</p>
+        <label for="ticketPublishChannel">Canal onde o painel será publicado</label>
+        <select id="ticketPublishChannel" class="prefix-input"><option value="">Selecione um canal de texto…</option></select>
+
+        <div class="ticket-option">
+          <div><strong>Criar um canal para os atendimentos</strong><small>A Yukina poderá criar um canal dedicado para receber os atendimentos.</small></div>
+          <label class="switch"><input type="checkbox" id="ticketCreateChannel"><span></span></label>
+        </div>
+        <div class="ticket-option">
+          <div><strong>Usar tópicos (threads)</strong><small>Cada atendimento poderá acontecer em um tópico dentro do canal escolhido.</small></div>
+          <label class="switch"><input type="checkbox" id="ticketUseThreads"><span></span></label>
+        </div>
+        <div class="ticket-option">
+          <div><strong>Criar o canal no topo do servidor</strong><small>Coloca o novo canal no início da lista, sem escolher uma categoria.</small></div>
+          <label class="switch"><input type="checkbox" id="ticketChannelAtTop"><span></span></label>
+        </div>
+        <div class="ticket-option">
+          <div><strong>Escolher uma categoria existente</strong><small>Selecione em qual categoria o novo canal será colocado.</small></div>
+          <label class="switch"><input type="checkbox" id="ticketUseCategory"><span></span></label>
+        </div>
+        <div id="ticketCategoryPicker" hidden>
+          <button type="button" class="primary-action" id="ticketChooseCategoryButton">Selecionar categoria</button>
+          <p id="ticketSelectedCategory" class="prefix-status" role="status" aria-live="polite">Nenhuma categoria selecionada.</p>
+          <select id="ticketCategorySelect" class="prefix-input" hidden><option value="">Selecione uma categoria…</option></select>
+        </div>
+        <p class="prefix-status" id="ticketWizardStatus" role="status" aria-live="polite"></p>
+        <div class="ticket-wizard-actions">
+          <button type="button" class="prefix-save" id="ticketWizardBack">Voltar</button>
+          <button type="button" class="primary-action" id="ticketWizardNext">Próximo</button>
+        </div>
+      </div>
+      <div class="system-placeholder ticket-wizard" id="ticketWizardStep2" hidden>
+        <p class="eyebrow">ETAPA 2 DE 2</p>
+        <h2>Próxima etapa</h2>
+        <p>A primeira etapa foi preparada. Na próxima parte, vamos definir a aparência da mensagem, os tipos de atendimento e as permissões antes de criar o painel.</p>
+        <div class="ticket-wizard-actions">
+          <button type="button" class="prefix-save" id="ticketWizardPrevious">Voltar</button>
+          <button type="button" class="primary-action" id="ticketWizardContinue">Continuar configuração</button>
+        </div>
+        <p class="prefix-status" id="ticketStep2Status" role="status" aria-live="polite"></p>
       </div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
@@ -486,11 +541,39 @@
     }
     multiplierAddButton.addEventListener("click",()=>{const id=multiplierRoleSelect.value,value=Number(multiplierValueInput.value);if(!id){multiplierStatus.textContent="Escolha um cargo existente.";return;}if(!Number.isFinite(value)||value<1||value>100){multiplierStatus.textContent="Digite um multiplicador entre 1× e 100×, por exemplo 1.3.";return;}if(multiplierRules.some(x=>String(x.role||x.roleId||x.role_id)!==id&&Number(x.multiplier)===value)){/* valores iguais em cargos diferentes são permitidos */}multiplierRules=multiplierRules.filter(x=>String(x.role||x.roleId||x.role_id)!==id);multiplierRules.push({role:id,multiplier:value});multiplierRoleSelect.value="";multiplierFormTitle.textContent="Adicionar multiplicador";multiplierAddButton.textContent="Adicionar";delete multiplierAddButton.dataset.editing;renderMultiplierRules();multiplierStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
     window.YukinaPendingChanges?.register({id:"multiplicador-xp",isDirty:()=>JSON.stringify(multiplierRules)!==originalMultiplierConfig,reset:()=>loadMultiplierRoles(),save:async()=>{const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");const cleanRules=multiplierRules.map(x=>({role:String(x.role||x.roleId||x.role_id),multiplier:Number(x.multiplier)}));const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{multiplierRules:cleanRules}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar os multiplicadores.");multiplierRules=cleanRules;originalMultiplierConfig=JSON.stringify(multiplierRules);multiplierStatus.textContent="Multiplicadores de XP salvos."; }});
-    const createTicketPanelButton=$("createTicketPanelButton");
-    const ticketCreateStatus=$("ticketCreateStatus");
-    createTicketPanelButton.addEventListener("click",()=>{
-      ticketCreateStatus.textContent="O sistema está sendo reconstruído. Nenhum painel foi criado ainda.";
+    const ticketStartCard=$("ticketStartCard");
+    const ticketWizardStep1=$("ticketWizardStep1"),ticketWizardStep2=$("ticketWizardStep2");
+    const ticketPublishChannel=$("ticketPublishChannel"),ticketCreateChannel=$("ticketCreateChannel"),ticketUseThreads=$("ticketUseThreads"),ticketChannelAtTop=$("ticketChannelAtTop"),ticketUseCategory=$("ticketUseCategory");
+    const ticketCategoryPicker=$("ticketCategoryPicker"),ticketChooseCategoryButton=$("ticketChooseCategoryButton"),ticketCategorySelect=$("ticketCategorySelect"),ticketSelectedCategory=$("ticketSelectedCategory"),ticketWizardStatus=$("ticketWizardStatus");
+    let ticketWizardChannels=[],ticketWizardCategories=[];
+    $("createTicketPanelButton").addEventListener("click",async()=>{
+      ticketStartCard.hidden=true;ticketWizardStep1.hidden=false;ticketWizardStatus.textContent="Carregando canais e categorias…";
+      const guild=selectedGuild();
+      if(!guild.id){ticketWizardStatus.textContent="Escolha um servidor no menu lateral antes de continuar.";return;}
+      try{
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Entre com o Discord para carregar os recursos.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:{Authorization:"Bearer "+t,Accept:"application/json"},cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível carregar os recursos do servidor.");
+        ticketWizardChannels=(Array.isArray(data.channels)?data.channels:[]).filter(x=>Number(x.type)===0);
+        ticketWizardCategories=Array.isArray(data.categories)?data.categories:[];
+        const fill=(select,items,placeholder)=>{select.replaceChildren();const empty=document.createElement("option");empty.value="";empty.textContent=placeholder;select.appendChild(empty);items.forEach(item=>{const o=document.createElement("option");o.value=String(item.id);o.textContent=item.name||"Sem nome";select.appendChild(o);});};
+        fill(ticketPublishChannel,ticketWizardChannels,"Selecione um canal de texto…");fill(ticketCategorySelect,ticketWizardCategories,"Selecione uma categoria…");
+        ticketWizardStatus.textContent="Recursos carregados. Escolha como deseja organizar o atendimento.";
+      }catch(e){ticketWizardStatus.textContent=e.message||"Falha ao carregar os recursos.";}
     });
+    ticketUseCategory.addEventListener("change",()=>{ticketCategoryPicker.hidden=!ticketUseCategory.checked;if(!ticketUseCategory.checked){ticketCategorySelect.value="";ticketSelectedCategory.textContent="Nenhuma categoria selecionada.";}});
+    ticketChooseCategoryButton.addEventListener("click",()=>{ticketCategorySelect.hidden=false;ticketCategorySelect.focus();});
+    ticketCategorySelect.addEventListener("change",()=>{const chosen=ticketWizardCategories.find(x=>String(x.id)===ticketCategorySelect.value);ticketSelectedCategory.textContent=chosen?"Categoria selecionada: "+chosen.name:"Nenhuma categoria selecionada.";});
+    ticketChannelAtTop.addEventListener("change",()=>{if(ticketChannelAtTop.checked){ticketUseCategory.checked=false;ticketCategoryPicker.hidden=true;ticketCategorySelect.value="";ticketSelectedCategory.textContent="Nenhuma categoria selecionada.";ticketWizardStatus.textContent="O canal será colocado no topo, sem categoria."; }});
+    ticketUseCategory.addEventListener("change",()=>{if(ticketUseCategory.checked){ticketChannelAtTop.checked=false;ticketWizardStatus.textContent="A categoria escolhida será usada para organizar o canal."; }});
+    $("ticketWizardBack").addEventListener("click",()=>{ticketWizardStep1.hidden=true;ticketStartCard.hidden=false;});
+    $("ticketWizardNext").addEventListener("click",()=>{
+      if(!ticketPublishChannel.value){ticketWizardStatus.textContent="Selecione o canal onde o painel será publicado.";return;}
+      if(ticketUseCategory.checked&&!ticketCategorySelect.value){ticketWizardStatus.textContent="Clique em “Selecionar categoria” e escolha uma categoria.";return;}
+      ticketWizardStep1.hidden=true;ticketWizardStep2.hidden=false;
+    });
+    $("ticketWizardPrevious").addEventListener("click",()=>{ticketWizardStep2.hidden=true;ticketWizardStep1.hidden=false;});
+    $("ticketWizardContinue").addEventListener("click",()=>{$("ticketStep2Status").textContent="A próxima etapa será implementada em seguida. Nenhuma alteração foi feita no servidor.";});
     const prefixCurrentButton = $("prefixCurrentButton");
     const prefixCurrentValue = $("prefixCurrentValue");
     const prefixEdit = $("prefixEdit");
