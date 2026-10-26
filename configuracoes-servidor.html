@@ -466,7 +466,7 @@
         const s=await a.json().catch(()=>({})),d=await b.json().catch(()=>({}));if(!a.ok)throw new Error(s.detail||"Erro ao carregar configurações.");if(!b.ok)throw new Error(d.detail||"Erro ao carregar cargos.");
         multiplierRoles=Array.isArray(d.roles)?d.roles:[];multiplierRules=Array.isArray(s.settings?.multiplierRules)?s.settings.multiplierRules.map(x=>({...x,role:String(x.role||x.roleId||x.role_id||"")})):[];
         multiplierRoleSelect.replaceChildren();const empty=document.createElement("option");empty.value="";empty.textContent="Escolha um cargo";multiplierRoleSelect.appendChild(empty);
-        multiplierRoles.filter(x=>!x.managed).sort((a,b)=>(a.name||"").localeCompare(b.name||"")).forEach(role=>{const o=document.createElement("option");o.value=role.id;o.textContent=role.name;multiplierRoleSelect.appendChild(o);});
+        multiplierRoles.filter(x=>!x.managed).forEach(role=>{const o=document.createElement("option");o.value=role.id;o.textContent=role.name;multiplierRoleSelect.appendChild(o);});
         originalMultiplierConfig=JSON.stringify(multiplierRules);renderMultiplierRules();multiplierStatus.textContent="Escolha um cargo e o multiplicador desejado.";
       }catch(e){multiplierStatus.textContent=e.message||"Não foi possível carregar os cargos.";}
     }
