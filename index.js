@@ -1078,7 +1078,11 @@ async function panelApi(req, res, url) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
 
-  if (url.pathname === "/api/tickets/publish") {\n    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para publicar o painel." });\n    try { return await publishTicketPanel(req, res); } catch (error) { console.error("[Painel atendimento]", error.message || error); return sendJson(res, 500, { detail: "Falha ao publicar o painel de atendimento." }); }\n  }\n  if (url.pathname === "/api/oauth/me") {
+  if (url.pathname === "/api/tickets/publish") {
+    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para publicar o painel." });
+    try { return await publishTicketPanel(req, res); } catch (error) { console.error("[Painel atendimento]", error.message || error); return sendJson(res, 500, { detail: "Falha ao publicar o painel de atendimento." }); }
+  }
+  if (url.pathname === "/api/oauth/me") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para consultar o perfil." });
     const auth = String(req.headers.authorization || "");
     const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
