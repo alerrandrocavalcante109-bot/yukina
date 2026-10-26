@@ -1039,8 +1039,6 @@ async function publishTicketPanel(req, res) {
   if (!requester || !requester.permissions.has(PermissionsBitField.Flags.ManageGuild) && !requester.permissions.has(PermissionsBitField.Flags.Administrator)) {
     return sendJson(res, 403, { detail: "Sua conta precisa da permissão Gerenciar servidor ou Administrador nesse servidor." });
   }
-  const guild = client.guilds.cache.get(guildId);
-  if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
   const channel = await guild.channels.fetch(channelId).catch(() => null);
   if (!channel || !channel.isTextBased() || !channel.send) return sendJson(res, 400, { detail: "O canal escolhido não aceita mensagens." });
   const meMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
