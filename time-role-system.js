@@ -39,7 +39,7 @@ async function updateTimedRoles(member) {
     }
     const rules = Array.isArray(config.timeRules)
       ? config.timeRules
-          .map((rule) => ({ days: Number(rule?.days), roleId: String(rule?.role || "") }))
+          .map((rule) => ({ days: Number(rule?.days), roleId: String(rule?.roleId || rule?.role_id || rule?.role || "") }))
           .filter((rule) => Number.isInteger(rule.days) && rule.days >= 1 && rule.roleId)
           .sort((a, b) => a.days - b.days)
       : [];
