@@ -8,9 +8,10 @@ const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 const HISTORY_LIMIT = 15;
 let mongoClient = null;
 let proposals = null;
+let bankTransactions = null;
 
-async function getProposals() {
-  if (proposals) return proposals;
+async function getCollections() {
+  if (proposals && bankTransactions) return { proposals, bankTransactions };
   if (!MONGODB_URI) throw new Error("MONGODB_URI não está configurada.");
   if (!mongoClient) {
     mongoClient = new MongoClient(MONGODB_URI, {
@@ -20,16 +21,15 @@ async function getProposals() {
     });
   }
   await mongoClient.connect();
-  proposals = mongoClient.db(MONGODB_DB).collection("yukina_pay_proposals");
-  await proposals.createIndex(
-    { guildId: 1, status: 1, senderId: 1, completedAt: -1 },
-    { name: "transfer_history_sender" }
-  );
-  await proposals.createIndex(
-    { guildId: 1, status: 1, recipientId: 1, completedAt: -1 },
-    { name: "transfer_history_recipient" }
-  );
-  return proposals;
+  const db = mongoClient.db(MONGODB_DB);
+  proposals = db.collection("yukina_pay_proposals");
+  bankTransactions = db.collection("yukina_bank_transactions");
+  await Promise.all([
+    proposals.createIndex({ guildId: 1, status: 1, senderId: 1, completedAt: -1 }, { name: "transfer_history_sender" }),
+    proposals.createIndex({ guildId: 1, status: 1, recipientId: 1, completedAt: -1 }, { name: "transfer_history_recipient" }),
+    bankTransactions.createIndex({ guildId: 1, userId: 1, createdAt: -1 }, { name: "bank_ledger_user_history" }),
+  ]);
+  return { proposals, bankTransactions };
 }
 
 function format(value) {
@@ -55,48 +55,57 @@ async function showHistory({ guild, user, send }) {
   }
 
   try {
-    const collection = await getProposals();
+    const { proposals: proposalCollection, bankTransactions: ledger } = await getCollections();
+    const guildId = String(guild.id);
     const userId = String(user.id);
-    const entries = await collection.find({
-      guildId: String(guild.id),
-      status: "completed",
-      $or: [{ senderId: userId }, { recipientId: userId }],
-    })
-      .sort({ completedAt: -1, createdAt: -1 })
-      .limit(HISTORY_LIMIT)
-      .toArray();
+    const [transferRows, bankRows] = await Promise.all([
+      proposalCollection.find({
+        guildId,
+        status: "completed",
+        $or: [{ senderId: userId }, { recipientId: userId }],
+      }).sort({ completedAt: -1 }).limit(HISTORY_LIMIT).toArray(),
+      ledger.find({ guildId, userId }).sort({ createdAt: -1 }).limit(HISTORY_LIMIT).toArray(),
+    ]);
 
-    const outgoing = entries.filter(item => String(item.senderId) === userId);
-    const incoming = entries.filter(item => String(item.recipientId) === userId);
-    const outgoingTotal = outgoing.reduce((sum, item) => sum + Math.max(0, Number(item.amount) || 0), 0);
-    const incomingTotal = incoming.reduce((sum, item) => sum + Math.max(0, Number(item.amount) || 0), 0);
+    const entries = [
+      ...transferRows.map(item => ({
+        kind: String(item.senderId) === userId ? "sent" : "received",
+        amount: Math.max(0, Number(item.amount) || 0),
+        otherId: String(item.senderId) === userId ? item.recipientId : item.senderId,
+        date: item.completedAt || item.createdAt,
+      })),
+      ...bankRows.map(item => ({
+        kind: item.type === "depositar" ? "deposit" : "withdraw",
+        amount: Math.max(0, Number(item.amount) || 0),
+        date: item.createdAt,
+      })),
+    ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, HISTORY_LIMIT);
+
+    const outgoingTotal = entries.reduce((sum, item) => sum + (item.kind === "sent" || item.kind === "deposit" ? item.amount : 0), 0);
+    const incomingTotal = entries.reduce((sum, item) => sum + (item.kind === "received" || item.kind === "withdraw" ? item.amount : 0), 0);
+
+    const details = entries.length
+      ? entries.map(item => {
+          if (item.kind === "sent") return "📤 **Transferência enviada** · " + format(item.amount) + " KZ\nPara: <@" + item.otherId + "> · " + formatDate(item.date);
+          if (item.kind === "received") return "📥 **Transferência recebida** · " + format(item.amount) + " KZ\nDe: <@" + item.otherId + "> · " + formatDate(item.date);
+          if (item.kind === "deposit") return "🏦 **Depósito no banco** · −" + format(item.amount) + " KZ\nDa carteira para o Banco Central · " + formatDate(item.date);
+          return "👛 **Saque do banco** · +" + format(item.amount) + " KZ\nDo Banco Central para a carteira · " + formatDate(item.date);
+        }).join("\n\n")
+      : "Ainda não há movimentações concluídas registradas para sua carteira.";
 
     const embed = new EmbedBuilder()
       .setColor(0xA7D8F0)
       .setAuthor({ name: "Yukina · Extrato da carteira", iconURL: user.displayAvatarURL({ size: 128 }) })
-      .setTitle("💴 Transferências de Kizunas")
+      .setTitle("💴 Movimentações de Kizunas")
       .setDescription(
-        "Aqui está o movimento recente da sua carteira neste servidor.\n" +
-        "🌸 **Entrou:** +" + format(incomingTotal) + " KZ\n" +
-        "🍃 **Saiu:** −" + format(outgoingTotal) + " KZ\n\n" +
-        (entries.length
-          ? entries.map(item => {
-              const sent = String(item.senderId) === userId;
-              const otherId = sent ? item.recipientId : item.senderId;
-              const amount = format(item.amount);
-              return (sent ? "📤 **Saiu**" : "📥 **Entrou") + " · " + amount + " KZ\n" +
-                (sent ? "Para" : "De") + ": <@" + otherId + "> · " + formatDate(item.completedAt || item.createdAt);
-            }).join("\n\n")
-          : "Ainda não há transferências concluídas registradas para sua carteira.")
+        "Movimentações recentes da sua carteira neste servidor.\n" +
+        "🌸 **Entrou na carteira:** +" + format(incomingTotal) + " KZ\n" +
+        "🍃 **Saiu da carteira:** −" + format(outgoingTotal) + " KZ\n\n" + details
       )
-      .setFooter({ text: "Yukina · Exibindo até " + HISTORY_LIMIT + " transferências concluídas" })
+      .setFooter({ text: "Yukina · Exibindo até " + HISTORY_LIMIT + " movimentações recentes" })
       .setTimestamp();
 
-    return send({
-      embeds: [embed],
-      allowedMentions: { parse: [] },
-      ephemeral: false,
-    });
+    return send({ embeds: [embed], allowedMentions: { parse: [] }, ephemeral: false });
   } catch (error) {
     console.error("[Yukina Transferências] Falha ao consultar extrato:", error);
     return send({
@@ -111,7 +120,6 @@ module.exports = {
     .setName("transferencias")
     .setDescription("Mostra as Kizunas que entraram e saíram da sua carteira.")
     .setDMPermission(false),
-
   name: "transferencias",
   aliases: ["transferencia", "transferência", "transferências", "extrato", "historico", "histórico"],
 
