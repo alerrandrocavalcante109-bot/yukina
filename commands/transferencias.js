@@ -75,7 +75,7 @@ async function showHistory({ guild, user, send }) {
         date: item.completedAt || item.createdAt,
       })),
       ...bankRows.map(item => ({
-        kind: item.type === "depositar" ? "deposit" : "withdraw",
+        kind: item.type === "depositar" ? "deposit" : item.type === "taxa_daily" ? "fee" : "withdraw",
         amount: Math.max(0, Number(item.amount) || 0),
         date: item.createdAt,
       })),
