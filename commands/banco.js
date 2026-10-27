@@ -140,7 +140,7 @@ function accountEmbed(user, balances) {
       { name: "👛 Carteira", value: "**" + format(balances.wallet) + " KZ**", inline: true },
       { name: "🏦 Banco", value: "**" + format(balances.bank) + " KZ**", inline: true },
       { name: "💴 Patrimônio total", value: "**" + format(balances.wallet + balances.bank) + " KZ**", inline: false },
-      { name: "❄️ Taxa por inatividade do Daily", value: "**3% ao dia após 3 dias sem coletar**\\nA cobrança acumula diariamente até você voltar ao Daily. Cuide das suas Kizunas, tá bem? 🌸", inline: false },
+      { name: "❄️ Taxa por inatividade do Daily", value: "**3% ao dia após 3 dias sem coletar**\nA cobrança acumula diariamente até você voltar ao Daily. Cuide das suas Kizunas, tá bem? 🌸", inline: false },
     )
     .setFooter({ text: "Yukina • Cuide das suas Kizunas e volte para o Daily ♡" })
     .setTimestamp();
@@ -161,13 +161,20 @@ async function run({ guild, user, action, amountInput, send }) {
         .setAccentColor(0xA7D8F0)
         .addTextDisplayComponents(new TextDisplayBuilder().setContent(
           "## ❄️ Yukina · Banco Central\n" +
-          "Oii~! Vou cuidar das suas Kizunas com carinho. 💙\n\n" +
-          "👛 **Carteira:** " + format(balances.wallet) + " KZ\n" +
-          "🏦 **Banco:** " + format(balances.bank) + " KZ\n" +
-          "💴 **Patrimônio total:** " + format(balances.wallet + balances.bank) + " KZ\n" +
-          "📜 **Dívida atual:** " + format(debtInfo.debt) + " KZ\n" + (debtInfo.dueAt ? "⏳ **Vencimento:** <t:" + Math.floor(new Date(debtInfo.dueAt).getTime() / 1000) + ":R>\n📈 **Juros por atraso:** " + (debtInfo.dailyRate * 100).toLocaleString("pt-BR") + "% ao dia\n\n" : "\n") +
-          "❄️ **Taxa por inatividade do Daily:** 3% ao dia após 3 dias completos sem coletar." + feeText +
-          "\n\nEscolha uma opção abaixo, nee~ 🌸"
+          "*Seu cantinho para guardar e cuidar das Kizunas.* 💙\n" +
+          "━━━━━━━━━━━━━━━━━━━━\n" +
+          "### 💴 Visão geral da conta\n" +
+          "👛 **Carteira**\n" + format(balances.wallet) + " KZ\n\n" +
+          "🏦 **Saldo no banco**\n" + format(balances.bank) + " KZ\n\n" +
+          "💎 **Patrimônio total**\n" + format(balances.wallet + balances.bank) + " KZ\n" +
+          "━━━━━━━━━━━━━━━━━━━━\n" +
+          "### 📜 Empréstimo\n" +
+          "**Dívida atual:** " + format(debtInfo.debt) + " KZ\n" +
+          (debtInfo.dueAt ? "⏳ **Vencimento:** <t:" + Math.floor(new Date(debtInfo.dueAt).getTime() / 1000) + ":R>\n📈 **Juros por atraso:** " + (debtInfo.dailyRate * 100).toLocaleString("pt-BR") + "% ao dia\n" : (debtInfo.debt > 0 ? "🌸 Este empréstimo não possui prazo de vencimento.\n" : "🌸 Você não tem empréstimos ativos no momento.\n")) +
+          "━━━━━━━━━━━━━━━━━━━━\n" +
+          "### ❄️ Cuide das suas Kizunas\n" +
+          "A taxa por inatividade do Daily é de **3% ao dia**, após 3 dias completos sem coletar. A cobrança acumula até você voltar." + feeText +
+          "\n\n**O que deseja fazer?** Use os botões abaixo ou os comandos `Ybanco depositar 5k` e `Ybanco sacar 2k`. 🌙"
         ))
         .addActionRowComponents(new ActionRowBuilder().addComponents(
           new ButtonBuilder().setCustomId("yukina-bank:loan:" + user.id).setLabel("Pedir empréstimo").setEmoji("💴").setStyle(ButtonStyle.Primary),
@@ -185,7 +192,7 @@ async function run({ guild, user, action, amountInput, send }) {
       ? "❄️ Você depositou " + format(result.amount) + " KZ no banco."
       : "🌸 Você sacou " + format(result.amount) + " KZ do banco.";
     const feeNotice = result.fee > 0
-      ? "\\n❄️ Taxa aplicada: -" + formatKz(result.fee) + " KZ."
+      ? "\n❄️ Taxa aplicada: -" + formatKz(result.fee) + " KZ."
       : "";
     return send({ content: message + feeNotice });
   } catch (error) {
