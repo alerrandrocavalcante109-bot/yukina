@@ -2,6 +2,7 @@
 
 const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
 const { MongoClient } = require("mongodb");
+const { applyDailyInactivityFee, formatKz } = require("../systems/bank-inactivity-fee");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
@@ -11,7 +12,7 @@ let bankCollection = null;
 let ledgerCollection = null;
 
 async function getCollections() {
-  if (walletCollection && bankCollection) return { walletCollection, bankCollection };
+  if (walletCollection && bankCollection) return { walletCollection, bankCollection, db: mongoClient.db(MONGODB_DB) };
   if (!MONGODB_URI) throw new Error("MONGODB_URI não está configurada.");
   if (!mongoClient) {
     mongoClient = new MongoClient(MONGODB_URI, {
@@ -30,7 +31,7 @@ async function getCollections() {
     bankCollection.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_bank_account" }),
     ledgerCollection.createIndex({ guildId: 1, userId: 1, createdAt: -1 }, { name: "bank_ledger_user_history" }),
   ]);
-  return { walletCollection, bankCollection };
+  return { walletCollection, bankCollection, db };
 }
 
 function format(value) {
@@ -64,6 +65,8 @@ async function getAccountBalances(guildId, userId) {
 async function moveMoney({ guildId, userId, action, amountInput }) {
   const { walletCollection: wallet, bankCollection: bank } = await getCollections();
   const filter = { guildId: String(guildId), userId: String(userId) };
+  const { db } = await getCollections();
+  const feeResult = await applyDailyInactivityFee({ db, guildId, userId });
   const before = await getAccountBalances(guildId, userId);
   const source = action === "depositar" ? before.wallet : before.bank;
   const amount = parseAmount(amountInput, source, true);
@@ -124,7 +127,7 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
   } finally {
     await session.endSession();
   }
-  return { ok: true, amount, balances: await getAccountBalances(guildId, userId) };
+  return { ok: true, amount, balances: await getAccountBalances(guildId, userId), fee: feeResult.fee, overdueDays: feeResult.overdueDays };
 }
 
 function accountEmbed(user, balances) {
@@ -138,7 +141,7 @@ function accountEmbed(user, balances) {
       { name: "🏦 Banco", value: "**" + format(balances.bank) + " KZ**", inline: true },
       { name: "💴 Patrimônio total", value: "**" + format(balances.wallet + balances.bank) + " KZ**", inline: false },
     )
-    .setFooter({ text: "Yukina · Sem taxa de depósito ou saque" })
+    .setFooter({ text: "Yukina · Taxa de inatividade do Daily após 3 dias" })
     .setTimestamp();
 }
 
@@ -146,7 +149,13 @@ async function run({ guild, user, action, amountInput, send }) {
   if (!guild) return send({ content: "❄️ O Banco Central só funciona dentro de um servidor.", ephemeral: true });
   try {
     if (action === "saldo") {
-      return send({ embeds: [accountEmbed(user, await getAccountBalances(guild.id, user.id))] });
+      const { db } = await getCollections();
+      const feeResult = await applyDailyInactivityFee({ db, guildId: guild.id, userId: user.id });
+      const balances = await getAccountBalances(guild.id, user.id);
+      const embed = accountEmbed(user, balances);
+      if (feeResult.fee > 0) embed.addFields({ name: "❄️ Taxa de inatividade aplicada", value: `**-${formatKz(feeResult.fee)} KZ**\nAcumulada por ${feeResult.overdueDays} dia(s) após os 3 dias de tolerância.`, inline: false });
+      else if (feeResult.overdueDays > 0) embed.addFields({ name: "❄️ Taxa de inatividade", value: `A taxa já foi calculada para os ${feeResult.overdueDays} dia(s) de atraso.`, inline: false });
+      return send({ embeds: [embed] });
     }
     if (action !== "depositar" && action !== "sacar") {
       return send({ content: "🏦 Use Ybanco saldo, Ybanco depositar 5k ou Ybanco sacar 2k.", ephemeral: true });
