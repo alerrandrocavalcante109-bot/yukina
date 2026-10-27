@@ -5,7 +5,22 @@ const {
   EmbedBuilder,
   MessageFlags,
 } = require("discord.js");
+const { MongoClient } = require("mongodb");
 const storage = require("../system-storage").forSystem("economy");
+const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
+const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
+let mongoClient = null;
+let balancesCollection = null;
+
+async function getBalancesCollection() {
+  if (balancesCollection) return balancesCollection;
+  if (!MONGODB_URI) throw new Error("MONGODB_URI não está configurada.");
+  if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Work", serverSelectionTimeoutMS: 10000 });
+  await mongoClient.connect();
+  balancesCollection = mongoClient.db(MONGODB_DB).collection("economy_balances");
+  await balancesCollection.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_balance" });
+  return balancesCollection;
+}
 
 const COLOR = 0xA7D8F0;
 const COOLDOWN_MS = 30 * 60 * 1000;
@@ -96,14 +111,15 @@ async function runWork({ guildId, user, reply }) {
 
   locks.add(lockKey);
   try {
+    const balances = await getBalancesCollection();
+    const balanceDoc = await balances.findOne({ guildId: String(guildId), userId: String(user.id) });
     const record = await storage.get(guildId, "profile", {
-      balance: 0,
       lastWorkAt: 0,
       totalEarned: 0,
       jobsCompleted: 0,
     }, user.id);
 
-    const balance = Math.max(0, Number(record?.balance) || 0);
+    const balance = Math.max(0, Number(balanceDoc?.balance) || 0);
     const lastWorkAt = Math.max(0, Number(record?.lastWorkAt) || 0);
     const now = Date.now();
 
@@ -119,12 +135,19 @@ async function runWork({ guildId, user, reply }) {
     const reward = Math.floor(Math.random() * (MAX_REWARD - MIN_REWARD + 1)) + MIN_REWARD;
     const updated = {
       ...record,
-      balance: balance + reward,
       lastWorkAt: now,
       totalEarned: Math.max(0, Number(record?.totalEarned) || 0) + reward,
       jobsCompleted: Math.max(0, Number(record?.jobsCompleted) || 0) + 1,
     };
 
+    // O saldo é gravado na mesma coleção usada pelo /saldo e pelo Daily.
+    await balances.updateOne(
+      { guildId: String(guildId), userId: String(user.id) },
+      { $inc: { balance: reward }, $set: { updatedAt: new Date(now) }, $setOnInsert: { guildId: String(guildId), userId: String(user.id), createdAt: new Date(now) } },
+      { upsert: true }
+    );
+    const balanceAfter = await balances.findOne({ guildId: String(guildId), userId: String(user.id) });
+    updated.balance = Math.max(0, Number(balanceAfter?.balance) || balance + reward);
     await storage.set(guildId, "profile", updated, user.id);
     const embed = buildEmbed(user, job, reward, updated, now + COOLDOWN_MS);
     return reply({ embeds: [embed], allowedMentions: { parse: [] } });
