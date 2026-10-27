@@ -520,7 +520,7 @@ module.exports = {
       guild: message.guild,
       sender: message.author,
       recipients,
-      amount,
+      amountInput,
       client: message.client,
       send: async payload => {
         if (payload.ephemeral) return message.reply(payload.content);
