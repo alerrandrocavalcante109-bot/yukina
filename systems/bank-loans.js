@@ -20,7 +20,7 @@ async function getCollections() {
 }
 function parseAmount(input) {
   const raw = String(input || "").trim().toLowerCase().replace(/,/g, ".");
-  const m = raw.match(/^(\\d+(?:\\.\\d+)?)(k|m|b)?$/);
+  const m = raw.match(/^(\d+(?:\.\d+)?)(k|m|b)?$/);
   if (!m) return NaN;
   const n = Number(m[1]) * ({ k: 1e3, m: 1e6, b: 1e9 }[m[2]] || 1);
   return Number.isSafeInteger(Math.floor(n)) && n >= 1 ? Math.floor(n) : NaN;
