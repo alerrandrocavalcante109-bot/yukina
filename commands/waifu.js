@@ -233,7 +233,7 @@ module.exports = {
           .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: interaction.user.displayAvatarURL({ size: 128 }) })
           .setTitle("📚 Sua coleção de waifus")
           .setDescription("Personagens guardadas: **" + items.length + "/" + MAX_COLLECTION + "**. Exibindo as últimas " + selected.length + ".")
-          .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\\n[Ver imagem](" + item.url + ")", inline: false })))
+          .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")", inline: false })))
           .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." });
         return interaction.editReply({ embeds: [embed] });
       }
@@ -262,7 +262,7 @@ module.exports = {
           .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: message.author.displayAvatarURL({ size: 128 }) })
           .setTitle("📚 Sua coleção de waifus")
           .setDescription("Personagens guardadas: **" + items.length + "/" + MAX_COLLECTION + "**. Exibindo as últimas " + selected.length + ".")
-          .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\\n[Ver imagem](" + item.url + ")", inline: false })))
+          .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")", inline: false })))
           .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." });
         return message.reply({ embeds: [embed], allowedMentions: { parse: [] } });
       }
@@ -298,13 +298,14 @@ module.exports = {
           if (!items.length) {
             return interaction.editReply({ content: "🌸 Sua coleção está vazia. Use **Ywaifu** para encontrar uma personagem.", embeds: [], components: [] });
           }
-          const selected = items.slice(-10).reverse();
+          const normalizedItems = items.map(normalizeItem).filter(Boolean);
+          const selected = normalizedItems.slice(-10).reverse();
           const embed = new EmbedBuilder()
             .setColor(COLOR)
             .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: interaction.user.displayAvatarURL({ size: 128 }) })
             .setTitle("📚 Sua coleção de waifus")
             .setDescription("Personagens guardadas: **" + items.length + "/" + MAX_COLLECTION + "**. Exibindo as últimas " + selected.length + ".")
-            .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\\n[Ver imagem](" + item.url + ")", inline: false })))
+            .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")", inline: false })))
             .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." });
           const row = new ActionRowBuilder().addComponents(
             new ButtonBuilder().setCustomId("yukina-waifu:back:" + interaction.user.id).setLabel("Voltar ao sorteio").setEmoji("❄️").setStyle(ButtonStyle.Primary),
