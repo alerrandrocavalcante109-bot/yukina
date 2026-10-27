@@ -90,6 +90,28 @@ function proposalText(proposal) {
   ].join("\n");
 }
 
+const TRANSFER_ANIMATION_MS = 4000;
+const TRANSFER_FRAMES = ["⟳", "↻", "⟲", "↺", "⟳", "↻", "⟲", "↺"];
+
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+async function animateTransfer(interaction, proposal) {
+  const frameDelay = TRANSFER_ANIMATION_MS / TRANSFER_FRAMES.length;
+  for (const frame of TRANSFER_FRAMES) {
+    await interaction.message.edit({
+      content: "🌸 **Transferindo Kizunas " + frame + "**\\n\\n" +
+        "<@" + proposal.senderId + "> → <@" + proposal.recipientId + ">\\n" +
+        "💴 **Valor:** " + format(proposal.amount) + " KZ\\n\\n" +
+        "「 A Yukina está preparando a troca com cuidado... 」",
+      components: [],
+      allowedMentions: { parse: [] },
+    });
+    await wait(frameDelay);
+  }
+}
+
 async function editProposalMessage(client, proposal, content, components = []) {
   if (!proposal.channelId || !proposal.messageId) return;
   try {
@@ -314,6 +336,12 @@ async function handleButton(interaction) {
     );
     if (!claim.modifiedCount) {
       return interaction.followUp({ content: "🌙 As duas confirmações foram recebidas. A Yukina está concluindo o acordo.", flags: MessageFlags.Ephemeral });
+    }
+
+    try {
+      await animateTransfer(interaction, proposal);
+    } catch (animationError) {
+      console.warn("[Yukina Pay] A animação não pôde ser exibida por completo:", animationError.message);
     }
 
     const session = mongoClient.startSession();
