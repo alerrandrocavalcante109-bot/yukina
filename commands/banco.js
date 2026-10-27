@@ -71,14 +71,14 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
   const source = action === "depositar" ? before.wallet : before.bank;
   const amount = parseAmount(amountInput, source, true);
   if (!Number.isSafeInteger(amount) || amount < 1) {
-    return { ok: false, message: "❄️ **Yukina · Um instante, por favor!**\nEsse valor não parece certo, nee~ 🌸\nTente `5000`, `1.5k`, `2m` ou `all`." };
+    return { ok: false, message: "❄️ Informe um valor válido para continuar." };
   }
   if (source < amount) {
     return {
       ok: false,
       message: action === "depositar"
-        ? "🌙 **Yukina · Sua carteira está um pouquinho leve...**\nVocê não tem KZ suficientes para esse depósito.\n**Carteira:** " + format(before.wallet) + " KZ"
-        : "🌙 **Yukina · Sua conta bancária não tem esse valor.**\nConfira seu saldo antes de tentar novamente.\n**Banco:** " + format(before.bank) + " KZ",
+        ? "❄️ Você não tem KZ suficientes na carteira."
+        : "🌸 Você não tem KZ suficientes no banco.",
     };
   }
 
@@ -181,11 +181,13 @@ async function run({ guild, user, action, amountInput, send }) {
     }
     const result = await moveMoney({ guildId: guild.id, userId: user.id, action, amountInput });
     if (!result.ok) return send({ content: result.message, ephemeral: true });
-    const verb = action === "depositar" ? "depositadas no banco" : "retiradas do banco";
-    const embed = accountEmbed(user, result.balances)
-      .setTitle(action === "depositar" ? "🌸 Depósito concluído" : "❄️ Saque concluído")
-      .setDescription("Yatta~! ✨ **" + format(result.amount) + " KZ** foram " + verb + " com sucesso.\n\n" + (result.fee > 0 ? "❄️ A taxa de inatividade de **3% ao dia** foi aplicada: **-" + formatKz(result.fee) + " KZ** (" + result.overdueDays + " dia(s) acumulados).\n\n" : "") + "Cuide das suas Kizunas e não se esqueça do Daily, tá bem? 💙");
-    return send({ embeds: [embed] });
+    const message = action === "depositar"
+      ? "❄️ Você depositou " + format(result.amount) + " KZ no banco."
+      : "🌸 Você sacou " + format(result.amount) + " KZ do banco.";
+    const feeNotice = result.fee > 0
+      ? "\\n❄️ Taxa aplicada: -" + formatKz(result.fee) + " KZ."
+      : "";
+    return send({ content: message + feeNotice });
   } catch (error) {
     console.error("[Yukina Banco Central] Falha na operação:", error);
     return send({ content: "🫧 **Yukina:** Ah, parece que o Banco Central está descansando por um instante... Tente novamente daqui a pouquinho, por favor. ❄️", ephemeral: true });
