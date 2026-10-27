@@ -22,53 +22,23 @@ async function getBalancesCollection() {
   return balancesCollection;
 }
 
-const COLOR = 0xA7D8F0;
+const COLOR = 0xC58AE8;
 const COOLDOWN_MS = 30 * 60 * 1000;
-const MIN_REWARD = 80;
-const MAX_REWARD = 220;
+const MIN_REWARD = 10000;
+const MAX_REWARD = 15000;
 const locks = new Set();
 
 const JOBS = [
-  {
-    title: "Mensageira do Santuário",
-    description: "Você levou cartas entre o santuário e a vila, protegendo cada envelope da neve.",
-    emoji: "📨",
-  },
-  {
-    title: "Guardião das Lanternas",
-    description: "Você acendeu as lanternas do caminho antes que a noite cobrisse tudo de gelo.",
-    emoji: "🏮",
-  },
-  {
-    title: "Coletora de Cristais",
-    description: "Você encontrou cristais azul-gelo perto das montanhas e os levou para a oficina.",
-    emoji: "💎",
-  },
-  {
-    title: "Assistente da Biblioteca Lunar",
-    description: "Você organizou livros antigos e ajudou a encontrar mapas celestes esquecidos.",
-    emoji: "📚",
-  },
-  {
-    title: "Cuidadora das Raposas da Neve",
-    description: "Você cuidou das pequenas raposas do bosque e preparou um abrigo quentinho para elas.",
-    emoji: "🦊",
-  },
-  {
-    title: "Aprendiz de Astrônoma",
-    description: "Você registrou as constelações da noite e entregou suas anotações ao observatório.",
-    emoji: "🌌",
-  },
-  {
-    title: "Florista de Sakura",
-    description: "Você preparou buquês delicados para a feira da vila, mesmo com o frio da manhã.",
-    emoji: "🌸",
-  },
-  {
-    title: "Padeira da Vila",
-    description: "Você ajudou a preparar pãezinhos quentinhos para os viajantes que chegaram com a neve.",
-    emoji: "🥐",
-  },
+  { title: "Mensageira das Lanternas", description: "Você atravessou as ruas de Yukina levando mensagens entre lanternas de papel. Cada palavra chegou ao destino sob o brilho da lua.", emoji: "🏮" },
+  { title: "Guardião do Torii", description: "Você cuidou do caminho sagrado, afastou os espíritos travessos e deixou as fitas de oração dançando ao vento.", emoji: "⛩️" },
+  { title: "Cuidadora do Jardim de Sakura", description: "Você varreu as pétalas do jardim e preparou um cantinho sereno para os visitantes apreciarem a floração.", emoji: "🌸" },
+  { title: "Aprendiz do Arquivo Lunar", description: "Entre pergaminhos antigos e mapas celestes, você organizou os registros secretos da biblioteca de Yukina.", emoji: "🌙" },
+  { title: "Companheira das Raposas Kitsune", description: "Você ajudou as kitsune da floresta a encontrar oferendas perdidas e recebeu em troca um aceno de suas caudas brilhantes.", emoji: "🦊" },
+  { title: "Artesã de Amuletos", description: "Com fios coloridos, pequenos sinos e símbolos de boa sorte, você preparou omamori para proteger os viajantes.", emoji: "🎐" },
+  { title: "Coletora de Cristais Celestes", description: "Ao cair da noite, você recolheu cristais luminosos nas colinas e os levou ao ateliê para guardar sua energia.", emoji: "💎" },
+  { title: "Anfitriã da Casa de Chá", description: "Você serviu chá quentinho e wagashi aos viajantes, transformando uma pausa simples em um momento inesquecível.", emoji: "🍵" },
+  { title: "Restauradora de Estrelas", description: "No observatório, você poliu os instrumentos e registrou constelações para que os sonhos de Yukina nunca perdessem o rumo.", emoji: "✨" },
+  { title: "Mensageira do Festival", description: "Você ajudou a preparar os enfeites do matsuri, distribuiu pequenas lembranças e espalhou alegria pela vila.", emoji: "🏮" },
 ];
 
 function formatNumber(value) {
@@ -80,29 +50,30 @@ function buildEmbed(user, job, reward, record, nextWorkAt) {
   const minutes = Math.ceil(remaining / 60000);
   const hoursPart = Math.floor(minutes / 60);
   const minutesPart = minutes % 60;
-  const wait = hoursPart > 0
-    ? (hoursPart + "h " + minutesPart + "min")
-    : (minutesPart + " min");
+  const wait = hoursPart > 0 ? (hoursPart + "h " + minutesPart + "min") : (minutesPart + " min");
 
   return new EmbedBuilder()
     .setColor(COLOR)
-    .setAuthor({
-      name: "Yukina · Central de trabalhos",
-      iconURL: user.displayAvatarURL({ size: 128 }),
-    })
+    .setAuthor({ name: "Yukina · Crônicas de um dia", iconURL: user.displayAvatarURL({ size: 128 }) })
     .setTitle(job.emoji + " " + job.title)
-    .setDescription(job.description)
-    .addFields(
-      { name: "❄️ Recompensa", value: "+" + formatNumber(reward) + " flocos", inline: true },
-      { name: "💎 Sua carteira", value: formatNumber(record.balance) + " Kizunas (KZ)", inline: true },
-      { name: "🌙 Próximo trabalho", value: "Disponível em " + wait, inline: true },
+    .setDescription(
+      "「 O destino sorriu para você hoje. 」\n\n" +
+      job.description +
+      "\n\nSeu turno terminou, e a vila agradece sua dedicação. Que as Kizunas recebidas acompanhem você em sua próxima aventura."
     )
-    .setFooter({ text: "Yukina · Trabalhe com calma; até a neve precisa de pausa." })
+    .addFields(
+      { name: "💴 Kizunas recebidas", value: "+" + formatNumber(reward) + " KZ", inline: true },
+      { name: "🪙 Sua carteira", value: formatNumber(record.balance) + " KZ", inline: true },
+      { name: "🌙 Próximo turno", value: "Em " + wait, inline: true },
+      { name: "📜 Trabalhos concluídos", value: formatNumber(record.jobsCompleted), inline: true },
+      { name: "🎎 Kizunas conquistadas", value: formatNumber(record.totalEarned) + " KZ no total", inline: true }
+    )
+    .setFooter({ text: "Yukina · Cada jornada deixa uma pequena luz no caminho." })
     .setTimestamp();
 }
 
 async function runWork({ guildId, user, reply }) {
-  if (!guildId) return reply({ content: "❄️ O comando **work** só pode ser usado dentro de um servidor.", ephemeral: true });
+  if (!guildId) return reply({ content: "⛩️ O comando **work** só pode ser usado dentro de um servidor.", ephemeral: true });
 
   const lockKey = guildId + ":" + user.id;
   if (locks.has(lockKey)) {
@@ -154,7 +125,7 @@ async function runWork({ guildId, user, reply }) {
   } catch (error) {
     console.error("[Yukina /work] Falha ao registrar trabalho:", error);
     return reply({
-      content: "💧 Não consegui registrar sua recompensa agora. Tente novamente em instantes.",
+      content: "🌙 Os registros do reino não responderam desta vez. Tente novamente em instantes.",
       ephemeral: true,
     });
   } finally {
@@ -165,7 +136,7 @@ async function runWork({ guildId, user, reply }) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("work")
-    .setDescription("Faça um trabalho no mundo da Yukina e ganhe flocos de neve.")
+    .setDescription("Explore o universo de Yukina, cumpra um trabalho e receba Kizunas.")
     .setDMPermission(false),
 
   aliases: ["trabalhar", "trabalho"],
