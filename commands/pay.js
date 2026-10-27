@@ -71,14 +71,14 @@ function proposalText(proposal) {
     "🌸 **Yukina Pay**",
     "",
     "🏮 **・ PROPOSTA DE TRANSFERÊNCIA**",
-    "📣 Atenção, <@" + proposal.senderId + "> e <@" + proposal.recipientId + ">!",
+    "📣 Atenção, <@" + proposal.senderId + "> e <@" + proposal.recipientId + ">!" + (proposal.batchSize > 1 ? " · Proposta " + proposal.batchIndex + "/" + proposal.batchSize : ""),
     "",
     "「 " + PHRASE + " 」",
     "",
     "💴 **Valor da transferência**",
     "## " + format(proposal.amount) + " KZ",
     "🧾 **Taxa:** 0 KZ",
-    "💰 **Total:** " + format(proposal.amount) + " KZ",
+    "💰 **Total desta proposta:** " + format(proposal.amount) + " KZ",
     "",
     "🎎 **Confirmação do acordo**",
     "⏳ **Prazo:** 6 minutos a partir da proposta",
@@ -129,68 +129,96 @@ function scheduleExpiration(client, proposalId) {
   if (typeof timer.unref === "function") timer.unref();
 }
 
-async function createProposal({ guild, sender, recipient, amount, send, client }) {
+async function createProposals({ guild, sender, recipients, amount, send, client }) {
   if (!guild) return send({ content: "🌸 O Yukina Pay só pode ser usado dentro de um servidor.", ephemeral: true });
-  if (!recipient || recipient.bot) {
-    return send({ content: "🏮 Escolha um membro válido do servidor. Bots não podem participar desta transferência.", ephemeral: true });
+
+  const uniqueRecipients = [];
+  const seen = new Set();
+  for (const recipient of recipients || []) {
+    if (!recipient || recipient.bot || recipient.id === sender.id || seen.has(String(recipient.id))) continue;
+    seen.add(String(recipient.id));
+    uniqueRecipients.push(recipient);
   }
-  const recipientMember = await guild.members.fetch(recipient.id).catch(() => null);
-  if (!recipientMember) {
-    return send({ content: "🏮 A outra pessoa precisa ser membro deste servidor para participar da transferência.", ephemeral: true });
-  }
-  if (recipient.id === sender.id) {
-    return send({ content: "🍃 Você não pode transferir Kizunas para si mesmo.", ephemeral: true });
+  if (!uniqueRecipients.length) {
+    return send({
+      content: "🏮 Mencione uma ou mais pessoas válidas do servidor. Não é possível enviar para si mesmo, para bots ou repetir o mesmo destinatário.",
+      ephemeral: true,
+    });
   }
   if (!Number.isSafeInteger(amount) || amount < 1) {
-    return send({ content: "💴 Informe um valor inteiro de Kizunas maior que zero.", ephemeral: true });
+    return send({ content: "💴 Informe um valor inteiro de Kizunas maior que zero para cada pessoa.", ephemeral: true });
   }
+
   try {
     const { proposals: proposalCollection, balances: balanceCollection } = await getCollections();
+    const validRecipients = [];
+    for (const recipient of uniqueRecipients) {
+      const member = await guild.members.fetch(recipient.id).catch(() => null);
+      if (member) validRecipients.push(recipient);
+    }
+    if (!validRecipients.length) {
+      return send({ content: "🏮 Nenhum dos destinatários informados é membro deste servidor.", ephemeral: true });
+    }
+
+    const total = amount * validRecipients.length;
+    if (!Number.isSafeInteger(total)) {
+      return send({ content: "💴 O total da transferência é muito alto. Reduza o valor ou a quantidade de destinatários.", ephemeral: true });
+    }
     const senderBalance = await balanceCollection.findOne(
       { guildId: String(guild.id), userId: String(sender.id) },
       { projection: { balance: 1 } }
     );
     const available = Math.max(0, Number(senderBalance?.balance) || 0);
-    if (available < amount) {
+    if (available < total) {
       return send({
-        content: "🌸 Suas Kizunas não são suficientes para esta proposta. Seu saldo atual é **" + format(available) + " KZ**.",
+        content: "🌸 Você precisa de **" + format(total) + " KZ** para abrir " + validRecipients.length +
+          " proposta(s) de **" + format(amount) + " KZ** cada. Seu saldo atual é **" + format(available) + " KZ**.",
         ephemeral: true,
       });
     }
 
-    const now = new Date();
-    const proposal = {
-      id: crypto.randomUUID(),
-      guildId: String(guild.id),
-      senderId: String(sender.id),
-      recipientId: String(recipient.id),
-      amount,
-      acceptedBy: [],
-      status: "pending",
-      createdAt: now,
-      expiresAt: new Date(now.getTime() + PROPOSAL_MS),
-      channelId: null,
-      messageId: null,
-    };
-    await proposalCollection.insertOne(proposal);
-    const message = await send({
-      content: proposalText(proposal),
-      components: buildRows(proposal),
-      allowedMentions: { users: [sender.id, recipient.id], parse: [] },
-    });
-    if (!message || !message.id) {
-      await proposalCollection.updateOne({ id: proposal.id, status: "pending" }, { $set: { status: "cancelled" } });
-      return;
+    // Cada destinatário recebe sua própria proposta, mensagem, contador e prazo.
+    for (let index = 0; index < validRecipients.length; index++) {
+      const recipient = validRecipients[index];
+      const now = new Date();
+      const proposal = {
+        id: crypto.randomUUID(),
+        guildId: String(guild.id),
+        senderId: String(sender.id),
+        recipientId: String(recipient.id),
+        amount,
+        batchSize: validRecipients.length,
+        batchIndex: index + 1,
+        acceptedBy: [],
+        status: "pending",
+        createdAt: now,
+        expiresAt: new Date(now.getTime() + PROPOSAL_MS),
+        channelId: null,
+        messageId: null,
+      };
+      await proposalCollection.insertOne(proposal);
+      const message = await send({
+        content: proposalText(proposal),
+        components: buildRows(proposal),
+        allowedMentions: { users: [sender.id, recipient.id], parse: [] },
+      }, index);
+      if (!message || !message.id) {
+        await proposalCollection.updateOne(
+          { id: proposal.id, status: "pending" },
+          { $set: { status: "cancelled", closedAt: new Date(), failureReason: "MESSAGE_SEND_FAILED" } }
+        );
+        continue;
+      }
+      await proposalCollection.updateOne(
+        { id: proposal.id },
+        { $set: { channelId: String(message.channelId), messageId: String(message.id) } }
+      );
+      scheduleExpiration(client, proposal.id);
     }
-    await proposalCollection.updateOne(
-      { id: proposal.id },
-      { $set: { channelId: String(message.channelId), messageId: String(message.id) } }
-    );
-    scheduleExpiration(client, proposal.id);
   } catch (error) {
-    console.error("[Yukina Pay] Não foi possível criar a proposta:", error);
+    console.error("[Yukina Pay] Não foi possível criar as propostas:", error);
     return send({
-      content: "🌙 Não consegui iniciar a transferência agora. Verifique a conexão com o banco de dados e tente novamente.",
+      content: "🌙 Não consegui iniciar as transferências agora. Verifique a conexão com o banco de dados e tente novamente.",
       ephemeral: true,
     });
   }
@@ -365,55 +393,81 @@ async function handleButton(interaction) {
 }
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("pay")
-    .setDescription("Proponha uma transferência de Kizunas que exige a confirmação dos dois participantes.")
-    .setDMPermission(false)
-    .addUserOption(option =>
-      option.setName("usuario")
-        .setDescription("Pessoa que participará da transferência")
-        .setRequired(true)
-    )
-    .addIntegerOption(option =>
-      option.setName("valor")
-        .setDescription("Quantidade de Kizunas a transferir")
-        .setRequired(true)
-        .setMinValue(1)
-        .setMaxValue(2147483647)
-    ),
+  data: (() => {
+    const builder = new SlashCommandBuilder()
+      .setName("pay")
+      .setDescription("Proponha transferências individuais de Kizunas para até 10 pessoas.")
+      .setDMPermission(false)
+      .addIntegerOption(option =>
+        option.setName("valor")
+          .setDescription("Quantidade de Kizunas para CADA pessoa")
+          .setRequired(true)
+          .setMinValue(1)
+          .setMaxValue(2147483647)
+      )
+      .addUserOption(option =>
+        option.setName("usuario")
+          .setDescription("Primeiro destinatário")
+          .setRequired(true)
+      );
+    for (let i = 2; i <= 10; i++) {
+      builder.addUserOption(option =>
+        option.setName("usuario" + i)
+          .setDescription("Destinatário " + i + " (opcional)")
+          .setRequired(false)
+      );
+    }
+    return builder;
+  })(),
 
   name: "pay",
   aliases: ["pix", "pagar"],
 
   async execute(interaction) {
-    const recipient = interaction.options.getUser("usuario");
+    const recipients = [];
+    for (let i = 1; i <= 10; i++) {
+      const recipient = interaction.options.getUser(i === 1 ? "usuario" : "usuario" + i);
+      if (recipient) recipients.push(recipient);
+    }
     const amount = interaction.options.getInteger("valor");
-    await createProposal({
+    await createProposals({
       guild: interaction.guild,
       sender: interaction.user,
-      recipient,
+      recipients,
       amount,
       client: interaction.client,
-      send: async payload => {
+      send: async (payload, index = 0) => {
         if (payload.ephemeral) {
+          if (interaction.replied || interaction.deferred) {
+            return interaction.followUp({ content: payload.content, flags: MessageFlags.Ephemeral });
+          }
           return interaction.reply({ content: payload.content, flags: MessageFlags.Ephemeral });
         }
-        await interaction.reply(payload);
-        return interaction.fetchReply();
+        if (!interaction.replied && !interaction.deferred) {
+          await interaction.reply(payload);
+          return interaction.fetchReply();
+        }
+        return interaction.followUp(payload);
       },
     });
   },
 
   async prefixExecute(message, args = []) {
     if (!message.guild) return message.reply("🌸 O Yukina Pay só pode ser usado dentro de um servidor.");
-    const recipient = message.mentions.users.first()
-      || (args[0] ? await message.client.users.fetch(String(args[0]).replace(/[<@!>]/g, "")).catch(() => null) : null);
+    const recipients = [...message.mentions.users.values()];
     const amountToken = args.find(token => /^\d+$/.test(String(token)));
     const amount = amountToken ? Number(amountToken) : NaN;
-    await createProposal({
+    if (!recipients.length && args[0]) {
+      const possibleIds = args.filter(token => /^\d{17,20}$/.test(String(token)));
+      for (const id of possibleIds) {
+        const user = await message.client.users.fetch(String(id)).catch(() => null);
+        if (user) recipients.push(user);
+      }
+    }
+    await createProposals({
       guild: message.guild,
       sender: message.author,
-      recipient,
+      recipients,
       amount,
       client: message.client,
       send: async payload => {
