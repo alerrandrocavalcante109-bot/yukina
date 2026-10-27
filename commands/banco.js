@@ -165,7 +165,7 @@ async function run({ guild, user, action, amountInput, send }) {
           "👛 **Carteira:** " + format(balances.wallet) + " KZ\n" +
           "🏦 **Banco:** " + format(balances.bank) + " KZ\n" +
           "💴 **Patrimônio total:** " + format(balances.wallet + balances.bank) + " KZ\n" +
-          "📜 **Dívida atual:** " + format(debtInfo.debt) + " KZ\n\n" +
+          "📜 **Dívida atual:** " + format(debtInfo.debt) + " KZ\n" + (debtInfo.dueAt ? "⏳ **Vencimento:** <t:" + Math.floor(new Date(debtInfo.dueAt).getTime() / 1000) + ":R>\n📈 **Juros por atraso:** " + (debtInfo.dailyRate * 100).toLocaleString("pt-BR") + "% ao dia\n\n" : "\n") +
           "❄️ **Taxa por inatividade do Daily:** 3% ao dia após 3 dias completos sem coletar." + feeText +
           "\n\nEscolha uma opção abaixo, nee~ 🌸"
         ))
