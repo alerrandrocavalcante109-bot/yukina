@@ -9,7 +9,6 @@ const {
   MessageFlags,
 } = require("discord.js");
 const storage = require("../system-storage").forSystem("waifu");
-const { randomUUID } = require("node:crypto");
 
 const COLOR = 0xC58AE8;
 const API_URL = "https://api.waifu.pics/sfw/waifu";
@@ -71,7 +70,7 @@ function makeButtons(ownerId, imageUrl, collectionCount) {
       .setEmoji("🔄")
       .setStyle(ButtonStyle.Primary),
     new ButtonBuilder()
-      .setCustomId("yukina-waifu:save:" + ownerId + ":" + Buffer.from(imageUrl).toString("base64url").slice(0, 80))
+      .setCustomId("yukina-waifu:save:" + ownerId)
       .setLabel("Guardar")
       .setEmoji("🌸")
       .setStyle(ButtonStyle.Success)
