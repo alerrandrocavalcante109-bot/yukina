@@ -345,7 +345,7 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const imageUrl = interaction.message.embeds?.[0]?.image?.url;
         const rankField = interaction.message.embeds?.[0]?.fields?.find(field => field.name === "🏷️ Rank");
-        const rankText = rankField?.value?.match(/\*\*(SSS\\+|SSS-|SSS|SS\\+|SS-|SS|S\\+|S-|S|A\\+|A-|A|B\\+|B-|B|C\\+|C-|C|D\\+|D-|D|E\\+|E-|E|∞)\*\*/)?.[1] || "E-";
+        const rankText = rankField?.value?.match(/\*\*(SSS\+|SSS-|SSS|SS\+|SS-|SS|S\+|S-|S|A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D-|D|E\+|E-|E|∞)\*\*/)?.[1] || "E-";
         if (!imageUrl) return interaction.editReply("💧 Não consegui identificar esta personagem. Sorteie outra e tente novamente.");
         const result = await saveWaifu(interaction.guildId, interaction.user, imageUrl, rankText);
         if (result.duplicate) return interaction.editReply("🌸 Você já guardou esta personagem na sua coleção. (" + result.count + "/" + MAX_COLLECTION + ")");
