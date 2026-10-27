@@ -94,7 +94,7 @@ function buildEmbed(user, job, reward, record, nextWorkAt) {
     .setDescription(job.description)
     .addFields(
       { name: "❄️ Recompensa", value: "+" + formatNumber(reward) + " flocos", inline: true },
-      { name: "💎 Sua carteira", value: formatNumber(record.balance) + " flocos", inline: true },
+      { name: "💎 Sua carteira", value: formatNumber(record.balance) + " Kizunas (KZ)", inline: true },
       { name: "🌙 Próximo trabalho", value: "Disponível em " + wait, inline: true },
     )
     .setFooter({ text: "Yukina · Trabalhe com calma; até a neve precisa de pausa." })
