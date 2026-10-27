@@ -47,6 +47,19 @@ async function getCollections() {
 function format(value) {
   return Math.floor(Number(value) || 0).toLocaleString("pt-BR");
 }
+function parseAmount(input, availableBalance, recipientCount) {
+  const raw = String(input ?? "").trim().toLowerCase().replace(/,/g, ".");
+  if (raw === "all" || raw === "half") {
+    const fraction = raw === "all" ? 1 : 0.5;
+    return Math.floor((Math.max(0, availableBalance) * fraction) / Math.max(1, recipientCount));
+  }
+  const match = raw.match(/^(\d+(?:\.\d+)?)(k|m|b|t)?$/i);
+  if (!match) return NaN;
+  const multipliers = { k: 1e3, m: 1e6, b: 1e9, t: 1e12 };
+  const amount = Number(match[1]) * (multipliers[(match[2] || "").toLowerCase()] || 1);
+  if (!Number.isFinite(amount) || amount < 1 || amount > Number.MAX_SAFE_INTEGER) return NaN;
+  return Math.floor(amount);
+}
 
 function buildRows(proposal, disabled = false) {
   const count = Array.isArray(proposal.acceptedBy) ? proposal.acceptedBy.length : 0;
@@ -151,7 +164,7 @@ function scheduleExpiration(client, proposalId) {
   if (typeof timer.unref === "function") timer.unref();
 }
 
-async function createProposals({ guild, sender, recipients, amount, send, client }) {
+async function createProposals({ guild, sender, recipients, amountInput, send, client }) {
   if (!guild) return send({ content: "🌸 O Yukina Pay só pode ser usado dentro de um servidor.", ephemeral: true });
 
   const uniqueRecipients = [];
@@ -167,10 +180,6 @@ async function createProposals({ guild, sender, recipients, amount, send, client
       ephemeral: true,
     });
   }
-  if (!Number.isSafeInteger(amount) || amount < 1) {
-    return send({ content: "💴 Informe um valor inteiro de Kizunas maior que zero para cada pessoa.", ephemeral: true });
-  }
-
   try {
     const { proposals: proposalCollection, balances: balanceCollection } = await getCollections();
     const validRecipients = [];
@@ -182,15 +191,19 @@ async function createProposals({ guild, sender, recipients, amount, send, client
       return send({ content: "🏮 Nenhum dos destinatários informados é membro deste servidor.", ephemeral: true });
     }
 
-    const total = amount * validRecipients.length;
-    if (!Number.isSafeInteger(total)) {
-      return send({ content: "💴 O total da transferência é muito alto. Reduza o valor ou a quantidade de destinatários.", ephemeral: true });
-    }
     const senderBalance = await balanceCollection.findOne(
       { guildId: String(guild.id), userId: String(sender.id) },
       { projection: { balance: 1 } }
     );
     const available = Math.max(0, Number(senderBalance?.balance) || 0);
+    const amount = parseAmount(amountInput, available, validRecipients.length);
+    if (!Number.isSafeInteger(amount) || amount < 1) {
+      return send({ content: "💴 Valor inválido. Use 1500, 1.5k, 2m, 3b, 1t, all ou half.", ephemeral: true });
+    }
+    const total = amount * validRecipients.length;
+    if (!Number.isSafeInteger(total)) {
+      return send({ content: "💴 O total da transferência é muito alto. Reduza o valor ou a quantidade de destinatários.", ephemeral: true });
+    }
     if (available < total) {
       return send({
         content: "🌸 <@" + sender.id + ">, suas Kizunas não são suficientes para iniciar esta troca.\n\n" +
@@ -439,12 +452,11 @@ module.exports = {
       .setName("pay")
       .setDescription("Proponha transferências individuais de Kizunas para até 10 pessoas.")
       .setDMPermission(false)
-      .addIntegerOption(option =>
+      .addStringOption(option =>
         option.setName("valor")
-          .setDescription("Quantidade de Kizunas para CADA pessoa")
+          .setDescription("Valor: 1500, 1.5k, 2m, 3b, 1t, all ou half")
           .setRequired(true)
-          .setMinValue(1)
-          .setMaxValue(2147483647)
+          .setMaxLength(32)
       )
       .addUserOption(option =>
         option.setName("usuario")
@@ -470,12 +482,12 @@ module.exports = {
       const recipient = interaction.options.getUser(i === 1 ? "usuario" : "usuario" + i);
       if (recipient) recipients.push(recipient);
     }
-    const amount = interaction.options.getInteger("valor");
+    const amountInput = interaction.options.getString("valor");
     await createProposals({
       guild: interaction.guild,
       sender: interaction.user,
       recipients,
-      amount,
+      amountInput,
       client: interaction.client,
       send: async (payload, index = 0) => {
         if (payload.ephemeral) {
@@ -496,8 +508,7 @@ module.exports = {
   async prefixExecute(message, args = []) {
     if (!message.guild) return message.reply("🌸 O Yukina Pay só pode ser usado dentro de um servidor.");
     const recipients = [...message.mentions.users.values()];
-    const amountToken = args.find(token => /^\d+$/.test(String(token)));
-    const amount = amountToken ? Number(amountToken) : NaN;
+    const amountInput = args.find(token => /^(?:all|half|\d+(?:[.,]\d+)?[kmbt]?)$/i.test(String(token))) ?? "";
     if (!recipients.length && args[0]) {
       const possibleIds = args.filter(token => /^\d{17,20}$/.test(String(token)));
       for (const id of possibleIds) {
