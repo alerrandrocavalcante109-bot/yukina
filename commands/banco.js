@@ -71,7 +71,7 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
   const source = action === "depositar" ? before.wallet : before.bank;
   const amount = parseAmount(amountInput, source, true);
   if (!Number.isSafeInteger(amount) || amount < 1) {
-    return { ok: false, message: "💴 Informe um valor válido, como 5000, 1.5k, 2m ou all." };
+    return { ok: false, message: "❄️ **Yukina · Um instante, por favor!**\nEsse valor não parece certo, nee~ 🌸\nTente `5000`, `1.5k`, `2m` ou `all`." };
   }
   if (source < amount) {
     return {
@@ -121,7 +121,7 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
     });
   } catch (error) {
     if (error.message === "SOURCE_BALANCE_CHANGED") {
-      return { ok: false, message: "🌙 Seu saldo mudou durante a operação. Confira os saldos e tente novamente." };
+      return { ok: false, message: "🫧 **Yukina:** Seu saldo mudou durante a operação. Confira os valores e tente mais uma vez, tá bem?" };
     }
     throw error;
   } finally {
@@ -133,20 +133,20 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
 function accountEmbed(user, balances) {
   return new EmbedBuilder()
     .setColor(0xA7D8F0)
-    .setAuthor({ name: "Yukina · Banco Central", iconURL: user.displayAvatarURL({ size: 128 }) })
+    .setAuthor({ name: "❄️ Yukina · Banco Central" })
     .setTitle("🏦 Sua conta bancária")
     .setDescription("Guarde suas Kizunas no Banco Central da Yukina e mantenha sua carteira organizada.")
     .addFields(
       { name: "👛 Carteira", value: "**" + format(balances.wallet) + " KZ**", inline: true },
       { name: "🏦 Banco", value: "**" + format(balances.bank) + " KZ**", inline: true },
-      { name: "💴 Patrimônio total", value: "**" + format(balances.wallet + balances.bank) + " KZ**", inline: false },
+      { name: "💴 Patrimônio total", value: "**" + format(balances.wallet + balances.bank) + " KZ**", inline: false },\n      { name: "❄️ Taxa por inatividade do Daily", value: "**3% ao dia após 3 dias sem coletar**\\nA cobrança acumula diariamente até você voltar ao Daily. Cuide das suas Kizunas, tá bem? 🌸", inline: false },
     )
-    .setFooter({ text: "Yukina · Taxa de inatividade do Daily após 3 dias" })
+    .setFooter({ text: "Yukina • Cuide das suas Kizunas e volte para o Daily ♡" })
     .setTimestamp();
 }
 
 async function run({ guild, user, action, amountInput, send }) {
-  if (!guild) return send({ content: "❄️ O Banco Central só funciona dentro de um servidor.", ephemeral: true });
+  if (!guild) return send({ content: "❄️ **Yukina:** O Banco Central fica dentro de um servidor do Discord, tá bem? 🌸", ephemeral: true });
   try {
     if (action === "saldo") {
       const { db } = await getCollections();
@@ -154,11 +154,11 @@ async function run({ guild, user, action, amountInput, send }) {
       const balances = await getAccountBalances(guild.id, user.id);
       const embed = accountEmbed(user, balances);
       if (feeResult.fee > 0) embed.addFields({ name: "❄️ Taxa de inatividade aplicada", value: `**-${formatKz(feeResult.fee)} KZ**\nAcumulada por ${feeResult.overdueDays} dia(s) após os 3 dias de tolerância.`, inline: false });
-      else if (feeResult.overdueDays > 0) embed.addFields({ name: "❄️ Taxa de inatividade", value: `A taxa já foi calculada para os ${feeResult.overdueDays} dia(s) de atraso.`, inline: false });
+      else if (feeResult.overdueDays > 0) embed.addFields({ name: "🌸 Lembrete carinhoso da Yukina", value: `Você está há ${feeResult.overdueDays} dia(s) além da tolerância. A taxa é de **3% ao dia** e já foi calculada para esse período. Não deixe suas Kizunas derreterem, volte ao Daily!`, inline: false });
       return send({ embeds: [embed] });
     }
     if (action !== "depositar" && action !== "sacar") {
-      return send({ content: "🏦 Use Ybanco saldo, Ybanco depositar 5k ou Ybanco sacar 2k.", ephemeral: true });
+      return send({ content: "🌙 **Yukina · Como usar o Banco Central**\\n`Ybanco saldo` — ver sua conta\\n`Ybanco depositar 5k` — guardar 5.000 KZ\\n`Ybanco sacar 2k` — retirar 2.000 KZ\\n\\nLembrete: após 3 dias sem Daily, a taxa é de **3% ao dia**. Não se esqueça de coletar, nee~ 💙", ephemeral: true });
     }
     const result = await moveMoney({ guildId: guild.id, userId: user.id, action, amountInput });
     if (!result.ok) return send({ content: result.message, ephemeral: true });
@@ -169,7 +169,7 @@ async function run({ guild, user, action, amountInput, send }) {
     return send({ embeds: [embed] });
   } catch (error) {
     console.error("[Yukina Banco Central] Falha na operação:", error);
-    return send({ content: "🌙 O Banco Central não conseguiu processar sua operação agora. Tente novamente em instantes.", ephemeral: true });
+    return send({ content: "🫧 **Yukina:** Ah, parece que o Banco Central está descansando por um instante... Tente novamente daqui a pouquinho, por favor. ❄️", ephemeral: true });
   }
 }
 
