@@ -127,6 +127,56 @@ async function getCollection(guildId, userId) {
   return Array.isArray(record?.items) ? record.items : [];
 }
 
+function makeAlbumEmbed(item, user, index, total) {
+  const rarity = RARITIES.find(entry => entry.rank === item.rank) || RARITIES[0];
+  return new EmbedBuilder()
+    .setColor(COLOR)
+    .setAuthor({ name: "Yukina · Álbum Lunar", iconURL: user.displayAvatarURL({ size: 128 }) })
+    .setTitle("📖 Álbum de Waifus")
+    .setDescription("**Personagem " + (index + 1) + " de " + total + "**\n\n🌸 **Tipo:** Waifu de anime\n🏷️ **Raridade:** " + (rarity.rank === "∞" ? "Suprema (∞)" : rarity.rank) + " · " + rarity.label + "\n💎 **Valor:** " + money(item.value))
+    .setImage(item.url)
+    .setFooter({ text: "Yukina · Use ◀️ e ▶️ para navegar pelo seu álbum." })
+    .setTimestamp();
+}
+
+function makeAlbumButtons(ownerId, index, total) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("yukina-waifu:album:" + ownerId + ":" + (index - 1))
+      .setLabel("Voltar")
+      .setEmoji("◀️")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(index <= 0),
+    new ButtonBuilder()
+      .setCustomId("yukina-waifu:album:" + ownerId + ":" + (index + 1))
+      .setLabel("Próximo")
+      .setEmoji("▶️")
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(index >= total - 1)
+  );
+}
+
+async function showAlbumPage({ guildId, user, reply, index = 0, edit = false }) {
+  const items = (await getCollection(guildId, user.id)).map(normalizeItem).filter(Boolean);
+  if (!items.length) {
+    const payload = {
+      content: "🌸 Seu álbum ainda está vazio. Use **Ywaifu** para encontrar uma personagem e toque em **Guardar**.",
+      embeds: [],
+      components: [],
+    };
+    return edit ? reply.update(payload) : reply(payload);
+  }
+  const safeIndex = Math.max(0, Math.min(Number(index) || 0, items.length - 1));
+  const item = items[safeIndex];
+  const payload = {
+    embeds: [makeAlbumEmbed(item, user, safeIndex, items.length)],
+    components: [makeAlbumButtons(user.id, safeIndex, items.length)],
+    allowedMentions: { parse: [] },
+  };
+  return edit ? reply.update(payload) : reply(payload);
+}
+
+
 async function showWaifu({ guildId, user, reply, edit = false }) {
   const imageUrl = await getRandomWaifu();
   const rarity = rollRarity();
@@ -140,45 +190,7 @@ async function showWaifu({ guildId, user, reply, edit = false }) {
 }
 
 async function showCollection({ guildId, user, reply, edit = false }) {
-  const items = await getCollection(guildId, user.id);
-  if (!items.length) {
-    const payload = {
-      content: "🌸 Sua coleção ainda está vazia. Use **Ywaifu** para encontrar uma personagem e toque em **Guardar** para adicioná-la ao seu arquivo lunar.",
-      embeds: [],
-      components: [],
-    };
-    return edit ? reply.update(payload) : reply(payload);
-  }
-
-  const normalizedItems = items.map(normalizeItem).filter(Boolean);
-  const selected = normalizedItems.slice(-10).reverse();
-  const embed = new EmbedBuilder()
-    .setColor(COLOR)
-    .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: user.displayAvatarURL({ size: 128 }) })
-    .setTitle("📚 Coleção de " + (user.globalName || user.username))
-    .setDescription("Você guardou **" + items.length + "/" + MAX_COLLECTION + "** personagens. Mostrando as últimas " + selected.length + " adicionadas.")
-    .addFields(selected.map((item, index) => ({
-      name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank),
-      value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")",
-      inline: false,
-    })))
-    .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." })
-    .setTimestamp();
-
-  const row = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("yukina-waifu:back:" + user.id)
-      .setLabel("Voltar ao sorteio")
-      .setEmoji("❄️")
-      .setStyle(ButtonStyle.Primary),
-    new ButtonBuilder()
-      .setCustomId("yukina-waifu:collection:" + user.id)
-      .setLabel("Atualizar coleção")
-      .setEmoji("🔄")
-      .setStyle(ButtonStyle.Secondary)
-  );
-  const payload = { embeds: [embed], components: [row], allowedMentions: { parse: [] } };
-  return edit ? reply.update(payload) : reply(payload);
+  return showAlbumPage({ guildId, user, reply, index: 0, edit });
 }
 
 async function saveWaifu(guildId, user, imageUrl, rank) {
@@ -222,20 +234,11 @@ module.exports = {
     try {
       const action = interaction.options.getString("acao") || "sortear";
       if (action === "colecao") {
-        const items = await getCollection(interaction.guildId, interaction.user.id);
-        if (!items.length) {
-          return interaction.editReply("🌸 Sua coleção está vazia! Use **/waifu** para encontrar sua primeira personagem.");
-        }
-        const normalizedItems = items.map(normalizeItem).filter(Boolean);
-        const selected = normalizedItems.slice(-10).reverse();
-        const embed = new EmbedBuilder()
-          .setColor(COLOR)
-          .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: interaction.user.displayAvatarURL({ size: 128 }) })
-          .setTitle("📚 Sua coleção de waifus")
-          .setDescription("Personagens guardadas: **" + items.length + "/" + MAX_COLLECTION + "**. Exibindo as últimas " + selected.length + ".")
-          .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")", inline: false })))
-          .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." });
-        return interaction.editReply({ embeds: [embed] });
+        return await showAlbumPage({
+          guildId: interaction.guildId,
+          user: interaction.user,
+          reply: payload => interaction.editReply(payload),
+        });
       }
       return await showWaifu({
         guildId: interaction.guildId,
@@ -252,19 +255,12 @@ module.exports = {
     if (!message.guildId) return message.reply("❄️ O arquivo lunar só está disponível dentro de um servidor.");
     const action = String(args[0] || "").toLowerCase();
     try {
-      if (["colecao", "coleção", "collection", "colecoes", "coleções"].includes(action)) {
-        const items = await getCollection(message.guildId, message.author.id);
-        if (!items.length) return message.reply("🌸 Sua coleção está vazia! Use **Ywaifu** para encontrar sua primeira personagem.");
-        const normalizedItems = items.map(normalizeItem).filter(Boolean);
-        const selected = normalizedItems.slice(-10).reverse();
-        const embed = new EmbedBuilder()
-          .setColor(COLOR)
-          .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: message.author.displayAvatarURL({ size: 128 }) })
-          .setTitle("📚 Sua coleção de waifus")
-          .setDescription("Personagens guardadas: **" + items.length + "/" + MAX_COLLECTION + "**. Exibindo as últimas " + selected.length + ".")
-          .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")", inline: false })))
-          .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." });
-        return message.reply({ embeds: [embed], allowedMentions: { parse: [] } });
+      if (["colecao", "coleção", "collection", "colecoes", "coleções", "album", "álbum"].includes(action)) {
+        return await showAlbumPage({
+          guildId: message.guildId,
+          user: message.author,
+          reply: payload => message.reply(payload),
+        });
       }
       return await showWaifu({
         guildId: message.guildId,
@@ -293,29 +289,21 @@ module.exports = {
     try {
       if (action === "again" || action === "back") {
         await interaction.deferUpdate();
-        if (action === "back") {
-          const items = await getCollection(interaction.guildId, interaction.user.id);
-          if (!items.length) {
-            return interaction.editReply({ content: "🌸 Sua coleção está vazia. Use **Ywaifu** para encontrar uma personagem.", embeds: [], components: [] });
-          }
-          const normalizedItems = items.map(normalizeItem).filter(Boolean);
-          const selected = normalizedItems.slice(-10).reverse();
-          const embed = new EmbedBuilder()
-            .setColor(COLOR)
-            .setAuthor({ name: "Yukina · Arquivo Lunar", iconURL: interaction.user.displayAvatarURL({ size: 128 }) })
-            .setTitle("📚 Sua coleção de waifus")
-            .setDescription("Personagens guardadas: **" + items.length + "/" + MAX_COLLECTION + "**. Exibindo as últimas " + selected.length + ".")
-            .addFields(selected.map((item, index) => ({ name: "🌸 Personagem " + (normalizedItems.length - index) + " · Rank " + (item.rank === "∞" ? "Suprema (∞)" : item.rank), value: "**Valor:** " + money(item.value) + "\n[Ver imagem](" + item.url + ")", inline: false })))
-            .setFooter({ text: "Yukina · Cada encontro vira uma lembrança." });
-          const row = new ActionRowBuilder().addComponents(
-            new ButtonBuilder().setCustomId("yukina-waifu:back:" + interaction.user.id).setLabel("Voltar ao sorteio").setEmoji("❄️").setStyle(ButtonStyle.Primary),
-            new ButtonBuilder().setCustomId("yukina-waifu:collection:" + interaction.user.id).setLabel("Atualizar coleção").setEmoji("🔄").setStyle(ButtonStyle.Secondary)
-          );
-          return interaction.editReply({ embeds: [embed], components: [row] });
-        }
         return await showWaifu({
           guildId: interaction.guildId,
           user: interaction.user,
+          reply: payload => interaction.editReply(payload),
+        });
+      }
+
+      if (action === "album") {
+        const pageIndex = Number(parts[3]);
+        await interaction.deferUpdate();
+        return await showAlbumPage({
+          guildId: interaction.guildId,
+          user: interaction.user,
+          index: pageIndex,
+          edit: true,
           reply: payload => interaction.editReply(payload),
         });
       }
