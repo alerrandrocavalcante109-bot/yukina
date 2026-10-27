@@ -171,8 +171,11 @@ async function createProposals({ guild, sender, recipients, amount, send, client
     const available = Math.max(0, Number(senderBalance?.balance) || 0);
     if (available < total) {
       return send({
-        content: "🌸 Você precisa de **" + format(total) + " KZ** para abrir " + validRecipients.length +
-          " proposta(s) de **" + format(amount) + " KZ** cada. Seu saldo atual é **" + format(available) + " KZ**.",
+        content: "🌸 <@" + sender.id + ">, suas Kizunas não são suficientes para iniciar esta troca.\n\n" +
+          "💴 **Necessário:** " + format(total) + " KZ\n" +
+          "💰 **Seu saldo:** " + format(available) + " KZ\n" +
+          "🏮 **Falta:** " + format(total - available) + " KZ\n\n" +
+          "O valor é calculado para todas as propostas: " + validRecipients.length + " pessoa(s), com " + format(amount) + " KZ para cada uma.",
         ephemeral: true,
       });
     }
@@ -241,7 +244,11 @@ async function handleButton(interaction) {
     }
     const userId = String(interaction.user.id);
     if (userId !== proposal.senderId && userId !== proposal.recipientId) {
-      return interaction.followUp({ content: "🌸 Somente os dois participantes mencionados podem responder a esta proposta.", flags: MessageFlags.Ephemeral });
+      return interaction.followUp({
+        content: "🏮 <@" + userId + ">, esta transferência não é sua. Apenas <@" + proposal.senderId + "> e <@" + proposal.recipientId + "> podem aceitar ou recusar esta proposta.",
+        flags: MessageFlags.Ephemeral,
+        allowedMentions: { users: [userId, proposal.senderId, proposal.recipientId], parse: [] },
+      });
     }
     if (proposal.status !== "pending") {
       return interaction.followUp({ content: "🍃 Esta proposta já foi encerrada.", flags: MessageFlags.Ephemeral });
@@ -355,8 +362,8 @@ async function handleButton(interaction) {
       );
       await interaction.message.edit({
         content: transferError.code === "INSUFFICIENT_BALANCE"
-          ? "🍃 **Yukina Pay · Proposta cancelada**\nO saldo disponível mudou antes da confirmação final. Nenhuma Kizuna foi transferida."
-          : "🌙 **Yukina Pay · Não foi possível concluir**\nO banco de dados não confirmou a transferência. A proposta foi encerrada; confira o saldo antes de tentar novamente.",
+          ? "🍃 **Yukina Pay · Proposta cancelada**\n\n<@" + proposal.senderId + "> e <@" + proposal.recipientId + ">, o saldo de Kizunas disponível mudou antes da confirmação final. Nenhuma Kizuna foi transferida. Verifiquem o saldo e criem uma nova proposta, se desejarem."
+          : "🌙 **Yukina Pay · Não foi possível concluir**\n\n<@" + proposal.senderId + "> e <@" + proposal.recipientId + ">, o banco de dados não confirmou a transferência. A proposta foi encerrada; confiram o saldo antes de tentar novamente.",
         components: [],
         allowedMentions: { parse: [] },
       }).catch(() => {});
@@ -371,18 +378,24 @@ async function handleButton(interaction) {
       { $set: { status: "completed", completedAt: new Date() } }
     );
     await interaction.message.edit({
+      content: "🌸 **Yukina Pay · Proposta concluída**\n\n「 O acordo foi selado; a transferência foi registrada. 」",
+      components: [],
+      allowedMentions: { parse: [] },
+    }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui editar a proposta:", error.message));
+    await interaction.message.reply({
       content: [
         "🌸 **Yukina Pay · Acordo selado!**",
+        "",
+        "📣 <@" + proposal.senderId + "> e <@" + proposal.recipientId + ">, vocês confirmaram e concluíram esta transferência!",
         "",
         "「 As Kizunas chegaram ao seu destino. Que a prosperidade acompanhe vocês! 」",
         "",
         "💴 **Valor transferido:** " + format(proposal.amount) + " KZ",
-        "🎎 **Confirmações:** 2/2",
+        "🎎 **Confirmações:** 2/2 — ambas recebidas",
         "🏮 A transferência foi concluída com sucesso.",
       ].join("\n"),
-      components: [],
-      allowedMentions: { parse: [] },
-    }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui editar a mensagem:", error.message));
+      allowedMentions: { users: [proposal.senderId, proposal.recipientId], parse: [] },
+    }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui publicar a resposta:", error.message));
   } catch (error) {
     console.error("[Yukina Pay] Falha ao processar botão:", error);
     return interaction.followUp({
