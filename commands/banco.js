@@ -77,8 +77,8 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
     return {
       ok: false,
       message: action === "depositar"
-        ? "🍃 Você não tem KZ suficientes na carteira para esse depósito.\n**Carteira:** " + format(before.wallet) + " KZ"
-        : "🍃 Você não tem KZ suficientes no banco para esse saque.\n**Banco:** " + format(before.bank) + " KZ",
+        ? "🌙 **Yukina · Sua carteira está um pouquinho leve...**\nVocê não tem KZ suficientes para esse depósito.\n**Carteira:** " + format(before.wallet) + " KZ"
+        : "🌙 **Yukina · Sua conta bancária não tem esse valor.**\nConfira seu saldo antes de tentar novamente.\n**Banco:** " + format(before.bank) + " KZ",
     };
   }
 
@@ -134,12 +134,13 @@ function accountEmbed(user, balances) {
   return new EmbedBuilder()
     .setColor(0xA7D8F0)
     .setAuthor({ name: "❄️ Yukina · Banco Central" })
-    .setTitle("🏦 Sua conta bancária")
-    .setDescription("Guarde suas Kizunas no Banco Central da Yukina e mantenha sua carteira organizada.")
+    .setTitle("🌙 Um cantinho seguro para suas Kizunas")
+    .setDescription("Oii~! Sou a Yukina, e vou cuidar do seu pequeno tesouro. 💙\n\nGuarde suas Kizunas aqui, mas não se esqueça do Daily! Após **3 dias completos sem coletá-lo**, uma taxa de **3% ao dia** será descontada do saldo bancário. A taxa continua acumulando enquanto você não voltar.")
     .addFields(
       { name: "👛 Carteira", value: "**" + format(balances.wallet) + " KZ**", inline: true },
       { name: "🏦 Banco", value: "**" + format(balances.bank) + " KZ**", inline: true },
-      { name: "💴 Patrimônio total", value: "**" + format(balances.wallet + balances.bank) + " KZ**", inline: false },\n      { name: "❄️ Taxa por inatividade do Daily", value: "**3% ao dia após 3 dias sem coletar**\\nA cobrança acumula diariamente até você voltar ao Daily. Cuide das suas Kizunas, tá bem? 🌸", inline: false },
+      { name: "💴 Patrimônio total", value: "**" + format(balances.wallet + balances.bank) + " KZ**", inline: false },
+      { name: "❄️ Taxa por inatividade do Daily", value: "**3% ao dia após 3 dias sem coletar**\\nA cobrança acumula diariamente até você voltar ao Daily. Cuide das suas Kizunas, tá bem? 🌸", inline: false },
     )
     .setFooter({ text: "Yukina • Cuide das suas Kizunas e volte para o Daily ♡" })
     .setTimestamp();
@@ -153,7 +154,7 @@ async function run({ guild, user, action, amountInput, send }) {
       const feeResult = await applyDailyInactivityFee({ db, guildId: guild.id, userId: user.id });
       const balances = await getAccountBalances(guild.id, user.id);
       const embed = accountEmbed(user, balances);
-      if (feeResult.fee > 0) embed.addFields({ name: "❄️ Taxa de inatividade aplicada", value: `**-${formatKz(feeResult.fee)} KZ**\nAcumulada por ${feeResult.overdueDays} dia(s) após os 3 dias de tolerância.`, inline: false });
+      if (feeResult.fee > 0) embed.addFields({ name: "🫧 A Yukina precisou cobrar a taxa", value: `**-${formatKz(feeResult.fee)} KZ**\nA taxa de **3% ao dia** acumulou por ${feeResult.overdueDays} dia(s) depois dos 3 dias de tolerância. Volte ao Daily para evitar novas cobranças, tá bem? ❄️`, inline: false });
       else if (feeResult.overdueDays > 0) embed.addFields({ name: "🌸 Lembrete carinhoso da Yukina", value: `Você está há ${feeResult.overdueDays} dia(s) além da tolerância. A taxa é de **3% ao dia** e já foi calculada para esse período. Não deixe suas Kizunas derreterem, volte ao Daily!`, inline: false });
       return send({ embeds: [embed] });
     }
@@ -165,7 +166,7 @@ async function run({ guild, user, action, amountInput, send }) {
     const verb = action === "depositar" ? "depositadas no banco" : "retiradas do banco";
     const embed = accountEmbed(user, result.balances)
       .setTitle(action === "depositar" ? "🌸 Depósito concluído" : "❄️ Saque concluído")
-      .setDescription("**" + format(result.amount) + " KZ** foram " + verb + " com sucesso.\n\nSeu dinheiro continua seguro na conta da Yukina.");
+      .setDescription("Yatta~! ✨ **" + format(result.amount) + " KZ** foram " + verb + " com sucesso.\n\n" + (result.fee > 0 ? "❄️ A taxa de inatividade de **3% ao dia** foi aplicada: **-" + formatKz(result.fee) + " KZ** (" + result.overdueDays + " dia(s) acumulados).\n\n" : "") + "Cuide das suas Kizunas e não se esqueça do Daily, tá bem? 💙");
     return send({ embeds: [embed] });
   } catch (error) {
     console.error("[Yukina Banco Central] Falha na operação:", error);
