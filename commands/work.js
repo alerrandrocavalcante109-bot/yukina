@@ -4,9 +4,13 @@ const {
   SlashCommandBuilder,
   EmbedBuilder,
   MessageFlags,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
 } = require("discord.js");
 const { MongoClient } = require("mongodb");
 const storage = require("../system-storage").forSystem("economy");
+const workNotifications = require("../systems/work-notifications");
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 let mongoClient = null;
@@ -72,7 +76,7 @@ function buildEmbed(user, job, reward, record, nextWorkAt) {
     .setTimestamp();
 }
 
-async function runWork({ guildId, user, reply }) {
+async function runWork({ guildId, user, reply, client }) {
   if (!guildId) return reply({ content: "⛩️ O comando **work** só pode ser usado dentro de um servidor.", ephemeral: true });
 
   const lockKey = guildId + ":" + user.id;
@@ -121,7 +125,15 @@ async function runWork({ guildId, user, reply }) {
     updated.balance = Math.max(0, Number(balanceAfter?.balance) || balance + reward);
     await storage.set(guildId, "profile", updated, user.id);
     const embed = buildEmbed(user, job, reward, updated, now + COOLDOWN_MS);
-    return reply({ embeds: [embed], allowedMentions: { parse: [] } });
+    if (updated.notificationEnabled) workNotifications.schedule(client, guildId, user.id, now);
+    const notifyRow = new ActionRowBuilder().addComponents(
+      new ButtonBuilder()
+        .setCustomId("yukina-work-notify:" + user.id)
+        .setLabel(updated.notificationEnabled ? "Desativar aviso por DM" : "Receber aviso por DM")
+        .setEmoji(updated.notificationEnabled ? "🔕" : "🔔")
+        .setStyle(updated.notificationEnabled ? ButtonStyle.Secondary : ButtonStyle.Primary)
+    );
+    return reply({ embeds: [embed], components: [notifyRow], allowedMentions: { parse: [] } });
   } catch (error) {
     console.error("[Yukina /work] Falha ao registrar trabalho:", error);
     return reply({
@@ -145,6 +157,7 @@ module.exports = {
     return runWork({
       guildId: interaction.guildId,
       user: interaction.user,
+      client: interaction.client,
       reply: (payload) => interaction.reply({
         ...payload,
         ...(payload.ephemeral ? { flags: MessageFlags.Ephemeral } : {}),
@@ -156,6 +169,7 @@ module.exports = {
     return runWork({
       guildId: message.guildId,
       user: message.author,
+      client: message.client,
       reply: (payload) => {
         if (payload.ephemeral) return message.reply(payload.content);
         return message.channel.send({
