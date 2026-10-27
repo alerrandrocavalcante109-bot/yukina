@@ -134,6 +134,10 @@ async function createProposal({ guild, sender, recipient, amount, send, client }
   if (!recipient || recipient.bot) {
     return send({ content: "🏮 Escolha um membro válido do servidor. Bots não podem participar desta transferência.", ephemeral: true });
   }
+  const recipientMember = await guild.members.fetch(recipient.id).catch(() => null);
+  if (!recipientMember) {
+    return send({ content: "🏮 A outra pessoa precisa ser membro deste servidor para participar da transferência.", ephemeral: true });
+  }
   if (recipient.id === sender.id) {
     return send({ content: "🍃 Você não pode transferir Kizunas para si mesmo.", ephemeral: true });
   }
@@ -278,6 +282,7 @@ async function handleButton(interaction) {
     }
 
     const session = mongoClient.startSession();
+    let transferError = null;
     try {
       await session.withTransaction(async () => {
         const debit = await balanceCollection.updateOne(
@@ -308,43 +313,48 @@ async function handleButton(interaction) {
           { upsert: true, session }
         );
       });
-      await proposalCollection.updateOne(
-        { id: proposalId, status: "processing" },
-        { $set: { status: "completed", completedAt: new Date() } }
-      );
-      await interaction.message.edit({
-        content: [
-          "🌸 **Yukina Pay · Acordo selado!**",
-          "",
-          "「 As Kizunas chegaram ao seu destino. Que a prosperidade acompanhe vocês! 」",
-          "",
-          "💴 **Valor transferido:** " + format(proposal.amount) + " KZ",
-          "🎎 **Confirmações:** 2/2",
-          "🏮 A transferência foi concluída com sucesso.",
-        ].join("\n"),
-        components: [],
-        allowedMentions: { parse: [] },
-      });
     } catch (error) {
-      console.error("[Yukina Pay] Falha ao concluir transferência:", error);
+      transferError = error;
+    } finally {
+      await session.endSession();
+    }
+
+    if (transferError) {
+      console.error("[Yukina Pay] Falha ao concluir transferência:", transferError);
       await proposalCollection.updateOne(
         { id: proposalId, status: "processing" },
-        { $set: { status: "cancelled", closedAt: new Date(), failureReason: error.code || "TRANSFER_FAILED" } }
+        { $set: { status: "cancelled", closedAt: new Date(), failureReason: transferError.code || "TRANSFER_FAILED" } }
       );
       await interaction.message.edit({
-        content: error.code === "INSUFFICIENT_BALANCE"
+        content: transferError.code === "INSUFFICIENT_BALANCE"
           ? "🍃 **Yukina Pay · Proposta cancelada**\nO saldo disponível mudou antes da confirmação final. Nenhuma Kizuna foi transferida."
           : "🌙 **Yukina Pay · Não foi possível concluir**\nO banco de dados não confirmou a transferência. A proposta foi encerrada; confira o saldo antes de tentar novamente.",
         components: [],
         allowedMentions: { parse: [] },
-      });
+      }).catch(() => {});
       return interaction.followUp({
         content: "🌙 Não foi possível concluir a transferência. Nenhuma operação parcial foi mantida.",
         flags: MessageFlags.Ephemeral,
       });
-    } finally {
-      await session.endSession();
     }
+
+    await proposalCollection.updateOne(
+      { id: proposalId, status: "processing" },
+      { $set: { status: "completed", completedAt: new Date() } }
+    );
+    await interaction.message.edit({
+      content: [
+        "🌸 **Yukina Pay · Acordo selado!**",
+        "",
+        "「 As Kizunas chegaram ao seu destino. Que a prosperidade acompanhe vocês! 」",
+        "",
+        "💴 **Valor transferido:** " + format(proposal.amount) + " KZ",
+        "🎎 **Confirmações:** 2/2",
+        "🏮 A transferência foi concluída com sucesso.",
+      ].join("\n"),
+      components: [],
+      allowedMentions: { parse: [] },
+    }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui editar a mensagem:", error.message));
   } catch (error) {
     console.error("[Yukina Pay] Falha ao processar botão:", error);
     return interaction.followUp({
