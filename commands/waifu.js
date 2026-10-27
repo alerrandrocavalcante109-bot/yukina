@@ -164,7 +164,7 @@ async function showAlbumPage({ guildId, user, reply, index = 0, edit = false }) 
       embeds: [],
       components: [],
     };
-    return edit ? reply.update(payload) : reply(payload);
+    return reply(payload);
   }
   const safeIndex = Math.max(0, Math.min(Number(index) || 0, items.length - 1));
   const item = items[safeIndex];
@@ -173,7 +173,7 @@ async function showAlbumPage({ guildId, user, reply, index = 0, edit = false }) 
     components: [makeAlbumButtons(user.id, safeIndex, items.length)],
     allowedMentions: { parse: [] },
   };
-  return edit ? reply.update(payload) : reply(payload);
+  return reply(payload);
 }
 
 
