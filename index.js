@@ -23,6 +23,7 @@ const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const xpMultiplierStorage = require("./system-storage").forSystem("xp-multipliers");
 const { parseCountingValue } = require("./counting-number-parser");
 const { getVipCollection } = require("./vip-store");
+const { applyDailyInactivityFee } = require("./systems/bank-inactivity-fee");
 
 const TOKEN = (process.env.TOKEN || "").trim();
 const AI_API_URL = (process.env.AI_API_URL || "https://openrouter.ai/api/v1/chat/completions").trim();
@@ -1318,6 +1319,7 @@ async function panelApi(req, res, url) {
       const ranges = [{ min: 5000, max: 10000 }, { min: 10000, max: 15000 }, { min: 10000, max: 20000 }, { min: 20000, max: 25000 }];
       const baseReward = Math.floor(Math.random() * (ranges[0].max - ranges[0].min + 1)) + ranges[0].min;
       const reward = Math.floor(baseReward * multiplier);
+      const feeResult = await applyDailyInactivityFee({ db: settingsMongoClient.db(MONGODB_DB), guildId, userId: String(user.id), now });
       const session = settingsMongoClient.startSession();
       try {
         await session.withTransaction(async () => {
@@ -1334,7 +1336,7 @@ async function panelApi(req, res, url) {
       } finally {
         await session.endSession();
       }
-      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, baseReward, reward, balanceUpdated: true, nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
+      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, baseReward, reward, bankFee: feeResult.fee, bankFeeOverdueDays: feeResult.overdueDays, balanceUpdated: true, nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
     } catch (error) {
       console.error("[Daily] Falha na coleta:", error.message || error);
       return sendJson(res, 500, { ok: false, detail: "Não foi possível verificar a coleta do Daily. Tente novamente." });
