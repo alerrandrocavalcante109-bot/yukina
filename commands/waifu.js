@@ -11,7 +11,7 @@ const {
 const storage = require("../system-storage").forSystem("waifu");
 
 const COLOR = 0xC58AE8;
-const API_URL = "https://api.waifu.pics/sfw/waifu";
+const API_URL = "https://nekos.best/api/v2/waifu";
 const MAX_COLLECTION = 100;
 const REQUEST_TIMEOUT_MS = 12000;
 
@@ -21,15 +21,16 @@ async function getRandomWaifu() {
   try {
     const response = await fetch(API_URL, {
       method: "GET",
-      headers: { accept: "application/json", "user-agent": "YukinaDiscordBot/1.0" },
+      headers: { accept: "application/json", "user-agent": "YukinaDiscordBot/1.0 (Discord bot; https://github.com/alerrandrocavalcante109-bot/yukina)" },
       signal: controller.signal,
     });
     if (!response.ok) throw new Error("A API de imagens respondeu HTTP " + response.status);
     const data = await response.json();
-    if (typeof data?.url !== "string" || !/^https:\/\//i.test(data.url)) {
+    const imageUrl = data?.results?.[0]?.url;
+    if (typeof imageUrl !== "string" || !/^https:\/\//i.test(imageUrl)) {
       throw new Error("A API não retornou uma imagem válida.");
     }
-    return data.url;
+    return imageUrl;
   } finally {
     clearTimeout(timeout);
   }
