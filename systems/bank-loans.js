@@ -76,8 +76,8 @@ async function getDebt(guildId, userId) {
 }
 async function requestLoan(guildId, userId, input) {
   const amount = parseAmount(input);
-  if (!Number.isSafeInteger(amount) || amount < 1000)
-    return { ok: false, message: "Escolha um valor de pelo menos **1.000 KZ** (ex.: 5k ou 2m)." };
+  if (!Number.isSafeInteger(amount) || amount < 50000 || amount > 1000000000)
+    return { ok: false, message: "Escolha um valor entre **50.000 KZ e 1.000.000.000 KZ (1b)**. Ex.: 50k, 2m ou 1b." };
   const { wallet, bank, ledger } = await getCollections();
   const filter = { guildId: String(guildId), userId: String(userId) };
   const account = await bank.findOne(filter);
