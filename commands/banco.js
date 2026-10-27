@@ -8,6 +8,7 @@ const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 let mongoClient = null;
 let walletCollection = null;
 let bankCollection = null;
+let ledgerCollection = null;
 
 async function getCollections() {
   if (walletCollection && bankCollection) return { walletCollection, bankCollection };
@@ -23,9 +24,11 @@ async function getCollections() {
   const db = mongoClient.db(MONGODB_DB);
   walletCollection = db.collection("economy_balances");
   bankCollection = db.collection("yukina_bank_accounts");
+  ledgerCollection = db.collection("yukina_bank_transactions");
   await Promise.all([
     walletCollection.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_balance" }),
     bankCollection.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_bank_account" }),
+    ledgerCollection.createIndex({ guildId: 1, userId: 1, createdAt: -1 }, { name: "bank_ledger_user_history" }),
   ]);
   return { walletCollection, bankCollection };
 }
@@ -105,6 +108,13 @@ async function moveMoney({ guildId, userId, action, amountInput }) {
           { upsert: true, session }
         );
       }
+      await ledgerCollection.insertOne({
+        guildId: filter.guildId,
+        userId: filter.userId,
+        type: action,
+        amount,
+        createdAt: now,
+      }, { session });
     });
   } catch (error) {
     if (error.message === "SOURCE_BALANCE_CHANGED") {
