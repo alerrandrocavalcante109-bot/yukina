@@ -116,6 +116,22 @@ function registerInteractionHandlers(client) {
 
   loadComponents(client);
 
+  // Componentes podem restaurar tarefas persistentes depois que o Discord estiver pronto.
+  const initializeComponents = async () => {
+    for (const type of ["button", "select", "modal"]) {
+      for (const component of client.components[type]) {
+        if (typeof component.initialize !== "function") continue;
+        try {
+          await component.initialize(client);
+        } catch (error) {
+          console.error("[Interactions] Falha ao inicializar componente:", error);
+        }
+      }
+    }
+  };
+  if (client.isReady()) initializeComponents();
+  else client.once("ready", initializeComponents);
+
   client.on("interactionCreate", async (interaction) => {
     try {
       if (interaction.isChatInputCommand()) {
