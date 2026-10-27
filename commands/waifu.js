@@ -15,16 +15,40 @@ const API_URL = "https://nekos.best/api/v2/waifu";
 const MAX_COLLECTION = 100;
 const REQUEST_TIMEOUT_MS = 12000;
 
+const RANK_BASE = [
+  { rank: "E-", value: 1000, label: "⚪ Comum", weight: 30 },
+  { rank: "E", value: 1500, label: "⚪ Comum", weight: 20 },
+  { rank: "E+", value: 2000, label: "⚪ Comum", weight: 12 },
+  { rank: "D-", value: 3000, label: "🟢 Incomum", weight: 8 },
+  { rank: "D", value: 4000, label: "🟢 Incomum", weight: 5 },
+  { rank: "D+", value: 5000, label: "🟢 Incomum", weight: 4 },
+  { rank: "C-", value: 7000, label: "🔵 Diferenciada", weight: 3 },
+  { rank: "C", value: 9000, label: "🔵 Diferenciada", weight: 2 },
+  { rank: "C+", value: 12000, label: "🔵 Diferenciada", weight: 1.5 },
+  { rank: "B-", value: 16000, label: "🟣 Rara", weight: 1.2 },
+  { rank: "B", value: 20000, label: "🟣 Rara", weight: 1 },
+  { rank: "B+", value: 25000, label: "🟣 Rara", weight: 0.8 },
+  { rank: "A-", value: 30000, label: "💠 Muito rara", weight: 0.7 },
+  { rank: "A", value: 35000, label: "💠 Muito rara", weight: 0.6 },
+  { rank: "A+", value: 40000, label: "💠 Muito rara", weight: 0.5 },
+  { rank: "S-", value: 46000, label: "🌟 Épica", weight: 0.4 },
+  { rank: "S", value: 52000, label: "🌟 Épica", weight: 0.35 },
+  { rank: "S+", value: 58000, label: "🌟 Épica", weight: 0.3 },
+  { rank: "SS-", value: 65000, label: "✨ Lendária", weight: 0.25 },
+  { rank: "SS", value: 72000, label: "✨ Lendária", weight: 0.2 },
+  { rank: "SS+", value: 79000, label: "✨ Lendária", weight: 0.15 },
+  { rank: "SSS-", value: 86000, label: "🌌 Mítica", weight: 0.1 },
+  { rank: "SSS", value: 92000, label: "🌌 Mítica", weight: 0.08 },
+  { rank: "SSS+", value: 97000, label: "🌠 Celestial", weight: 0.05 },
+];
+const RANK_WEIGHT_TOTAL = RANK_BASE.reduce((sum, rank) => sum + rank.weight, 0);
 const RARITIES = [
-  { rank: "E", chance: 40, value: 1000, label: "⚪ Comum" },
-  { rank: "D", chance: 25, value: 3000, label: "🟢 Incomum" },
-  { rank: "C", chance: 15, value: 5000, label: "🔵 Diferenciada" },
-  { rank: "B", chance: 9, value: 10000, label: "🟣 Rara" },
-  { rank: "A", chance: 5, value: 15000, label: "💠 Muito rara" },
-  { rank: "S", chance: 3, value: 25000, label: "🌟 Épica" },
-  { rank: "SS", chance: 1.5, value: 40000, label: "✨ Lendária" },
-  { rank: "SSS", chance: 0.8, value: 60000, label: "🌌 Mítica" },
-  { rank: "SSS+", chance: 0.5, value: 80000, label: "🌠 Celestial" },
+  ...RANK_BASE.map(rank => ({
+    rank: rank.rank,
+    chance: (rank.weight / RANK_WEIGHT_TOTAL) * 99.8,
+    value: rank.value,
+    label: rank.label,
+  })),
   { rank: "∞", chance: 0.2, value: 100000, label: "👑 Suprema" },
 ];
 
@@ -39,7 +63,7 @@ function rollRarity() {
 }
 
 function normalizeItem(item) {
-  if (typeof item === "string") return { url: item, rank: "E", value: 1000 };
+  if (typeof item === "string") return { url: item, rank: "E-", value: 1000 };
   if (!item || typeof item.url !== "string") return null;
   const rarity = RARITIES.find(entry => entry.rank === item.rank);
   return { url: item.url, rank: rarity?.rank || "E", value: Number(item.value) || rarity?.value || 1000 };
@@ -321,7 +345,7 @@ module.exports = {
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         const imageUrl = interaction.message.embeds?.[0]?.image?.url;
         const rankField = interaction.message.embeds?.[0]?.fields?.find(field => field.name === "🏷️ Rank");
-        const rankText = rankField?.value?.match(/\*\*(SSS\+|SSS|SS|S|A|B|C|D|E|∞)\*\*/)?.[1] || "E";
+        const rankText = rankField?.value?.match(/\*\*(SSS\\+|SSS-|SSS|SS\\+|SS-|SS|S\\+|S-|S|A\\+|A-|A|B\\+|B-|B|C\\+|C-|C|D\\+|D-|D|E\\+|E-|E|∞)\*\*/)?.[1] || "E-";
         if (!imageUrl) return interaction.editReply("💧 Não consegui identificar esta personagem. Sorteie outra e tente novamente.");
         const result = await saveWaifu(interaction.guildId, interaction.user, imageUrl, rankText);
         if (result.duplicate) return interaction.editReply("🌸 Você já guardou esta personagem na sua coleção. (" + result.count + "/" + MAX_COLLECTION + ")");
