@@ -1,6 +1,6 @@
 "use strict";
 
-const { SlashCommandBuilder, EmbedBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder, EmbedBuilder, MessageFlags, ContainerBuilder, TextDisplayBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { MongoClient } = require("mongodb");
 const { applyDailyInactivityFee, formatKz } = require("../systems/bank-inactivity-fee");
 
@@ -153,10 +153,28 @@ async function run({ guild, user, action, amountInput, send }) {
       const { db } = await getCollections();
       const feeResult = await applyDailyInactivityFee({ db, guildId: guild.id, userId: user.id });
       const balances = await getAccountBalances(guild.id, user.id);
-      const embed = accountEmbed(user, balances);
-      if (feeResult.fee > 0) embed.addFields({ name: "🫧 A Yukina precisou cobrar a taxa", value: `**-${formatKz(feeResult.fee)} KZ**\nA taxa de **3% ao dia** acumulou por ${feeResult.overdueDays} dia(s) depois dos 3 dias de tolerância. Volte ao Daily para evitar novas cobranças, tá bem? ❄️`, inline: false });
-      else if (feeResult.overdueDays > 0) embed.addFields({ name: "🌸 Lembrete carinhoso da Yukina", value: `Você está há ${feeResult.overdueDays} dia(s) além da tolerância. A taxa é de **3% ao dia** e já foi calculada para esse período. Não deixe suas Kizunas derreterem, volte ao Daily!`, inline: false });
-      return send({ embeds: [embed] });
+      const debtInfo = await require("../systems/bank-loans").getDebt(guild.id, user.id);
+      const feeText = feeResult.fee > 0
+        ? "\n\n🫧 **Taxa aplicada:** -" + formatKz(feeResult.fee) + " KZ (" + feeResult.overdueDays + " dia(s))."
+        : "";
+      const container = new ContainerBuilder()
+        .setAccentColor(0xA7D8F0)
+        .addTextDisplayComponents(new TextDisplayBuilder().setContent(
+          "## ❄️ Yukina · Banco Central\n" +
+          "Oii~! Vou cuidar das suas Kizunas com carinho. 💙\n\n" +
+          "👛 **Carteira:** " + format(balances.wallet) + " KZ\n" +
+          "🏦 **Banco:** " + format(balances.bank) + " KZ\n" +
+          "💴 **Patrimônio total:** " + format(balances.wallet + balances.bank) + " KZ\n" +
+          "📜 **Dívida atual:** " + format(debtInfo.debt) + " KZ\n\n" +
+          "❄️ **Taxa por inatividade do Daily:** 3% ao dia após 3 dias completos sem coletar." + feeText +
+          "\n\nEscolha uma opção abaixo, nee~ 🌸"
+        ))
+        .addActionRowComponents(new ActionRowBuilder().addComponents(
+          new ButtonBuilder().setCustomId("yukina-bank:loan:" + user.id).setLabel("Pedir empréstimo").setEmoji("💴").setStyle(ButtonStyle.Primary),
+          new ButtonBuilder().setCustomId("yukina-bank:debt:" + user.id).setLabel("Ver dívida").setEmoji("📜").setStyle(ButtonStyle.Secondary),
+          new ButtonBuilder().setCustomId("yukina-bank:repay:" + user.id).setLabel("Pagar dívida").setEmoji("🌙").setStyle(ButtonStyle.Success)
+        ));
+      return send({ components: [container], flags: MessageFlags.IsComponentsV2 });
     }
     if (action !== "depositar" && action !== "sacar") {
       return send({ content: "🌙 **Yukina · Como usar o Banco Central**\\n`Ybanco saldo` — ver sua conta\\n`Ybanco depositar 5k` — guardar 5.000 KZ\\n`Ybanco sacar 2k` — retirar 2.000 KZ\\n\\nLembrete: após 3 dias sem Daily, a taxa é de **3% ao dia**. Não se esqueça de coletar, nee~ 💙", ephemeral: true });
@@ -199,9 +217,9 @@ module.exports = {
       send: async payload => {
         const { ephemeral, ...rest } = payload;
         if (interaction.replied || interaction.deferred) {
-          return interaction.followUp({ ...rest, flags: ephemeral ? MessageFlags.Ephemeral : undefined });
+          return interaction.followUp({ ...rest, flags: (rest.flags || 0) | (ephemeral ? MessageFlags.Ephemeral : 0) });
         }
-        return interaction.reply({ ...rest, flags: ephemeral ? MessageFlags.Ephemeral : undefined });
+        return interaction.reply({ ...rest, flags: (rest.flags || 0) | (ephemeral ? MessageFlags.Ephemeral : 0) });
       },
     });
   },
