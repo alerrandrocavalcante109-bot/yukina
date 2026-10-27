@@ -19,7 +19,7 @@ module.exports = {
       const amount = new TextInputBuilder()
         .setCustomId("amount")
         .setLabel("Valor em Kizunas (ex.: 5000 ou 5k)")
-        .setPlaceholder(action === "loan" ? "Máximo de 100.000 KZ" : "Digite quanto deseja pagar")
+        .setPlaceholder(action === "loan" ? "Ex.: 150k, 2m ou 10m" : "Digite quanto deseja pagar")
         .setStyle(TextInputStyle.Short)
         .setRequired(true)
         .setMaxLength(24);
@@ -30,7 +30,9 @@ module.exports = {
     const container = new ContainerBuilder().setAccentColor(0xA7D8F0).addTextDisplayComponents(
       new TextDisplayBuilder().setContent("## 📜 Yukina · Sua dívida bancária\n" +
         (result.debt > 0
-          ? "Você ainda tem **" + result.debt.toLocaleString("pt-BR") + " KZ** para pagar.\n\nValor originalmente emprestado: **" + result.principal.toLocaleString("pt-BR") + " KZ**."
+          ? "Você ainda tem **" + result.debt.toLocaleString("pt-BR") + " KZ** para pagar.\n\nValor originalmente emprestado: **" + result.principal.toLocaleString("pt-BR") + " KZ**." +
+            (result.dueAt ? "\nPrazo: <t:" + Math.floor(new Date(result.dueAt).getTime() / 1000) + ":R>. Juros por atraso: **" + (result.dailyRate * 100).toLocaleString("pt-BR") + "% ao dia**." : "\nEste empréstimo não tem prazo de vencimento.") +
+            (result.accruedInterest > 0 ? "\nJuros por atraso aplicados agora: **+" + result.accruedInterest.toLocaleString("pt-BR") + " KZ**." : "")
           : "Você não possui dívidas ativas. Yatta~! Suas contas estão em dia. 🌸") +
         "\n\n「 Um passo de cada vez, vamos deixar tudo em ordem. 」")
     );
