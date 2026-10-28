@@ -69,6 +69,32 @@ function normalizeItem(item) {
   return { url: item.url, rank: rarity?.rank || "E", value: Number(item.value) || rarity?.value || 1000 };
 }
 
+const WAIFU_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+
+async function getWaifuCooldownUntil(guildId, userId) {
+  const value = await storage.get(String(guildId), "cooldownUntil", 0, String(userId));
+  const timestamp = Number(value);
+  return Number.isFinite(timestamp) ? timestamp : 0;
+}
+
+async function getCooldownMessage(guildId, userId) {
+  const until = await getWaifuCooldownUntil(guildId, userId);
+  const remaining = until - Date.now();
+  if (remaining <= 0) return null;
+  const hours = Math.floor(remaining / 3600000);
+  const minutes = Math.ceil((remaining % 3600000) / 60000);
+  const timeText = hours > 0
+    ? hours + "h" + (minutes > 0 ? " " + minutes + "min" : "")
+    : minutes + "min";
+  return "🌙 Você já encontrou uma waifu recentemente! O próximo sorteio estará disponível em **" + timeText + "**. Enquanto isso, você pode consultar seu álbum.";
+}
+
+async function startWaifuCooldown(guildId, userId) {
+  const until = Date.now() + WAIFU_COOLDOWN_MS;
+  await storage.set(String(guildId), "cooldownUntil", until, String(userId));
+  return until;
+}
+
 function money(value) {
   return Number(value).toLocaleString("pt-BR") + " Kizunas";
 }
@@ -205,6 +231,7 @@ async function showWaifu({ guildId, user, reply, edit = false }) {
   const imageUrl = await getRandomWaifu();
   const rarity = rollRarity();
   const items = await getCollection(guildId, user.id);
+  await startWaifuCooldown(guildId, user.id);
   const payload = {
     embeds: [makeEmbed(imageUrl, user, items.length, false, rarity)],
     components: [makeButtons(user.id, imageUrl, items.length)],
@@ -264,6 +291,8 @@ module.exports = {
           reply: payload => interaction.editReply(payload),
         });
       }
+      const cooldownMessage = await getCooldownMessage(interaction.guildId, interaction.user.id);
+      if (cooldownMessage) return interaction.editReply(cooldownMessage);
       return await showWaifu({
         guildId: interaction.guildId,
         user: interaction.user,
@@ -286,6 +315,8 @@ module.exports = {
           reply: payload => message.reply(payload),
         });
       }
+      const cooldownMessage = await getCooldownMessage(message.guildId, message.author.id);
+      if (cooldownMessage) return message.reply(cooldownMessage);
       return await showWaifu({
         guildId: message.guildId,
         user: message.author,
@@ -313,6 +344,8 @@ module.exports = {
     try {
       if (action === "again" || action === "back") {
         await interaction.deferUpdate();
+        const cooldownMessage = await getCooldownMessage(interaction.guildId, interaction.user.id);
+        if (cooldownMessage) return interaction.followUp(ephemeral(cooldownMessage));
         return await showWaifu({
           guildId: interaction.guildId,
           user: interaction.user,
