@@ -631,12 +631,6 @@ async function panelApi(req, res, url) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
 
-  // API pública autenticada para integrações e transferências entre bots autorizados.
-  if (url.pathname.startsWith("/api/bot-transfer/")) {
-    const handled = await require("./systems/bot-transfer-api").handleRequest(req, res, url, sendJson, readBody);
-    if (handled) return;
-  }
-
   if (url.pathname === "/api/tickets/manage") {
     if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para gerenciar painéis." });
     try {
