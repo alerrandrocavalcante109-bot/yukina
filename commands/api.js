@@ -13,6 +13,7 @@ function helpText() {
     "❄️ **API de Transferência da Yukina**",
     "`Yapi gerar <ID_DO_BOT>` — cria uma chave de integração e envia por DM.",
     "`Yapi moeda <código> <nome> <símbolo>` — cadastra uma moeda na API.",
+    "`Yapi revogar <ID_DO_BOT>` — invalida uma chave de integração.",
     "A chave só é mostrada uma vez. Nunca compartilhe em canais públicos."
   ].join("\n");
 }
@@ -40,6 +41,13 @@ async function run(interactionOrMessage, mode, args = [], isSlash = false) {
       } catch {
         return interactionOrMessage.reply("⚠️ A integração foi criada, mas não consegui enviar a chave por DM. Por segurança, revogue a integração e gere outra com as DMs abertas.");
       }
+    }
+    if (mode === "revogar") {
+      const botId = isSlash ? interactionOrMessage.options.getString("bot_id", true) : args[0];
+      await api.revokeIntegration(botId);
+      const text = "🛡️ Integração do bot `" + botId + "` revogada. A chave anterior não pode mais acessar a API.";
+      if (isSlash) return interactionOrMessage.reply({ content: text, flags: MessageFlags.Ephemeral });
+      return interactionOrMessage.reply(text);
     }
     if (mode === "moeda") {
       const code = isSlash ? interactionOrMessage.options.getString("codigo", true) : args[0];
@@ -69,6 +77,8 @@ module.exports = {
     .setDescription("Gerencia a API segura de transferência entre bots integrados.")
     .addSubcommand(sub => sub.setName("gerar").setDescription("Gera uma chave para integrar um bot à API.")
       .addStringOption(option => option.setName("bot_id").setDescription("ID do bot Discord que será integrado").setRequired(true)))
+    .addSubcommand(sub => sub.setName("revogar").setDescription("Revoga a chave e desativa uma integração.")
+      .addStringOption(option => option.setName("bot_id").setDescription("ID do bot a desconectar").setRequired(true)))
     .addSubcommand(sub => sub.setName("moeda").setDescription("Cadastra uma moeda aceita pela API.")
       .addStringOption(option => option.setName("codigo").setDescription("Código único, por exemplo KZ ou GEM").setRequired(true))
       .addStringOption(option => option.setName("nome").setDescription("Nome da moeda").setRequired(true))
