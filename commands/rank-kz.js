@@ -15,6 +15,18 @@ function roundedRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function normalizeDisplayName(value) {
+  return String(value || "Membro")
+    .normalize("NFKC")
+    // Converte símbolos decorativos que costumam virar quadrados na fonte do canvas.
+    .replace(/[♡❤♥❥❣]/gu, "<3")
+    .replace(/[☆★✦✧]/gu, "*")
+    .replace(/[♛♕]/gu, "#")
+    .replace(/[\\uFE0F\\u200D]/gu, "")
+    .replace(/\\s+/gu, " ")
+    .trim() || "Membro";
+}
+
 function fitText(ctx, text, maxWidth) {
   let result = String(text || "Membro");
   while (result.length > 1 && ctx.measureText(result).width > maxWidth) {
@@ -115,7 +127,7 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
       const position = page * 5 + index + 1;
       const { user, displayName } = await resolveRankingUser(guild, String(entry.userId));
       // O ID continua visível mesmo se a API do Discord não devolver o perfil.
-      const name = displayName || "Usuário " + String(entry.userId).slice(-4);
+      const name = normalizeDisplayName(displayName || "Usuário " + String(entry.userId).slice(-4));
       const avatarUrl = user?.displayAvatarURL
         ? user.displayAvatarURL({ extension: "png", size: 512 })
         : null;
@@ -127,7 +139,7 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
 
       ctx.font = "bold 42px sans-serif";
       ctx.fillStyle = position === 1 ? "#ffd66b" : position === 2 ? "#e4e9f3" : position === 3 ? "#e8b28e" : "#d9c8f0";
-      ctx.fillText(position === 1 ? "♛" : "#" + position, 88, y + 94);
+      ctx.fillText("#" + position, 88, y + 94);
 
       const avatarX = 178;
       const avatarY = y + 12;
