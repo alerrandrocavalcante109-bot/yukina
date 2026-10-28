@@ -326,7 +326,49 @@ async function handleCountingMessage(message) {
 }
 
 client.on("messageCreate", async (message) => {
+  // Mantém o sistema de contagem e responde quando alguém apenas marca a Yukina.
   await handleCountingMessage(message);
+
+  if (message.author.bot || !message.guild || !client.user) return;
+  const mentionPattern = new RegExp("<@!?" + client.user.id + ">", "g");
+  if (!mentionPattern.test(String(message.content || ""))) return;
+
+  // Só responde a uma marcação direta, não a mensagens que apenas mencionam a bot no meio da conversa.
+  const remainingText = String(message.content || "")
+    .replace(mentionPattern, "")
+    .replace(/[\\s.,!?¿¡🌸❄️🌙]+/gu, "")
+    .trim();
+  if (remainingText) return;
+
+  try {
+    let prefix = "Y";
+    const collection = await getSettingsCollection();
+    const doc = await collection.findOne(
+      { guildId: message.guild.id },
+      { projection: { "settings.prefix": 1 } }
+    );
+    const configured = String(doc?.settings?.prefix || "").trim();
+    if (configured && configured.length <= 5 && !/\\s/.test(configured)) prefix = configured;
+
+    const intro = new EmbedBuilder()
+      .setColor(0xA9DDF5)
+      .setAuthor({ name: "Yukina · Assistente do servidor", iconURL: client.user.displayAvatarURL({ size: 128 }) })
+      .setTitle("❄️ Oi! Eu sou a Yukina!")
+      .setDescription(
+        "Que bom ter você por aqui! 🌸 Sou a assistente deste servidor e estou pronta para ajudar com meus comandos e sistemas.\n\n" +
+        "⌨️ **Prefixo deste servidor:** `" + prefix + "`\n" +
+        "📚 **Ver os comandos:** `" + prefix + "ajuda` ou `/ajuda`\n\n" +
+        "É só escolher um comando e começar sua jornada comigo! 🌙"
+      )
+      .setFooter({ text: "Yukina · Sob a luz da lua, sempre pronta para ajudar." });
+
+    await message.reply({ embeds: [intro], allowedMentions: { repliedUser: false, parse: [] } });
+  } catch (error) {
+    console.error("[Yukina] Falha ao responder à menção:", error?.message || error);
+    await message.reply(
+      "❄️ Oi! Eu sou a Yukina! 🌸 Meu prefixo neste servidor é `Y` (ou o prefixo configurado no painel). Use `Yajuda` ou `/ajuda` para ver os comandos."
+    ).catch(() => {});
+  }
 });
 
 // API do painel: OAuth do Discord + permissões do servidor + persistência no MongoDB.
