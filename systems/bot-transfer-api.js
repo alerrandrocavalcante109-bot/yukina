@@ -42,13 +42,13 @@ async function createIntegration(botId, createdBy) {
   const now = new Date();
   await integrations.updateOne(
     { botId },
-    { $set: { botId, keyHash: hashKey(key), active: true, createdBy: String(createdBy), createdAt: now, updatedAt: now }, $setOnInsert: { createdAt: now } },
+    { $set: { botId, keyHash: hashKey(key), active: true, createdBy: String(createdBy), createdAt: now, updatedAt: now } },
     { upsert: true }
   );
   return { botId, key };
 }
 
-async function registerCurrency(code, name, symbol, createdBy) {
+async function revokeIntegration(botId) {\n  if (!safeId(botId)) throw new Error("Informe um ID de bot Discord válido.");\n  const db = await getDb();\n  const result = await db.collection("bot_api_integrations").updateOne({ botId, active: true }, { $set: { active: false, revokedAt: new Date(), updatedAt: new Date() } });\n  if (!result.modifiedCount) throw new Error("Não encontrei uma integração ativa para esse bot.");\n  return true;\n}\n\nasync function registerCurrency(code, name, symbol, createdBy) {
   code = String(code || "").trim().toUpperCase();
   name = String(name || "").trim().slice(0, 60);
   symbol = String(symbol || "").trim().slice(0, 12);
@@ -208,4 +208,4 @@ async function handleRequest(req, res, url, sendJson, readBody) {
   }
 }
 
-module.exports = { createIntegration, registerCurrency, listCurrencies, handleRequest };
+module.exports = { createIntegration, revokeIntegration, registerCurrency, listCurrencies, handleRequest };
