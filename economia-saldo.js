@@ -68,7 +68,7 @@ async function getEconomyRanking(guildId) {
         return docs.map(doc => ({
           userId: String(doc.userId),
           balance: Math.max(0, Number(doc.balance) || 0)
-        })).filter(doc => /^\\d{15,22}$/.test(doc.userId) && doc.balance > 0)
+        })).filter(doc => /^\d{15,22}$/.test(doc.userId) && doc.balance > 0)
           .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
       }
     } catch (error) {
@@ -82,12 +82,12 @@ async function getEconomyRanking(guildId) {
   if (guild && typeof guild === "object" && !Array.isArray(guild)) {
     entries = Object.entries(guild);
   } else {
-    entries = Object.entries(data).filter(([id]) => /^\\d{15,22}$/.test(id));
+    entries = Object.entries(data).filter(([id]) => /^\d{15,22}$/.test(id));
   }
   return entries.map(([userId, record]) => ({
     userId: String(userId),
     balance: readRecordBalance(record)
-  })).filter(doc => /^\\d{15,22}$/.test(doc.userId) && doc.balance > 0)
+  })).filter(doc => /^\d{15,22}$/.test(doc.userId) && doc.balance > 0)
     .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
 }
 function format(value) {
