@@ -197,15 +197,19 @@ async function makeLoadingGif() {
   const width = 240;
   const height = 240;
   const encoder = new GIFEncoder(width, height, "neuquant", true);
+  const stream = encoder.createReadStream();
+  const chunks = [];
+  const gifBuffer = new Promise((resolve, reject) => {
+    stream.on("data", chunk => chunks.push(Buffer.from(chunk)));
+    stream.once("end", () => resolve(Buffer.concat(chunks)));
+    stream.once("error", reject);
+    encoder.once("error", reject);
+  });
+
+  encoder.start();
   encoder.setDelay(140);
   encoder.setRepeat(0);
   encoder.setQuality(10);
-  const chunks = [];
-  encoder.on("data", chunk => chunks.push(chunk));
-  const done = new Promise((resolve, reject) => {
-    encoder.once("end", () => resolve(Buffer.concat(chunks)));
-    encoder.once("error", reject);
-  });
 
   for (let frame = 0; frame < 8; frame++) {
     const canvas = createCanvas(width, height);
@@ -269,8 +273,9 @@ async function makeLoadingGif() {
     ctx.fillText("✧", 190, 175 - (frame % 3) * 3);
     encoder.addFrame(ctx);
   }
+
   encoder.finish();
-  return new AttachmentBuilder(await done, { name: "yukina-loading.gif" });
+  return new AttachmentBuilder(await gifBuffer, { name: "yukina-loading.gif" });
 }
 
 async function showRank(guild, user, sendOrEdit, page = 0, interaction = false) {
