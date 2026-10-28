@@ -17,10 +17,43 @@ function roundedRect(ctx, x, y, width, height, radius) {
 
 function fitText(ctx, text, maxWidth) {
   let result = String(text || "Membro");
-  while (result.length > 3 && ctx.measureText(result).width > maxWidth) {
-    result = result.slice(0, -2) + "…";
+  while (result.length > 1 && ctx.measureText(result).width > maxWidth) {
+    result = result.slice(0, -1);
+  }
+  if (result !== String(text || "Membro")) {
+    while (result.length > 1 && ctx.measureText(result + "…").width > maxWidth) {
+      result = result.slice(0, -1);
+    }
+    result += "…";
   }
   return result;
+}
+
+async function resolveRankingUser(guild, userId) {
+  let member = guild.members.cache.get(userId) || null;
+  if (!member) {
+    try {
+      member = await guild.members.fetch({ user: userId, force: true });
+    } catch {
+      try { member = await guild.members.fetch(userId); } catch {}
+    }
+  }
+
+  let user = member?.user || null;
+  if (!user) {
+    user = guild.client.users.cache.get(userId) || null;
+    if (!user) {
+      try { user = await guild.client.users.fetch(userId, { force: true }); } catch {}
+    }
+  }
+
+  const displayName = member?.displayName
+    || user?.globalName
+    || user?.username
+    || user?.tag
+    || null;
+
+  return { member, user, displayName };
 }
 
 async function renderRankingCard(guild, ranking, requesterId, page = 0) {
@@ -80,19 +113,13 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
       const entry = top[index];
       const y = 232 + index * 176;
       const position = page * 5 + index + 1;
-      let member = guild.members.cache.get(entry.userId) || null;
-      let user = member?.user || null;
-      if (!member) {
-        try { member = await guild.members.fetch(entry.userId); user = member.user; } catch {}
-      }
-      if (!user) {
-        try { user = await guild.client.users.fetch(entry.userId); } catch {}
-      }
-      const name = member?.displayName || user?.globalName || user?.username || ("Membro " + entry.userId.slice(-4));
+      const { user, displayName } = await resolveRankingUser(guild, String(entry.userId));
+      // O ID continua visível mesmo se a API do Discord não devolver o perfil.
+      const name = displayName || "Usuário " + String(entry.userId).slice(-4);
       const avatarUrl = user?.displayAvatarURL
         ? user.displayAvatarURL({ extension: "png", size: 512 })
         : null;
-      const isRequester = entry.userId === String(requesterId);
+      const isRequester = String(entry.userId) === String(requesterId);
 
       roundedRect(ctx, 70, y, 1260, 164, 24);
       ctx.fillStyle = isRequester ? "rgba(197, 138, 232, 0.30)" : "rgba(255, 255, 255, 0.065)";
@@ -128,8 +155,9 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
       ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 2, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Nome e ID ficam lado a lado com a foto, em vez de apertados embaixo dela.
+      // Renderiza o nome do Discord com fonte maior e área dedicada.
       ctx.textAlign = "left";
+      ctx.textBaseline = "alphabetic";
       ctx.font = "bold 34px sans-serif";
       ctx.fillStyle = "#fff7ff";
       ctx.fillText(fitText(ctx, name, 570), 340, y + 65);
@@ -139,7 +167,7 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
       ctx.fillText("ID DO DISCORD", 340, y + 103);
       ctx.font = "27px sans-serif";
       ctx.fillStyle = "#f5edff";
-      ctx.fillText(fitText(ctx, entry.userId, 570), 340, y + 139);
+      ctx.fillText(fitText(ctx, String(entry.userId), 570), 340, y + 139);
 
       ctx.textAlign = "right";
       ctx.font = "bold 22px sans-serif";
@@ -152,7 +180,7 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
     }
   }
 
-  const ownPosition = ranking.findIndex(entry => entry.userId === String(requesterId));
+  const ownPosition = ranking.findIndex(entry => String(entry.userId) === String(requesterId));
   const own = ownPosition >= 0 ? ranking[ownPosition] : null;
   roundedRect(ctx, 50, 1150, 1300, 68, 18);
   ctx.fillStyle = "rgba(197, 138, 232, 0.16)";
