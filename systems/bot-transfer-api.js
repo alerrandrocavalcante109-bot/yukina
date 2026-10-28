@@ -48,7 +48,15 @@ async function createIntegration(botId, createdBy) {
   return { botId, key };
 }
 
-async function revokeIntegration(botId) {\n  if (!safeId(botId)) throw new Error("Informe um ID de bot Discord válido.");\n  const db = await getDb();\n  const result = await db.collection("bot_api_integrations").updateOne({ botId, active: true }, { $set: { active: false, revokedAt: new Date(), updatedAt: new Date() } });\n  if (!result.modifiedCount) throw new Error("Não encontrei uma integração ativa para esse bot.");\n  return true;\n}\n\nasync function registerCurrency(code, name, symbol, createdBy) {
+async function revokeIntegration(botId) {
+  if (!safeId(botId)) throw new Error("Informe um ID de bot Discord válido.");
+  const db = await getDb();
+  const result = await db.collection("bot_api_integrations").updateOne({ botId, active: true }, { $set: { active: false, revokedAt: new Date(), updatedAt: new Date() } });
+  if (!result.modifiedCount) throw new Error("Não encontrei uma integração ativa para esse bot.");
+  return true;
+}
+
+async function registerCurrency(code, name, symbol, createdBy) {
   code = String(code || "").trim().toUpperCase();
   name = String(name || "").trim().slice(0, 60);
   symbol = String(symbol || "").trim().slice(0, 12);
