@@ -2,10 +2,11 @@
 
 const fs = require("node:fs/promises");
 const path = require("node:path");
-const { SlashCommandBuilder, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
+const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const { MongoClient } = require("mongodb");
 
-const COLOR = 0xC58AE8;
+const COLOR = "#c58ae8";
 const FILE = path.join(process.cwd(), "data", "economia.json");
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
@@ -39,7 +40,7 @@ async function getMongoRanking(guildId) {
   if (!docs.length) return null;
   return docs
     .map(doc => ({ userId: String(doc.userId), balance: readBalance(doc.balance) }))
-    .filter(doc => /^\d{15,22}$/.test(doc.userId))
+    .filter(doc => /^\\d{15,22}$/.test(doc.userId))
     .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
 }
 
@@ -55,19 +56,132 @@ async function getLocalRanking(guildId) {
   const guild = data?.[String(guildId)];
   const source = guild && typeof guild === "object" && !Array.isArray(guild)
     ? guild
-    : Object.fromEntries(Object.entries(data || {}).filter(([id]) => /^\d{15,22}$/.test(id)));
+    : Object.fromEntries(Object.entries(data || {}).filter(([id]) => /^\\d{15,22}$/.test(id)));
 
   return Object.entries(source)
     .map(([userId, record]) => ({ userId: String(userId), balance: readBalance(record) }))
-    .filter(doc => /^\d{15,22}$/.test(doc.userId))
+    .filter(doc => /^\\d{15,22}$/.test(doc.userId))
     .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
 }
 
-function medal(position) {
-  if (position === 1) return "🥇";
-  if (position === 2) return "🥈";
-  if (position === 3) return "🥉";
-  return "❄️";
+function roundedRect(ctx, x, y, width, height, radius) {
+  ctx.beginPath();
+  ctx.roundRect(x, y, width, height, radius);
+  ctx.closePath();
+}
+
+function fitText(ctx, text, maxWidth) {
+  let result = String(text || "Membro");
+  while (result.length > 3 && ctx.measureText(result).width > maxWidth) {
+    result = result.slice(0, -2) + "…";
+  }
+  return result;
+}
+
+async function renderRankingCard(guild, ranking, requesterId) {
+  const width = 1200;
+  const height = 900;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
+
+  const background = ctx.createLinearGradient(0, 0, width, height);
+  background.addColorStop(0, "#171329");
+  background.addColorStop(0.52, "#30204a");
+  background.addColorStop(1, "#111827");
+  ctx.fillStyle = background;
+  ctx.fillRect(0, 0, width, height);
+
+  // Brilhos suaves para o tema lunar da Yukina.
+  for (let i = 0; i < 70; i++) {
+    const x = (i * 197 + 61) % width;
+    const y = (i * 131 + 37) % height;
+    ctx.globalAlpha = 0.18 + ((i % 4) * 0.08);
+    ctx.fillStyle = i % 3 === 0 ? "#f0c9ff" : "#ffffff";
+    ctx.beginPath();
+    ctx.arc(x, y, i % 5 === 0 ? 2.2 : 1.2, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+
+  // Lua decorativa.
+  const moon = ctx.createRadialGradient(1040, 105, 8, 1040, 105, 88);
+  moon.addColorStop(0, "#fff7ff");
+  moon.addColorStop(0.55, "#e9c9ff");
+  moon.addColorStop(1, "rgba(197,138,232,0)");
+  ctx.fillStyle = moon;
+  ctx.beginPath();
+  ctx.arc(1040, 105, 88, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = "#f8eaff";
+  ctx.font = "bold 25px sans-serif";
+  ctx.fillText("YUKINA  •  ARQUIVO DA ECONOMIA", 64, 65);
+  ctx.fillStyle = "#ffffff";
+  ctx.font = "bold 56px sans-serif";
+  ctx.fillText("Ranking de Kizunas", 64, 132);
+  ctx.fillStyle = "#d9c8f0";
+  ctx.font = "24px sans-serif";
+  ctx.fillText("Os maiores tesouros desta comunidade", 66, 174);
+
+  roundedRect(ctx, 48, 210, 1104, 610, 28);
+  ctx.fillStyle = "rgba(15, 12, 31, 0.72)";
+  ctx.fill();
+
+  const top = ranking.slice(0, 10);
+  if (!top.length) {
+    ctx.fillStyle = "#eee5f7";
+    ctx.font = "28px sans-serif";
+    ctx.fillText("Ainda não há Kizunas registradas neste servidor.", 90, 350);
+    ctx.fillText("Junte KZ e seja o primeiro no ranking!", 90, 400);
+  } else {
+    top.forEach((entry, index) => {
+      const y = 235 + index * 56;
+      const position = index + 1;
+      const member = guild.members.cache.get(entry.userId);
+      const name = member?.displayName || member?.user?.username || ("Membro " + entry.userId.slice(-4));
+      const isRequester = entry.userId === String(requesterId);
+
+      if (isRequester) {
+        roundedRect(ctx, 68, y, 1064, 48, 14);
+        ctx.fillStyle = "rgba(197, 138, 232, 0.22)";
+        ctx.fill();
+      } else if (index % 2 === 0) {
+        roundedRect(ctx, 68, y, 1064, 48, 14);
+        ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
+        ctx.fill();
+      }
+
+      ctx.font = "bold 26px sans-serif";
+      ctx.fillStyle = position === 1 ? "#ffd66b" : position === 2 ? "#e4e9f3" : position === 3 ? "#e8b28e" : "#d9c8f0";
+      ctx.fillText(position === 1 ? "♛" : position === 2 ? "②" : position === 3 ? "③" : String(position).padStart(2, "0"), 88, y + 32);
+
+      ctx.font = isRequester ? "bold 23px sans-serif" : "23px sans-serif";
+      ctx.fillStyle = isRequester ? "#f6dfff" : "#f5f0fc";
+      ctx.fillText(fitText(ctx, name + (isRequester ? "  •  Você" : ""), 610), 155, y + 31);
+
+      ctx.textAlign = "right";
+      ctx.font = "bold 23px sans-serif";
+      ctx.fillStyle = "#d9b5ff";
+      ctx.fillText(formatKz(entry.balance), 1095, y + 31);
+      ctx.textAlign = "left";
+    });
+  }
+
+  const ownPosition = ranking.findIndex(entry => entry.userId === String(requesterId));
+  const own = ownPosition >= 0 ? ranking[ownPosition] : null;
+  roundedRect(ctx, 48, 840, 1104, 42, 15);
+  ctx.fillStyle = "rgba(197, 138, 232, 0.16)";
+  ctx.fill();
+  ctx.font = "bold 19px sans-serif";
+  ctx.fillStyle = "#f5e8ff";
+  ctx.fillText(own ? "Sua posição: #" + (ownPosition + 1) + "  •  " + formatKz(own.balance) : "Sua posição: ainda sem saldo no ranking", 70, 867);
+  ctx.textAlign = "right";
+  ctx.fillStyle = "#cdb8e6";
+  ctx.font = "18px sans-serif";
+  ctx.fillText(String(ranking.length) + " membros classificados", 1125, 867);
+  ctx.textAlign = "left";
+
+  return new AttachmentBuilder(await canvas.encode("png"), { name: "rank-kz-yukina.png" });
 }
 
 async function buildRanking(guild, requesterId) {
@@ -78,56 +192,9 @@ async function buildRanking(guild, requesterId) {
     console.error("[Rank KZ] Falha ao consultar MongoDB:", error.message || error);
   }
   if (!ranking) ranking = await getLocalRanking(guild.id);
-
   const positive = ranking.filter(entry => entry.balance > 0);
-  const top = positive.slice(0, 10);
-  const ownPosition = positive.findIndex(entry => entry.userId === String(requesterId));
-  const own = ownPosition >= 0 ? positive[ownPosition] : null;
-
-  const lines = top.length
-    ? top.map((entry, index) => {
-        const position = index + 1;
-        const isRequester = entry.userId === String(requesterId);
-        return medal(position) + " **#" + position + "** <@" + entry.userId + ">" +
-          (isRequester ? " **· Você**" : "") +
-          "\n　└ 💎 **" + formatKz(entry.balance) + "**";
-      }).join("\n\n")
-    : "Ainda não há saldos registrados neste servidor. Faça suas primeiras Kizunas e apareça no ranking!";
-
-  const embed = new EmbedBuilder()
-    .setColor(COLOR)
-    .setAuthor({
-      name: "Yukina · Arquivo da Economia",
-      iconURL: guild.client.user?.displayAvatarURL({ size: 128 }),
-    })
-    .setTitle("🌙 Ranking de Kizunas")
-    .setDescription(
-      "「 O brilho das Kizunas revela os maiores tesouros de Yukina 」\n\n" +
-      lines
-    )
-    .addFields(
-      { name: "👥 No ranking", value: String(positive.length) + " membro(s)", inline: true },
-      { name: "💴 Moeda", value: "Kizunas · KZ", inline: true },
-      { name: "🏆 Sua posição", value: own ? "#" + (ownPosition + 1) : "Sem posição", inline: true }
-    )
-    .setFooter({ text: "Yukina · Ranking do servidor • Atualizado a cada consulta" })
-    .setTimestamp();
-
-  if (own && ownPosition >= 10) {
-    embed.addFields({
-      name: "❄️ Sua classificação",
-      value: "Você está em **#" + (ownPosition + 1) + "** com **" + formatKz(own.balance) + "**.",
-      inline: false,
-    });
-  } else if (!own) {
-    embed.addFields({
-      name: "🌸 Comece sua jornada",
-      value: "Seu saldo ainda não entrou no ranking. Junte KZ usando os sistemas de economia da Yukina.",
-      inline: false,
-    });
-  }
-
-  return embed;
+  const attachment = await renderRankingCard(guild, positive, requesterId);
+  return { attachment, ranking: positive };
 }
 
 async function run(guild, user, reply) {
@@ -135,18 +202,18 @@ async function run(guild, user, reply) {
     return reply({ content: "❄️ O ranking de KZ só pode ser consultado dentro de um servidor." });
   }
   try {
-    const embed = await buildRanking(guild, user.id);
-    return reply({ embeds: [embed], allowedMentions: { parse: [] } });
+    const { attachment } = await buildRanking(guild, user.id);
+    return reply({ files: [attachment], allowedMentions: { parse: [] } });
   } catch (error) {
     console.error("[Yukina Rank KZ]", error);
-    return reply({ content: "🫧 O arquivo de Kizunas está indisponível no momento. Tente novamente em instantes." });
+    return reply({ content: "🫧 Não consegui montar o card de KZ agora. Confira a economia e tente novamente." });
   }
 }
 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("rank-kz")
-    .setDescription("Veja os 10 maiores saldos de Kizunas deste servidor."),
+    .setDescription("Veja o ranking em card dos maiores saldos de Kizunas."),
   aliases: ["rankkz", "kzrank", "topkz", "rankkizunas"],
   async execute(interaction) {
     await interaction.deferReply();
