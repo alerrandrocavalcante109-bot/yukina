@@ -113,6 +113,56 @@ async function registerWaifuDraw(guildId, userId) {
   return count;
 }
 
+const notificationTimers = new Map();
+
+function notificationKey(guildId, userId) {
+  return String(guildId) + ":" + String(userId);
+}
+
+function makeCooldownButtons(ownerId) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("yukina-waifu:notify:" + ownerId)
+      .setLabel("Avisar na DM quando liberar")
+      .setEmoji("🔔")
+      .setStyle(ButtonStyle.Success)
+  );
+}
+
+async function scheduleAvailabilityNotification(client, guildId, userId, until) {
+  const key = notificationKey(guildId, userId);
+  const existing = notificationTimers.get(key);
+  if (existing) clearTimeout(existing);
+  const delay = Math.max(0, Number(until) - Date.now());
+  const timer = setTimeout(async () => {
+    notificationTimers.delete(key);
+    try {
+      const subscribedUntil = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
+      if (!subscribedUntil || subscribedUntil !== Number(until)) return;
+      const user = await client.users.fetch(String(userId));
+      await user.send("🌸 **O arquivo lunar está aberto novamente!** Seu cooldown de waifus terminou. Você já pode usar **Ywaifu** ou **/waifu** para sortear novas personagens.");
+      await storage.set(String(guildId), "notifyAt", 0, String(userId));
+    } catch (error) {
+      console.error("[Yukina waifu DM]", error);
+    }
+  }, Math.min(delay, 2147483647));
+  notificationTimers.set(key, timer);
+}
+
+async function getCooldownPayload(guildId, userId, client) {
+  const until = await getWaifuCooldownUntil(guildId, userId);
+  const remainingDraws = Math.max(0, MAX_DRAWS_PER_CYCLE - await getDrawCount(guildId, userId));
+  const cooldownMessage = await getCooldownMessage(guildId, userId);
+  if (!cooldownMessage) return null;
+  const notifyAt = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
+  if (notifyAt > Date.now()) await scheduleAvailabilityNotification(client, guildId, userId, notifyAt);
+  return {
+    content: cooldownMessage + "\\n\\n🎲 **Sorteios restantes nesta rodada:** " + remainingDraws + "/" + MAX_DRAWS_PER_CYCLE,
+    components: [makeCooldownButtons(userId)],
+    allowedMentions: { parse: [] },
+  };
+}
+
 function money(value) {
   return Number(value).toLocaleString("pt-BR") + " Kizunas";
 }
@@ -311,8 +361,8 @@ module.exports = {
           reply: payload => interaction.editReply(payload),
         });
       }
-      const cooldownMessage = await getCooldownMessage(interaction.guildId, interaction.user.id);
-      if (cooldownMessage) return interaction.editReply(cooldownMessage);
+      const cooldownPayload = await getCooldownPayload(interaction.guildId, interaction.user.id, interaction.client);
+      if (cooldownPayload) return interaction.editReply(cooldownPayload);
       return await showWaifu({
         guildId: interaction.guildId,
         user: interaction.user,
@@ -335,8 +385,8 @@ module.exports = {
           reply: payload => message.reply(payload),
         });
       }
-      const cooldownMessage = await getCooldownMessage(message.guildId, message.author.id);
-      if (cooldownMessage) return message.reply(cooldownMessage);
+      const cooldownPayload = await getCooldownPayload(message.guildId, message.author.id, message.client);
+      if (cooldownPayload) return message.reply(cooldownPayload);
       return await showWaifu({
         guildId: message.guildId,
         user: message.author,
@@ -362,10 +412,21 @@ module.exports = {
     }
 
     try {
+      if (action === "notify") {
+        await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+        const until = await getWaifuCooldownUntil(interaction.guildId, interaction.user.id);
+        if (until <= Date.now()) {
+          return interaction.editReply("🌸 Seu cooldown já terminou! Você pode sortear outra waifu agora.");
+        }
+        await storage.set(String(interaction.guildId), "notifyAt", until, String(interaction.user.id));
+        await scheduleAvailabilityNotification(interaction.client, interaction.guildId, interaction.user.id, until);
+        return interaction.editReply("🔔 **Aviso ativado!** Vou enviar uma mensagem na sua DM quando o sorteio de waifus estiver disponível novamente. Confira se suas mensagens diretas estão abertas.");
+      }
+
       if (action === "again" || action === "back") {
         await interaction.deferUpdate();
-        const cooldownMessage = await getCooldownMessage(interaction.guildId, interaction.user.id);
-        if (cooldownMessage) return interaction.followUp(ephemeral(cooldownMessage));
+        const cooldownPayload = await getCooldownPayload(interaction.guildId, interaction.user.id, interaction.client);
+        if (cooldownPayload) return interaction.followUp({ ...cooldownPayload, flags: MessageFlags.Ephemeral });
         return await showWaifu({
           guildId: interaction.guildId,
           user: interaction.user,
