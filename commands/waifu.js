@@ -99,7 +99,7 @@ async function getCooldownMessage(guildId, userId) {
   const timeText = hours > 0
     ? hours + "h" + (minutes > 0 ? " " + minutes + "min" : "")
     : minutes + "min";
-  return "🌙 Você já sorteou **" + MAX_DRAWS_PER_CYCLE + " waifus**! O arquivo lunar entrou em cooldown. Você poderá sortear novamente em **" + timeText + "**. Enquanto isso, pode consultar seu álbum.";
+  return "🌙 **Seus sorteios de waifu acabaram!** Você já usou as **" + MAX_DRAWS_PER_CYCLE + " tentativas** desta rodada.\\n\\n⏳ Novos sorteios estarão disponíveis em **" + timeText + "**.\\n\\n💎 Quer mais benefícios e vantagens? Conheça os planos **Yukina VIP**: https://yukina-6uo.pages.dev/vip.html\\n\\n📚 Enquanto espera, você ainda pode consultar seu álbum.";
 }
 
 async function registerWaifuDraw(guildId, userId) {
