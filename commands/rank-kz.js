@@ -1,9 +1,8 @@
 "use strict";
 
-const { SlashCommandBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, EmbedBuilder } = require("discord.js");
+const { SlashCommandBuilder, AttachmentBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const { getEconomyRanking } = require("../economia-saldo");
-const GIFEncoder = require("gif-encoder-2");
 
 
 function formatKz(value) {
@@ -193,99 +192,13 @@ function pageButtons(userId, page, maxPage) {
   );
 }
 
-async function makeLoadingGif() {
-  const width = 240;
-  const height = 240;
-  const encoder = new GIFEncoder(width, height, "neuquant", true);
-  const stream = encoder.createReadStream();
-  const chunks = [];
-  const gifBuffer = new Promise((resolve, reject) => {
-    stream.on("data", chunk => chunks.push(Buffer.from(chunk)));
-    stream.once("end", () => resolve(Buffer.concat(chunks)));
-    stream.once("error", reject);
-    encoder.once("error", reject);
-  });
-
-  encoder.start();
-  encoder.setDelay(140);
-  encoder.setRepeat(0);
-  encoder.setQuality(10);
-
-  for (let frame = 0; frame < 8; frame++) {
-    const canvas = createCanvas(width, height);
-    const ctx = canvas.getContext("2d");
-    const bounce = Math.sin(frame * Math.PI / 4) * 7;
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "rgba(37, 25, 58, 0.92)";
-    ctx.beginPath();
-    ctx.arc(120, 120, 108, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Mascote animada: Yukina de capuz nevado, piscando e ofegante como um cachorrinho.
-    ctx.fillStyle = "#f0e8ff";
-    ctx.beginPath();
-    ctx.moveTo(52, 105 + bounce);
-    ctx.quadraticCurveTo(35, 30 + bounce, 88, 49 + bounce);
-    ctx.quadraticCurveTo(120, 20 + bounce, 152, 48 + bounce);
-    ctx.quadraticCurveTo(205, 25 + bounce, 190, 105 + bounce);
-    ctx.closePath();
-    ctx.fill();
-    ctx.fillStyle = "#c9a6f2";
-    ctx.beginPath();
-    ctx.arc(120, 111 + bounce, 72, Math.PI, Math.PI * 2);
-    ctx.lineTo(192, 143 + bounce);
-    ctx.quadraticCurveTo(120, 198 + bounce, 48, 143 + bounce);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = "#ffe8d9";
-    ctx.beginPath();
-    ctx.ellipse(120, 126 + bounce, 57, 62, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#7c4a88";
-    for (const x of [99, 141]) {
-      if (frame % 4 === 0) {
-        ctx.fillRect(x - 7, 119 + bounce, 14, 3);
-      } else {
-        ctx.beginPath();
-        ctx.ellipse(x, 119 + bounce, 6, 10, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.fillStyle = "#ed9bb9";
-    ctx.beginPath();
-    ctx.arc(83, 139 + bounce, 10, 0, Math.PI * 2);
-    ctx.arc(157, 139 + bounce, 10, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#7c4a88";
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(108, 145 + bounce);
-    ctx.quadraticCurveTo(120, 158 + bounce, 132, 145 + bounce);
-    ctx.stroke();
-    ctx.fillStyle = "#f06c9d";
-    ctx.beginPath();
-    ctx.ellipse(120, 160 + bounce + (frame % 2 ? 2 : 0), 10, frame % 2 ? 14 : 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#ffffff";
-    ctx.font = "bold 24px sans-serif";
-    ctx.fillText("✦", 25 + (frame % 3) * 3, 65);
-    ctx.fillText("✧", 190, 175 - (frame % 3) * 3);
-    encoder.addFrame(ctx);
-  }
-
-  encoder.finish();
-  return new AttachmentBuilder(await gifBuffer, { name: "yukina-loading.gif" });
-}
 
 async function showRank(guild, user, sendOrEdit, page = 0, interaction = false) {
   if (!guild) return sendOrEdit({ content: "❄️ O ranking de KZ só pode ser consultado dentro de um servidor." });
   let loading;
   try {
-    const gif = await makeLoadingGif();
     loading = await sendOrEdit({
-      content: "❄️ **Estou atualizando o rank, aguarde...** 🐶👅",
-      files: [gif],
+      content: "❄️ **Estou atualizando o ranking, aguarde...**",
       allowedMentions: { parse: [] }
     });
     const { attachment, page: currentPage, maxPage } = await buildRanking(guild, user.id, page);
