@@ -326,19 +326,27 @@ async function handleCountingMessage(message) {
 }
 
 client.on("messageCreate", async (message) => {
-  // Mantém o sistema de contagem e responde quando alguém apenas marca a Yukina.
+  // Mantém o sistema de contagem e responde quando alguém chama a Yukina.
   await handleCountingMessage(message);
 
   if (message.author.bot || !message.guild || !client.user) return;
+  const content = String(message.content || "").trim();
   const mentionPattern = new RegExp("<@!?" + client.user.id + ">", "g");
-  if (!mentionPattern.test(String(message.content || ""))) return;
+  if (!mentionPattern.test(content)) return;
 
-  // Só responde a uma marcação direta, não a mensagens que apenas mencionam a bot no meio da conversa.
-  const remainingText = String(message.content || "")
+  // Responde à menção sozinha ou acompanhada de uma saudação, sem reagir
+  // a toda conversa em que a Yukina seja citada.
+  const remainingText = content
     .replace(mentionPattern, "")
-    .replace(/[\\s.,!?¿¡🌸❄️🌙]+/gu, "")
-    .trim();
-  if (remainingText) return;
+    .replace(/[\\s.,!?¿¡🌸❄️🌙]+/gu, " ")
+    .trim()
+    .toLocaleLowerCase("pt-BR");
+  const greetings = new Set([
+    "", "oi", "oie", "oii", "olá", "ola", "olá yukina", "ola yukina",
+    "oi yukina", "oie yukina", "bom dia", "boa tarde", "boa noite",
+    "hey", "hello", "e aí", "eai", "tudo bem", "yukina"
+  ]);
+  if (!greetings.has(remainingText)) return;
 
   try {
     let prefix = "Y";
@@ -350,24 +358,20 @@ client.on("messageCreate", async (message) => {
     const configured = String(doc?.settings?.prefix || "").trim();
     if (configured && configured.length <= 5 && !/\\s/.test(configured)) prefix = configured;
 
-    const intro = new EmbedBuilder()
-      .setColor(0xA9DDF5)
-      .setAuthor({ name: "Yukina · Assistente do servidor", iconURL: client.user.displayAvatarURL({ size: 128 }) })
-      .setTitle("❄️ Oi! Eu sou a Yukina!")
-      .setDescription(
-        "Que bom ter você por aqui! 🌸 Sou a assistente deste servidor e estou pronta para ajudar com meus comandos e sistemas.\n\n" +
-        "⌨️ **Prefixo deste servidor:** `" + prefix + "`\n" +
-        "📚 **Ver os comandos:** `" + prefix + "ajuda` ou `/ajuda`\n\n" +
-        "É só escolher um comando e começar sua jornada comigo! 🌙"
-      )
-      .setFooter({ text: "Yukina · Sob a luz da lua, sempre pronta para ajudar." });
+    const intro =
+      "❄️ Oii! Eu sou a Yukina! 🌸\n\n" +
+      "Sou a assistente deste servidor e estou aqui para trazer diversão, interação e um pouquinho da magia japonesa.\n\n" +
+      "⌨️ Meu prefixo neste servidor é: `" + prefix + "`\n" +
+      "📚 Para ver meus comandos, use `" + prefix + "ajuda` ou `/ajuda`.\n\n" +
+      "Espero que a gente se divirta bastante juntinhos! 🌙";
 
-    await message.reply({ embeds: [intro], allowedMentions: { repliedUser: false, parse: [] } });
+    await message.reply({ content: intro, allowedMentions: { repliedUser: false, parse: [] } });
   } catch (error) {
     console.error("[Yukina] Falha ao responder à menção:", error?.message || error);
-    await message.reply(
-      "❄️ Oi! Eu sou a Yukina! 🌸 Meu prefixo neste servidor é `Y` (ou o prefixo configurado no painel). Use `Yajuda` ou `/ajuda` para ver os comandos."
-    ).catch(() => {});
+    await message.reply({
+      content: "❄️ Oii! Eu sou a Yukina! 🌸\\n\\nMeu prefixo padrão é `Y`. Use `Yajuda` ou `/ajuda` para ver os comandos.",
+      allowedMentions: { repliedUser: false, parse: [] }
+    }).catch(() => {});
   }
 });
 
