@@ -140,7 +140,7 @@ async function scheduleAvailabilityNotification(client, guildId, userId, until) 
       const subscribedUntil = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
       if (!subscribedUntil || subscribedUntil !== Number(until)) return;
       const user = await client.users.fetch(String(userId));
-      await user.send("🌸 **O arquivo lunar está aberto novamente!** Seu cooldown de waifus terminou. Você já pode usar **Ywaifu** ou **/waifu** para sortear novas personagens.");
+      await user.send("🌸 **O arquivo lunar está aberto novamente!** Seu cooldown de waifus terminou. Você já pode usar **Yw** ou **/waifu** para sortear novas personagens.");
       await storage.set(String(guildId), "notifyAt", 0, String(userId));
     } catch (error) {
       console.error("[Yukina waifu DM]", error);
@@ -157,7 +157,7 @@ async function getCooldownPayload(guildId, userId, client) {
   const notifyAt = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
   if (notifyAt > Date.now()) await scheduleAvailabilityNotification(client, guildId, userId, notifyAt);
   return {
-    content: cooldownMessage + "\\n\\n🎲 **Sorteios restantes nesta rodada:** " + remainingDraws + "/" + MAX_DRAWS_PER_CYCLE,
+    content: cooldownMessage + "\n\n🎲 **Sorteios restantes nesta rodada:** " + remainingDraws + "/" + MAX_DRAWS_PER_CYCLE,
     components: [makeCooldownButtons(userId)],
     allowedMentions: { parse: [] },
   };
@@ -278,7 +278,7 @@ async function showAlbumPage({ guildId, user, reply, index = 0, edit = false }) 
   const items = (await getCollection(guildId, user.id)).map(normalizeItem).filter(Boolean);
   if (!items.length) {
     const payload = {
-      content: "🌸 Seu álbum ainda está vazio. Use **Ywaifu** para encontrar uma personagem e toque em **Guardar**.",
+      content: "🌸 Seu álbum ainda está vazio. Use **Yw** para encontrar uma personagem e toque em **Guardar**.",
       embeds: [],
       components: [],
     };
@@ -302,7 +302,7 @@ async function showWaifu({ guildId, user, reply, edit = false }) {
   const drawCount = await registerWaifuDraw(guildId, user.id);
   const payload = {
     embeds: [makeEmbed(imageUrl, user, items.length, false, rarity).setDescription(
-      "「 Uma nova estrela apareceu no céu de Yukina! 」\\n\\nGostou desta personagem? Guarde-a na sua coleção ou peça outra para o arquivo lunar.\\n\\n🎲 **Sorteios nesta rodada:** " + drawCount + "/" + MAX_DRAWS_PER_CYCLE + (drawCount >= MAX_DRAWS_PER_CYCLE ? "\\n🌙 Você atingiu o limite. O cooldown de 2 horas já começou." : "")
+      "「 Uma nova estrela apareceu no céu de Yukina! 」\n\nGostou desta personagem? Guarde-a na sua coleção ou peça outra para o arquivo lunar.\n\n🎲 **Sorteios nesta rodada:** " + drawCount + "/" + MAX_DRAWS_PER_CYCLE + (drawCount >= MAX_DRAWS_PER_CYCLE ? "\n🌙 Você atingiu o limite. O cooldown de 2 horas já começou." : "")
     )],
     components: [makeButtons(user.id, imageUrl, items.length)],
     allowedMentions: { parse: [] },
@@ -345,7 +345,7 @@ module.exports = {
         )
     ),
 
-  aliases: ["waifus", "colecaowaifu", "colecaowaifus"],
+  aliases: ["yw", "waifus", "colecaowaifu", "colecaowaifus"],
 
   async execute(interaction) {
     if (!interaction.inGuild() || !interaction.guildId) {
