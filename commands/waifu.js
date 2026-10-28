@@ -70,6 +70,7 @@ function normalizeItem(item) {
 }
 
 const WAIFU_COOLDOWN_MS = 2 * 60 * 60 * 1000;
+const MAX_DRAWS_PER_CYCLE = 10;
 
 async function getWaifuCooldownUntil(guildId, userId) {
   const value = await storage.get(String(guildId), "cooldownUntil", 0, String(userId));
@@ -77,22 +78,39 @@ async function getWaifuCooldownUntil(guildId, userId) {
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
+async function getDrawCount(guildId, userId) {
+  const value = await storage.get(String(guildId), "drawCount", 0, String(userId));
+  const count = Number(value);
+  return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
+}
+
 async function getCooldownMessage(guildId, userId) {
   const until = await getWaifuCooldownUntil(guildId, userId);
   const remaining = until - Date.now();
-  if (remaining <= 0) return null;
+  if (remaining <= 0) {
+    if (until > 0) {
+      await storage.set(String(guildId), "drawCount", 0, String(userId));
+      await storage.set(String(guildId), "cooldownUntil", 0, String(userId));
+    }
+    return null;
+  }
   const hours = Math.floor(remaining / 3600000);
   const minutes = Math.ceil((remaining % 3600000) / 60000);
   const timeText = hours > 0
     ? hours + "h" + (minutes > 0 ? " " + minutes + "min" : "")
     : minutes + "min";
-  return "🌙 Você já encontrou uma waifu recentemente! O próximo sorteio estará disponível em **" + timeText + "**. Enquanto isso, você pode consultar seu álbum.";
+  return "🌙 Você já sorteou **" + MAX_DRAWS_PER_CYCLE + " waifus**! O arquivo lunar entrou em cooldown. Você poderá sortear novamente em **" + timeText + "**. Enquanto isso, pode consultar seu álbum.";
 }
 
-async function startWaifuCooldown(guildId, userId) {
-  const until = Date.now() + WAIFU_COOLDOWN_MS;
-  await storage.set(String(guildId), "cooldownUntil", until, String(userId));
-  return until;
+async function registerWaifuDraw(guildId, userId) {
+  const key = String(userId);
+  const count = (await getDrawCount(guildId, userId)) + 1;
+  await storage.set(String(guildId), "drawCount", count, key);
+  if (count >= MAX_DRAWS_PER_CYCLE) {
+    const until = Date.now() + WAIFU_COOLDOWN_MS;
+    await storage.set(String(guildId), "cooldownUntil", until, key);
+  }
+  return count;
 }
 
 function money(value) {
@@ -231,9 +249,11 @@ async function showWaifu({ guildId, user, reply, edit = false }) {
   const imageUrl = await getRandomWaifu();
   const rarity = rollRarity();
   const items = await getCollection(guildId, user.id);
-  await startWaifuCooldown(guildId, user.id);
+  const drawCount = await registerWaifuDraw(guildId, user.id);
   const payload = {
-    embeds: [makeEmbed(imageUrl, user, items.length, false, rarity)],
+    embeds: [makeEmbed(imageUrl, user, items.length, false, rarity).setDescription(
+      "「 Uma nova estrela apareceu no céu de Yukina! 」\\n\\nGostou desta personagem? Guarde-a na sua coleção ou peça outra para o arquivo lunar.\\n\\n🎲 **Sorteios nesta rodada:** " + drawCount + "/" + MAX_DRAWS_PER_CYCLE + (drawCount >= MAX_DRAWS_PER_CYCLE ? "\\n🌙 Você atingiu o limite. O cooldown de 2 horas já começou." : "")
+    )],
     components: [makeButtons(user.id, imageUrl, items.length)],
     allowedMentions: { parse: [] },
   };
