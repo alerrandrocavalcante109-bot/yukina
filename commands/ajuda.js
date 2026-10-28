@@ -5,7 +5,6 @@ const {
   EmbedBuilder,
   ActionRowBuilder,
   StringSelectMenuBuilder,
-  MessageFlags,
 } = require("discord.js");
 
 const COLOR = 0xA9DDF5;
@@ -91,7 +90,6 @@ module.exports = {
   async execute(interaction) {
     return interaction.reply({
       ...buildHelpPayload(interaction.client.commands || new Map()),
-      flags: MessageFlags.Ephemeral,
     });
   },
   async prefixExecute(message) {
