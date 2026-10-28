@@ -118,53 +118,89 @@ async function renderRankingCard(guild, ranking, requesterId) {
   ctx.fillText("YUKINA  •  ARQUIVO DA ECONOMIA", 64, 65);
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 56px sans-serif";
-  ctx.fillText("Ranking de Kizunas", 64, 132);
+  ctx.fillText("Top 5 — Kizunas", 64, 132);
   ctx.fillStyle = "#d9c8f0";
   ctx.font = "24px sans-serif";
-  ctx.fillText("Os maiores tesouros desta comunidade", 66, 174);
+  ctx.fillText("Os cinco membros mais ricos desta comunidade", 66, 174);
 
   roundedRect(ctx, 48, 210, 1104, 610, 28);
   ctx.fillStyle = "rgba(15, 12, 31, 0.72)";
   ctx.fill();
 
-  const top = ranking.slice(0, 10);
+  const top = ranking.slice(0, 5);
   if (!top.length) {
     ctx.fillStyle = "#eee5f7";
     ctx.font = "28px sans-serif";
     ctx.fillText("Ainda não há Kizunas registradas neste servidor.", 90, 350);
     ctx.fillText("Junte KZ e seja o primeiro no ranking!", 90, 400);
   } else {
-    top.forEach((entry, index) => {
-      const y = 235 + index * 56;
+    for (let index = 0; index < top.length; index++) {
+      const entry = top[index];
+      const y = 230 + index * 112;
       const position = index + 1;
-      const member = guild.members.cache.get(entry.userId);
+      let member = guild.members.cache.get(entry.userId);
+      if (!member) {
+        try { member = await guild.members.fetch(entry.userId); } catch {}
+      }
       const name = member?.displayName || member?.user?.username || ("Membro " + entry.userId.slice(-4));
+      const avatarUrl = member?.user?.displayAvatarURL
+        ? member.user.displayAvatarURL({ extension: "png", size: 128 })
+        : null;
       const isRequester = entry.userId === String(requesterId);
 
-      if (isRequester) {
-        roundedRect(ctx, 68, y, 1064, 48, 14);
-        ctx.fillStyle = "rgba(197, 138, 232, 0.22)";
-        ctx.fill();
-      } else if (index % 2 === 0) {
-        roundedRect(ctx, 68, y, 1064, 48, 14);
-        ctx.fillStyle = "rgba(255, 255, 255, 0.035)";
-        ctx.fill();
-      }
+      roundedRect(ctx, 68, y, 1064, 100, 18);
+      ctx.fillStyle = isRequester ? "rgba(197, 138, 232, 0.28)" : "rgba(255, 255, 255, 0.045)";
+      ctx.fill();
 
-      ctx.font = "bold 26px sans-serif";
+      // Posição do ranking.
+      ctx.font = "bold 30px sans-serif";
       ctx.fillStyle = position === 1 ? "#ffd66b" : position === 2 ? "#e4e9f3" : position === 3 ? "#e8b28e" : "#d9c8f0";
-      ctx.fillText(position === 1 ? "♛" : position === 2 ? "②" : position === 3 ? "③" : String(position).padStart(2, "0"), 88, y + 32);
+      ctx.fillText(position === 1 ? "♛" : "#" + position, 86, y + 40);
 
-      ctx.font = isRequester ? "bold 23px sans-serif" : "23px sans-serif";
-      ctx.fillStyle = isRequester ? "#f6dfff" : "#f5f0fc";
-      ctx.fillText(fitText(ctx, name + (isRequester ? "  •  Você" : ""), 610), 155, y + 31);
+      // Foto do membro, com moldura lilás.
+      const avatarX = 145;
+      const avatarY = y + 9;
+      const avatarSize = 62;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+      ctx.clip();
+      if (avatarUrl) {
+        try {
+          const avatar = await loadImage(avatarUrl);
+          ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+        } catch {
+          ctx.fillStyle = "#6d4a89";
+          ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+        }
+      } else {
+        ctx.fillStyle = "#6d4a89";
+        ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+      }
+      ctx.restore();
+      ctx.strokeStyle = "#d9b5ff";
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 1, 0, Math.PI * 2);
+      ctx.stroke();
 
-      ctx.textAlign = "right";
-      ctx.font = "bold 23px sans-serif";
-      ctx.fillStyle = "#d9b5ff";
-      ctx.fillText(formatKz(entry.balance), 1095, y + 31);
+      // Nome abaixo da foto; ID e saldo lado a lado à direita.
+      ctx.textAlign = "center";
+      ctx.font = "bold 15px sans-serif";
+      ctx.fillStyle = "#f5f0fc";
+      ctx.fillText(fitText(ctx, name, 115), avatarX + avatarSize / 2, y + 91);
       ctx.textAlign = "left";
-    });
+
+      ctx.font = "17px sans-serif";
+      ctx.fillStyle = "#cdb8e6";
+      ctx.fillText("ID: " + entry.userId, 245, y + 40);
+
+      ctx.font = "bold 24px sans-serif";
+      ctx.fillStyle = "#e8c9ff";
+      ctx.textAlign = "right";
+      ctx.fillText(formatKz(entry.balance), 1105, y + 58);
+      ctx.textAlign = "left";
+    }
   }
 
   const ownPosition = ranking.findIndex(entry => entry.userId === String(requesterId));
@@ -178,7 +214,7 @@ async function renderRankingCard(guild, ranking, requesterId) {
   ctx.textAlign = "right";
   ctx.fillStyle = "#cdb8e6";
   ctx.font = "18px sans-serif";
-  ctx.fillText(String(ranking.length) + " membros classificados", 1125, 867);
+  ctx.fillText("Exibindo os 5 maiores saldos", 1125, 867);
   ctx.textAlign = "left";
 
   return new AttachmentBuilder(await canvas.encode("png"), { name: "rank-kz-yukina.png" });
