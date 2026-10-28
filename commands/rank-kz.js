@@ -1,67 +1,12 @@
 "use strict";
 
-const fs = require("node:fs/promises");
-const path = require("node:path");
 const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
-const { MongoClient } = require("mongodb");
+const { getEconomyRanking } = require("../economia-saldo");
 
-const COLOR = "#c58ae8";
-const FILE = path.join(process.cwd(), "data", "economia.json");
-const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
-const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
-let mongoClient;
 
 function formatKz(value) {
   return Math.floor(Math.max(0, Number(value) || 0)).toLocaleString("pt-BR") + " KZ";
-}
-
-function readBalance(record) {
-  const value = typeof record === "number"
-    ? record
-    : (record?.balance ?? record?.saldo ?? record?.wallet ?? record?.kizunas ?? 0);
-  const balance = Number(value);
-  return Number.isFinite(balance) && balance > 0 ? balance : 0;
-}
-
-async function getMongoRanking(guildId) {
-  if (!MONGODB_URI) return null;
-  if (!mongoClient) {
-    mongoClient = new MongoClient(MONGODB_URI, {
-      appName: "Yukina-Rank-KZ",
-      serverSelectionTimeoutMS: 10000,
-    });
-  }
-  await mongoClient.connect();
-  const docs = await mongoClient.db(MONGODB_DB).collection("economy_balances")
-    .find({ guildId: String(guildId) }, { projection: { userId: 1, balance: 1, _id: 0 } })
-    .toArray();
-
-  if (!docs.length) return null;
-  return docs
-    .map(doc => ({ userId: String(doc.userId), balance: readBalance(doc.balance) }))
-    .filter(doc => /^\\d{15,22}$/.test(doc.userId))
-    .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
-}
-
-async function getLocalRanking(guildId) {
-  let data;
-  try {
-    data = JSON.parse(await fs.readFile(FILE, "utf8"));
-  } catch (error) {
-    if (error.code !== "ENOENT") console.error("[Rank KZ] Falha ao ler economia local:", error.message);
-    return [];
-  }
-
-  const guild = data?.[String(guildId)];
-  const source = guild && typeof guild === "object" && !Array.isArray(guild)
-    ? guild
-    : Object.fromEntries(Object.entries(data || {}).filter(([id]) => /^\\d{15,22}$/.test(id)));
-
-  return Object.entries(source)
-    .map(([userId, record]) => ({ userId: String(userId), balance: readBalance(record) }))
-    .filter(doc => /^\\d{15,22}$/.test(doc.userId))
-    .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
@@ -138,13 +83,18 @@ async function renderRankingCard(guild, ranking, requesterId) {
       const entry = top[index];
       const y = 230 + index * 112;
       const position = index + 1;
-      let member = guild.members.cache.get(entry.userId);
+      let member = guild.members.cache.get(entry.userId) || null;
+      let user = member?.user || null;
+      // Consulta a API do Discord para obter o perfil atualizado, mesmo se não estiver no cache.
       if (!member) {
-        try { member = await guild.members.fetch(entry.userId); } catch {}
+        try { member = await guild.members.fetch(entry.userId); user = member.user; } catch {}
       }
-      const name = member?.displayName || member?.user?.username || ("Membro " + entry.userId.slice(-4));
-      const avatarUrl = member?.user?.displayAvatarURL
-        ? member.user.displayAvatarURL({ extension: "png", size: 128 })
+      if (!user) {
+        try { user = await guild.client.users.fetch(entry.userId); } catch {}
+      }
+      const name = member?.displayName || user?.globalName || user?.username || ("Membro " + entry.userId.slice(-4));
+      const avatarUrl = user?.displayAvatarURL
+        ? user.displayAvatarURL({ extension: "png", size: 128 })
         : null;
       const isRequester = entry.userId === String(requesterId);
 
@@ -221,16 +171,10 @@ async function renderRankingCard(guild, ranking, requesterId) {
 }
 
 async function buildRanking(guild, requesterId) {
-  let ranking = null;
-  try {
-    ranking = await getMongoRanking(guild.id);
-  } catch (error) {
-    console.error("[Rank KZ] Falha ao consultar MongoDB:", error.message || error);
-  }
-  if (!ranking) ranking = await getLocalRanking(guild.id);
-  const positive = ranking.filter(entry => entry.balance > 0);
-  const attachment = await renderRankingCard(guild, positive, requesterId);
-  return { attachment, ranking: positive };
+  // O ranking usa a mesma camada de dados da economia /saldo.
+  const ranking = await getEconomyRanking(guild.id);
+  const attachment = await renderRankingCard(guild, ranking, requesterId);
+  return { attachment, ranking };
 }
 
 async function run(guild, user, reply) {
