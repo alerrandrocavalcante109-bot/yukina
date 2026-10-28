@@ -55,6 +55,41 @@ function getLocalStats(data, guildId, userId) {
   const sorted = [...balances.values()].sort((a, b) => b - a);
   return { balance, rank: sorted.findIndex(value => value <= balance) + 1, total: sorted.length };
 }
+async function getEconomyRanking(guildId) {
+  // Mesma fonte de dados usada pelo comando /saldo: MongoDB e, como alternativa,
+  // o arquivo data/economia.json no formato servidor -> usuário -> saldo.
+  if (MONGODB_URI) {
+    try {
+      if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Economia", serverSelectionTimeoutMS: 10000 });
+      await mongoClient.connect();
+      const docs = await mongoClient.db(MONGODB_DB).collection("economy_balances")
+        .find({ guildId: String(guildId) }, { projection: { userId: 1, balance: 1, _id: 0 } }).toArray();
+      if (docs.length) {
+        return docs.map(doc => ({
+          userId: String(doc.userId),
+          balance: Math.max(0, Number(doc.balance) || 0)
+        })).filter(doc => /^\\d{15,22}$/.test(doc.userId) && doc.balance > 0)
+          .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
+      }
+    } catch (error) {
+      console.error("[Yukina Economia] Falha ao carregar ranking completo:", error.message || error);
+    }
+  }
+
+  const data = await readData();
+  const guild = data[String(guildId)];
+  let entries;
+  if (guild && typeof guild === "object" && !Array.isArray(guild)) {
+    entries = Object.entries(guild);
+  } else {
+    entries = Object.entries(data).filter(([id]) => /^\\d{15,22}$/.test(id));
+  }
+  return entries.map(([userId, record]) => ({
+    userId: String(userId),
+    balance: readRecordBalance(record)
+  })).filter(doc => /^\\d{15,22}$/.test(doc.userId) && doc.balance > 0)
+    .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
+}
 function format(value) {
   return Math.floor(value).toLocaleString("pt-BR");
 }
@@ -92,4 +127,4 @@ function makeCommand(name, description) {
     }
   };
 }
-module.exports = { makeCommand };
+module.exports = { makeCommand, getEconomyRanking };
