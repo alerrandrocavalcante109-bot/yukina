@@ -3,42 +3,62 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { REST, Routes } = require("discord.js");
 
-const token = (process.env.DISCORD_TOKEN || "").trim();
+const token = (process.env.TOKEN || process.env.DISCORD_TOKEN || "").trim();
 const clientId = (process.env.DISCORD_CLIENT_ID || "").trim();
 const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || "").trim();
 
 if (!token || !clientId) {
-  console.error("Defina DISCORD_TOKEN e DISCORD_CLIENT_ID antes de registrar os comandos.");
+  console.error("Defina TOKEN (ou DISCORD_TOKEN) e DISCORD_CLIENT_ID antes de registrar os comandos.");
   process.exit(1);
 }
 
-const removedModerationCommands = new Set(["cargo", "clear", "deletar", "limpar", "lock", "log", "moderar", "promover", "unlock"]);
-
 const commandsDir = path.join(__dirname, "commands");
-const commands = [];
+const commandsByName = new Map();
+const invalidFiles = [];
+
 function collect(directory) {
   if (!fs.existsSync(directory)) return;
   for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
     const file = path.join(directory, entry.name);
-    if (entry.isDirectory()) collect(file);
-    else if (entry.isFile() && entry.name.endsWith(".js") && !entry.name.startsWith("_")) {
+    if (entry.isDirectory()) {
+      collect(file);
+      continue;
+    }
+    if (!entry.isFile() || !entry.name.endsWith(".js") || entry.name.startsWith("_")) continue;
+    try {
       const command = require(file);
-      if (command?.data?.toJSON && typeof command.execute === "function") commands.push(command.data.toJSON());
+      if (!command?.data?.toJSON || typeof command.execute !== "function") continue;
+      const payload = command.data.toJSON();
+      if (!payload?.name || typeof payload.name !== "string") throw new Error("Definição slash sem nome válido.");
+      if (commandsByName.has(payload.name)) {
+        throw new Error("Nome slash duplicado também declarado em " + commandsByName.get(payload.name).file);
+      }
+      commandsByName.set(payload.name, { payload, file: path.relative(__dirname, file) });
+    } catch (error) {
+      invalidFiles.push({ file: path.relative(__dirname, file), message: error.message });
     }
   }
 }
-collect(commandsDir);
 
+collect(commandsDir);
+for (const item of invalidFiles) {
+  console.error("[Slash] Módulo ignorado/duplicado: " + item.file + " — " + item.message);
+}
+
+const commands = [...commandsByName.values()].map(item => item.payload);
+const route = guildId
+  ? Routes.applicationGuildCommands(clientId, guildId)
+  : Routes.applicationCommands(clientId);
 const rest = new REST({ version: "10" }).setToken(token);
+
 (async () => {
   try {
-    const route = guildId ? Routes.applicationGuildCommands(clientId, guildId) : Routes.applicationCommands(clientId);
-    const existing = await rest.get(route);
-    const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => !removedModerationCommands.has(command.name)).map((command) => [command.name, command]));
-    for (const command of commands) merged.set(command.name, command);
-    const result = await rest.put(route, { body: [...merged.values()] });
-    console.log("Yukina: " + commands.length + " comando(s) local(is) sincronizado(s); " + result.length +
-      " comando(s) no total " + (guildId ? "no servidor " + guildId : "globalmente") + ".");
+    // Substitui integralmente os comandos do escopo selecionado e remove os antigos.
+    const result = await rest.put(route, { body: commands });
+    console.log("Sincronização limpa: " + result.length + " comando(s) registrados; " +
+      commands.length + " comando(s) válidos encontrados no código.");
+    console.log("Publicados: " + (commands.map(command => "/" + command.name).join(", ") || "nenhum"));
+    if (invalidFiles.length) console.warn("Revise " + invalidFiles.length + " aviso(s) de arquivos inválidos/duplicados.");
   } catch (error) {
     console.error("Falha ao registrar comandos slash:", error);
     process.exitCode = 1;
