@@ -152,40 +152,52 @@ const removedModerationCommands = new Set(["cargo", "clear", "deletar", "limpar"
 
 async function registerSlashCommands() {
   const commandsDir = path.join(__dirname, "commands");
-  const commands = [];
+  const commandsByName = new Map();
+  const invalidFiles = [];
 
   function collect(directory) {
     if (!fs.existsSync(directory)) return;
     for (const entry of fs.readdirSync(directory, { withFileTypes: true })) {
       const file = path.join(directory, entry.name);
-      if (entry.isDirectory()) collect(file);
-      else if (entry.isFile() && entry.name.endsWith(".js") && !entry.name.startsWith("_")) {
-        try {
-          delete require.cache[require.resolve(file)];
-          const command = require(file);
-          if (command?.data?.toJSON && typeof command.execute === "function") {
-            commands.push(command.data.toJSON());
-          }
-        } catch (error) {
-          console.error("[Slash] Não consegui carregar " + path.relative(__dirname, file) + ":", error.message);
+      if (entry.isDirectory()) {
+        collect(file);
+        continue;
+      }
+      if (!entry.isFile() || !entry.name.endsWith(".js") || entry.name.startsWith("_")) continue;
+      try {
+        delete require.cache[require.resolve(file)];
+        const command = require(file);
+        // Somente módulos completos, com definição slash serializável e executor.
+        if (!command?.data?.toJSON || typeof command.execute !== "function") continue;
+        const payload = command.data.toJSON();
+        if (!payload?.name || typeof payload.name !== "string") {
+          throw new Error("Definição slash sem nome válido.");
         }
+        if (commandsByName.has(payload.name)) {
+          const previous = commandsByName.get(payload.name);
+          throw new Error("Nome slash duplicado também declarado em " + previous.file);
+        }
+        commandsByName.set(payload.name, { payload, file: path.relative(__dirname, file) });
+      } catch (error) {
+        invalidFiles.push({ file: path.relative(__dirname, file), message: error.message });
       }
     }
   }
 
   collect(commandsDir);
-  if (!commands.length) {
-    // Sem comandos locais, não há nada para sincronizar.
+  if (invalidFiles.length) {
+    for (const item of invalidFiles) {
+      console.error("[Slash] Módulo ignorado/duplicado: " + item.file + " — " + item.message);
+    }
+  }
+
+  const commands = [...commandsByName.values()].map(item => item.payload);
+  const clientId = (process.env.DISCORD_CLIENT_ID || client.user?.id || "").trim();
+  if (!clientId) {
+    console.error("[Slash] Não foi possível identificar o ID da aplicação; comandos não registrados.");
     return;
   }
 
-  // O ID da aplicação pode ser obtido do próprio cliente já conectado.
-  // Assim, a ausência opcional de DISCORD_CLIENT_ID não impede o registro dos slash commands.
-  const clientId = (process.env.DISCORD_CLIENT_ID || client.user?.id || "").trim();
-  if (!clientId) {
-    console.error("[Slash] Não foi possível identificar o ID da aplicação; comandos slash não registrados.");
-    return;
-  }
   const guildId = (process.env.DISCORD_GUILD_ID || process.env.GUILD_ID || "").trim();
   const route = guildId
     ? Routes.applicationGuildCommands(clientId, guildId)
@@ -193,17 +205,18 @@ async function registerSlashCommands() {
   const rest = new REST({ version: "10" }).setToken(TOKEN);
 
   try {
-    const existing = await rest.get(route);
-    const merged = new Map((Array.isArray(existing) ? existing : []).filter((command) => command.name !== "boasvindas" && !removedModerationCommands.has(command.name)).map((command) => [command.name, command]));
-    for (const command of commands) merged.set(command.name, command);
-    const result = await rest.put(route, { body: [...merged.values()] });
-    console.log(`[Slash] ${commands.length} comando(s) local(is) sincronizado(s); ${result.length} comando(s) disponíveis ${guildId ? "no servidor " + guildId : "globalmente"}.`);
-    console.log(`[Slash] Comando /painel ${commands.some(command => command.name === "painel") ? "incluído na sincronização" : "NÃO encontrado na pasta commands"}.`);
+    // PUT substitui a lista inteira: comandos antigos que não existem mais no código são apagados.
+    const result = await rest.put(route, { body: commands });
+    console.log("[Slash] Sincronização limpa concluída: " + commands.length +
+      " comando(s) válido(s); " + result.length + " registrado(s) " +
+      (guildId ? "no servidor " + guildId : "globalmente") + ".");
+    console.log("[Slash] Comandos publicados: " + (commands.map(command => "/" + command.name).join(", ") || "nenhum"));
+    if (invalidFiles.length) {
+      console.warn("[Slash] " + invalidFiles.length + " arquivo(s) foram ignorados; revise os avisos acima.");
+    }
   } catch (error) {
-    console.error("[Slash] Falha no registro automático dos comandos:", {
-      code: error?.code,
-      status: error?.status,
-      message: error?.message,
+    console.error("[Slash] Falha na sincronização limpa:", {
+      code: error?.code, status: error?.status, message: error?.message
     });
   }
 }
