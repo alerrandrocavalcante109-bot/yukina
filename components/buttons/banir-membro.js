@@ -50,14 +50,14 @@ module.exports = {
     try {
       await guild.members.ban(item.targetId, { reason: (item.reason + " | Staff: " + moderator.user.tag + " (" + moderator.id + ")").slice(0, 500) });
       scheduleUnban(guild, item.targetId, item.durationMs);
-      if (mode === "silencioso") {
-        await interaction.followUp({ content: "✅ Banimento aplicado silenciosamente a <@" + item.targetId + ">.", ephemeral: true, allowedMentions: { parse: [] } });
-      } else {
-        await interaction.followUp({
-          content: "<@" + item.targetId + "> foi banido do servidor por <@" + moderator.id + ">!!\nSTAFF responsável: <@" + moderator.id + ">\nMembro banido: <@" + item.targetId + ">\nMotivo: " + item.reason + (item.durationMs ? "\nDuração: " + command._formatDuration(item.durationMs) + "." : "\nDuração: permanente."),
-          allowedMentions: { users: [item.targetId, moderator.id], parse: [] }
-        });
-      }
+      const resultMessage = mode === "silencioso"
+        ? "❄️ A decisão foi executada discretamente. O usuário foi banido do servidor sem um anúncio público, mantendo a discrição da equipe de moderação e a organização da comunidade."
+        : "🌸 O julgamento foi concluído. A decisão da moderação foi aplicada e o usuário foi banido do servidor. Que a tranquilidade e o respeito continuem prevalecendo em nossa comunidade.";
+      await interaction.channel.send({
+        content: resultMessage,
+        reply: { messageReference: interaction.message.id },
+        allowedMentions: { repliedUser: false, parse: [] }
+      });
     } catch (error) {
       console.error("[Banir membro] Falha ao banir:", error);
       await interaction.followUp({ content: "❌ Não consegui banir o usuário. Confira as permissões e a hierarquia de cargos da Yukina.", ephemeral: true });
