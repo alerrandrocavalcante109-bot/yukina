@@ -928,14 +928,21 @@
     dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
     dropRoleSearch.addEventListener("input",renderDropRoles);
     function getDropRoleColor(role){
-      const raw=role?.color??role?.hexColor??role?.colorHex??role?.colour;
-      if(typeof raw==="number"&&Number.isFinite(raw)&&raw>0)return "#"+Math.trunc(raw).toString(16).padStart(6,"0").slice(-6);
-      if(typeof raw==="string"){
-        const value=raw.trim();
-        if(/^#[0-9a-f]{6}$/i.test(value))return value;
-        if(/^#[0-9a-f]{3}$/i.test(value))return "#"+value.slice(1).split("").map(ch=>ch+ch).join("");
-        if(/^0x[0-9a-f]+$/i.test(value))return "#"+parseInt(value,16).toString(16).padStart(6,"0").slice(-6);
-        if(/^\d+$/.test(value)&&Number(value)>0)return "#"+Number(value).toString(16).padStart(6,"0").slice(-6);
+      const candidates=[
+        role?.colors?.primaryColor,role?.primaryColor,role?.colorPrimary,
+        role?.hexColor,role?.colorHex,role?.colour,
+        typeof role?.color==="string"?role.color:null,
+        typeof role?.color==="number"&&role.color>0?role.color:null
+      ];
+      for(const raw of candidates){
+        if(typeof raw==="number"&&Number.isFinite(raw)&&raw>0)return "#"+Math.trunc(raw).toString(16).padStart(6,"0").slice(-6);
+        if(typeof raw==="string"){
+          const value=raw.trim();
+          if(/^#[0-9a-f]{6}$/i.test(value))return value;
+          if(/^#[0-9a-f]{3}$/i.test(value))return "#"+value.slice(1).split("").map(ch=>ch+ch).join("");
+          if(/^0x[0-9a-f]+$/i.test(value))return "#"+parseInt(value,16).toString(16).padStart(6,"0").slice(-6);
+          if(/^\d+$/.test(value)&&Number(value)>0)return "#"+Number(value).toString(16).padStart(6,"0").slice(-6);
+        }
       }
       return "#e9ddff";
     }
