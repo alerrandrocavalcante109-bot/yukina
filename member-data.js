@@ -48,7 +48,8 @@ function keyFor(guildId, userId) {
 
 function getRecord(guildId, userId) {
   const key = keyFor(guildId, userId);
-  if (!store.members[key]) store.members[key] = { xp: 0, joinedAt: null, rank: null };
+  if (!store.members[key]) store.members[key] = { xp: 0, joinedAt: null, rank: null, warnings: [] };
+  if (!Array.isArray(store.members[key].warnings)) store.members[key].warnings = [];
   return store.members[key];
 }
 
@@ -69,6 +70,7 @@ async function persistRecord(key) {
           xp: Math.max(0, Number(record.xp) || 0),
           joinedAt: record.joinedAt || null,
           rank: record.rank || null,
+          warnings: Array.isArray(record.warnings) ? record.warnings : [],
           updatedAt: new Date(),
         },
       },
@@ -135,6 +137,7 @@ async function initialize() {
           xp: Math.max(0, Number(doc.xp) || 0),
           joinedAt: doc.joinedAt || null,
           rank: doc.rank || null,
+          warnings: Array.isArray(doc.warnings) ? doc.warnings : [],
         };
       }
 
@@ -149,6 +152,7 @@ async function initialize() {
               xp: Math.max(0, Number(record.xp) || 0),
               joinedAt: record.joinedAt || null,
               rank: record.rank || null,
+              warnings: Array.isArray(record.warnings) ? record.warnings : [],
               updatedAt: new Date(),
             },
           },
@@ -174,4 +178,16 @@ function getMembers() {
   return store.members;
 }
 
-module.exports = { initialize, getRecord, getMembers, persistRecord, keyFor };
+async function addWarning(guildId, userId, warning) {
+  const key = keyFor(guildId, userId);
+  const record = getRecord(guildId, userId);
+  record.warnings.push({ id: String(warning.id || Date.now()), reason: String(warning.reason || "").slice(0, 400), moderatorId: String(warning.moderatorId), createdAt: warning.createdAt ? new Date(warning.createdAt) : new Date() });
+  await persistRecord(key);
+  return record.warnings[record.warnings.length - 1];
+}
+
+function getWarnings(guildId, userId) {
+  return [...(getRecord(guildId, userId).warnings || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+}
+
+module.exports = { initialize, getRecord, getMembers, persistRecord, keyFor, addWarning, getWarnings };
