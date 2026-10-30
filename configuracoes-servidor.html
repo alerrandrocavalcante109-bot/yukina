@@ -927,48 +927,65 @@
     }
     dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
     dropRoleSearch.addEventListener("input",renderDropRoles);
+    function getDropRoleColor(role){
+      const raw=role?.color??role?.hexColor??role?.colorHex??role?.colour;
+      if(typeof raw==="number"&&Number.isFinite(raw)&&raw>0)return "#"+Math.trunc(raw).toString(16).padStart(6,"0").slice(-6);
+      if(typeof raw==="string"){
+        const value=raw.trim();
+        if(/^#[0-9a-f]{6}$/i.test(value))return value;
+        if(/^#[0-9a-f]{3}$/i.test(value))return "#"+value.slice(1).split("").map(ch=>ch+ch).join("");
+        if(/^0x[0-9a-f]+$/i.test(value))return "#"+parseInt(value,16).toString(16).padStart(6,"0").slice(-6);
+        if(/^\d+$/.test(value)&&Number(value)>0)return "#"+Number(value).toString(16).padStart(6,"0").slice(-6);
+      }
+      return "#e9ddff";
+    }
     function renderDropAddedRoles(){
       dropAddedRoles.replaceChildren();
-      dropConfiguredRoles.forEach((entry,index)=>{
+      dropConfiguredRoles.forEach(entry=>{
         const roleColor=entry.color||"#e9ddff";
         const row=document.createElement("div");
         row.dataset.roleId=entry.id;
-        row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid "+roleColor+"88;border-left:4px solid "+roleColor+";border-radius:10px;background:color-mix(in srgb, "+roleColor+" 13%, transparent)";
+        row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid "+roleColor+";border-left:5px solid "+roleColor+";border-radius:10px;background:"+roleColor+"22;transition:transform .12s,opacity .12s";
         const grip=document.createElement("span");
         grip.textContent="⠿";grip.title="Segure por 2 segundos e mova para cima ou para baixo";grip.setAttribute("aria-label","Segure por 2 segundos para reordenar");
-        grip.style.cssText="font-size:22px;color:"+roleColor+";cursor:grab;touch-action:none;user-select:none";
+        grip.style.cssText="font-size:24px;font-weight:700;color:"+roleColor+";cursor:grab;touch-action:none;user-select:none;padding:2px 6px";
         const name=document.createElement("strong");
         name.textContent="@"+entry.name;name.style.cssText="flex:1;color:"+roleColor;
         const count=document.createElement("span");
-        count.textContent="+"+entry.extras+" entradas";count.style.cssText="font-size:12px;color:"+roleColor; 
+        count.textContent="+"+entry.extras+" entradas";count.style.cssText="font-size:12px;font-weight:600;color:"+roleColor;
         row.append(grip,name,count);dropAddedRoles.appendChild(row);
-        let holdTimer=null,dragging=false;
+        let holdTimer=null,dragging=false,pointerId=null;
         const clearHold=()=>{if(holdTimer!==null){clearTimeout(holdTimer);holdTimer=null;}};
-        grip.addEventListener("pointerdown",event=>{
+        const onMove=event=>{
+          if(!dragging||event.pointerId!==pointerId)return;
           event.preventDefault();
-          dragging=false;
-          grip.setPointerCapture?.(event.pointerId);
-          holdTimer=setTimeout(()=>{dragging=true;row.style.opacity=".55";grip.style.cursor="grabbing";},2000);
-        });
-        grip.addEventListener("pointermove",event=>{
-          if(!dragging)return;
           const target=document.elementFromPoint(event.clientX,event.clientY)?.closest("#dropAddedRoles > div");
           if(!target||target===row)return;
           const rect=target.getBoundingClientRect();
           dropAddedRoles.insertBefore(row,event.clientY<rect.top+rect.height/2?target:target.nextSibling);
-        });
-        const finishDrag=()=>{
+        };
+        const onEnd=event=>{
+          if(pointerId!==null&&event.pointerId!==pointerId)return;
           clearHold();
           if(dragging){
-            row.style.opacity="1";grip.style.cursor="grab";
+            row.style.opacity="1";row.style.outline="none";grip.style.cursor="grab";
             const byId=new Map(dropConfiguredRoles.map(item=>[item.id,item]));
             dropConfiguredRoles=[...dropAddedRoles.children].map(el=>byId.get(el.dataset.roleId)).filter(Boolean);
           }
-          dragging=false;
+          dragging=false;pointerId=null;
+          document.removeEventListener("pointermove",onMove);
+          document.removeEventListener("pointerup",onEnd);
+          document.removeEventListener("pointercancel",onEnd);
         };
-        grip.addEventListener("pointerup",finishDrag);
-        grip.addEventListener("pointercancel",finishDrag);
-        grip.addEventListener("lostpointercapture",finishDrag);
+        grip.addEventListener("pointerdown",event=>{
+          event.preventDefault();clearHold();pointerId=event.pointerId;dragging=false;
+          holdTimer=setTimeout(()=>{
+            dragging=true;row.style.opacity=".72";row.style.outline="2px dashed "+roleColor;grip.style.cursor="grabbing";
+          },2000);
+          document.addEventListener("pointermove",onMove,{passive:false});
+          document.addEventListener("pointerup",onEnd);
+          document.addEventListener("pointercancel",onEnd);
+        });
       });
     }
     dropAddButton.addEventListener("click",()=>{
@@ -976,7 +993,7 @@
       const extras=Number(dropExtraEntriesInput.value);
       if(!selected.length){dropAddStatus.textContent="Escolha pelo menos um cargo antes de adicionar.";return;}
       if(!Number.isInteger(extras)||extras<0||extras>1000){dropAddStatus.textContent="Informe uma quantidade de entradas extras entre 0 e 1000.";return;}
-      selected.forEach(role=>{const id=String(role.id),existing=dropConfiguredRoles.find(entry=>entry.id===id);if(existing)existing.extras=extras;else dropConfiguredRoles.push({id,name:role.name,color:Number(role.color)?"#"+Number(role.color).toString(16).padStart(6,"0"):"#e9ddff",extras});});
+      selected.forEach(role=>{const id=String(role.id),existing=dropConfiguredRoles.find(entry=>entry.id===id);if(existing)existing.extras=extras;else dropConfiguredRoles.push({id,name:role.name,color:getDropRoleColor(role),extras});});
       renderDropAddedRoles();dropAddStatus.textContent=selected.length+" cargo(s) adicionado(s) à lista abaixo.";
     });
     loadPrefix();
