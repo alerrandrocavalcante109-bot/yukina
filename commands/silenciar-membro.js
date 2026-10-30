@@ -1,0 +1,21 @@
+"use strict";
+const {SlashCommandBuilder,ActionRowBuilder,ButtonBuilder,ButtonStyle,PermissionFlagsBits}=require("discord.js");
+const pending=new Map();
+function parse(v){const m=String(v||"").trim().match(/^(\d{1,5})\s*(m|min|minuto|minutos|h|hora|horas|d|dia|dias)$/i);if(!m)throw Error("Use 30m, 2h ou 3d.");const n=+m[1],u=m[2].toLowerCase(),ms=n*(/^m/.test(u)?60000:/^h|^hora/.test(u)?3600000:86400000);if(!Number.isSafeInteger(ms)||n<1||ms>2419200000)throw Error("A duração deve ser de 1 minuto até 28 dias.");return ms;}
+function fmt(ms){return ms%86400000===0?ms/86400000+" dia(s)":ms%3600000===0?ms/3600000+" hora(s)":Math.ceil(ms/60000)+" minuto(s)";}
+async function request({guild,moderator,targetId,reason,duration,reply}){
+ if(!guild)return reply({content:"❄️ Este comando só funciona dentro de um servidor.",ephemeral:true});
+ if(!moderator.permissions.has(PermissionFlagsBits.ModerateMembers))return reply({content:"Você precisa da permissão **Moderar membros**.",ephemeral:true});
+ if(targetId===moderator.id||targetId===guild.client.user.id)return reply({content:"Você não pode silenciar a si mesmo ou a Yukina.",ephemeral:true});
+ let ms;try{ms=parse(duration);}catch(e){return reply({content:"⚠️ "+e.message,ephemeral:true});}
+ const t=await guild.members.fetch(targetId).catch(()=>null),b=guild.members.me||await guild.members.fetchMe().catch(()=>null);
+ if(!t)return reply({content:"Esse usuário não é membro deste servidor.",ephemeral:true});
+ if(t.id===guild.ownerId||(moderator.id!==guild.ownerId&&t.roles.highest.position>=moderator.roles.highest.position)||t.roles.highest.position>=b.roles.highest.position||!t.moderatable)return reply({content:"Silenciamento bloqueado pela hierarquia ou pelas permissões do Discord.",ephemeral:true});
+ if(t.isCommunicationDisabled())return reply({content:"Esse membro já está silenciado.",ephemeral:true});
+ const token=Date.now().toString(36)+Math.random().toString(36).slice(2,7),safe=String(reason||"Nenhum motivo informado").trim().slice(0,400);
+ pending.set(token,{guildId:guild.id,moderatorId:moderator.id,targetId,reason:safe,durationMs:ms,createdAt:Date.now()});
+ const timer=setTimeout(()=>pending.delete(token),300000);timer.unref?.();
+ const row=new ActionRowBuilder().addComponents(new ButtonBuilder().setCustomId("silenciar-membro:confirmar:"+token).setLabel("Silenciar membro").setStyle(ButtonStyle.Danger),new ButtonBuilder().setCustomId("silenciar-membro:discreto:"+token).setLabel("Silenciamento discreto").setStyle(ButtonStyle.Secondary));
+ return reply({content:"🌸 **Solicitação de silenciamento**\n*Uma decisão deve ser tomada com responsabilidade.*\n\n<@"+moderator.id+">, você deseja silenciar <@"+targetId+"> por **"+fmt(ms)+"**?\nMotivo: "+safe+".\n*Toda escolha tem consequências. Que esta decisão seja tomada com sabedoria e respeito à nossa comunidade.*\n\n⏳ **Tempo para aceitar: 5 minutos.**",components:[row],allowedMentions:{users:[moderator.id,targetId],parse:[]}});
+}
+module.exports={data:new SlashCommandBuilder().setName("silenciar").setDescription("Comandos de silenciamento da Yukina.").setDMPermission(false).addSubcommand(s=>s.setName("membro").setDescription("Silenciar temporariamente um membro").addUserOption(o=>o.setName("usuario").setDescription("Membro que será silenciado").setRequired(true)).addStringOption(o=>o.setName("duracao").setDescription("30m, 2h ou 3d; máximo 28 dias").setRequired(true).setMaxLength(20)).addStringOption(o=>o.setName("motivo").setDescription("Motivo do silenciamento").setMaxLength(400))),aliases:["mute","silenciar"],async execute(i){return request({guild:i.guild,moderator:i.member,targetId:i.options.getUser("usuario",true).id,duration:i.options.getString("duracao"),reason:i.options.getString("motivo"),reply:p=>i.reply(p)});},async prefixExecute(m){const u=m.mentions.users.first();if(!u)return m.reply("Uso: Ysilenciar @usuario [duração] [motivo]. Exemplo: Ysilenciar @usuario 2h spam. Também funciona com Ymute.");const body=m.content.replace(/^\s*[Yy](?:silenciar|mute)\b/i,"").replace(new RegExp("<@!?"+u.id+">"),"").trim(),match=body.match(/^(\S+)\s*([\s\S]*)$/);if(!match)return m.reply("Informe a duração. Exemplo: Ysilenciar @usuario 2h motivo.");return request({guild:m.guild,moderator:m.member,targetId:u.id,duration:match[1],reason:match[2],reply:p=>m.reply(p)});},_pending:pending};
