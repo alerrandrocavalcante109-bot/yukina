@@ -930,17 +930,45 @@
     function renderDropAddedRoles(){
       dropAddedRoles.replaceChildren();
       dropConfiguredRoles.forEach((entry,index)=>{
-        const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #ffffff24;border-radius:10px;background:rgba(255,255,255,.045)";row.dataset.index=String(index);
-        const grip=document.createElement("span");grip.textContent="⠿";grip.title="Segure para mudar a posição";grip.setAttribute("aria-label","Arraste para reordenar");grip.style.cssText="font-size:22px;color:#c4b5fd;cursor:grab;touch-action:none;user-select:none";
-        const name=document.createElement("strong");name.textContent="@"+entry.name;name.style.cssText="flex:1;color:"+(entry.color||"#e9ddff");
-        const count=document.createElement("span");count.textContent="+"+entry.extras+" entradas";count.style.cssText="font-size:12px;opacity:.8";
+        const roleColor=entry.color||"#e9ddff";
+        const row=document.createElement("div");
+        row.dataset.roleId=entry.id;
+        row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid "+roleColor+"88;border-left:4px solid "+roleColor+";border-radius:10px;background:color-mix(in srgb, "+roleColor+" 13%, transparent)";
+        const grip=document.createElement("span");
+        grip.textContent="⠿";grip.title="Segure por 2 segundos e mova para cima ou para baixo";grip.setAttribute("aria-label","Segure por 2 segundos para reordenar");
+        grip.style.cssText="font-size:22px;color:"+roleColor+";cursor:grab;touch-action:none;user-select:none";
+        const name=document.createElement("strong");
+        name.textContent="@"+entry.name;name.style.cssText="flex:1;color:"+roleColor;
+        const count=document.createElement("span");
+        count.textContent="+"+entry.extras+" entradas";count.style.cssText="font-size:12px;color:"+roleColor; 
         row.append(grip,name,count);dropAddedRoles.appendChild(row);
-        grip.addEventListener("pointerdown",event=>{event.preventDefault();const start=row;start.style.opacity=".55";grip.setPointerCapture?.(event.pointerId);
-          const move=e=>{const target=document.elementFromPoint(e.clientX,e.clientY)?.closest("#dropAddedRoles > div");if(!target||target===start)return;const rect=target.getBoundingClientRect();dropAddedRoles.insertBefore(start,e.clientY<rect.top+rect.height/2?target:target.nextSibling);};
-          const end=()=>{start.style.opacity="1";grip.removeEventListener("pointermove",move);grip.removeEventListener("pointerup",end);grip.removeEventListener("pointercancel",end);dropConfiguredRoles=[...dropAddedRoles.children].map(el=>dropConfiguredRoles[Number(el.dataset.index)]).filter(Boolean);dropConfiguredRoles=[...dropAddedRoles.children].map(el=>({id:el.querySelector("strong").dataset.roleId,name:el.querySelector("strong").textContent.replace(/^@/,""),extras:Number(el.querySelector("span:last-child").textContent.replace(/[^0-9]/g,""))}));renderDropAddedRoles();};
-          grip.addEventListener("pointermove",move);grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
+        let holdTimer=null,dragging=false;
+        const clearHold=()=>{if(holdTimer!==null){clearTimeout(holdTimer);holdTimer=null;}};
+        grip.addEventListener("pointerdown",event=>{
+          event.preventDefault();
+          dragging=false;
+          grip.setPointerCapture?.(event.pointerId);
+          holdTimer=setTimeout(()=>{dragging=true;row.style.opacity=".55";grip.style.cursor="grabbing";},2000);
         });
-        name.dataset.roleId=entry.id;
+        grip.addEventListener("pointermove",event=>{
+          if(!dragging)return;
+          const target=document.elementFromPoint(event.clientX,event.clientY)?.closest("#dropAddedRoles > div");
+          if(!target||target===row)return;
+          const rect=target.getBoundingClientRect();
+          dropAddedRoles.insertBefore(row,event.clientY<rect.top+rect.height/2?target:target.nextSibling);
+        });
+        const finishDrag=()=>{
+          clearHold();
+          if(dragging){
+            row.style.opacity="1";grip.style.cursor="grab";
+            const byId=new Map(dropConfiguredRoles.map(item=>[item.id,item]));
+            dropConfiguredRoles=[...dropAddedRoles.children].map(el=>byId.get(el.dataset.roleId)).filter(Boolean);
+          }
+          dragging=false;
+        };
+        grip.addEventListener("pointerup",finishDrag);
+        grip.addEventListener("pointercancel",finishDrag);
+        grip.addEventListener("lostpointercapture",finishDrag);
       });
     }
     dropAddButton.addEventListener("click",()=>{
