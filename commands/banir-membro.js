@@ -61,7 +61,7 @@ module.exports = {
       .addUserOption(o => o.setName("usuario").setDescription("Usuário que será banido").setRequired(true))
       .addStringOption(o => o.setName("motivo").setDescription("Motivo do banimento").setRequired(false).setMaxLength(400))
       .addStringOption(o => o.setName("duracao").setDescription("Opcional: 30m, 2h, 3d, 1semana; vazio = permanente").setRequired(false).setMaxLength(20))),
-  aliases: ["banir", "ban", "membro", "banirmembro"],
+  aliases: ["ban", "banir"],
   async execute(interaction) {
     if (interaction.options.getSubcommand() !== "membro") return interaction.reply({ content: "Subcomando inválido.", ephemeral: true });
     return createRequest({ guild: interaction.guild, moderator: interaction.member, targetId: interaction.options.getUser("usuario", true).id,
@@ -70,8 +70,8 @@ module.exports = {
   async prefixExecute(message) {
     if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
     const target = message.mentions.users.first();
-    if (!target) return message.reply("Uso: Ymembro @usuario [duração opcional] [motivo]. Exemplo: Ymembro @usuario 2d spam. Sem duração, o banimento é permanente.");
-    const content = message.content.replace(/^\s*[Yy](?:banirmembro|banir|ban|membro)\b/i, "").trim();
+    if (!target) return message.reply("Uso: Yban @usuario [duração opcional] [motivo]. Exemplo: Yban @usuario 2d spam. Também funciona com Ybanir. Sem duração, o banimento é permanente.");
+    const content = message.content.replace(/^\s*[Yy](?:banir|ban)\b/i, "").trim();
     const withoutMention = content.replace(new RegExp("<@!?" + target.id + ">"), "").trim();
     const first = withoutMention.match(/^(\S+)/)?.[1] || "";
     let durationValue = null, reason = withoutMention;
