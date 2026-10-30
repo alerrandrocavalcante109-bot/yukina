@@ -333,6 +333,25 @@
         </div>
       </div>
     </section>
+    <section class="system-screen" data-screen-panel="drop" hidden>
+      <p class="eyebrow">JOGO DA COMUNIDADE</p>
+      <h1>🎁 Sistema de drop</h1>
+      <p class="screen-description">Configure os cargos que poderão participar dos drops da comunidade. Selecione os cargos do servidor que deseja incluir; a seleção ficará visível aqui para você conferir.</p>
+      <div class="welcome-panel">
+        <span class="welcome-icon">🎁</span>
+        <h2>Cargos participantes</h2>
+        <p>Escolha os cargos que terão acesso aos drops. Você pode selecionar mais de um cargo e alterar sua escolha quando quiser.</p>
+        <button type="button" class="primary-action" id="dropChooseRoles" aria-expanded="false" aria-controls="dropRoleCard">Escolher cargos</button>
+        <p class="prefix-status" id="dropSelectedSummary" role="status" aria-live="polite">Nenhum cargo selecionado.</p>
+        <div class="counting-picker-card" id="dropRoleCard" hidden>
+          <h3>❄️ Cargos do servidor</h3>
+          <p>Toque nos cargos para marcar ou desmarcar.</p>
+          <input id="dropRoleSearch" class="prefix-input" type="search" placeholder="Pesquisar cargo pelo nome..." autocomplete="off" aria-label="Pesquisar cargos para o drop">
+          <div id="dropRoleOptions" style="display:grid;gap:6px;max-height:260px;overflow-y:auto;margin-top:10px"><p>Carregando cargos…</p></div>
+          <p class="prefix-status" id="dropRoleStatus" role="status" aria-live="polite"></p>
+        </div>
+      </div>
+    </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
       <p class="eyebrow">CONFIGURAÇÕES GERAIS</p><h1>Troca de prefixo</h1>
       <p class="screen-description">Escolha com carinho o prefixo que combina com a organização da sua comunidade. Ele será usado antes dos comandos de texto da Yukina neste servidor.</p>
@@ -358,7 +377,7 @@
     function selectedGuild(){const p=new URLSearchParams(location.search);return {id:p.get("guild")||localStorage.getItem("yukina_selected_guild_id")||"",name:p.get("name")||localStorage.getItem("yukina_selected_guild_name")||""};}
     function updateSelectedGuild(g){drawerServerName.textContent=g.name||"Nenhum servidor selecionado";drawerCurrentServerAvatar.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"https://cdn.discordapp.com/embed/avatars/0.png";if(g.id){localStorage.setItem("yukina_selected_guild_id",g.id);localStorage.setItem("yukina_selected_guild_name",g.name||"");localStorage.setItem("yukina_selected_guild_icon",g.icon||"");const p=new URLSearchParams(location.search);p.set("guild",g.id);if(g.name)p.set("name",g.name);history.replaceState({}, "", location.pathname+"?"+p.toString()+location.hash);}renderGuildChoices();}
     function canManageGuild(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n;}catch(_){return false;}}
-    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();loadTicketSettings();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
+    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();loadTicketSettings();loadDropRoles();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
     async function loadGuildChoices(){if(serverListLoading)return;serverListLoading=true;serverPickerStatus.textContent="Carregando servidores…";serverPickerList.replaceChildren();try{let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();if(!accessToken)throw new Error("Entre com o Discord para carregar seus servidores.");const request=()=>fetch(API_BASE+"/api/oauth/guilds",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});let response=await request();if(response.status===401){accessToken=await refreshAccessToken();if(accessToken)response=await request();}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.detail||"Não foi possível carregar os servidores.");availableGuilds=(Array.isArray(payload)?payload:[]).filter(canManageGuild).sort((a,b)=>(a.name||"").localeCompare(b.name||""));serverListLoaded=true;serverPickerStatus.textContent=availableGuilds.length? "Selecione um servidor que você pode gerenciar.":"Nenhum servidor com permissão de gerenciamento foi encontrado.";renderGuildChoices();}catch(e){serverPickerStatus.textContent=e.message||"Erro ao carregar servidores.";}finally{serverListLoading=false;}}
     selectServerButton.addEventListener("click",()=>{const opening=serverPickerCard.hidden;serverPickerCard.hidden=!opening;selectServerButton.setAttribute("aria-expanded",String(opening));if(opening&&!serverListLoaded)loadGuildChoices();});
     const loginButton = $("loginButton");
@@ -443,6 +462,7 @@
       });
       const title=target.querySelector("h1");if(title)document.title=title.textContent+" • Yukina";
       closeMenu();
+      if(id==="drop") loadDropRoles();
       if(screen==="tickets") loadPublishedTicketPanels();
     }
     document.addEventListener("click",event=>{
@@ -863,6 +883,44 @@
     }});
     prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar.";}if(e.key==="Escape"){prefixInput.value=originalPrefix;prefixEdit.hidden=true;window.YukinaPendingChanges?.refresh();}});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
+    const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary");
+    let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="";
+    function renderDropRoles(){
+      if(!dropRoleOptions)return;
+      const query=(dropRoleSearch.value||"").trim().toLocaleLowerCase("pt-BR");
+      const roles=dropRoles.filter(role=>!role.managed&&String(role.name||"").toLocaleLowerCase("pt-BR").includes(query)).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt-BR"));
+      dropRoleOptions.replaceChildren();
+      if(!roles.length){const empty=document.createElement("p");empty.textContent=query?"Nenhum cargo encontrado.":"Nenhum cargo disponível neste servidor.";dropRoleOptions.appendChild(empty);}
+      roles.forEach(role=>{
+        const id=String(role.id),selected=dropSelectedRoleIds.has(id),button=document.createElement("button");
+        button.type="button";button.setAttribute("aria-pressed",String(selected));button.textContent=(selected?"✓  ":"＋  ")+"@"+role.name;
+        const color=Number(role.color)||0,hex=color?"#"+color.toString(16).padStart(6,"0"):"#c4b5fd";
+        button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?"#c4b5fd":"#ffffff20")+";border-radius:9px;background:"+(selected?"rgba(196,181,253,.2)":"rgba(255,255,255,.04)")+";color:"+hex+";cursor:pointer";
+        button.addEventListener("click",()=>{if(dropSelectedRoleIds.has(id))dropSelectedRoleIds.delete(id);else dropSelectedRoleIds.add(id);renderDropRoles();updateDropSummary();});
+        dropRoleOptions.appendChild(button);
+      });
+      dropRoleStatus.textContent=dropRoles.length?dropSelectedRoleIds.size+" cargo(s) marcado(s).":"";
+    }
+    function updateDropSummary(){
+      const selected=dropRoles.filter(role=>dropSelectedRoleIds.has(String(role.id)));
+      dropSelectedSummary.textContent=selected.length?"Cargos selecionados: "+selected.map(role=>"@"+role.name).join(", "):"Nenhum cargo selecionado.";
+    }
+    async function loadDropRoles(){
+      if(!dropRoleOptions)return;
+      const guild=selectedGuild();
+      if(!guild.id){dropRoleOptions.innerHTML="<p>Selecione um servidor no menu lateral.</p>";dropRoleStatus.textContent="";return;}
+      if(dropRolesGuildId===guild.id&&dropRoles.length){renderDropRoles();return;}
+      dropRoleOptions.innerHTML="<p>Carregando cargos…</p>";dropRoleStatus.textContent="";
+      try{
+        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Entre com o Discord para carregar os cargos.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível carregar os cargos.");
+        dropRoles=Array.isArray(data.roles)?data.roles:[];dropRolesGuildId=guild.id;dropSelectedRoleIds.clear();renderDropRoles();updateDropSummary();
+      }catch(error){dropRoleOptions.innerHTML="";const message=document.createElement("p");message.textContent=error.message||"Erro ao carregar os cargos.";dropRoleOptions.appendChild(message);}
+    }
+    dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
+    dropRoleSearch.addEventListener("input",renderDropRoles);
     loadPrefix();
     loadCounting();
     loadXpRoles();
