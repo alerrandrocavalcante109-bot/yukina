@@ -348,6 +348,7 @@
         <p class="prefix-system-help">Defina quantas entradas adicionais os membros com os cargos selecionados receberão no drop.</p>
         <button type="button" class="primary-action" id="dropAddButton">Adicionar</button>
         <p class="prefix-status" id="dropAddStatus" role="status" aria-live="polite"></p>
+        <div id="dropAddedRoles" style="display:grid;gap:8px;margin-top:12px" aria-live="polite"></div>
         <div class="counting-picker-card" id="dropRoleCard" hidden>
           <h3>❄️ Cargos do servidor</h3>
           <p>Toque nos cargos para marcar ou desmarcar.</p>
@@ -888,8 +889,8 @@
     }});
     prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar.";}if(e.key==="Escape"){prefixInput.value=originalPrefix;prefixEdit.hidden=true;window.YukinaPendingChanges?.refresh();}});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
-    const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary"),dropExtraEntriesInput=$("dropExtraEntriesInput"),dropAddButton=$("dropAddButton"),dropAddStatus=$("dropAddStatus");
-    let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="";
+    const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary"),dropExtraEntriesInput=$("dropExtraEntriesInput"),dropAddButton=$("dropAddButton"),dropAddStatus=$("dropAddStatus"),dropAddedRoles=$("dropAddedRoles");
+    let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="",dropConfiguredRoles=[];
     function renderDropRoles(){
       if(!dropRoleOptions)return;
       const query=(dropRoleSearch.value||"").trim().toLocaleLowerCase("pt-BR");
@@ -926,12 +927,29 @@
     }
     dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
     dropRoleSearch.addEventListener("input",renderDropRoles);
+    function renderDropAddedRoles(){
+      dropAddedRoles.replaceChildren();
+      dropConfiguredRoles.forEach((entry,index)=>{
+        const row=document.createElement("div");row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid #ffffff24;border-radius:10px;background:rgba(255,255,255,.045)";row.dataset.index=String(index);
+        const grip=document.createElement("span");grip.textContent="⠿";grip.title="Segure para mudar a posição";grip.setAttribute("aria-label","Arraste para reordenar");grip.style.cssText="font-size:22px;color:#c4b5fd;cursor:grab;touch-action:none;user-select:none";
+        const name=document.createElement("strong");name.textContent="@"+entry.name;name.style.cssText="flex:1;color:"+(entry.color||"#e9ddff");
+        const count=document.createElement("span");count.textContent="+"+entry.extras+" entradas";count.style.cssText="font-size:12px;opacity:.8";
+        row.append(grip,name,count);dropAddedRoles.appendChild(row);
+        grip.addEventListener("pointerdown",event=>{event.preventDefault();const start=row;start.style.opacity=".55";grip.setPointerCapture?.(event.pointerId);
+          const move=e=>{const target=document.elementFromPoint(e.clientX,e.clientY)?.closest("#dropAddedRoles > div");if(!target||target===start)return;const rect=target.getBoundingClientRect();dropAddedRoles.insertBefore(start,e.clientY<rect.top+rect.height/2?target:target.nextSibling);};
+          const end=()=>{start.style.opacity="1";grip.removeEventListener("pointermove",move);grip.removeEventListener("pointerup",end);grip.removeEventListener("pointercancel",end);dropConfiguredRoles=[...dropAddedRoles.children].map(el=>dropConfiguredRoles[Number(el.dataset.index)]).filter(Boolean);dropConfiguredRoles=[...dropAddedRoles.children].map(el=>({id:el.querySelector("strong").dataset.roleId,name:el.querySelector("strong").textContent.replace(/^@/,""),extras:Number(el.querySelector("span:last-child").textContent.replace(/[^0-9]/g,""))}));renderDropAddedRoles();};
+          grip.addEventListener("pointermove",move);grip.addEventListener("pointerup",end);grip.addEventListener("pointercancel",end);
+        });
+        name.dataset.roleId=entry.id;
+      });
+    }
     dropAddButton.addEventListener("click",()=>{
       const selected=dropRoles.filter(role=>dropSelectedRoleIds.has(String(role.id)));
       const extras=Number(dropExtraEntriesInput.value);
       if(!selected.length){dropAddStatus.textContent="Escolha pelo menos um cargo antes de adicionar.";return;}
       if(!Number.isInteger(extras)||extras<0||extras>1000){dropAddStatus.textContent="Informe uma quantidade de entradas extras entre 0 e 1000.";return;}
-      dropAddStatus.textContent="Seleção pronta: "+selected.map(role=>"@"+role.name).join(", ")+" • "+extras+" entrada(s) extra(s).";
+      selected.forEach(role=>{const id=String(role.id),existing=dropConfiguredRoles.find(entry=>entry.id===id);if(existing)existing.extras=extras;else dropConfiguredRoles.push({id,name:role.name,color:Number(role.color)?"#"+Number(role.color).toString(16).padStart(6,"0"):"#e9ddff",extras});});
+      renderDropAddedRoles();dropAddStatus.textContent=selected.length+" cargo(s) adicionado(s) à lista abaixo.";
     });
     loadPrefix();
     loadCounting();
