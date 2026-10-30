@@ -1109,7 +1109,7 @@ async function panelApi(req, res, url) {
       const roles = [...guild.roles.cache.values()]
         .filter(role => role.id !== guild.id && !role.managed)
         .sort((a, b) => b.position - a.position)
-        .map(role => ({ id: role.id, name: role.name, color: role.hexColor, position: role.position }));
+        .map(role => ({ id: role.id, name: role.name, color: role.hexColor, primaryColor: role.colors?.primaryColor ?? null, secondaryColor: role.colors?.secondaryColor ?? null, tertiaryColor: role.colors?.tertiaryColor ?? null, position: role.position }));
       const channels = [...guild.channels.cache.values()]
         .filter(channel => channel.type !== ChannelType.GuildCategory)
         .sort((a, b) => (a.rawPosition || 0) - (b.rawPosition || 0))
