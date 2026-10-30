@@ -343,6 +343,11 @@
         <p>Escolha os cargos que terão acesso aos drops. Você pode selecionar mais de um cargo e alterar sua escolha quando quiser.</p>
         <button type="button" class="primary-action" id="dropChooseRoles" aria-expanded="false" aria-controls="dropRoleCard">Escolher cargos</button>
         <p class="prefix-status" id="dropSelectedSummary" role="status" aria-live="polite">Nenhum cargo selecionado.</p>
+        <label for="dropExtraEntriesInput">Entradas extras</label>
+        <input class="prefix-input" id="dropExtraEntriesInput" type="number" min="0" max="1000" step="1" value="0" placeholder="Quantidade de entradas extras">
+        <p class="prefix-system-help">Defina quantas entradas adicionais os membros com os cargos selecionados receberão no drop.</p>
+        <button type="button" class="primary-action" id="dropAddButton">Adicionar</button>
+        <p class="prefix-status" id="dropAddStatus" role="status" aria-live="polite"></p>
         <div class="counting-picker-card" id="dropRoleCard" hidden>
           <h3>❄️ Cargos do servidor</h3>
           <p>Toque nos cargos para marcar ou desmarcar.</p>
@@ -883,7 +888,7 @@
     }});
     prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar.";}if(e.key==="Escape"){prefixInput.value=originalPrefix;prefixEdit.hidden=true;window.YukinaPendingChanges?.refresh();}});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
-    const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary");
+    const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary"),dropExtraEntriesInput=$("dropExtraEntriesInput"),dropAddButton=$("dropAddButton"),dropAddStatus=$("dropAddStatus");
     let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="";
     function renderDropRoles(){
       if(!dropRoleOptions)return;
@@ -921,6 +926,13 @@
     }
     dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
     dropRoleSearch.addEventListener("input",renderDropRoles);
+    dropAddButton.addEventListener("click",()=>{
+      const selected=dropRoles.filter(role=>dropSelectedRoleIds.has(String(role.id)));
+      const extras=Number(dropExtraEntriesInput.value);
+      if(!selected.length){dropAddStatus.textContent="Escolha pelo menos um cargo antes de adicionar.";return;}
+      if(!Number.isInteger(extras)||extras<0||extras>1000){dropAddStatus.textContent="Informe uma quantidade de entradas extras entre 0 e 1000.";return;}
+      dropAddStatus.textContent="Seleção pronta: "+selected.map(role=>"@"+role.name).join(", ")+" • "+extras+" entrada(s) extra(s).";
+    });
     loadPrefix();
     loadCounting();
     loadXpRoles();
