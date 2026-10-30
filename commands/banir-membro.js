@@ -52,7 +52,7 @@ async function createRequest({ guild, moderator, targetId, reason, durationValue
   return reply({
     content: "🌸 **Solicitação de banimento**\n*Uma decisão deve ser tomada com responsabilidade.*\n\n" +
       "<@" + moderator.id + ">, você vai banir <@" + targetId + "> do servidor?\n" +
-      "Motivo: " + safeReason + "." + durationText + "\n\n⏳ **Tempo para aceitar: 5 minutos.**",
+      "Motivo: " + safeReason + ".\n*Toda escolha tem consequências. Que esta decisão seja tomada com sabedoria e respeito à nossa comunidade.*" + durationText + "\n\n⏳ **Tempo para aceitar: 5 minutos.**",
     components: [row], allowedMentions: { users: [moderator.id, targetId], parse: [] }, ephemeral: false
   });
 }
