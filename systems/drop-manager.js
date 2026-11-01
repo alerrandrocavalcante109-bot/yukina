@@ -37,11 +37,11 @@ async function getConfig(guildId){
   const config=doc?.settings?.dropSystem||{};
   return {enabled:config.enabled!==false,roles:Array.isArray(config.roles)?config.roles:[]};
 }
-async function finish(clientRef,id,{force=false}={}){
+async function finish(clientRef,id){
   await getDb();
   const drop=await giveaways.findOne({_id:new ObjectId(id),status:"active"});
   if(!drop)return;
-  if(!force&&Date.now()<Number(drop.endsAt)){schedule(clientRef,drop);return;}
+  if(Date.now()<Number(drop.endsAt)){schedule(clientRef,drop);return;}
   timers.delete(String(drop._id));
   const pool=[];
   for(const [userId,entry] of Object.entries(drop.entries||{})){
