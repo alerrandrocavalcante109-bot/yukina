@@ -41,6 +41,8 @@ async function finish(clientRef,id){
   await getDb();
   const drop=await giveaways.findOne({_id:new ObjectId(id),status:"active"});
   if(!drop)return;
+  if(Date.now()<Number(drop.endsAt)){schedule(clientRef,drop);return;}
+  timers.delete(String(drop._id));
   const pool=[];
   for(const [userId,entry] of Object.entries(drop.entries||{})){
     const tickets=Math.max(1,Math.min(1001,Number(entry.tickets)||1));
