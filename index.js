@@ -23,6 +23,7 @@ const xpMultiplierStorage = require("./system-storage").forSystem("xp-multiplier
 const { parseCountingValue } = require("./counting-number-parser");
 const { getVipCollection } = require("./vip-store");
 const { applyDailyInactivityFee } = require("./systems/bank-inactivity-fee");
+const { invalidateGuildSettings } = require("./guild-settings-store");
 
 const TOKEN = (process.env.TOKEN || "").trim();
 
@@ -1244,10 +1245,32 @@ async function panelApi(req, res, url) {
           return sendJson(res, 400, { detail: "A hierarquia temporal aceita somente IDs de cargos existentes. Nenhum cargo foi criado." });
         }
       }
+      if (Object.prototype.hasOwnProperty.call(clean, "staffPromotion")) {
+        const config = clean.staffPromotion;
+        if (!config || typeof config !== "object" || Array.isArray(config)) {
+          return sendJson(res, 400, { detail: "A configuração de avisos de promoção é inválida." });
+        }
+        const roleIds = Array.isArray(config.roleIds) ? [...new Set(config.roleIds.map(String))] : [];
+        const existingRoles = new Set(guild.roles.cache.filter(role => !role.managed).map(role => role.id));
+        if (!roleIds.length || roleIds.some(id => !/^\d{17,20}$/.test(id) || !existingRoles.has(id))) {
+          return sendJson(res, 400, { detail: "Selecione ao menos um cargo de promoção existente neste servidor." });
+        }
+        const channelId = String(config.channelId || "");
+        const notificationRoleId = String(config.notificationRoleId || "");
+        if (!/^\d{17,20}$/.test(channelId) || !/^\d{17,20}$/.test(notificationRoleId) || !existingRoles.has(notificationRoleId)) {
+          return sendJson(res, 400, { detail: "Selecione um canal e um cargo de notificação válidos." });
+        }
+        const channel = await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel || !channel.isTextBased() || !channel.send) {
+          return sendJson(res, 400, { detail: "O canal escolhido não aceita mensagens." });
+        }
+        clean.staffPromotion = { enabled: true, roleIds, channelId, notificationRoleId };
+      }
       const updatedAt = new Date();
       const patch = { guildId, guildName: guild.name, updatedAt };
       for (const [key, value] of Object.entries(clean)) patch["settings." + key] = value;
       await collection.updateOne({ guildId }, { $set: patch }, { upsert: true });
+      if (Object.prototype.hasOwnProperty.call(clean, "staffPromotion")) invalidateGuildSettings(guildId);
       if (Object.prototype.hasOwnProperty.call(clean, "prefix")) client.emit("yukinaPrefixUpdated", guildId, clean.prefix);
       // Mantém o endpoint antigo do painel compatível e grava a hierarquia temporal no armazenamento universal.
       if (Object.prototype.hasOwnProperty.call(clean, "timeRules") ||
