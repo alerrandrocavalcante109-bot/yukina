@@ -1,6 +1,6 @@
 /**
  * Anúncios de promoção da equipe.
- * Publica somente quando o cargo configurado é adicionado a um membro.
+ * Publica quando um dos cargos de promoção configurados é adicionado ao membro.
  */
 const { EmbedBuilder, PermissionFlagsBits, ChannelType } = require("discord.js");
 const { getGuildSettings } = require("./guild-settings-store");
@@ -15,28 +15,38 @@ module.exports = function startStaffPromotionAnnouncements(client) {
     const config = settings.staffPromotion && typeof settings.staffPromotion === "object"
       ? settings.staffPromotion
       : {};
-    const roleId = String(config.roleId || "");
+    const configuredRoleIds = Array.isArray(config.roleIds)
+      ? config.roleIds.map(String)
+      : (config.roleId ? [String(config.roleId)] : []);
+    const promotedRoleId = configuredRoleIds.find(id =>
+      !oldMember.roles.cache.has(id) && newMember.roles.cache.has(id)
+    );
     const channelId = String(config.channelId || "");
-    if (!roleId || !channelId) return;
+    const notificationRoleId = String(config.notificationRoleId || "");
+    if (config.enabled === false || !promotedRoleId || !channelId) return;
 
-    // Apenas promoção: o cargo precisa ter sido adicionado nesta atualização.
-    if (oldMember.roles.cache.has(roleId) || !newMember.roles.cache.has(roleId)) return;
-
-    const lockKey = newMember.guild.id + ":" + newMember.id + ":" + roleId;
+    const lockKey = newMember.guild.id + ":" + newMember.id + ":" + promotedRoleId;
     if (locks.has(lockKey)) return;
     locks.add(lockKey);
 
     try {
-      const role = newMember.guild.roles.cache.get(roleId);
-      const channel = newMember.guild.channels.cache.get(channelId);
+      const role = await newMember.guild.roles.fetch(promotedRoleId).catch(() => null);
+      const channel = await newMember.guild.channels.fetch(channelId).catch(() => null);
+      const notificationRole = notificationRoleId
+        ? await newMember.guild.roles.fetch(notificationRoleId).catch(() => null)
+        : null;
       if (!role || !channel || !channel.isTextBased() || channel.type === ChannelType.GuildVoice) return;
+      if (notificationRoleId && !notificationRole) {
+        console.warn("[Promoção staff] O cargo de notificação configurado não existe mais no servidor.");
+        return;
+      }
 
-      const me = newMember.guild.members.me;
-      const permissions = channel.permissionsFor(me);
+      const me = newMember.guild.members.me || await newMember.guild.members.fetchMe().catch(() => null);
+      const permissions = me && channel.permissionsFor(me);
       if (!permissions?.has(PermissionFlagsBits.ViewChannel) ||
           !permissions.has(PermissionFlagsBits.SendMessages) ||
           (channel.isThread?.() && !permissions.has(PermissionFlagsBits.SendMessagesInThreads))) {
-        console.warn("[Promoção staff] A Yukina não tem permissão para enviar anúncio em #" + channel.name + ".");
+        console.warn("[Promoção staff] A Yukina não tem permissão para enviar anúncio no canal configurado.");
         return;
       }
 
@@ -53,8 +63,9 @@ module.exports = function startStaffPromotionAnnouncements(client) {
         .setTimestamp();
 
       await channel.send({
+        content: notificationRole ? notificationRole.toString() : undefined,
         embeds: [embed],
-        allowedMentions: { users: [newMember.id], roles: [], parse: [] }
+        allowedMentions: { users: [newMember.id], roles: notificationRole ? [notificationRole.id] : [], parse: [] }
       });
       console.log("[Promoção staff] Anúncio publicado para " + newMember.user.tag + " em " + newMember.guild.name + ".");
     } catch (error) {
