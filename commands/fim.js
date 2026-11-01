@@ -42,7 +42,6 @@ function chooseMessage() {
 }
 
 async function generateWithAI(baseMessage) {
-  const timeout = AbortSignal.timeout(9000);
   const prompt = SYSTEM_PROMPT + "\n\nUse esta inspiração sem copiá-la literalmente: " + baseMessage;
 
   if (process.env.GROQ_API_KEY) {
@@ -59,7 +58,7 @@ async function generateWithAI(baseMessage) {
           temperature: 0.95,
           max_tokens: 120
         }),
-        signal: timeout
+        signal: AbortSignal.timeout(9000)
       });
       if (!response.ok) throw new Error("Groq HTTP " + response.status);
       const data = await response.json();
@@ -109,15 +108,17 @@ function clean(value) {
 
 async function run(channel, reply) {
   if (!channel?.isTextBased?.() || !channel.send) {
-    return reply("❄️ Este canal não aceita mensagens.");
+    return false;
   }
   const selected = chooseMessage();
   const content = await generateWithAI(selected.fallback);
   try {
     await channel.send({ content, allowedMentions: { parse: [] } });
+    return true;
   } catch (error) {
     console.error("[Yukina fim] Falha ao enviar mensagem:", error);
-    return reply("🫧 Não consegui enviar a mensagem neste canal. Verifique minhas permissões.");
+    await reply("🫧 Não consegui enviar a mensagem neste canal. Verifique minhas permissões.");
+    return false;
   }
 }
 
@@ -134,9 +135,8 @@ module.exports = {
       return interaction.reply({ content: "🌙 Você precisa da permissão **Gerenciar mensagens** ou **Gerenciar servidor**.", ephemeral: true });
     }
     await interaction.deferReply({ ephemeral: true });
-    await run(interaction.channel, content => interaction.editReply(content));
-    if (!interaction.replied) return interaction.editReply("🌸 Mensagem enviada!");
-    return interaction.editReply("🌸 Mensagem de despedida enviada!");
+    const sent = await run(interaction.channel, content => interaction.editReply(content));
+    if (sent) return interaction.editReply("🌸 Mensagem de despedida enviada!");
   },
   async prefixExecute(message) {
     if (!message.guild) return message.reply("❄️ Este comando só funciona em um servidor.");
