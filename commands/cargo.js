@@ -76,6 +76,8 @@ module.exports = {
       }
 
       await target.roles.add(role, "Cargo atribuído por " + user.tag);
+      // O anúncio é disparado diretamente pelo comando; o listener cobre alterações feitas fora dele.
+      await require("../staff-promotion-announcements").announcePromotion(interaction.client, target, role);
       return interaction.reply({
         content: "❄️ O cargo **" + role.name + "** foi atribuído a **" + target.user.tag + "**.",
         allowedMentions: { parse: [] }
