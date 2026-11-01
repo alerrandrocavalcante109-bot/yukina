@@ -1197,7 +1197,7 @@
       try{
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
         if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
-        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{dropSystem:{enabled:true,roles:dropConfiguredRoles.map(entry=>({id:String(entry.id),name:String(entry.name),color:String(entry.color||"#e9ddff"),extras:Number(entry.extras)||0}))}}),cache:"no-store"});
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{dropSystem:{enabled:true,roles:dropConfiguredRoles.map(entry=>({id:String(entry.id),name:String(entry.name),color:String(entry.color||"#e9ddff"),extras:Number(entry.extras)||0}))}}}),cache:"no-store"});
         const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações.");
         status.textContent="❄️ Configurações do drop salvas com sucesso.";
         window.YukinaPendingChanges?.refresh();
