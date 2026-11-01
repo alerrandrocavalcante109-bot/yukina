@@ -492,7 +492,7 @@
       closeMenu();
       if(id==="drop") loadDropRoles();
       if(id==="staffPromotion") loadStaffPromotion();
-      if(screen==="tickets") loadPublishedTicketPanels();
+      if(id==="tickets") loadPublishedTicketPanels();
     }
     document.addEventListener("click",event=>{
       const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]");
