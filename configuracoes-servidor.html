@@ -146,7 +146,7 @@
       <button class="menu-link" type="button" data-screen="prefixo"><span class="symbol">⚙️</span><span>Troca de prefixo</span></button>
     </nav>
     <div class="drawer-category" aria-label="Categoria Cargos &amp; XP">🏅 Cargos &amp; XP</div>
-    <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="multiplier"><span class="symbol">⚡</span><span>Multiplicador de XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button></nav>
+    <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="multiplier"><span class="symbol">⚡</span><span>Multiplicador de XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button><button class="menu-link" type="button" data-screen="staffPromotion"><span class="symbol">📣</span><span>Aviso de promoções staff</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Suporte &amp; Tickets">🎫 Suporte &amp; Tickets</div>
     <nav class="menu-links" id="ticketsNavigation" aria-label="Suporte &amp; Tickets"><button class="menu-link" type="button" data-screen="tickets"><span class="symbol">🎫</span><span>Suporte &amp; Tickets</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
@@ -333,6 +333,26 @@
         </div>
       </div>
     </section>
+    <section class="system-screen" data-screen-panel="staffPromotion" hidden>
+      <p class="eyebrow">EQUIPE DA COMUNIDADE</p>
+      <h1>📣 Aviso de promoções staff</h1>
+      <p class="screen-description">Escolha quais cargos representam uma promoção, onde o anúncio será publicado e qual cargo receberá a notificação.</p>
+      <div class="welcome-panel">
+        <span class="welcome-icon">🌙</span>
+        <h2>Configurar avisos de promoção</h2>
+        <label for="staffPromotionRoleSearch">Cargos que ativam a promoção</label>
+        <input class="prefix-input" id="staffPromotionRoleSearch" type="search" placeholder="Pesquisar cargo..." autocomplete="off">
+        <div id="staffPromotionRoleOptions" style="display:grid;gap:7px;max-height:240px;overflow-y:auto;margin-top:10px"><p>Carregando cargos…</p></div>
+        <p class="prefix-status" id="staffPromotionRoleSummary" role="status" aria-live="polite">Nenhum cargo selecionado.</p>
+        <label for="staffPromotionChannel">Canal dos anúncios</label>
+        <select class="prefix-input" id="staffPromotionChannel"><option value="">Carregando canais…</option></select>
+        <label for="staffPromotionNotifyRole">Cargo de notificação</label>
+        <select class="prefix-input" id="staffPromotionNotifyRole"><option value="">Carregando cargos…</option></select>
+        <p class="prefix-system-help">Quando um membro receber qualquer um dos cargos selecionados, a Yukina publicará o aviso e mencionará o cargo de notificação.</p>
+        <button type="button" class="primary-action" id="staffPromotionSave">Salvar</button>
+        <p class="prefix-status" id="staffPromotionStatus" role="status" aria-live="polite"></p>
+      </div>
+    </section>
     <section class="system-screen" data-screen-panel="drop" hidden>
       <p class="eyebrow">JOGO DA COMUNIDADE</p>
       <h1>🎁 Sistema de drop</h1>
@@ -383,7 +403,7 @@
     function selectedGuild(){const p=new URLSearchParams(location.search);return {id:p.get("guild")||localStorage.getItem("yukina_selected_guild_id")||"",name:p.get("name")||localStorage.getItem("yukina_selected_guild_name")||""};}
     function updateSelectedGuild(g){drawerServerName.textContent=g.name||"Nenhum servidor selecionado";drawerCurrentServerAvatar.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=128":"https://cdn.discordapp.com/embed/avatars/0.png";if(g.id){localStorage.setItem("yukina_selected_guild_id",g.id);localStorage.setItem("yukina_selected_guild_name",g.name||"");localStorage.setItem("yukina_selected_guild_icon",g.icon||"");const p=new URLSearchParams(location.search);p.set("guild",g.id);if(g.name)p.set("name",g.name);history.replaceState({}, "", location.pathname+"?"+p.toString()+location.hash);}renderGuildChoices();}
     function canManageGuild(g){try{const p=BigInt(g.permissions||"0");return (p&ADMIN)!==0n||(p&MANAGE_GUILD)!==0n;}catch(_){return false;}}
-    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();loadTicketSettings();loadDropRoles();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
+    function renderGuildChoices(){serverPickerList.replaceChildren();availableGuilds.forEach(g=>{const b=document.createElement("button");b.type="button";b.className="server-choice";const current=selectedGuild();if(g.id===current.id)b.setAttribute("aria-current","true");const img=document.createElement("img");img.alt="";img.src=g.icon&&g.id?"https://cdn.discordapp.com/icons/"+encodeURIComponent(g.id)+"/"+encodeURIComponent(g.icon)+".png?size=64":"https://cdn.discordapp.com/embed/avatars/0.png";img.onerror=()=>{img.src="https://cdn.discordapp.com/embed/avatars/0.png"};const label=document.createElement("span");label.textContent=g.name||"Servidor sem nome";b.append(img,label);b.addEventListener("click",()=>{updateSelectedGuild(g);loadPrefix();loadCounting();loadXpRoles();loadTimeRoles();loadMultiplierRoles();loadTicketSettings();loadDropRoles();loadStaffPromotion();serverPickerCard.hidden=true;selectServerButton.setAttribute("aria-expanded","false")});serverPickerList.appendChild(b);});}
     async function loadGuildChoices(){if(serverListLoading)return;serverListLoading=true;serverPickerStatus.textContent="Carregando servidores…";serverPickerList.replaceChildren();try{let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();if(!accessToken)throw new Error("Entre com o Discord para carregar seus servidores.");const request=()=>fetch(API_BASE+"/api/oauth/guilds",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});let response=await request();if(response.status===401){accessToken=await refreshAccessToken();if(accessToken)response=await request();}const payload=await response.json().catch(()=>({}));if(!response.ok)throw new Error(payload.detail||"Não foi possível carregar os servidores.");availableGuilds=(Array.isArray(payload)?payload:[]).filter(canManageGuild).sort((a,b)=>(a.name||"").localeCompare(b.name||""));serverListLoaded=true;serverPickerStatus.textContent=availableGuilds.length? "Selecione um servidor que você pode gerenciar.":"Nenhum servidor com permissão de gerenciamento foi encontrado.";renderGuildChoices();}catch(e){serverPickerStatus.textContent=e.message||"Erro ao carregar servidores.";}finally{serverListLoading=false;}}
     selectServerButton.addEventListener("click",()=>{const opening=serverPickerCard.hidden;serverPickerCard.hidden=!opening;selectServerButton.setAttribute("aria-expanded",String(opening));if(opening&&!serverListLoaded)loadGuildChoices();});
     const loginButton = $("loginButton");
@@ -469,6 +489,7 @@
       const title=target.querySelector("h1");if(title)document.title=title.textContent+" • Yukina";
       closeMenu();
       if(id==="drop") loadDropRoles();
+      if(id==="staffPromotion") loadStaffPromotion();
       if(screen==="tickets") loadPublishedTicketPanels();
     }
     document.addEventListener("click",event=>{
@@ -889,6 +910,83 @@
     }});
     prefixInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();prefixStatus.textContent="Use o botão Salvar da barra inferior para confirmar.";}if(e.key==="Escape"){prefixInput.value=originalPrefix;prefixEdit.hidden=true;window.YukinaPendingChanges?.refresh();}});
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
+    const staffPromotionRoleSearch=$("staffPromotionRoleSearch");
+    const staffPromotionRoleOptions=$("staffPromotionRoleOptions");
+    const staffPromotionRoleSummary=$("staffPromotionRoleSummary");
+    const staffPromotionChannel=$("staffPromotionChannel");
+    const staffPromotionNotifyRole=$("staffPromotionNotifyRole");
+    const staffPromotionSave=$("staffPromotionSave");
+    const staffPromotionStatus=$("staffPromotionStatus");
+    let staffPromotionRoles=[],staffPromotionChannels=[],staffPromotionSelectedIds=new Set(),staffPromotionGuildId="",staffPromotionOriginal={roleIds:[],channelId:"",notificationRoleId:""};
+    function renderStaffPromotionRoles(){
+      if(!staffPromotionRoleOptions)return;
+      const query=(staffPromotionRoleSearch.value||"").trim().toLocaleLowerCase("pt-BR");
+      const filtered=staffPromotionRoles.filter(role=>!role.managed&&String(role.name||"").toLocaleLowerCase("pt-BR").includes(query));
+      staffPromotionRoleOptions.replaceChildren();
+      if(!filtered.length){const empty=document.createElement("p");empty.textContent="Nenhum cargo encontrado.";staffPromotionRoleOptions.appendChild(empty);}
+      filtered.forEach(role=>{
+        const id=String(role.id),selected=staffPromotionSelectedIds.has(id),button=document.createElement("button");
+        button.type="button";button.setAttribute("aria-pressed",String(selected));button.textContent=(selected?"✓  ":"＋  ")+"@"+role.name;
+        const raw=Number(role.color)||0,hex=raw?"#"+raw.toString(16).padStart(6,"0").slice(-6):(role.hexColor||"#e9ddff");
+        button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?"#c4b5fd":"#ffffff20")+";border-radius:9px;background:"+(selected?"rgba(196,181,253,.2)":"rgba(255,255,255,.04)")+";color:"+hex;
+        button.addEventListener("click",()=>{if(staffPromotionSelectedIds.has(id))staffPromotionSelectedIds.delete(id);else staffPromotionSelectedIds.add(id);renderStaffPromotionRoles();updateStaffPromotionSummary();});
+        staffPromotionRoleOptions.appendChild(button);
+      });
+      updateStaffPromotionSummary();
+    }
+    function updateStaffPromotionSummary(){
+      const names=staffPromotionRoles.filter(role=>staffPromotionSelectedIds.has(String(role.id))).map(role=>"@"+role.name);
+      staffPromotionRoleSummary.textContent=names.length?"Cargos selecionados: "+names.join(", "):"Nenhum cargo selecionado.";
+    }
+    async function loadStaffPromotion(){
+      if(!staffPromotionRoleOptions)return;
+      const guild=selectedGuild();
+      if(!guild.id){staffPromotionRoleOptions.innerHTML="<p>Selecione um servidor no menu lateral.</p>";return;}
+      if(staffPromotionGuildId===guild.id&&staffPromotionRoles.length){renderStaffPromotionRoles();return;}
+      staffPromotionRoleOptions.innerHTML="<p>Carregando cargos…</p>";staffPromotionStatus.textContent="";
+      try{
+        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Entre com o Discord para carregar as configurações.");
+        const headers={Authorization:"Bearer "+accessToken,Accept:"application/json"};
+        const [settingsResponse,resourcesResponse]=await Promise.all([
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers,cache:"no-store"}),
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"})
+        ]);
+        const settingsData=await settingsResponse.json().catch(()=>({})),resourcesData=await resourcesResponse.json().catch(()=>({}));
+        if(!settingsResponse.ok)throw new Error(settingsData.detail||"Não foi possível carregar as configurações.");
+        if(!resourcesResponse.ok)throw new Error(resourcesData.detail||"Não foi possível carregar os cargos e canais.");
+        staffPromotionRoles=Array.isArray(resourcesData.roles)?resourcesData.roles:[];
+        staffPromotionChannels=(Array.isArray(resourcesData.channels)?resourcesData.channels:[]).filter(ch=>Number(ch.type)===0||Number(ch.type)===5);
+        staffPromotionGuildId=guild.id;
+        const saved=settingsData.settings?.staffPromotion||{};
+        staffPromotionOriginal={roleIds:Array.isArray(saved.roleIds)?saved.roleIds.map(String):(saved.roleId?[String(saved.roleId)]:[]),channelId:String(saved.channelId||""),notificationRoleId:String(saved.notificationRoleId||"")};
+        staffPromotionSelectedIds=new Set(staffPromotionOriginal.roleIds);
+        staffPromotionChannel.replaceChildren();staffPromotionChannel.add(new Option("Selecione um canal…",""));
+        staffPromotionChannels.forEach(ch=>staffPromotionChannel.add(new Option((Number(ch.type)===5?"# ":"# ")+ch.name,ch.id)));
+        staffPromotionChannel.value=staffPromotionOriginal.channelId;
+        staffPromotionNotifyRole.replaceChildren();staffPromotionNotifyRole.add(new Option("Selecione um cargo…",""));
+        staffPromotionRoles.filter(role=>!role.managed).forEach(role=>staffPromotionNotifyRole.add(new Option("@"+role.name,role.id)));
+        staffPromotionNotifyRole.value=staffPromotionOriginal.notificationRoleId;
+        renderStaffPromotionRoles();
+      }catch(error){staffPromotionRoleOptions.replaceChildren();const p=document.createElement("p");p.textContent=error.message||"Não foi possível carregar o sistema.";staffPromotionRoleOptions.appendChild(p);}
+    }
+    staffPromotionRoleSearch.addEventListener("input",renderStaffPromotionRoles);
+    staffPromotionSave.addEventListener("click",async()=>{
+      const guild=selectedGuild(),roleIds=[...staffPromotionSelectedIds],channelId=staffPromotionChannel.value,notificationRoleId=staffPromotionNotifyRole.value;
+      if(!guild.id){staffPromotionStatus.textContent="Selecione um servidor primeiro.";return;}
+      if(!roleIds.length){staffPromotionStatus.textContent="Selecione ao menos um cargo que ativa a promoção.";return;}
+      if(!channelId){staffPromotionStatus.textContent="Selecione o canal dos anúncios.";return;}
+      if(!notificationRoleId){staffPromotionStatus.textContent="Selecione o cargo de notificação.";return;}
+      staffPromotionSave.disabled=true;staffPromotionSave.textContent="Salvando…";staffPromotionStatus.textContent="A Yukina está salvando as configurações…";
+      try{
+        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{staffPromotion:{enabled:true,roleIds,channelId,notificationRoleId}}}),cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações.");
+        staffPromotionOriginal={roleIds,channelId,notificationRoleId};staffPromotionStatus.textContent="❄️ Configurações salvas com sucesso!";
+      }catch(error){staffPromotionStatus.textContent=error.message||"Falha ao salvar as configurações.";}
+      finally{staffPromotionSave.disabled=false;staffPromotionSave.textContent="Salvar";}
+    });
     const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary"),dropExtraEntriesInput=$("dropExtraEntriesInput"),dropAddButton=$("dropAddButton"),dropAddStatus=$("dropAddStatus"),dropAddedRoles=$("dropAddedRoles");
     let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="",dropConfiguredRoles=[];
     function renderDropRoles(){
