@@ -655,7 +655,7 @@ async function panelApi(req, res, url) {
         const user = userResponse.ok ? await userResponse.json().catch(() => null) : null;
         if (!user?.id) return sendJson(res, 401, { detail: "Sua sessão do Discord expirou. Entre novamente." });
         const guildId = String(url.searchParams.get("guildId") || "");
-        if (!/^\\d{17,20}$/.test(guildId)) return sendJson(res, 400, { detail: "Servidor inválido." });
+        if (!/^\d{17,20}$/.test(guildId)) return sendJson(res, 400, { detail: "Servidor inválido." });
         const guild = client.guilds.cache.get(guildId);
         if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
         const requester = await guild.members.fetch(user.id).catch(() => null);
