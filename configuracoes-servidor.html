@@ -369,6 +369,8 @@
         <button type="button" class="primary-action" id="dropAddButton">Adicionar</button>
         <p class="prefix-status" id="dropAddStatus" role="status" aria-live="polite"></p>
         <div id="dropAddedRoles" style="display:grid;gap:8px;margin-top:12px" aria-live="polite"></div>
+        <button type="button" class="primary-action" id="dropSaveButton">Salvar configurações do drop</button>
+        <p class="prefix-status" id="dropSaveStatus" role="status" aria-live="polite"></p>
         <div class="counting-picker-card" id="dropRoleCard" hidden>
           <h3>❄️ Cargos do servidor</h3>
           <p>Toque nos cargos para marcar ou desmarcar.</p>
@@ -1018,9 +1020,20 @@
       try{
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
         if(!accessToken)throw new Error("Entre com o Discord para carregar os cargos.");
-        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});
-        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível carregar os cargos.");
-        dropRoles=Array.isArray(data.roles)?data.roles:[];dropRolesGuildId=guild.id;dropSelectedRoleIds.clear();renderDropRoles();updateDropSummary();
+        const headers={Authorization:"Bearer "+accessToken,Accept:"application/json"};
+        const [resourcesResponse,settingsResponse]=await Promise.all([
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"}),
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers,cache:"no-store"})
+        ]);
+        const data=await resourcesResponse.json().catch(()=>({})),settingsData=await settingsResponse.json().catch(()=>({}));
+        if(!resourcesResponse.ok)throw new Error(data.detail||"Não foi possível carregar os cargos.");
+        if(!settingsResponse.ok)throw new Error(settingsData.detail||"Não foi possível carregar as configurações do drop.");
+        dropRoles=Array.isArray(data.roles)?data.roles:[];dropRolesGuildId=guild.id;
+        const saved= settingsData.settings?.dropSystem || {};
+        dropConfiguredRoles=Array.isArray(saved.roles)?saved.roles.filter(entry=>dropRoles.some(role=>String(role.id)===String(entry.id))).map(entry=>({...entry,id:String(entry.id)})):[];
+        dropSelectedRoleIds.clear();renderDropRoles();updateDropSummary();renderDropAddedRoles();
+        if(dropExtraEntriesInput)dropExtraEntriesInput.value="0";
+        const saveStatus=$("dropSaveStatus");if(saveStatus)saveStatus.textContent=dropConfiguredRoles.length?"Configurações salvas carregadas.":"Configure os cargos e salve para usar nos drops.";
       }catch(error){dropRoleOptions.innerHTML="";const message=document.createElement("p");message.textContent=error.message||"Erro ao carregar os cargos.";dropRoleOptions.appendChild(message);}
     }
     dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
@@ -1098,6 +1111,20 @@
       if(!Number.isInteger(extras)||extras<0||extras>1000){dropAddStatus.textContent="Informe uma quantidade de entradas extras entre 0 e 1000.";return;}
       selected.forEach(role=>{const id=String(role.id),existing=dropConfiguredRoles.find(entry=>entry.id===id);if(existing)existing.extras=extras;else dropConfiguredRoles.push({id,name:role.name,color:getDropRoleColor(role),extras});});
       renderDropAddedRoles();dropAddStatus.textContent=selected.length+" cargo(s) adicionado(s) à lista abaixo.";
+    });
+    $("dropSaveButton").addEventListener("click",async()=>{
+      const guild=selectedGuild(),status=$("dropSaveStatus"),button=$("dropSaveButton");
+      if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}
+      button.disabled=true;status.textContent="Salvando configurações…";
+      try{
+        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{dropSystem:{enabled:true,roles:dropConfiguredRoles.map(entry=>({id:String(entry.id),name:String(entry.name),color:String(entry.color||"#e9ddff"),extras:Number(entry.extras)||0}))}}),cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações.");
+        status.textContent="❄️ Configurações do drop salvas com sucesso.";
+        window.YukinaPendingChanges?.refresh();
+      }catch(error){status.textContent=error.message||"Falha ao salvar as configurações.";}
+      finally{button.disabled=false;}
     });
     loadPrefix();
     loadCounting();
