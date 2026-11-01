@@ -336,7 +336,8 @@
     <section class="system-screen" data-screen-panel="ticket-editor" hidden>
       <p class="eyebrow">PERSONALIZAÇÃO DO ATENDIMENTO</p>
       <h1>✏️ Editar painel</h1>
-      <p class="screen-description">Confira a prévia primeiro e personalize o conteúdo do painel logo abaixo. As alterações só serão enviadas ao Discord quando você confirmar a publicação.</p>
+      <div id="ticketEditorPreview"></div>
+      <p class="screen-description">Confira a prévia e personalize o conteúdo do painel logo abaixo. As alterações só serão enviadas ao Discord quando você confirmar a publicação.</p>
       <button type="button" class="prefix-save" id="ticketEditorBack" style="margin:0 0 16px">← Voltar aos painéis</button>
       <div id="ticketEditorContent"></div>
     </section>
@@ -802,7 +803,7 @@
     const ticketEditorContent=$("ticketEditorContent");
     ticketEditorContent.appendChild(ticketWizardStep2);
     const ticketPreview=$("ticketEmbedPreview");
-    ticketWizardStep2.insertBefore(ticketPreview,ticketWizardStep2.querySelector("label"));
+    $("ticketEditorPreview").appendChild(ticketPreview);
     $("ticketEditorBack").addEventListener("click",()=>{ticketWizardStep2.hidden=true;showScreen("tickets");loadPublishedTicketPanels();});
 
     const ticketPublishChannel=$("ticketPublishChannel"),ticketCreateChannel=$("ticketCreateChannel"),ticketUseThreads=$("ticketUseThreads"),ticketChannelAtTop=$("ticketChannelAtTop"),ticketUseCategory=$("ticketUseCategory");
