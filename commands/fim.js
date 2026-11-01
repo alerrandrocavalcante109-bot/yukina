@@ -53,7 +53,7 @@ function chooseMessage() {
 function clean(value) {
   return String(value || "")
     .replace(/^[\"'“”]+|[\"'“”]+$/g, "")
-    .replace(/@everyone|@here/g, match => "@\\u200b" + match.slice(1))
+    .replace(/@everyone|@here/g, match => "@\u200b" + match.slice(1))
     .replace(/<@&?\\d+>/g, "")
     .trim()
     .slice(0, 3500);
@@ -151,7 +151,7 @@ async function run(channel, guild, reply) {
     .setColor(0xDDA8C7)
     .setTitle("🌸 Até nosso próximo encontro")
     .setDescription((message || selected.fallback).slice(0, 3500) + mentions)
-    .setFooter({ text: "Com carinho, Yukina ❄️")
+    .setFooter({ text: "Com carinho, Yukina ❄️" })
     .setTimestamp();
 
   try {
