@@ -37,11 +37,11 @@ async function getConfig(guildId){
   const config=doc?.settings?.dropSystem||{};
   return {enabled:config.enabled!==false,roles:Array.isArray(config.roles)?config.roles:[]};
 }
-async function finish(clientRef,id){
+async function finish(clientRef,id,{force=false}={}){
   await getDb();
   const drop=await giveaways.findOne({_id:new ObjectId(id),status:"active"});
   if(!drop)return;
-  if(Date.now()<Number(drop.endsAt)){schedule(clientRef,drop);return;}
+  if(!force&&Date.now()<Number(drop.endsAt)){schedule(clientRef,drop);return;}
   timers.delete(String(drop._id));
   const pool=[];
   for(const [userId,entry] of Object.entries(drop.entries||{})){
@@ -93,6 +93,12 @@ async function create(clientRef,{guild,channel,creator,tempo,winnerCount,prize})
     return {id,message};
   }catch(error){await giveaways.deleteOne({_id:result.insertedId});throw error;}
 }
+async function findActive(guildId,channelId,messageId){
+  await getDb();
+  const filter={guildId:String(guildId),channelId:String(channelId),status:"active"};
+  if(messageId)filter.messageId=String(messageId);
+  return giveaways.find(filter).sort({createdAt:-1}).limit(1).next();
+}
 async function join(interaction,id){
   await getDb();
   const drop=await giveaways.findOne({_id:new ObjectId(id),status:"active"});
@@ -109,4 +115,4 @@ async function join(interaction,id){
   await giveaways.updateOne({_id:drop._id,status:"active"},{$set:{["entries."+interaction.user.id]:{tickets,joinedAt:Date.now()}}});
   return interaction.reply({content:"🎁 Você está participando! Suas chances foram registradas com **"+tickets+" entrada(s)**.",ephemeral:true});
 }
-module.exports={create,join,initialize,finish};
+module.exports={create,join,initialize,finish,findActive};
