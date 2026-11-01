@@ -147,11 +147,11 @@ async function runWork({ guildId, user, reply, client }) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("work")
-    .setDescription("Explore o universo de Yukina, cumpra um trabalho e receba Kizunas.")
+    .setName("trabalhar")
+    .setDescription("[economia]Explore o universo de Yukina, cumpra um trabalho e receba Kizunas.")
     .setDMPermission(false),
 
-  aliases: ["trabalhar", "trabalho"],
+  aliases: ["trabalhar", "trabalho", "work"],
 
   async execute(interaction) {
     return runWork({
