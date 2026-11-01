@@ -869,16 +869,30 @@
       status.textContent="Novo botão adicionado.";
     });
 
-    function openTicketPanelEditor(panel,guild){
+    async function openTicketPanelEditor(panel,guild){
       window.yukinaTicketDraft={...panel,guild:{id:guild.id,name:guild.name},publishChannelId:panel.channelId,images:panel.images||{}};
       ticketPanelTitle.value=panel.title||"";
       ticketPanelMessage.value=panel.message||"";
       ticketEmbedColor.value=panel.embedColor||"#c4b5fd";
       applyTicketEmbedColor(ticketEmbedColor.value);
       for(const [key,input] of Object.entries(ticketImageFields))input.value=(panel.images||{})[key]||"";
+      try{
+        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Entre com o Discord para carregar o canal do painel.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers:{Authorization:"Bearer "+accessToken,Accept:"application/json"},cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível carregar os canais.");
+        ticketWizardChannels=(Array.isArray(data.channels)?data.channels:[]).filter(x=>Number(x.type)===0);
+        ticketPublishChannel.replaceChildren();
+        const empty=document.createElement("option");empty.value="";empty.textContent="Selecione um canal de texto…";ticketPublishChannel.appendChild(empty);
+        ticketWizardChannels.forEach(channel=>{const option=document.createElement("option");option.value=String(channel.id);option.textContent="# "+channel.name;ticketPublishChannel.appendChild(option);});
+        if(panel.channelId&&!ticketWizardChannels.some(channel=>String(channel.id)===String(panel.channelId))){
+          const missing=document.createElement("option");missing.value=String(panel.channelId);missing.textContent="Canal original (não encontrado)";ticketPublishChannel.appendChild(missing);
+        }
+        ticketPublishChannel.value=String(panel.channelId||"");
+      }catch(error){$("ticketStep2Status").textContent=error.message||"Não foi possível carregar o canal original.";}
       const savedButtons=Array.isArray(panel.buttons)?panel.buttons:[];
-      const initialButtons=Math.min(2,savedButtons.length||2);
-      for(let i=0;i<initialButtons;i++){
+      while(ticketButtonCount<Math.max(2,Math.min(5,savedButtons.length)))$("ticketAddButtonConfig").click();
+      for(let i=0;i<ticketButtonCount;i++){
         const item=savedButtons[i]||{};
         const emoji=$("ticketButtonEmoji"+i),label=$("ticketButtonLabel"+i),type=$("ticketButtonType"+i),style=$("ticketButtonStyle"+i),reply=$("ticketButtonReply"+i);
         if(emoji)emoji.value=item.emoji||"";
