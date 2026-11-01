@@ -54,7 +54,7 @@ function clean(value) {
   return String(value || "")
     .replace(/^[\"'“”]+|[\"'“”]+$/g, "")
     .replace(/@everyone|@here/g, match => "@\u200b" + match.slice(1))
-    .replace(/<@&?\\d+>/g, "")
+    .replace(/<@&?\d+>/g, "")
     .trim()
     .slice(0, 3500);
 }
