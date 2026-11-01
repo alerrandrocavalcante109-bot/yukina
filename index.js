@@ -646,7 +646,30 @@ async function panelApi(req, res, url) {
 
 
   if (url.pathname === "/api/tickets/manage") {
-    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use POST para gerenciar painéis." });
+    if (req.method === "GET") {
+      try {
+        const auth = String(req.headers.authorization || "");
+        const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+        if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord para ver os painéis publicados." });
+        const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
+        const user = userResponse.ok ? await userResponse.json().catch(() => null) : null;
+        if (!user?.id) return sendJson(res, 401, { detail: "Sua sessão do Discord expirou. Entre novamente." });
+        const guildId = String(url.searchParams.get("guildId") || "");
+        if (!/^\\d{17,20}$/.test(guildId)) return sendJson(res, 400, { detail: "Servidor inválido." });
+        const guild = client.guilds.cache.get(guildId);
+        if (!guild) return sendJson(res, 404, { detail: "A Yukina não está conectada a esse servidor." });
+        const requester = await guild.members.fetch(user.id).catch(() => null);
+        if (!requester || (!requester.permissions.has(PermissionsBitField.Flags.ManageGuild) && !requester.permissions.has(PermissionsBitField.Flags.Administrator))) return sendJson(res, 403, { detail: "Você precisa de Gerenciar servidor ou Administrador." });
+        const settingsCollection = await getSettingsCollection();
+        const doc = await settingsCollection.findOne({ guildId });
+        const panels = Array.isArray(doc?.settings?.ticketPanels) ? doc.settings.ticketPanels : [];
+        return sendJson(res, 200, { ok: true, panels });
+      } catch (error) {
+        console.error("[Tickets] Falha ao carregar painéis:", error.stack || error.message || error);
+        return sendJson(res, 500, { detail: "Não foi possível carregar os painéis salvos." });
+      }
+    }
+    if (req.method !== "POST") return sendJson(res, 405, { detail: "Use GET para listar e POST para gerenciar painéis." });
     try {
       const auth = String(req.headers.authorization || "");
       const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
