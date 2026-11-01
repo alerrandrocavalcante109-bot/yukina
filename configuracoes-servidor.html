@@ -392,6 +392,88 @@
   </main>
   <script src="./assets/pending-changes.js"></script>
   <script>
+  // Cabeçalho independente: menu e perfil continuam funcionando mesmo se outro sistema do painel falhar.
+  (() => {
+    const $ = id => document.getElementById(id);
+    const drawer = $("drawer"), shade = $("shade"), toggle = $("menuToggle");
+    const profile = $("profile"), avatar = $("profileAvatar"), name = $("profileName");
+    const drawerAvatar = $("drawerAvatar"), drawerName = $("drawerName");
+    const login = $("loginButton");
+    const api = (window.YUKINA_API_URL || "https://yukina-s1lz.onrender.com").replace(/\/$/, "");
+    if (toggle && drawer && shade && !window.__YukinaHeaderMenuBound) {
+      window.__YukinaHeaderMenuBound = true;
+      const close = () => {
+        drawer.classList.remove("open"); shade.classList.remove("open");
+        drawer.setAttribute("aria-hidden", "true"); shade.setAttribute("aria-hidden", "true");
+        toggle.setAttribute("aria-expanded", "false"); toggle.setAttribute("aria-label", "Abrir menu");
+      };
+      const open = () => {
+        drawer.classList.add("open"); shade.classList.add("open");
+        drawer.setAttribute("aria-hidden", "false"); shade.setAttribute("aria-hidden", "false");
+        toggle.setAttribute("aria-expanded", "true"); toggle.setAttribute("aria-label", "Fechar menu");
+      };
+      toggle.addEventListener("click", event => { event.preventDefault(); drawer.classList.contains("open") ? close() : open(); });
+      shade.addEventListener("click", close);
+      document.addEventListener("keydown", event => { if (event.key === "Escape") close(); });
+      document.addEventListener("click", event => {
+        if (event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]")) close();
+      });
+      document.addEventListener("touchstart", event => { if(event.touches?.length) window.__yukinaMenuTouchX = event.touches[0].clientX; }, {passive:true});
+      document.addEventListener("touchend", event => {
+        if(window.__yukinaMenuTouchX == null || !event.changedTouches?.length) return;
+        const dx = event.changedTouches[0].clientX - window.__yukinaMenuTouchX; window.__yukinaMenuTouchX = null;
+        if(Math.abs(dx) < 65) return;
+        if(drawer.classList.contains("open") && dx > 0) close();
+        else if(!drawer.classList.contains("open") && dx < 0) open();
+      }, {passive:true});
+    }
+    async function loadProfile() {
+      let access = localStorage.getItem("yukina_discord_token") || "";
+      const refresh = localStorage.getItem("yukina_discord_refresh_token") || "";
+      const refreshAccess = async () => {
+        if(!refresh) return "";
+        try {
+          const response = await fetch(api + "/api/oauth/refresh", {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh}),cache:"no-store"});
+          const data = await response.json().catch(()=>({}));
+          if(!response.ok || !data.access_token) return "";
+          localStorage.setItem("yukina_discord_token",data.access_token);
+          if(data.refresh_token) localStorage.setItem("yukina_discord_refresh_token",data.refresh_token);
+          return data.access_token;
+        } catch (_) { return ""; }
+      };
+      if(!access) access = await refreshAccess();
+      if(!access) { if(profile) profile.hidden=true; if(login) login.hidden=false; return; }
+      try {
+        let response = await fetch(api + "/api/oauth/me", {headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
+        if(response.status===401) {
+          access = await refreshAccess();
+          if(!access) throw new Error("Sessão expirada");
+          response = await fetch(api + "/api/oauth/me", {headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
+        }
+        if(!response.ok) throw new Error("Não foi possível consultar o perfil");
+        const user = await response.json();
+        if(!user?.id || !user?.username) throw new Error("Perfil inválido");
+        const display = user.global_name || user.username;
+        const picture = user.avatar
+          ? "https://cdn.discordapp.com/avatars/"+encodeURIComponent(user.id)+"/"+encodeURIComponent(user.avatar)+(String(user.avatar).startsWith("a_")?".gif":".png")+"?size=128"
+          : "https://cdn.discordapp.com/embed/avatars/"+(Number(user.discriminator||0)%5)+".png";
+        if(avatar){avatar.src=picture;avatar.alt="Foto de "+display;avatar.onerror=()=>{avatar.src="https://cdn.discordapp.com/embed/avatars/0.png";};}
+        if(name) name.textContent=display;
+        if(drawerAvatar){drawerAvatar.src=picture;drawerAvatar.alt="Foto de "+display;drawerAvatar.onerror=()=>{drawerAvatar.src="https://cdn.discordapp.com/embed/avatars/0.png";};}
+        if(drawerName) drawerName.textContent=display;
+        if(profile){profile.href="#perfil";profile.hidden=false;}
+        if(login) login.hidden=true;
+      } catch (_) {
+        if(profile) profile.hidden=true;
+        if(login) login.hidden=false;
+      }
+    }
+    if(login) login.addEventListener("click",()=>location.assign("./login.html"));
+    if(profile) profile.addEventListener("click",event=>{if(profile.getAttribute("href")==="#perfil"){event.preventDefault();if(toggle)toggle.click();}});
+    loadProfile();
+  })();
+  </script>
+  <script>
   (() => {
     const API_BASE = (window.YUKINA_API_URL || "https://yukina-s1lz.onrender.com").replace(/\/$/, "");
     const $ = id => document.getElementById(id);
@@ -502,11 +584,7 @@
     });
     $("openSystems").addEventListener("click",openMenu);
 
-    menuToggle.addEventListener("click",toggleMenu);
-    shade.addEventListener("click",closeMenu);
-    document.addEventListener("keydown",e=>{if(e.key==="Escape")closeMenu()});
-    loginButton.addEventListener("click",()=>location.assign("./login.html"));
-    profile.addEventListener("click",e=>{if(profile.getAttribute("href")==="#perfil"){e.preventDefault();openMenu()}});
+    // Menu, perfil e login são inicializados no script independente acima.
     document.addEventListener("touchstart",e=>{
       if(!e.touches || !e.touches.length)return;
       touchStartX=e.touches[0].clientX;touchStartY=e.touches[0].clientY;
