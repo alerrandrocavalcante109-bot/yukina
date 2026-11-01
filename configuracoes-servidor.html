@@ -900,7 +900,7 @@
       roles.forEach(role=>{
         const id=String(role.id),selected=dropSelectedRoleIds.has(id),button=document.createElement("button");
         button.type="button";button.setAttribute("aria-pressed",String(selected));button.textContent=(selected?"✓  ":"＋  ")+"@"+role.name;
-        const color=Number(role.color)||0,hex=color?"#"+color.toString(16).padStart(6,"0"):"#c4b5fd";
+        const hex=getDropRoleColor(role);
         button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?"#c4b5fd":"#ffffff20")+";border-radius:9px;background:"+(selected?"rgba(196,181,253,.2)":"rgba(255,255,255,.04)")+";color:"+hex+";cursor:pointer";
         button.addEventListener("click",()=>{if(dropSelectedRoleIds.has(id))dropSelectedRoleIds.delete(id);else dropSelectedRoleIds.add(id);renderDropRoles();updateDropSummary();});
         dropRoleOptions.appendChild(button);
@@ -928,23 +928,21 @@
     dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
     dropRoleSearch.addEventListener("input",renderDropRoles);
     function getDropRoleColor(role){
-      const candidates=[
-        role?.colors?.primaryColor,role?.primaryColor,role?.colorPrimary,
-        role?.hexColor,role?.colorHex,role?.colour,
-        typeof role?.color==="string"?role.color:null,
-        typeof role?.color==="number"&&role.color>0?role.color:null
-      ];
-      for(const raw of candidates){
-        if(typeof raw==="number"&&Number.isFinite(raw)&&raw>0)return "#"+Math.trunc(raw).toString(16).padStart(6,"0").slice(-6);
-        if(typeof raw==="string"){
-          const value=raw.trim();
-          if(/^#[0-9a-f]{6}$/i.test(value))return value;
-          if(/^#[0-9a-f]{3}$/i.test(value))return "#"+value.slice(1).split("").map(ch=>ch+ch).join("");
-          if(/^0x[0-9a-f]+$/i.test(value))return "#"+parseInt(value,16).toString(16).padStart(6,"0").slice(-6);
-          if(/^\d+$/.test(value)&&Number(value)>0)return "#"+Number(value).toString(16).padStart(6,"0").slice(-6);
-        }
-      }
-      return "#e9ddff";
+      const toHex=value=>{
+        if(typeof value==="number"&&Number.isFinite(value)&&value>0)return "#"+Math.trunc(value).toString(16).padStart(6,"0").slice(-6);
+        if(typeof value!=="string")return null;
+        const v=value.trim();
+        if(/^#[0-9a-f]{6}$/i.test(v))return v.toLowerCase();
+        if(/^#[0-9a-f]{3}$/i.test(v))return "#"+v.slice(1).split("").map(ch=>ch+ch).join("").toLowerCase();
+        if(/^0x[0-9a-f]+$/i.test(v))return "#"+parseInt(v,16).toString(16).padStart(6,"0").slice(-6);
+        if(/^\d+$/.test(v)&&Number(v)>0)return "#"+Number(v).toString(16).padStart(6,"0").slice(-6);
+        return null;
+      };
+      // A cor numérica do Discord é a fonte mais confiável; hexColor pode ser #000000 quando sem cor.
+      const numeric=toHex(role?.color);
+      const primary=toHex(role?.colors?.primaryColor??role?.primaryColor??role?.colorPrimary);
+      const hex=toHex(role?.hexColor??role?.colorHex??role?.colour);
+      return numeric||primary||hex||"#e9ddff";
     }
     function renderDropAddedRoles(){
       dropAddedRoles.replaceChildren();
