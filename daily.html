@@ -16,7 +16,11 @@
     .profile{position:fixed;top:20px;right:clamp(16px,3vw,38px);display:none;align-items:center;gap:11px;max-width:min(280px,calc(100vw - 32px));padding:8px 14px 8px 8px;border:1px solid rgba(255,192,229,.35);border-radius:999px;background:rgba(20,8,34,.68);box-shadow:0 8px 28px rgba(0,0,0,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     .profile.visible{display:flex}
     .welcome{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(28px,5vh,52px);padding:110px 24px 42px;text-align:center}
-    .welcome h1{max-width:1100px;margin:0;color:#fff4fc;font-size:clamp(2.8rem,8.5vw,7.2rem);font-weight:900;line-height:1.04;letter-spacing:-.055em;text-wrap:balance;text-shadow:0 5px 28px rgba(0,0,0,.48),0 0 42px rgba(255,190,230,.22);animation:welcome-in .9s ease both}\n    .daily-reel{width:min(900px,100%);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(9px,2vw,18px);animation:welcome-in 1s .12s ease both}\n    .reel-field{min-height:clamp(112px,17vw,158px);display:flex;align-items:center;justify-content:center;gap:clamp(3px,1vw,10px);padding:12px 8px;border:1px solid rgba(255,203,235,.36);border-radius:22px;background:linear-gradient(145deg,rgba(255,225,245,.16),rgba(28,10,45,.62));box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}\n    .reel-field span{font-size:clamp(1.45rem,4vw,2.7rem);line-height:1;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3))}\n    .reel-field:nth-child(1){border-color:rgba(255,174,220,.48)}.reel-field:nth-child(2){border-color:rgba(190,222,255,.48)}.reel-field:nth-child(3){border-color:rgba(255,215,143,.48)}.reel-field:nth-child(4){border-color:rgba(255,190,190,.48)}
+    .welcome h1{max-width:1100px;min-height:1.04em;margin:0;color:#fff4fc;font-size:clamp(2.8rem,8.5vw,7.2rem);font-weight:900;line-height:1.04;letter-spacing:-.055em;text-wrap:balance;text-shadow:0 5px 28px rgba(0,0,0,.48),0 0 42px rgba(255,190,230,.22)}\n    .welcome h1::after{content:"";display:inline-block;width:3px;height:.82em;margin-left:7px;vertical-align:-.06em;background:#ffd8ef;box-shadow:0 0 14px rgba(255,190,230,.8);animation:caret-blink .75s steps(2,start) infinite}\n    .welcome h1.done::after{display:none}\n    @keyframes caret-blink{to{visibility:hidden}}
+    .daily-reel{width:min(900px,100%);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(9px,2vw,18px);animation:welcome-in 1s .12s ease both}
+    .reel-field{min-height:clamp(112px,17vw,158px);display:flex;align-items:center;justify-content:center;gap:clamp(3px,1vw,10px);padding:12px 8px;border:1px solid rgba(255,203,235,.36);border-radius:22px;background:linear-gradient(145deg,rgba(255,225,245,.16),rgba(28,10,45,.62));box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .reel-field span{font-size:clamp(1.45rem,4vw,2.7rem);line-height:1;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3))}
+    .reel-field:nth-child(1){border-color:rgba(255,174,220,.48)}.reel-field:nth-child(2){border-color:rgba(190,222,255,.48)}.reel-field:nth-child(3){border-color:rgba(255,215,143,.48)}.reel-field:nth-child(4){border-color:rgba(255,190,190,.48)}
     @keyframes welcome-in{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
     @media(max-width:650px){.welcome{gap:30px;padding:100px 16px 30px}.welcome h1{font-size:clamp(2.7rem,12vw,4.4rem)}.daily-reel{grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px}.reel-field{min-height:104px;border-radius:18px}.reel-field span{font-size:clamp(1.8rem,8vw,2.5rem)}}
     .profile img{width:38px;height:38px;flex:0 0 38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,192,229,.6)}
@@ -27,12 +31,20 @@
 <body>
   <img class="backdrop" src="./assets/yukina-bg.png" alt="" aria-hidden="true">
   <div class="shade" aria-hidden="true"></div>
-  <main class="welcome">\n    <h1>Que bom ter você por aqui!</h1>\n    <section class="daily-reel" aria-label="Roleta Daily">\n      <div class="reel-field" aria-label="Cerejeiras"><span>🌸</span><span>🌸</span><span>🌸</span><span>🌸</span></div>\n      <div class="reel-field" aria-label="Flocos de neve"><span>❄️</span><span>❄️</span><span>❄️</span><span>❄️</span></div>\n      <div class="reel-field" aria-label="Jackpot"><span>🎰</span><span>🎰</span><span>🎰</span><span>🎰</span></div>\n      <div class="reel-field" aria-label="Portões Torii"><span>⛩️</span><span>⛩️</span><span>⛩️</span><span>⛩️</span></div>\n    </section>\n  </main>
+  <main class="welcome">
+    <h1>Que bom ter você por aqui!</h1>
+    <section class="daily-reel" aria-label="Roleta Daily">
+      <div class="reel-field" aria-label="Cerejeiras"><span>🌸</span><span>🌸</span><span>🌸</span><span>🌸</span></div>
+      <div class="reel-field" aria-label="Flocos de neve"><span>❄️</span><span>❄️</span><span>❄️</span><span>❄️</span></div>
+      <div class="reel-field" aria-label="Jackpot"><span>🎰</span><span>🎰</span><span>🎰</span><span>🎰</span></div>
+      <div class="reel-field" aria-label="Portões Torii"><span>⛩️</span><span>⛩️</span><span>⛩️</span><span>⛩️</span></div>
+    </section>
+  </main>
   <div class="profile" id="dailyProfile" aria-label="Usuário conectado">
     <img id="dailyAvatar" alt="">
     <span id="dailyName"></span>
   </div>
-  <script src="./api-config.js"></script>
+  <script>\n    (()=>{\n      const heading=document.querySelector(".welcome h1");\n      const message="Que bom ter você por aqui!";\n      heading.setAttribute("aria-label",message);\n      heading.textContent="";\n      let index=0;\n      const typeNext=()=>{\n        if(index<message.length){heading.textContent+=message.charAt(index++);setTimeout(typeNext,65)}\n        else heading.classList.add("done");\n      };\n      setTimeout(typeNext,350);\n    })();\n  </script>\n  <script src="./api-config.js"></script>
   <script>
     (async()=>{
       const profile=document.getElementById("dailyProfile");
