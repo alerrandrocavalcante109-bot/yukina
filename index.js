@@ -827,13 +827,13 @@ async function panelApi(req, res, url) {
       if (!verifyResponse.ok || verification.success !== true) return sendJson(res, 403, { ok: false, detail: "A verificação falhou. Tente novamente." });
       const subscriptions = await getVipCollection();
       const subscription = await subscriptions.findOne({ guildId, userId: String(user.id), status: "active", expiresAt: { $gt: now } });
-      const multipliers = { starter: 1.25, plus: 1.5, premium: 2, ultra: 2.5, infinity: 3 };
+      const multipliers = { starter: 1.1, plus: 1.2, premium: 1.35, ultra: 1.5, infinity: 1.75 };
       const planKey = String(subscription?.planKey || "").toLowerCase();
       const multiplier = subscription && multipliers[planKey] ? multipliers[planKey] : 1;
       const planName = subscription && multipliers[planKey] ? planKey[0].toUpperCase() + planKey.slice(1) : "Sem VIP";
       const ranges = [{ min: 5000, max: 10000 }, { min: 10000, max: 15000 }, { min: 10000, max: 20000 }, { min: 20000, max: 25000 }];
       const baseReward = Math.floor(Math.random() * (ranges[0].max - ranges[0].min + 1)) + ranges[0].min;
-      const reward = Math.floor(baseReward * multiplier);
+      const reward = Math.round(baseReward * multiplier);
       const feeResult = await applyDailyInactivityFee({ db: settingsMongoClient.db(MONGODB_DB), guildId, userId: String(user.id), now });
       const session = settingsMongoClient.startSession();
       try {
@@ -879,11 +879,11 @@ async function panelApi(req, res, url) {
         guildId, userId: String(user.id), status: "active", expiresAt: { $gt: new Date() }
       });
       const planMultipliers = {
-        starter: { name: "Starter", multiplier: 1.25 },
-        plus: { name: "Plus", multiplier: 1.5 },
-        premium: { name: "Premium", multiplier: 2 },
-        ultra: { name: "Ultra", multiplier: 2.5 },
-        infinity: { name: "Infinity", multiplier: 3 }
+        starter: { name: "Starter", multiplier: 1.1 },
+        plus: { name: "Plus", multiplier: 1.2 },
+        premium: { name: "Premium", multiplier: 1.35 },
+        ultra: { name: "Ultra", multiplier: 1.5 },
+        infinity: { name: "Infinity", multiplier: 1.75 }
       };
       const plan = subscription ? planMultipliers[String(subscription.planKey || "").toLowerCase()] : null;
       return sendJson(res, 200, {
