@@ -409,6 +409,23 @@ function sendJson(res, status, data) {
   res.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
   res.end(JSON.stringify(data));
 }
+
+// Assinaturas individuais: o plano pertence à conta Discord, não a um servidor.
+// Se houver registros antigos por servidor, prevalece o plano ativo de maior nível.
+async function getActiveUserSubscription(userId, now = new Date()) {
+  const subscriptions = await getVipCollection();
+  const active = await subscriptions.find({
+    userId: String(userId),
+    status: "active",
+    expiresAt: { $gt: now }
+  }).sort({ updatedAt: -1, createdAt: -1 }).toArray();
+
+  const tier = { starter: 1, plus: 2, premium: 3, ultra: 4, infinity: 5 };
+  return active.sort((a, b) =>
+    (tier[String(b.planKey || "").toLowerCase()] || 0) -
+    (tier[String(a.planKey || "").toLowerCase()] || 0)
+  )[0] || null;
+}
 function readBody(req) {
   return new Promise((resolve, reject) => {
     let body = "";
@@ -825,8 +842,7 @@ async function panelApi(req, res, url) {
       const verifyResponse = await fetch("https://challenges.cloudflare.com/turnstile/v0/siteverify", { method: "POST", headers: { "Content-Type": "application/x-www-form-urlencoded" }, body: new URLSearchParams({ secret, response: captchaToken }), signal: AbortSignal.timeout(10000) });
       const verification = await verifyResponse.json().catch(() => ({}));
       if (!verifyResponse.ok || verification.success !== true) return sendJson(res, 403, { ok: false, detail: "A verificação falhou. Tente novamente." });
-      const subscriptions = await getVipCollection();
-      const subscription = await subscriptions.findOne({ guildId, userId: String(user.id), status: "active", expiresAt: { $gt: now } });
+      const subscription = await getActiveUserSubscription(user.id, now);
       const multipliers = { starter: 1.1, plus: 1.2, premium: 1.35, ultra: 1.5, infinity: 1.75 };
       const planKey = String(subscription?.planKey || "").toLowerCase();
       const multiplier = subscription && multipliers[planKey] ? multipliers[planKey] : 1;
@@ -874,10 +890,7 @@ async function panelApi(req, res, url) {
       if (!/^\d{17,20}$/.test(guildId)) {
         return sendJson(res, 503, { ok: false, detail: "O servidor VIP ainda não está configurado na API." });
       }
-      const subscriptions = await getVipCollection();
-      const subscription = await subscriptions.findOne({
-        guildId, userId: String(user.id), status: "active", expiresAt: { $gt: new Date() }
-      });
+      const subscription = await getActiveUserSubscription(user.id);
       const planMultipliers = {
         starter: { name: "Starter", multiplier: 1.1 },
         plus: { name: "Plus", multiplier: 1.2 },
