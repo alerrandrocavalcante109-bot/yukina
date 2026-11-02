@@ -33,15 +33,15 @@
       const profile=document.getElementById("dailyProfile");
       const avatar=document.getElementById("dailyAvatar");
       const name=document.getElementById("dailyName");
-      const api=String(window.YUKINA_API_URL||"").replace(/\/$/,"");
       const getStored=key=>{try{return localStorage.getItem(key)||""}catch(_){return""}};
       const setStored=(key,value)=>{try{localStorage.setItem(key,value)}catch(_){}};
-      let access=getStored("yukina_discord_token");
+      const apiUrl=()=>String(window.YUKINA_API_URL||"").replace(/\\/$/,"");
       const refresh=async()=>{
         const refreshToken=getStored("yukina_discord_refresh_token");
+        const api=apiUrl();
         if(!refreshToken||!api)return "";
         try{
-          const response=await fetch(api+"/api/oauth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});
+          const response=await fetch(api+"/api/oauth/refresh",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({refresh_token:refreshToken}),cache:"no-store"});
           const data=await response.json().catch(()=>({}));
           if(!response.ok||!data.access_token)return "";
           setStored("yukina_discord_token",data.access_token);
@@ -50,29 +50,40 @@
           return data.access_token;
         }catch(_){return ""}
       };
+      let access=getStored("yukina_discord_token");
       if(!access)access=await refresh();
       if(!access)return;
+      let user=null;
       try{
-        let response=await fetch(api+"/api/oauth/me",{headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
-        if(response.status===401){
-          access=await refresh();
-          if(!access)return;
-          response=await fetch(api+"/api/oauth/me",{headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
+        const api=apiUrl();
+        if(api){
+          let response=await fetch(api+"/api/oauth/me",{headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
+          if(response.status===401){
+            access=await refresh();
+            if(!access)throw new Error("Sessão inválida");
+            response=await fetch(apiUrl()+"/api/oauth/me",{headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
+          }
+          if(response.ok)user=await response.json();
         }
-        if(!response.ok)return;
-        const user=await response.json();
-        if(!user||!user.id||!user.username)return;
-        const display=user.global_name||user.username;
-        const picture=user.avatar
-          ?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(user.id)+"/"+encodeURIComponent(user.avatar)+(String(user.avatar).startsWith("a_")?".gif":".png")+"?size=128"
-          :"https://cdn.discordapp.com/embed/avatars/"+(Number(user.discriminator||0)%5)+".png";
-        avatar.src=picture;
-        avatar.alt="Foto de "+display;
-        avatar.onerror=()=>{avatar.src="https://cdn.discordapp.com/embed/avatars/0.png"};
-        name.textContent=display;
-        profile.classList.add("visible");
-      }catch(error){console.warn("Não foi possível carregar o perfil do Daily:",error)}
-    })();
+      }catch(_){}
+      // Usa o endpoint oficial do Discord caso a API da Yukina não responda.
+      if(!user||!user.id||!user.username){
+        try{
+          const response=await fetch("https://discord.com/api/users/@me",{headers:{Authorization:"Bearer "+access,Accept:"application/json"},cache:"no-store"});
+          if(response.ok)user=await response.json();
+        }catch(_){}
+      }
+      if(!user||!user.id||!user.username)return;
+      const display=user.global_name||user.username;
+      const picture=user.avatar
+        ?"https://cdn.discordapp.com/avatars/"+encodeURIComponent(user.id)+"/"+encodeURIComponent(user.avatar)+(String(user.avatar).startsWith("a_")?".gif":".png")+"?size=128"
+        :"https://cdn.discordapp.com/embed/avatars/"+(Number(user.discriminator||0)%5)+".png";
+      avatar.onerror=()=>{avatar.onerror=null;avatar.src="https://cdn.discordapp.com/embed/avatars/0.png"};
+      avatar.src=picture;
+      avatar.alt="Foto de "+display;
+      name.textContent=display;
+      profile.classList.add("visible");
+    })().catch(error=>console.warn("Não foi possível carregar o perfil do Daily:",error));
   </script>
 </body>
 </html>
