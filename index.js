@@ -811,6 +811,11 @@ async function panelApi(req, res, url) {
       return sendJson(res, 502, { detail: "A API não conseguiu consultar os servidores no Discord. Tente novamente." });
     }
   }
+  if (url.pathname === "/api/config/turnstile") {
+    if (req.method !== "GET") return sendJson(res, 405, { ok: false, detail: "Use GET." });
+    res.setHeader("Cache-Control", "no-store");
+    return sendJson(res, 200, { ok: true, siteKey: String(process.env.TURNSTILE_SITE_KEY || "").trim() });
+  }
   if (url.pathname === "/api/health" || url.pathname === "/") return sendJson(res, 200, { ok: true, service: "Yukina Bot", api: true });
   if (url.pathname === "/api/daily/status" || url.pathname === "/api/daily/claim") {
     const isClaim = url.pathname === "/api/daily/claim";
