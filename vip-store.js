@@ -13,6 +13,7 @@ async function getVipCollection() {
   collection = client.db(dbName).collection("vip_subscriptions");
   await collection.createIndex({ guildId: 1, userId: 1 }, { unique: true });
   await collection.createIndex({ status: 1, expiresAt: 1 });
+  await collection.createIndex({ userId: 1, status: 1, expiresAt: 1 });
   return collection;
 }
 
