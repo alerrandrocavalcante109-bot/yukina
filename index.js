@@ -886,10 +886,7 @@ async function panelApi(req, res, url) {
       if (!user || !/^\d{17,20}$/.test(String(user.id || ""))) {
         return sendJson(res, 401, { ok: false, detail: "Sua sessão do Discord expirou. Entre novamente." });
       }
-      const guildId = (process.env.VIP_GUILD_ID || "").trim();
-      if (!/^\d{17,20}$/.test(guildId)) {
-        return sendJson(res, 503, { ok: false, detail: "O servidor VIP ainda não está configurado na API." });
-      }
+      // A assinatura é individual e não depende de um servidor específico.
       const subscription = await getActiveUserSubscription(user.id);
       const planMultipliers = {
         starter: { name: "Starter", multiplier: 1.1 },
