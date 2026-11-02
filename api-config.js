@@ -1,8 +1,8 @@
 // Configuração central da API da Yukina.
 // Mantém a API principal e troca para a reserva quando ela não entrega dados essenciais.
 (() => {
-  const primary = "https://yukina-s1lz.onrender.com";
-  const backup = "https://yukina-jspa.onrender.com";
+  const primary = "https://yukina-jspa.onrender.com";
+  const backup = "https://yukina-s1lz.onrender.com";
   const bases = [primary, backup];
   let activeBase = primary;
   window.YUKINA_API_URL = primary;
