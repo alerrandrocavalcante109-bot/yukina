@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#10091d">
+<meta name="description" content="Loja da Yukina — encontre efeitos, molduras e presentes para personalizar sua experiência com Kizunas.">
+<title>Loja da Yukina</title>
+<link rel="icon" type="image/png" href="./assets/yukina-bg.png">
+<style>
+:root{color-scheme:dark;--bg:#0b0713;--panel:rgba(25,14,39,.76);--text:#fff8ff;--muted:#c9bad6;--pink:#ff91cf;--purple:#b99aff;--line:rgba(255,190,230,.2)}
+*{box-sizing:border-box}html{min-height:100%;background:var(--bg)}body{margin:0;min-height:100vh;color:var(--text);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;background:linear-gradient(180deg,rgba(9,5,18,.76),rgba(9,5,18,.91)),url("./assets/yukina-bg.png") center/cover fixed no-repeat;line-height:1.6}
+a{color:inherit;text-decoration:none}.shell{width:min(1120px,calc(100% - 36px));margin:auto}
+header{height:78px;display:flex;align-items:center;justify-content:space-between;gap:18px;border-bottom:1px solid var(--line)}
+.brand{font-size:25px;font-weight:900;letter-spacing:.08em;background:linear-gradient(100deg,#ffb1df,#e875c9,#b99aff);background-clip:text;color:transparent;filter:drop-shadow(0 2px 12px #e85cba55)}
+nav{display:flex;gap:20px;align-items:center;color:var(--muted);font-size:14px}nav a:hover{color:white}
+.hero{padding:70px 0 35px;text-align:center}.eyebrow{display:inline-flex;padding:6px 13px;border:1px solid #ff91cf55;border-radius:99px;background:#ff91cf10;color:#ffd1eb;font-size:12px;font-weight:800;letter-spacing:.15em;text-transform:uppercase}
+h1{margin:17px 0 12px;font-size:clamp(38px,7vw,66px);line-height:1.08;letter-spacing:-.045em;background:linear-gradient(100deg,#fff,#ffaddb 52%,#c5a8ff);background-clip:text;color:transparent}
+.hero p{max-width:660px;margin:0 auto;color:#e0d2e9;font-size:17px}
+.toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin:34px 0 18px}
+.tabs{display:flex;gap:8px;flex-wrap:wrap}.tab{border:1px solid var(--line);border-radius:12px;padding:9px 15px;background:#ffffff08;color:var(--muted);font:inherit;font-size:14px;cursor:pointer}.tab[aria-pressed=true]{color:white;border-color:#ff91cf88;background:linear-gradient(110deg,#ff70b733,#9462d933);box-shadow:0 0 22px #e85cba18}
+.account{display:flex;align-items:center;gap:9px;padding:9px 13px;border:1px solid var(--line);border-radius:13px;background:#ffffff08;color:#f6eafa;font-size:13px}.account strong{color:#ffd0eb}
+.notice{display:flex;align-items:center;gap:12px;padding:15px 18px;border:1px solid #b99aff38;border-radius:16px;background:linear-gradient(110deg,#ff91cf0d,#b99aff0d);color:#e9dff2;font-size:14px}.notice span{font-size:22px}
+.catalog{min-height:270px;display:grid;place-items:center;margin:18px 0 70px;padding:35px 20px;border:1px dashed #ffb4df55;border-radius:22px;background:rgba(20,11,31,.42);text-align:center}
+.empty-icon{width:70px;height:70px;margin:0 auto 14px;display:grid;place-items:center;border:1px solid #ff91cf44;border-radius:22px;background:linear-gradient(135deg,#ff91cf18,#b99aff18);font-size:32px}
+.catalog h2{margin:0 0 8px;font-size:23px}.catalog p{max-width:480px;margin:0;color:var(--muted);font-size:14px}
+footer{padding:22px 0 30px;border-top:1px solid var(--line);color:#bcaecb;font-size:13px;display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap}
+@media(max-width:620px){header{height:auto;min-height:70px;align-items:flex-start;flex-direction:column;padding:14px 0}nav{width:100%;gap:15px;flex-wrap:wrap}.hero{padding-top:48px}.toolbar{align-items:flex-start;flex-direction:column}.account{width:100%}}
+</style>
+</head>
+<body>
+<div class="shell">
+<header>
+<a class="brand" href="./index.html">Yukina</a>
+<nav aria-label="Navegação principal"><a href="./index.html">Início</a><a href="./vip.html">Planos VIP</a><a href="./wiki.html">Wiki</a></nav>
+</header>
+<main>
+<section class="hero">
+<span class="eyebrow">✦ Um cantinho feito para você</span>
+<h1>Loja da Yukina</h1>
+<p>Personalize sua presença, encontre detalhes especiais e surpreenda alguém. Use suas Kizunas para adquirir itens ou enviar presentes.</p>
+</section>
+<div class="notice"><span aria-hidden="true">❄️</span><div><strong>Uma única loja para todos.</strong> O catálogo reunirá itens cosméticos e presentes, com os preços em Kizunas (KZ).</div></div>
+<section class="toolbar" aria-label="Categorias da loja">
+<div class="tabs" role="group" aria-label="Filtrar categoria">
+<button class="tab" type="button" aria-pressed="true" data-category="todos">Todos</button>
+<button class="tab" type="button" aria-pressed="false" data-category="molduras">Molduras</button>
+<button class="tab" type="button" aria-pressed="false" data-category="efeitos">Efeitos</button>
+<button class="tab" type="button" aria-pressed="false" data-category="emblemas">Emblemas</button>
+<button class="tab" type="button" aria-pressed="false" data-category="presentes">Presentes</button>
+</div>
+<div class="account"><span aria-hidden="true">💠</span><span>Moeda da loja: <strong>Kizunas (KZ)</strong></span></div>
+</section>
+<section class="catalog" aria-live="polite">
+<div>
+<div class="empty-icon" aria-hidden="true">🌸</div>
+<h2>O catálogo está sendo preparado</h2>
+<p>As categorias da loja já estão organizadas. Em breve, os itens aparecerão aqui com seus detalhes, valores e opção de presentear outros membros.</p>
+</div>
+</section>
+</main>
+<footer><span>❄ Yukina · Loja</span><a href="./index.html">Voltar ao início ↑</a></footer>
+</div>
+<script>
+document.querySelectorAll('.tab').forEach(button=>button.addEventListener('click',()=>{
+ document.querySelectorAll('.tab').forEach(item=>item.setAttribute('aria-pressed',String(item===button)));
+}));
+</script>
+</body>
+</html>
