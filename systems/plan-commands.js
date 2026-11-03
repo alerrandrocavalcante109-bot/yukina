@@ -107,7 +107,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     const db = await getDb();
     const now = new Date();
     claim = await claimCooldown(db, {
-      guildId: interaction.guild.id,
+      guildId: "global",
       userId: interaction.user.id,
       command,
       cooldownMs,
@@ -189,7 +189,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
       try {
         const db = await getDb();
         await db.collection("vip_plan_command_state").updateOne(
-          { guildId: String(interaction.guild.id), userId: String(interaction.user.id), command, claimId: claim.claimId },
+          { guildId: "global", userId: String(interaction.user.id), command, claimId: claim.claimId },
           { $set: { nextAvailableAt: new Date(0) }, $unset: { claimId: "" } }
         );
       } catch (rollbackError) {
