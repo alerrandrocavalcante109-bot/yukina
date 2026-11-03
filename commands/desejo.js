@@ -93,7 +93,10 @@ module.exports = {
       .setMaxLength(16)),
   aliases: ["desejo"],
   async execute(interaction) {
-    const cap = parseCap(interaction.options.getString("limite", true));\n    if (!Number.isInteger(cap) || cap < 100000 || cap > 10000000) {\n      return interaction.reply({ content: "🌠 Informe um limite entre **100k** e **10m** KZ. Exemplos: **100k**, **500k**, **1m**, **2,5m**.", ephemeral: true });\n    }
+    const cap = parseCap(interaction.options.getString("limite", true));
+    if (!Number.isInteger(cap) || cap < 100000 || cap > 10000000) {
+      return interaction.reply({ content: "🌠 Informe um limite entre **100k** e **10m** KZ. Exemplos: **100k**, **500k**, **1m**, **2,5m**.", ephemeral: true });
+    }
     return runPlanCommand({
       interaction,
       command: "desejo",
