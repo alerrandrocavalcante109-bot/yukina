@@ -70,9 +70,14 @@ async function publish(client,config,channelId){
   if(!channel?.isTextBased()||!channel.send){await scheduleNext(client,c,channelId);return;}
   const now=Date.now(),d={userId:String(c.userId),planKey:String(c.planKey).toLowerCase(),guildId:guild.id,channelId:String(channelId),guildName:guild.name,reward:rnd(...rule.reward),winnerCount:rnd(1,5),createdAt:now,endsAt:now+60000,status:"active",entries:{},winners:[],payouts:[]};
   const inserted=await runs.insertOne(d);d._id=inserted.insertedId;
-  const msg=await channel.send({embeds:[embed(d)],components:[row(String(d._id))],allowedMentions:{parse:[]}});
-  await runs.updateOne({_id:d._id},{$set:{messageId:msg.id}});
-  const t=setTimeout(()=>finish(client,String(d._id)).catch(console.error),60000);t.unref?.();timers.set("run:"+d._id,t);
+  try {
+   const msg=await channel.send({embeds:[embed(d)],components:[row(String(d._id))],allowedMentions:{parse:[]}});
+   await runs.updateOne({_id:d._id},{$set:{messageId:msg.id}});
+   const t=setTimeout(()=>finish(client,String(d._id)).catch(console.error),60000);t.unref?.();timers.set("run:"+d._id,t);
+  } catch(error) {
+   await runs.deleteOne({_id:d._id});
+   throw error;
+  }
  }finally{locks.delete(key);}
 }
 async function pay(guildId,userId,amount,runId){
