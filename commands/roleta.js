@@ -36,8 +36,8 @@ module.exports = {
       inGuild: () => Boolean(message.guild),
       guild: message.guild,
       user: message.author,
-      reply: payload => message.channel.send(payload),
-      followUp: payload => message.channel.send(payload),
+      reply: payload => { const { flags, ephemeral, ...rest } = payload || {}; return message.channel.send(rest); },
+      followUp: payload => { const { flags, ephemeral, ...rest } = payload || {}; return message.channel.send(rest); },
       deferred: false,
       replied: false,
     });
