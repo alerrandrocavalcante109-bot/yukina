@@ -12,7 +12,7 @@ const storage = require("../system-storage").forSystem("waifu");
 
 const COLOR = 0xC58AE8;
 const API_URL = "https://nekos.best/api/v2/waifu";
-const MAX_COLLECTION = 100;
+const DEFAULT_COLLECTION_CAPACITY = 100;
 const REQUEST_TIMEOUT_MS = 12000;
 
 const RANK_BASE = [
@@ -54,11 +54,11 @@ const RARITIES = [
 ];
 
 const PLAN_BENEFITS = {
-  starter: { draws: 15, luck: 1.15 },
-  plus: { draws: 20, luck: 1.30 },
-  premium: { draws: 30, luck: 1.50 },
-  ultra: { draws: 40, luck: 1.75 },
-  infinity: { draws: 50, luck: 2.00 },
+  starter: { draws: 15, luck: 1.15, album: 125 },
+  plus: { draws: 20, luck: 1.30, album: 143 },
+  premium: { draws: 30, luck: 1.50, album: 168 },
+  ultra: { draws: 40, luck: 1.75, album: 200 },
+  infinity: { draws: 50, luck: 2.00, album: 250 },
 };
 const DEFAULT_DRAWS = 10;
 
@@ -77,11 +77,11 @@ async function getWaifuBenefits(userId) {
       .filter(planKey => tiers.includes(planKey))
       .sort((a, b) => tiers.indexOf(b) - tiers.indexOf(a))[0];
     return selected ? { planKey: selected, ...PLAN_BENEFITS[selected] } : {
-      planKey: null, draws: DEFAULT_DRAWS, luck: 1,
+      planKey: null, draws: DEFAULT_DRAWS, luck: 1, album: DEFAULT_COLLECTION_CAPACITY,
     };
   } catch (error) {
     console.error("[Yukina waifu VIP] Não consegui consultar o plano:", error.message);
-    return { planKey: null, draws: DEFAULT_DRAWS, luck: 1 };
+    return { planKey: null, draws: DEFAULT_DRAWS, luck: 1, album: DEFAULT_COLLECTION_CAPACITY };
   }
 }
 
@@ -235,7 +235,7 @@ function rarityName(rarity) {
   return rarity.rank;
 }
 
-function makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RARITIES[0]) {
+function makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RARITIES[0], albumCapacity = DEFAULT_COLLECTION_CAPACITY) {
   const embed = new EmbedBuilder()
     .setColor(COLOR)
     .setAuthor({
@@ -256,13 +256,13 @@ function makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RAR
     embed.addFields(
       { name: "🏷️ Rank", value: "**" + rarityName(rarity) + "** · " + rarity.label, inline: true },
       { name: "💎 Valor", value: "**" + money(rarity.value) + "**", inline: true },
-      { name: "📚 Sua coleção", value: savedCount + "/" + MAX_COLLECTION + " personagens guardadas", inline: true }
+      { name: "📚 Sua coleção", value: savedCount + "/" + albumCapacity + " personagens guardadas", inline: true }
     );
   }
   return embed;
 }
 
-function makeButtons(ownerId, imageUrl, collectionCount) {
+function makeButtons(ownerId, imageUrl, collectionCount, albumCapacity = DEFAULT_COLLECTION_CAPACITY) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("yukina-waifu:again:" + ownerId)
@@ -274,7 +274,7 @@ function makeButtons(ownerId, imageUrl, collectionCount) {
       .setLabel("Guardar")
       .setEmoji("🌸")
       .setStyle(ButtonStyle.Success)
-      .setDisabled(collectionCount >= MAX_COLLECTION),
+      .setDisabled(collectionCount >= albumCapacity),
     new ButtonBuilder()
       .setCustomId("yukina-waifu:collection:" + ownerId)
       .setLabel("Minha coleção")
@@ -345,10 +345,10 @@ async function showWaifu({ guildId, user, reply, edit = false }) {
   const items = await getCollection(guildId, user.id);
   const drawCount = await registerWaifuDraw(guildId, user.id, benefits.draws);
   const payload = {
-    embeds: [makeEmbed(imageUrl, user, items.length, false, rarity).setDescription(
+    embeds: [makeEmbed(imageUrl, user, items.length, false, rarity, benefits.album).setDescription(
       "「 Uma nova estrela apareceu no céu de Yukina! 」\n\nGostou desta personagem? Guarde-a na sua coleção ou peça outra para o arquivo lunar.\n\n🎲 **Sorteios nesta rodada:** " + drawCount + "/" + benefits.draws + (drawCount >= benefits.draws ? "\n🌙 Você atingiu o limite. O cooldown de 2 horas já começou." : "")
     )],
-    components: [makeButtons(user.id, imageUrl, items.length)],
+    components: [makeButtons(user.id, imageUrl, items.length, benefits.album)],
     allowedMentions: { parse: [] },
   };
   return edit ? reply.update(payload) : reply(payload);
@@ -358,13 +358,13 @@ async function showCollection({ guildId, user, reply, edit = false }) {
   return showAlbumPage({ guildId, user, reply, index: 0, edit });
 }
 
-async function saveWaifu(guildId, user, imageUrl, rank) {
+async function saveWaifu(guildId, user, imageUrl, rank, albumCapacity = DEFAULT_COLLECTION_CAPACITY) {
   const url = safeImageUrl(imageUrl);
   if (!url) throw new Error("Imagem inválida.");
   const rarity = RARITIES.find(entry => entry.rank === rank) || RARITIES[0];
   const items = await getCollection(guildId, user.id);
   if (items.some(item => normalizeItem(item)?.url === url)) return { saved: false, count: items.length, duplicate: true };
-  if (items.length >= MAX_COLLECTION) return { saved: false, count: items.length, full: true };
+  if (items.length >= albumCapacity) return { saved: false, count: items.length, full: true, capacity: albumCapacity };
   items.push({ url, rank: rarity.rank, value: rarity.value });
   await storage.set(String(guildId), "collection", { items }, String(user.id));
   return { saved: true, count: items.length, rarity };
@@ -505,10 +505,11 @@ module.exports = {
         const rankField = interaction.message.embeds?.[0]?.fields?.find(field => field.name === "🏷️ Rank");
         const rankText = rankField?.value?.match(/\*\*(SSS\+|SSS-|SSS|SS\+|SS-|SS|S\+|S-|S|A\+|A-|A|B\+|B-|B|C\+|C-|C|D\+|D-|D|E\+|E-|E|∞|✦)\*\*/)?.[1] || "E-";
         if (!imageUrl) return interaction.editReply("💧 Não consegui identificar esta personagem. Sorteie outra e tente novamente.");
-        const result = await saveWaifu(interaction.guildId, interaction.user, imageUrl, rankText);
-        if (result.duplicate) return interaction.editReply("🌸 Você já guardou esta personagem na sua coleção. (" + result.count + "/" + MAX_COLLECTION + ")");
-        if (result.full) return interaction.editReply("📚 Sua coleção atingiu o limite de " + MAX_COLLECTION + " personagens.");
-        return interaction.editReply("🌸 **Personagem guardada!** Rank **" + (result.rarity.rank === "∞" ? "Suprema (∞)" : result.rarity.rank) + "** · Valor **" + money(result.rarity.value) + "**. Agora você tem **" + result.count + "/" + MAX_COLLECTION + "** waifus no seu arquivo lunar.");
+        const benefits = await getWaifuBenefits(interaction.user.id);
+        const result = await saveWaifu(interaction.guildId, interaction.user, imageUrl, rankText, benefits.album);
+        if (result.duplicate) return interaction.editReply("🌸 Você já guardou esta personagem na sua coleção. (" + result.count + "/" + benefits.album + ")");
+        if (result.full) return interaction.editReply("📚 Sua coleção atingiu o limite atual de " + result.capacity + " personagens. Suas waifus antigas continuam guardadas, mas você precisa liberar espaço ou obter um plano com maior capacidade.");
+        return interaction.editReply("🌸 **Personagem guardada!** Rank **" + (result.rarity.rank === "∞" ? "Suprema (∞)" : result.rarity.rank) + "** · Valor **" + money(result.rarity.value) + "**. Agora você tem **" + result.count + "/" + benefits.album + "** waifus no seu arquivo lunar.");
       }
     } catch (error) {
       console.error("[Yukina waifu button]", error);
