@@ -39,15 +39,19 @@ async function getXpMultiplier(guildId, member) {
       return 1;
     }
   }
-  let multiplier = 1;
+  // Se o membro tiver vários cargos configurados, aplica somente o maior multiplicador.
+  // O cargo não precisa ser exclusivo: qualquer combinação de cargos é aceita.
+  let highestMultiplier = null;
   for (const rule of rules || []) {
     const roleId = String(rule?.role || "");
     const value = Number(rule?.multiplier);
     if (roleId && member.roles.cache.has(roleId) && Number.isFinite(value) && value >= 0.1) {
-      multiplier = Math.max(multiplier, value);
+      highestMultiplier = highestMultiplier === null
+        ? value
+        : Math.max(highestMultiplier, value);
     }
   }
-  return multiplier;
+  return highestMultiplier ?? 1;
 }
 
 
