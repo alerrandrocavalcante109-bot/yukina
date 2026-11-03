@@ -4,9 +4,42 @@ const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const memberData = require("../member-data");
 const xpRoleStorage = require("../system-storage").forSystem("xp-level-roles");
+const { getVipCollection } = require("../vip-store");
 
 const WIDTH = 1000;
 const HEIGHT = 430;
+async function getActivePlan(userId) {
+  try {
+    const subscriptions = await getVipCollection();
+    const active = await subscriptions.find({
+      userId: String(userId),
+      status: "active",
+      expiresAt: { $gt: new Date() },
+    }).toArray();
+
+    const tiers = { starter: 1, plus: 2, premium: 3, ultra: 4, infinity: 5 };
+    const selected = active
+      .filter(subscription => tiers[String(subscription.planKey || "").toLowerCase()])
+      .sort((a, b) =>
+        tiers[String(b.planKey).toLowerCase()] - tiers[String(a.planKey).toLowerCase()]
+      )[0];
+
+    if (!selected) return null;
+    const planKey = String(selected.planKey).toLowerCase();
+    const names = {
+      starter: "Starter",
+      plus: "Plus",
+      premium: "Premium",
+      ultra: "Ultra",
+      infinity: "Infinity",
+    };
+    return { name: names[planKey] };
+  } catch (error) {
+    console.error("[Yukina /xp] Não consegui consultar o plano ativo:", error.message);
+    return null;
+  }
+}
+
 async function getActiveMultiplierRole(guild, userId) {
   try {
     const storage = require("../system-storage").forSystem("xp-multipliers");
@@ -134,6 +167,7 @@ async function buildRankCard(user, record, position, total, guild) {
   const current = levelForXp(xp);
   const highestXpRole = await getHighestConfiguredXpRole(guild);
   const activeMultiplierRole = await getActiveMultiplierRole(guild, user.id);
+  const activePlan = await getActivePlan(user.id);
   const displayName = normalizeCanvasName(user.globalName || user.username || "Aventureiro");
 
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
@@ -239,6 +273,11 @@ async function buildRankCard(user, record, position, total, guild) {
     drawText(ctx, multiplierValue, 164, 155, "bold 7px sans-serif", "#ffffff", 40);
   } else {
     drawText(ctx, "MULTIPLICADOR: nenhum cargo ativo", 13, 155, "bold 6.8px sans-serif", "#c9d8ec", 192);
+  }
+
+  // O plano só aparece quando existe uma assinatura ativa e dentro da validade.
+  if (activePlan) {
+    drawText(ctx, "PLANO: " + activePlan.name, 13, 171, "bold 8px sans-serif", "#ffd98f", 192);
   }
 
   return canvas.toBuffer("image/png");
