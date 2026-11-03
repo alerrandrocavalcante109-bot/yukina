@@ -256,7 +256,13 @@ async function finish(client, runId) {
         continue;
       }
       let success = false;
+      let leftDuringAttempts = false;
       for (let attempt = 1; attempt <= 5; attempt++) {
+        const stillInServer = guild ? await guild.members.fetch(String(userId)).catch(() => null) : null;
+        if (!stillInServer) {
+          leftDuringAttempts = true;
+          break;
+        }
         try {
           await creditWinner(run.guildId, userId, run.reward, runId);
           success = true;
@@ -265,6 +271,11 @@ async function finish(client, runId) {
           console.error("[Drop Automático] Tentativa " + attempt + "/5 falhou para " + userId + ":", error.message || error);
           if (attempt < 5) await wait(attempt * 2500);
         }
+      }
+      if (leftDuringAttempts) {
+        forfeited.push(String(userId));
+        await runs.updateOne({ _id: id }, { $addToSet: { forfeited: String(userId) } });
+        continue;
       }
       if (success) {
         paid.push(String(userId));
