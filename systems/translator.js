@@ -134,79 +134,126 @@ async function refundDailyCredits(userId, cost, date) {
   );
 }
 
+function detectSourceLanguage(text) {
+  const value = String(text || "").toLowerCase();
+  if (/[ぁ-ゟ゠-ヿ]/u.test(value)) return "ja";
+  if (/[一-鿿]/u.test(value)) return "zh-CN";
+  if (/[А-Яа-яЁё]/u.test(value)) return "ru";
+
+  const words = value.match(/[a-záàâãéêíóôõúüçñ]+/gu) || [];
+  const scores = {
+    pt: ["não", "uma", "que", "para", "com", "você", "vocês", "está", "são", "por", "como", "mas", "mais", "isso", "bem", "obrigado"],
+    en: ["the", "and", "you", "that", "this", "with", "for", "are", "is", "what", "how", "not", "have", "your", "hello"],
+    es: ["que", "los", "las", "una", "para", "con", "está", "cómo", "hola", "gracias", "pero", "muy", "por", "del"],
+    fr: ["que", "les", "des", "une", "pour", "avec", "est", "vous", "comment", "bonjour", "merci", "pas", "mais", "dans"],
+  };
+  const totals = Object.fromEntries(Object.entries(scores).map(([lang, terms]) => [
+    lang, words.reduce((sum, word) => sum + (terms.includes(word) ? 1 : 0), 0)
+  ]));
+  if (/[ãõ]/u.test(value) || /\b(você|vocês|obrigado|obrigada|também|não|estou|estamos)\b/u.test(value)) totals.pt += 3;
+  if (/[ñ¿¡]/u.test(value) || /\b(hola|gracias|estoy|estamos|ustedes)\b/u.test(value)) totals.es += 3;
+  if (/[àâæçéèêëîïôœùûüÿ]/u.test(value) || /\b(bonjour|merci|vous|nous|avec|être)\b/u.test(value)) totals.fr += 3;
+  const ranked = Object.entries(totals).sort((a, b) => b[1] - a[1]);
+  return ranked[0][1] > 0 ? ranked[0][0] : "en";
+}
+
+function splitForMyMemory(text, maxBytes = 450) {
+  const words = String(text).match(/\S+\s*/gu) || [];
+  const chunks = [];
+  let current = "";
+  for (const word of words) {
+    if (Buffer.byteLength(word, "utf8") > maxBytes) {
+      if (current) chunks.push(current);
+      current = "";
+      let part = "";
+      for (const char of word) {
+        if (Buffer.byteLength(part + char, "utf8") > maxBytes) {
+          chunks.push(part);
+          part = "";
+        }
+        part += char;
+      }
+      current = part;
+      continue;
+    }
+    if (current && Buffer.byteLength(current + word, "utf8") > maxBytes) {
+      chunks.push(current);
+      current = word;
+    } else {
+      current += word;
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
 async function translateToPortuguese(text) {
   const phrase = String(text || "").trim();
   if (!phrase) throw new Error("EMPTY");
   if (phrase.length > MAX_INPUT) throw new Error("TOO_LONG");
 
-  const apiKey = String(process.env.AZURE_TRANSLATOR_KEY || "").trim();
-  const region = String(process.env.AZURE_TRANSLATOR_REGION || "").trim();
-  const endpoint = String(
-    process.env.AZURE_TRANSLATOR_ENDPOINT || "https://api.cognitive.microsofttranslator.com"
-  ).trim().replace(/\/+$/, "");
-
-  if (!apiKey) throw new Error("TRANSLATION_NOT_CONFIGURED");
-
-  const url = endpoint + "/translate?api-version=3.0&to=pt";
-  let response;
-  try {
-    response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Ocp-Apim-Subscription-Key": apiKey,
-        ...(region ? { "Ocp-Apim-Subscription-Region": region } : {}),
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-      body: JSON.stringify([{ Text: phrase }]),
-      signal: AbortSignal.timeout(30000),
-    });
-  } catch (error) {
-    const failure = new Error("TRANSLATION_SERVICE");
-    failure.details = error?.name || "NETWORK_ERROR";
-    throw failure;
-  }
-
-  if (!response.ok) {
-    let detail = "HTTP_" + response.status;
-    try {
-      const body = await response.json();
-      detail = String(body?.error?.message || detail).slice(0, 300);
-    } catch {}
-    const failure = new Error("TRANSLATION_SERVICE");
-    failure.details = "Microsoft Translator: " + detail;
-    throw failure;
-  }
-
-  let data;
-  try {
-    data = await response.json();
-  } catch {
-    throw new Error("NO_RESULT");
-  }
-
-  const item = Array.isArray(data) ? data[0] : null;
-  const translated = String(item?.translations?.[0]?.text || "").trim();
-  if (!translated) {
-    const failure = new Error("TRANSLATION_SERVICE");
-    failure.details = "EMPTY_TRANSLATION_RESPONSE";
-    throw failure;
-  }
-
-  const detected = String(item?.detectedLanguage?.language || "auto").toLowerCase();
-  const sourceLanguage = detected === "zh-hans" ? "zh-CN"
-    : detected === "zh-hant" ? "zh-TW"
-    : detected;
-
-  if (sourceLanguage !== "auto" && !SUPPORTED_SOURCE_LANGUAGES.has(sourceLanguage)) {
+  const sourceLanguage = detectSourceLanguage(phrase);
+  if (!SUPPORTED_SOURCE_LANGUAGES.has(sourceLanguage)) {
     const failure = new Error("UNSUPPORTED_LANGUAGE");
     failure.detectedLanguage = sourceLanguage;
     throw failure;
   }
+  if (sourceLanguage === "pt") {
+    return { original: phrase, translated: phrase, sourceLanguage };
+  }
+
+  const contactEmail = String(process.env.MYMEMORY_EMAIL || "").trim();
+  const chunks = splitForMyMemory(phrase);
+  const translatedParts = [];
+
+  for (const chunk of chunks) {
+    const params = new URLSearchParams({
+      q: chunk,
+      langpair: sourceLanguage + "|pt",
+      mt: "1",
+    });
+    if (contactEmail) params.set("de", contactEmail);
+
+    let response;
+    try {
+      response = await fetch("https://api.mymemory.translated.net/get?" + params.toString(), {
+        method: "GET",
+        headers: { Accept: "application/json" },
+        signal: AbortSignal.timeout(30000),
+      });
+    } catch (error) {
+      const failure = new Error("TRANSLATION_SERVICE");
+      failure.details = error?.name || "NETWORK_ERROR";
+      throw failure;
+    }
+
+    let data;
+    try {
+      data = await response.json();
+    } catch {
+      const failure = new Error("TRANSLATION_SERVICE");
+      failure.details = "INVALID_RESPONSE";
+      throw failure;
+    }
+
+    if (!response.ok || Number(data?.responseStatus) !== 200) {
+      const failure = new Error("TRANSLATION_SERVICE");
+      failure.details = "MyMemory: " + String(data?.responseDetails || "HTTP_" + response.status).slice(0, 250);
+      throw failure;
+    }
+
+    const translated = String(data?.responseData?.translatedText || "").trim();
+    if (!translated) {
+      const failure = new Error("TRANSLATION_SERVICE");
+      failure.details = "MyMemory: EMPTY_TRANSLATION_RESPONSE";
+      throw failure;
+    }
+    translatedParts.push(translated);
+  }
 
   return {
     original: phrase,
-    translated,
+    translated: translatedParts.join(""),
     sourceLanguage,
   };
 }
