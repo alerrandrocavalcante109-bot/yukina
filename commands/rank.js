@@ -97,7 +97,7 @@ async function getHighestConfiguredXpRole(guild) {
     return {
       level: highestRule.level,
       roleName: role?.name || "Cargo não encontrado",
-      requiredXp: (highestRule.level - 1) * 1000,
+      requiredXp: highestRule.level * 1000,
     };
   } catch (error) {
     console.error("[Yukina /xp] Não consegui consultar o cargo máximo de XP:", error.message);
@@ -108,8 +108,8 @@ async function getHighestConfiguredXpRole(guild) {
 function levelForXp(xp) {
   const total = Math.max(0, Number(xp) || 0);
   const level = Math.floor(total / 1000) + 1;
-  const currentLevelXp = (level - 1) * 1000;
-  const nextLevelXp = level * 1000;
+  const currentLevelXp = level * 1000;
+  const nextLevelXp = (level + 1) * 1000;
   return {
     level,
     name: level < 5 ? "Iniciante" : level < 15 ? "Aprendiz" : level < 30 ? "Explorador" : level < 50 ? "Veterano" : level < 100 ? "Lendário" : "Mítico",
@@ -155,7 +155,7 @@ function drawText(ctx, text, x, y, font, color, maxWidth) {
 }
 
 async function buildRankCard(user, record, position, total, guild) {
-  // Renderização em alta densidade: mantém proporção 220x160 e textos nítidos.
+  // Renderização em alta densidade: cartão lógico de 220x180 com textos nítidos.
   const SCALE = 3;
   const CARD_W = 220;
   const CARD_H = 180;
