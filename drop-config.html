@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Configurar Drop · Yukina</title>
+<style>
+:root{color-scheme:dark;--bg:#100d1c;--card:#1b162b;--line:#ffffff20;--text:#f7f1ff;--muted:#bdb2d2;--pink:#e8a9d2;--violet:#bba5f7;--good:#8fe0b3}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at 20% 0%,#49305d66,transparent 45%),radial-gradient(ellipse at 90% 90%,#3d315e66,transparent 45%),var(--bg);color:var(--text);font:16px/1.55 system-ui,-apple-system,Segoe UI,sans-serif;padding:28px 16px}
+main{width:min(760px,100%);margin:0 auto}.brand{color:var(--pink);letter-spacing:.12em;font-size:.78rem;text-transform:uppercase}.hero{margin:12px 0 22px}.hero h1{font-size:clamp(1.8rem,5vw,2.6rem);line-height:1.15;margin:0 0 10px}.hero p,.muted{color:var(--muted)}.card{background:#1b162beF;border:1px solid var(--line);border-radius:20px;padding:22px;margin:16px 0;box-shadow:0 18px 55px #0003}.step{display:flex;gap:12px;align-items:center;margin-bottom:14px}.num{display:grid;place-items:center;width:30px;height:30px;border-radius:50%;background:#bba5f722;color:var(--violet);font-weight:700}.step h2{font-size:1.08rem;margin:0}.meta{display:flex;gap:9px;flex-wrap:wrap;margin:12px 0}.pill{border:1px solid var(--line);border-radius:999px;padding:5px 11px;color:var(--pink);font-size:.85rem}select,button{font:inherit}select{width:100%;padding:13px 14px;background:#100d1c;color:var(--text);border:1px solid #ffffff30;border-radius:12px}button{border:0;border-radius:12px;padding:13px 18px;font-weight:700;cursor:pointer;background:linear-gradient(110deg,#d99bc8,#a997ef);color:#1b1325}button:disabled{opacity:.5;cursor:not-allowed}.channels{display:grid;gap:9px;margin-top:12px}.channel{display:flex;align-items:center;gap:11px;padding:12px;border:1px solid var(--line);border-radius:12px;background:#ffffff06}.channel input{width:18px;height:18px;accent-color:#c4a5f3}.channel span{flex:1}.channel small{color:var(--muted)}.actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:18px}.status{margin-top:13px;color:var(--muted);white-space:pre-wrap}.status.good{color:var(--good)}.status.error{color:#ffaaaa}.hidden{display:none!important}.summary{padding:14px;border-radius:12px;background:#ffffff08;border:1px solid var(--line);margin-top:14px}.link{color:var(--pink)}footer{text-align:center;color:var(--muted);font-size:.85rem;padding:22px}
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">❄ Yukina · Sob o luar, entre estrelas</div>
+  <header class="hero"><h1>Configuração do Drop Automático</h1><p>Escolha onde seus Drops serão publicados. Toda a configuração acontece aqui no painel, sem menus extensos na DM.</p></header>
+  <section class="card" id="loginCard"><h2>Entre com sua conta Discord</h2><p class="muted">Use a mesma conta que recebeu a assinatura da Yukina.</p><button id="loginButton">Entrar com Discord</button><p class="status" id="loginStatus"></p></section>
+  <section class="card hidden" id="configCard">
+    <div class="step"><span class="num">1</span><h2>Seu plano</h2></div>
+    <div class="meta"><span class="pill" id="planName">Carregando plano…</span><span class="pill" id="channelLimit">—</span></div>
+    <p class="muted" id="expiresAt"></p>
+    <div class="step" style="margin-top:24px"><span class="num">2</span><h2>Escolha o servidor</h2></div>
+    <select id="guildSelect"><option value="">Carregando servidores…</option></select>
+    <div id="channelSection" class="hidden">
+      <div class="step" style="margin-top:24px"><span class="num">3</span><h2>Escolha os canais</h2></div>
+      <p class="muted" id="channelHelp"></p>
+      <div class="channels" id="channels"></div>
+      <div class="summary" id="summary">Selecione os canais em que a Yukina poderá publicar os Drops.</div>
+      <div class="actions"><button id="saveButton" disabled>Confirmar configuração</button><button id="reloadButton" type="button">Atualizar canais</button></div>
+    </div>
+    <p class="status" id="status"></p>
+  </section>
+  <footer>🌸 Yukina · A configuração só será ativada depois da sua confirmação.</footer>
+</main>
+<script>
+(()=>{
+const API="https://yukina-s1lz.onrender.com";
+const $=id=>document.getElementById(id);
+let accessToken="",limit=1,guilds=[],channels=[],saved=null;
+function status(message,type=""){const el=$("status");el.textContent=message;el.className="status "+type;}
+function setToken(value){accessToken=value;localStorage.setItem("yukina_discord_token",value);}
+async function token(){
+ let t=localStorage.getItem("yukina_discord_token")||"";
+ const expiry=Number(localStorage.getItem("yukina_discord_token_expires_at")||0);
+ if(t&&(!expiry||Date.now()<expiry))return t;
+ const refresh=localStorage.getItem("yukina_discord_refresh_token");
+ if(!refresh)return "";
+ const response=await fetch(API+"/api/oauth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh})});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok||!data.access_token)return "";
+ setToken(data.access_token);
+ if(data.refresh_token)localStorage.setItem("yukina_discord_refresh_token",data.refresh_token);
+ localStorage.setItem("yukina_discord_token_expires_at",String(Date.now()+Math.max(60000,Number(data.expires_in||3600)*1000-60000)));
+ return data.access_token;
+}
+async function api(path,options={}){
+ const t=await token();if(!t)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+ const response=await fetch(API+path,{...options,headers:{Authorization:"Bearer "+t,Accept:"application/json",...(options.headers||{})},cache:"no-store"});
+ const data=await response.json().catch(()=>({}));
+ if(!response.ok)throw new Error(data.detail||"Não foi possível carregar os dados.");
+ return data;
+}
+function renderChannels(){
+ const box=$("channels");box.replaceChildren();
+ channels.forEach(channel=>{
+  const label=document.createElement("label");label.className="channel";
+  const input=document.createElement("input");input.type="checkbox";input.value=channel.id;input.checked=Boolean(saved?.channelIds?.includes(channel.id));
+  const name=document.createElement("span");name.textContent="#"+channel.name;
+  const id=document.createElement("small");id.textContent=channel.id;
+  label.append(input,name,id);box.append(label);
+  input.addEventListener("change",updateSummary);
+ });
+ updateSummary();
+}
+function updateSummary(){
+ const selected=[...$("channels").querySelectorAll("input:checked")];
+ $("summary").textContent=selected.length+" de "+limit+" canal(is) selecionado(s).";
+ $("saveButton").disabled=!selected.length||selected.length>limit;
+ $("channels").querySelectorAll("input:not(:checked)").forEach(input=>input.disabled=selected.length>=limit);
+}
+async function loadChannels(guildId){
+ $("channelSection").classList.add("hidden");$("channels").replaceChildren();status("Carregando canais do servidor…");
+ try{
+  const data=await api("/api/guilds/"+encodeURIComponent(guildId)+"/resources");
+  channels=(data.channels||[]).filter(ch=>Number(ch.type)===0);
+  if(!channels.length)throw new Error("Não encontrei canais de texto neste servidor.");
+  $("channelHelp").textContent="Seu plano permite selecionar até "+limit+" canal(is). A Yukina precisa conseguir ver e enviar mensagens nos canais escolhidos.";
+  $("channelSection").classList.remove("hidden");renderChannels();status("");
+ }catch(error){status(error.message,"error");}
+}
+async function init(){
+ try{
+  const t=await token();if(!t){$("loginCard").classList.remove("hidden");return;}
+  const [info,serverList]=await Promise.all([api("/api/drop/config"),api("/api/oauth/guilds")]);
+  saved=info.config;limit=Number(info.channelLimit)||1;
+  $("planName").textContent="Plano "+info.planName;
+  $("channelLimit").textContent="Até "+limit+" canal(is)";
+  $("expiresAt").textContent=info.expiresAt?"Válido até "+new Date(info.expiresAt).toLocaleDateString("pt-BR"):"";
+  guilds=Array.isArray(serverList)?serverList:[];
+  const select=$("guildSelect");select.replaceChildren(new Option("Selecione um servidor…",""));
+  guilds.forEach(g=>select.add(new Option(g.name,g.id)));
+  if(!guilds.length)throw new Error("Não encontrei servidores em que você tenha permissão de gerenciar e onde a Yukina esteja presente.");
+  $("configCard").classList.remove("hidden");
+  if(saved?.guildId&&guilds.some(g=>g.id===saved.guildId)){select.value=saved.guildId;await loadChannels(saved.guildId);}
+ }catch(error){$("loginCard").classList.remove("hidden");$("loginStatus").textContent=error.message;}
+}
+$("loginButton").addEventListener("click",()=>location.href="./login.html");
+$("guildSelect").addEventListener("change",event=>{saved={...saved,channelIds:[]};if(event.target.value)loadChannels(event.target.value);else $("channelSection").classList.add("hidden");});
+$("reloadButton").addEventListener("click",()=>{if($("guildSelect").value)loadChannels($("guildSelect").value);});
+$("saveButton").addEventListener("click",async()=>{
+ const guildId=$("guildSelect").value,channelIds=[...$("channels").querySelectorAll("input:checked")].map(input=>input.value);
+ if(!guildId||!channelIds.length||channelIds.length>limit)return;
+ $("saveButton").disabled=true;status("Salvando e ativando o Drop Automático…");
+ try{
+  const data=await api("/api/drop/config",{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({guildId,channelIds})});
+  saved={guildId,channelIds,enabled:true};status(data.scheduled===false?(data.detail||"Configuração salva; o agendador precisa de revisão."):"🌸 Configuração confirmada! O Drop Automático foi ativado.",data.scheduled===false?"error":"good");
+ }catch(error){status(error.message,"error");}
+ finally{updateSummary();}
+});
+init();
+})();
+</script>
+</body></html>
