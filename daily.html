@@ -311,14 +311,16 @@
         menuAvatar.src=avatar.src;
         menuAvatar.alt=avatar.alt;
         menuTitle.textContent=name.textContent;
+        menu.style.display="flex";
         menu.classList.add("open");
         menu.setAttribute("aria-hidden","false");
         backButton.focus();
       };
       const closeMenu=()=>{
         menu.classList.remove("open");
+        menu.style.display="none";
         menu.setAttribute("aria-hidden","true");
-        profile.focus();
+        profile.focus({preventScroll:true});
       };
       profile.setAttribute("role","button");
       profile.setAttribute("tabindex","0");
@@ -328,7 +330,7 @@
       profile.addEventListener("keydown",event=>{
         if(event.key==="Enter"||event.key===" "){event.preventDefault();openMenu();}
       });
-      backButton.addEventListener("click",closeMenu);
+      backButton.addEventListener("click",event=>{event.preventDefault();event.stopPropagation();closeMenu();});
       menu.addEventListener("click",event=>{if(event.target===menu)closeMenu();});
       document.addEventListener("keydown",event=>{if(event.key==="Escape"&&menu.classList.contains("open"))closeMenu();});
       const getStored=key=>{try{return localStorage.getItem(key)||""}catch(_){return""}};
