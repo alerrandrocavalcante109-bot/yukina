@@ -742,6 +742,76 @@ async function panelApi(req, res, url) {
     console.info("[Tickets] Rota /api/tickets/publish acionada.");
     try { return await publishTicketPanel(req, res); } catch (error) { console.error("[Tickets] Erro na rota de publicação:", error.stack || error.message || error); return sendJson(res, 500, { detail: "Falha ao publicar o painel de atendimento: " + String(error.message || "erro interno").slice(0, 180) }); }
   }
+  if (url.pathname === "/api/drop/config") {
+    if (!["GET", "PUT"].includes(req.method)) return sendJson(res, 405, { detail: "Use GET ou PUT." });
+    try {
+      const auth = String(req.headers.authorization || "");
+      const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!accessToken) return sendJson(res, 401, { detail: "Entre com o Discord para configurar seu Drop." });
+      const userResponse = await fetch("https://discord.com/api/users/@me", { headers: { Authorization: "Bearer " + accessToken }, signal: AbortSignal.timeout(10000) });
+      const user = userResponse.ok ? await userResponse.json().catch(() => null) : null;
+      if (!user?.id || !/^\d{17,20}$/.test(String(user.id))) return sendJson(res, 401, { detail: "Sua sessão expirou. Entre novamente com o Discord." });
+      const subscription = await getActiveUserSubscription(user.id);
+      const planKey = String(subscription?.planKey || "").toLowerCase();
+      const planLimits = { starter: 1, plus: 1, premium: 2, ultra: 3, infinity: 5 };
+      if (!subscription || !planLimits[planKey]) return sendJson(res, 403, { detail: "Você precisa de uma assinatura ativa para configurar o Drop Automático." });
+      if (!MONGODB_URI) return sendJson(res, 503, { detail: "O banco de dados não está configurado." });
+      settingsMongoClient = settingsMongoClient || new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+      await settingsMongoClient.connect();
+      const collection = settingsMongoClient.db(MONGODB_DB).collection("drop_auto_configs");
+      await collection.createIndex({ userId: 1 }, { unique: true });
+      if (req.method === "GET") {
+        const config = await collection.findOne({ userId: String(user.id) });
+        return sendJson(res, 200, {
+          ok: true, plan: planKey, planName: planKey[0].toUpperCase() + planKey.slice(1),
+          channelLimit: planLimits[planKey], expiresAt: subscription.expiresAt || null,
+          config: config ? { guildId: config.guildId || "", channelIds: Array.isArray(config.channelIds) ? config.channelIds : [], enabled: Boolean(config.enabled), status: config.status || "" } : null
+        });
+      }
+      const body = await readBody(req);
+      const guildId = String(body.guildId || "");
+      const channelIds = Array.isArray(body.channelIds) ? [...new Set(body.channelIds.map(String))] : [];
+      if (!/^\d{17,20}$/.test(guildId) || !channelIds.length || channelIds.length > planLimits[planKey] || channelIds.some(id => !/^\d{17,20}$/.test(id))) {
+        return sendJson(res, 400, { detail: "Selecione um servidor e de 1 até " + planLimits[planKey] + " canal(is) válido(s)." });
+      }
+      const authorized = await authorizePanel(req, guildId);
+      if (String(authorized.user.id) !== String(user.id)) return sendJson(res, 403, { detail: "A conta autenticada não corresponde à configuração." });
+      const guild = authorized.guild;
+      const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
+      if (!botMember) return sendJson(res, 503, { detail: "Não consegui validar as permissões da Yukina neste servidor." });
+      const channels = [];
+      for (const channelId of channelIds) {
+        const channel = await guild.channels.fetch(channelId).catch(() => null);
+        if (!channel || channel.type !== ChannelType.GuildText) return sendJson(res, 400, { detail: "Todos os canais devem ser canais de texto válidos do servidor selecionado." });
+        const permissions = channel.permissionsFor(botMember);
+        if (!permissions?.has(PermissionsBitField.Flags.ViewChannel) || !permissions?.has(PermissionsBitField.Flags.SendMessages) || !permissions?.has(PermissionsBitField.Flags.EmbedLinks)) {
+          return sendJson(res, 403, { detail: "A Yukina precisa de Ver canal, Enviar mensagens e Incorporar links em #" + channel.name + "." });
+        }
+        channels.push(channel);
+      }
+      const now = new Date();
+      await collection.updateOne({ userId: String(user.id) }, {
+        $set: {
+          userId: String(user.id), planKey, status: "active", enabled: true,
+          guildId: guild.id, guildName: guild.name, channelIds: channels.map(channel => channel.id),
+          activatedAt: now, updatedAt: now, surface: "web-panel"
+        },
+        $setOnInsert: { createdAt: now }
+      }, { upsert: true });
+      try {
+        const dropAuto = require("./components/buttons/drop-auto");
+        await dropAuto.activateConfig(client, String(user.id));
+      } catch (error) {
+        console.error("[Drop painel] Configuração salva, mas o agendador não iniciou:", error.message || error);
+        return sendJson(res, 200, { ok: true, scheduled: false, detail: "Configuração salva. A equipe precisará verificar o agendador." });
+      }
+      return sendJson(res, 200, { ok: true, scheduled: true, guild: { id: guild.id, name: guild.name }, channels: channels.map(channel => ({ id: channel.id, name: channel.name })) });
+    } catch (error) {
+      console.error("[Drop painel] Falha ao consultar/salvar configuração:", error.stack || error.message || error);
+      return sendJson(res, error.status || 500, { detail: error.message || "Não foi possível processar a configuração do Drop." });
+    }
+  }
+
   if (url.pathname === "/api/oauth/me") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para consultar o perfil." });
     const auth = String(req.headers.authorization || "");
