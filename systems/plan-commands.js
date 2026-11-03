@@ -127,37 +127,45 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     const inventory = db.collection("vip_plan_inventory");
     const nowAfterRoll = new Date();
 
-    if (reward > 0) {
-      await balances.updateOne(
-        { guildId: String(interaction.guild.id), userId: String(interaction.user.id) },
-        { $inc: { balance: reward }, $set: { updatedAt: nowAfterRoll }, $setOnInsert: { guildId: String(interaction.guild.id), userId: String(interaction.user.id), createdAt: nowAfterRoll } },
-        { upsert: true }
-      );
-    }
+    const session = mongoClient.startSession();
+    try {
+      await session.withTransaction(async () => {
+        if (reward > 0) {
+          await balances.updateOne(
+            { guildId: String(interaction.guild.id), userId: String(interaction.user.id) },
+            { $inc: { balance: reward }, $set: { updatedAt: nowAfterRoll }, $setOnInsert: { guildId: String(interaction.guild.id), userId: String(interaction.user.id), createdAt: nowAfterRoll } },
+            { upsert: true, session }
+          );
+        }
 
-    if (result.item) {
-      await inventory.insertOne({
-        guildId: String(interaction.guild.id),
-        userId: String(interaction.user.id),
-        command,
-        item: result.item,
-        obtainedAt: nowAfterRoll,
-        status: "unclaimed",
+        if (result.item) {
+          await inventory.insertOne({
+            guildId: String(interaction.guild.id),
+            userId: String(interaction.user.id),
+            command,
+            item: result.item,
+            obtainedAt: nowAfterRoll,
+            status: "unclaimed",
+          }, { session });
+        }
+
+        await ledger.insertOne({
+          guildId: String(interaction.guild.id),
+          userId: String(interaction.user.id),
+          command,
+          planKey: String(subscription.planKey).toLowerCase(),
+          amount: reward,
+          item: result.item || null,
+          details: result.details || null,
+          claimId: claim.claimId,
+          createdAt: nowAfterRoll,
+        }, { session });
       });
+    } finally {
+      await session.endSession();
     }
 
     const balanceDoc = await balances.findOne({ guildId: String(interaction.guild.id), userId: String(interaction.user.id) });
-    await ledger.insertOne({
-      guildId: String(interaction.guild.id),
-      userId: String(interaction.user.id),
-      command,
-      planKey: String(subscription.planKey).toLowerCase(),
-      amount: reward,
-      item: result.item || null,
-      details: result.details || null,
-      claimId: claim.claimId,
-      createdAt: nowAfterRoll,
-    });
 
     const embed = new EmbedBuilder()
       .setColor(result.color || 0xA7D8F0)
