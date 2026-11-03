@@ -12,7 +12,7 @@ const updateLocks = new Set();
 // Cada nível exige mais 1.000 XP acumulados. O XP nunca é zerado ao subir.
 function getCurrentLevel(xp) {
   const value = Math.max(0, Number(xp) || 0);
-  return Math.min(100, Math.floor(value / 1000) + 1);
+  return Math.floor(value / 1000) + 1;
 }
 
 const knownConfiguredRoleIds = new Map();
