@@ -90,7 +90,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
   // O Discord exige uma confirmação em até 3 segundos. As consultas de plano,
   // MongoDB e transação podem demorar; deferimos antes de iniciar esse trabalho.
   try {
-    if (!interaction.deferred && !interaction.replied) {
+    if (typeof interaction.deferReply === "function" && !interaction.deferred && !interaction.replied) {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     }
   } catch (error) {
