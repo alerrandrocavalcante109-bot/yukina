@@ -36,8 +36,8 @@ const WISH_ITEMS = {
 };
 
 function parseCap(value) {
-  const raw = String(value ?? "").trim().toLowerCase().replace(/\\s+/g, "");
-  const match = raw.match(/^(\\d+(?:[.,]\\d+)?)\\s*([km])?$/);
+  const raw = String(value ?? "").trim().toLowerCase().replace(/\s+/g, "");
+  const match = raw.match(/^(\d+(?:[.,]\d+)?)\s*([km])?$/);
   if (!match) return NaN;
   const number = Number(match[1].replace(",", "."));
   const multiplier = match[2] === "m" ? 1000000 : match[2] === "k" ? 1000 : 1;
