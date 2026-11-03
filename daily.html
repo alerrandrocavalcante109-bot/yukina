@@ -133,21 +133,34 @@
           spin.disabled = !captchaToken;
         }
       };
+      const withTimeout = (promise, ms, message) => Promise.race([
+        promise,
+        new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+      ]);
       const loadTurnstile = async () => {
         try {
+          setStatus("Conectando à API da Yukina...");
           if (!api()) throw new Error("API da Yukina não encontrada.");
-          const response = await fetch(api() + "/api/config/turnstile", { cache: "no-store" });
+          const response = await withTimeout(
+            fetch(api() + "/api/config/turnstile", { cache: "no-store" }),
+            12000,
+            "A API da Yukina demorou para responder. Tente recarregar a página."
+          );
           const config = await response.json().catch(() => ({}));
           if (!response.ok || !config.siteKey) throw new Error("A chave pública da verificação não foi encontrada no Render.");
-          await new Promise((resolve, reject) => {
-            if (window.turnstile) return resolve();
+          setStatus("Carregando verificação de segurança...");
+          await withTimeout(new Promise((resolve, reject) => {
+            if (window.turnstile && typeof window.turnstile.render === "function") return resolve();
             const script = document.createElement("script");
             script.src = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
             script.async = true; script.defer = true;
-            script.onload = resolve;
-            script.onerror = () => reject(new Error("Não foi possível carregar a verificação."));
+            script.onload = () => {
+              if (window.turnstile && typeof window.turnstile.render === "function") resolve();
+              else reject(new Error("O Cloudflare carregou, mas a verificação não foi inicializada."));
+            };
+            script.onerror = () => reject(new Error("O navegador não conseguiu carregar o Cloudflare Turnstile. Verifique sua conexão ou bloqueador de conteúdo."));
             document.head.appendChild(script);
-          });
+          }), 15000, "O Turnstile demorou para carregar. Recarregue a página ou tente outra conexão.");
           widgetId = window.turnstile.render(widget, {
             sitekey: config.siteKey,
             theme: "dark",
