@@ -57,22 +57,10 @@ module.exports = {
         const channelIds = selectedChannel ? [String(selectedChannel.id)] : (config.channelIds || []).map(String);
         const validIds = channelIds.filter(id => config.channelIds?.includes(id));
         if (!validIds.length) return interaction.editReply("❄️ O canal selecionado não pertence à configuração do Drop.");
-        const paused = new Set((config.pausedChannelIds || []).map(String));
+        const dropAuto = require("../components/buttons/drop-auto");
         for (const id of validIds) {
-          if (action === "pause") {
-            paused.add(id);
-            const key = String(config.userId) + ":" + id;
-            const timer = globalThis.__yukinaDropTimers?.get?.(key);
-            if (timer) clearTimeout(timer);
-          } else paused.delete(id);
-        }
-        await configs.updateOne({ _id: config._id }, { $set: { pausedChannelIds: [...paused], updatedAt: new Date() } });
-        if (action === "resume") {
-          const rule = { starter: [18000000, 21600000], plus: [17100000, 19500000], premium: [12000000, 14400000], ultra: [10800000, 13200000], infinity: [3600000, 5700000] }[String(config.planKey).toLowerCase()];
-          if (rule) for (const id of validIds) {
-            const dueAt = Date.now() + Math.floor(Math.random() * (rule[1] - rule[0] + 1)) + rule[0];
-            await configs.updateOne({ _id: config._id }, { $set: { ["nextRunAtByChannel." + id]: dueAt } });
-          }
+          if (action === "pause") await dropAuto.pauseChannel(config, id);
+          else await dropAuto.resumeChannel(interaction.client, config, id);
         }
         return interaction.editReply(action === "pause"
           ? "⏸️ Drop Automático pausado em: " + validIds.map(id => "<#" + id + ">").join(", ")
