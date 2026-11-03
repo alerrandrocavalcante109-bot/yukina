@@ -19,7 +19,7 @@ async function getBalancesCollection() {
 }
 
 function parseAmount(raw) {
-  const normalized = String(raw || "").trim().replace(/[.](?=\\d{3}(?:\\D|$))/g, "").replace(",", ".");
+  const normalized = String(raw || "").trim().replace(/[.](?=\d{3}(?:\D|$))/g, "").replace(",", ".");
   const amount = Number(normalized);
   return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
 }
@@ -100,7 +100,7 @@ module.exports = {
       const results = await addKz(message.guildId, mentions, amount);
       const lines = results.map(({ user, balance }) => "• " + user + " — novo saldo: **" + format(balance) + " KZ**");
       return message.reply({
-        content: "🌸 **" + format(amount) + " KZ adicionadas para " + results.length + " membro(s)!**\\n" + lines.join("\\n"),
+        content: "🌸 **" + format(amount) + " KZ adicionadas para " + results.length + " membro(s)!**\n" + lines.join("\n"),
         allowedMentions: { users: [] }
       });
     } catch (error) {
