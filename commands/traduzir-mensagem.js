@@ -25,7 +25,7 @@ module.exports = {
         embeds: [translator.buildTranslationEmbed(result, interaction.user)],
       });
     } catch (error) {
-      console.error("[Yukina tradução por mensagem] Falha:", error?.message || error);
+      console.error("[Yukina tradução por mensagem] Falha:", error?.message || error, error?.details ? "| Detalhes:" : "", error?.details || "");
       return interaction.editReply({ content: translator.errorMessage(error) });
     }
   },
