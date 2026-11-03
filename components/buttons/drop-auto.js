@@ -188,6 +188,18 @@ async function createManualPayout(client, run, userId, reason) {
     } },
     { upsert: true }
   );
+  const invite = await client.fetchInvite(OFFICIAL_INVITE).catch(error => {
+    console.error("[Drop Automático] Não foi possível resolver o convite oficial:", error.message || error);
+    return null;
+  });
+  const officialGuildId = String(invite?.guild?.id || process.env.YUKINA_OFFICIAL_GUILD_ID || run.guildId);
+  await payouts.updateOne(
+    { runId: String(run._id), userId: String(userId) },
+    { $set: { officialGuildId } }
+  );
+  const officialGuild = client.guilds.cache.get(officialGuildId) || await client.guilds.fetch(officialGuildId).catch(() => null);
+  const alreadyMember = officialGuild ? await officialGuild.members.fetch(String(userId)).catch(() => null) : null;
+  if (alreadyMember) await onMemberJoin(alreadyMember);
   const channel = await client.channels.fetch(String(run.channelId)).catch(() => null);
   if (channel) {
     await channel.send({
@@ -284,10 +296,18 @@ async function finish(client, runId) {
 
 async function onMemberJoin(member) {
   await initDb();
-  const pending = await payouts.find({ guildId: String(member.guild.id), userId: String(member.id), status: "waiting_member" }).toArray();
+  const pending = await payouts.find({
+    officialGuildId: String(member.guild.id), userId: String(member.id), status: "waiting_member"
+  }).toArray();
   for (const payout of pending) {
+    const claim = await payouts.updateOne(
+      { _id: payout._id, status: "waiting_member" },
+      { $set: { status: "creating_channel", channelCreationStartedAt: new Date() } }
+    );
+    if (!claim.modifiedCount) continue;
     const botMember = member.guild.members.me || await member.guild.members.fetch(member.client.user.id).catch(() => null);
     if (!botMember?.permissions.has(PermissionFlagsBits.ManageChannels)) {
+      await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member" } });
       console.error("[Drop Automático] Sem permissão para criar canal de entrega manual em " + member.guild.id);
       continue;
     }
@@ -312,7 +332,10 @@ async function onMemberJoin(member) {
       console.error("[Drop Automático] Não foi possível criar canal privado de entrega:", error);
       return null;
     });
-    if (!privateChannel) continue;
+    if (!privateChannel) {
+      await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member" } });
+      continue;
+    }
     await payouts.updateOne({ _id: payout._id, status: "waiting_member" }, { $set: { status: "staff_review", privateChannelId: privateChannel.id, joinedAt: new Date() } });
     await privateChannel.send({
       content: "🌸 **Entrega manual de Drop Automático**\nMembro: <@" + member.id + ">\nPrêmio pendente: **" + fmt(payout.amount) + "**\nServidor: **" + member.guild.name + "**\nID do Drop: `" + payout.runId + "`\n\nA equipe deve conferir o registro e atribuir o valor manualmente. Após a entrega, marque este atendimento como concluído e feche o canal.",
