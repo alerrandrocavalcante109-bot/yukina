@@ -232,7 +232,20 @@ module.exports = {
         channelIds: channels.map(channel => channel.id), planKey: setup.planKey,
         activatedAt: now, updatedAt: now,
       }, $unset: { setupMessageId: "", selectedGuildId: "", selectedGuildName: "", selectedOwnerId: "", selectedOwnerName: "", selectedChannelIds: "" } });
-      await respond(interaction, { content: "🌸 **Drop Automático ativado!**\nServidor: **" + guild.name + "**\nCanais: " + channels.map(c => c.toString()).join(", ") + "\n\nA Yukina publicará os Drops nos canais escolhidos. Obrigado por configurar! ❄️", components: [] });
+      let schedulerStarted = false;
+      try {
+        const dropAuto = require("../buttons/drop-auto");
+        await dropAuto.activateConfig(interaction.client, interaction.user.id);
+        schedulerStarted = true;
+      } catch (scheduleError) {
+        console.error("[Drop Setup] Configuração salva, mas não consegui iniciar o agendador:", scheduleError);
+      }
+      await respond(interaction, {
+        content: "🌸 **Drop Automático ativado!**\\nServidor: **" + guild.name + "**\\nCanais: " + channels.map(c => c.toString()).join(", ") +
+          (schedulerStarted ? "\\n\\n❄️ O primeiro Drop já foi agendado." : "\\n\\n⚠️ A configuração foi salva, mas o agendador não iniciou. A equipe deve verificar os logs.") +
+          "\\n\\nObrigado por configurar! ❄️",
+        components: []
+      });
       if (setup.surface === "guild-channel" && setup.setupChannelId) {
         const temporary = await interaction.client.channels.fetch(setup.setupChannelId).catch(() => null);
         if (temporary) await temporary.delete("Configuração do Drop Automático concluída").catch(() => {});
