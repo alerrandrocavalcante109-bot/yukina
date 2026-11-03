@@ -57,6 +57,25 @@ function roundedRect(ctx, x, y, width, height, radius) {
   ctx.closePath();
 }
 
+function normalizeCanvasName(value) {
+  const emojiFallbacks = new Map([
+    ["🌸", "❀"], ["🌺", "✿"], ["❄", "✧"], ["✨", "✦"],
+    ["⭐", "★"], ["🌙", "☾"], ["💗", "♡"], ["❤️", "♥"],
+    ["🎀", "◇"], ["🦋", "❋"], ["🔥", "✹"], ["🍁", "❖"],
+  ]);
+  let text = String(value ?? "Aventureiro").normalize("NFKC");
+  for (const [emoji, fallback] of emojiFallbacks) text = text.split(emoji).join(fallback);
+  // Remove seletores de emoji e conectores invisíveis que podem virar quadradinhos.
+  text = text.replace(/[\uFE0E\uFE0F\u200D\u200B\u2060]/g, "");
+  // Mantém letras, acentos, números e símbolos comuns; evita glifos sem suporte no servidor.
+  text = Array.from(text).map(char => {
+    const cp = char.codePointAt(0);
+    if (cp > 0x2FFF) return "·";
+    return char;
+  }).join("");
+  return text.replace(/\s+/g, " ").trim().slice(0, 28) || "Aventureiro";
+}
+
 function drawText(ctx, text, x, y, font, color, maxWidth) {
   ctx.font = font;
   ctx.fillStyle = color;
@@ -75,7 +94,7 @@ async function buildRankCard(user, record, position, total, guild) {
   const xp = Math.max(0, Number(record.xp) || 0);
   const current = levelForXp(xp);
   const nextRole = await getNextConfiguredRole(guild, current.level);
-  const displayName = user.globalName || user.username || "Aventureiro";
+  const displayName = normalizeCanvasName(user.globalName || user.username || "Aventureiro");
 
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
   bg.addColorStop(0, "#101b3b");
@@ -167,7 +186,7 @@ async function buildRankCard(user, record, position, total, guild) {
 
   // Cargo seguinte e requisito.
   if (nextRole) {
-    drawText(ctx, "PRÓXIMO CARGO: " + nextRole.roleName, 13, 139, "bold 7.5px sans-serif", "#ffbce8", 192);
+    drawText(ctx, "PRÓXIMO CARGO: " + normalizeCanvasName(nextRole.roleName), 13, 139, "bold 7.5px sans-serif", "#ffbce8", 192);
     drawText(ctx, "Nível " + nextRole.level + "  •  " + (nextRole.requiredXp ?? ((nextRole.level - 1) * 1000)).toLocaleString("pt-BR") + " XP", 13, 149, "bold 7px sans-serif", "#e5f4ff", 192);
   } else {
     drawText(ctx, "Sem próximo cargo configurado", 13, 144, "bold 7.5px sans-serif", "#d9eaff", 192);
