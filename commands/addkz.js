@@ -19,8 +19,17 @@ async function getBalancesCollection() {
 }
 
 function parseAmount(raw) {
-  const normalized = String(raw || "").trim().replace(/[.](?=\d{3}(?:\D|$))/g, "").replace(",", ".");
-  const amount = Number(normalized);
+  let value = String(raw || "").trim().toLowerCase().replace(/\s+/g, "");
+  const suffix = value.match(/^(\d+(?:[.,]\d+)?)\s*([km])$/);
+  if (suffix) {
+    const base = Number(suffix[1].replace(",", "."));
+    const multiplier = suffix[2] === "k" ? 1_000 : 1_000_000;
+    const amount = base * multiplier;
+    return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
+  }
+
+  value = value.replace(/[.](?=\d{3}(?:\D|$))/g, "").replace(",", ".");
+  const amount = Number(value);
   return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
 }
 
@@ -58,7 +67,7 @@ module.exports = {
     .setName("addkz")
     .setDescription("[administração] Adiciona Kizunas à carteira de um membro.")
     .addUserOption(option => option.setName("usuario").setDescription("Membro que receberá as Kizunas.").setRequired(true))
-    .addIntegerOption(option => option.setName("valor").setDescription("Quantidade de Kizunas a adicionar.").setRequired(true).setMinValue(1).setMaxValue(2147483647))
+    .addIntegerOption(option => option.setName("valor").setDescription("Quantidade de Kizunas (ex.: 5000).").setRequired(true).setMinValue(1).setMaxValue(2147483647))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .setDMPermission(false),
 
@@ -93,7 +102,7 @@ module.exports = {
     }
     const amount = parseAmount(args.slice(separatorIndex + 1).join(""));
     if (!mentions.length || !amount) {
-      return message.reply("🫧 Informe pelo menos um membro e um valor válido. Exemplo: Yaddkz @membro1 @membro2 > 5000");
+      return message.reply("🫧 Informe pelo menos um membro e um valor válido. Exemplos: Yaddkz @membro > 5k ou Yaddkz @membro > 1.5m");
     }
 
     try {
