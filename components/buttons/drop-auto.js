@@ -18,7 +18,7 @@ const RULES = {
   ultra: { interval: [10800000, 13200000], reward: [130000, 150000] },
   infinity: { interval: [3600000, 5700000], reward: [150000, 200000] }
 };
-let mongo, db, configs, runs, subs, balances, payouts, ledger, connecting;
+let mongo, db, configs, runs, subs, balances, payouts, ledger, luck, attempts, connecting;
 const timers = new Map();
 const locks = new Set();
 
@@ -35,13 +35,17 @@ async function initDb() {
     balances = db.collection("economy_balances");
     payouts = db.collection("drop_auto_manual_payouts");
     ledger = db.collection("drop_auto_payout_ledger");
+    luck = db.collection("drop_auto_luck");
+    attempts = db.collection("drop_auto_payout_attempts");
     await Promise.all([
       runs.createIndex({ status: 1, endsAt: 1 }),
       configs.createIndex({ status: 1, enabled: 1, nextRunAt: 1 }),
       payouts.createIndex({ guildId: 1, userId: 1, status: 1 }),
       payouts.createIndex({ runId: 1, userId: 1 }, { unique: true }),
       ledger.createIndex({ runId: 1, userId: 1 }, { unique: true, name: "unique_drop_payout" }),
-      balances.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_balance" })
+      balances.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_balance" }),
+      luck.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_drop_luck" }),
+      attempts.createIndex({ runId: 1, userId: 1, attempt: 1 }, { unique: true, name: "unique_drop_attempt" })
     ]);
     return db;
   })().catch(error => { connecting = null; mongo = null; db = null; throw error; });
@@ -90,6 +94,18 @@ async function schedule(client, config, channelId, dueAt) {
   if (old) clearTimeout(old);
   const target = Number(dueAt) || Date.now() + 1000;
   const delay = Math.max(1000, target - Date.now());
+  const noticeKey = "notice:" + key;
+  const oldNotice = timers.get(noticeKey);
+  if (oldNotice) clearTimeout(oldNotice);
+  if (target - Date.now() > 5 * 60 * 1000) {
+    const notice = setTimeout(async () => {
+      timers.delete(noticeKey);
+      const channel = await client.channels.fetch(String(channelId)).catch(() => null);
+      if (channel?.isTextBased() && channel.send) await channel.send({ content: "🌙 **Atenção!** Um novo Drop Automático começará neste canal em aproximadamente 5 minutos.", allowedMentions: { parse: [] } }).catch(() => {});
+    }, Math.max(1000, target - Date.now() - 5 * 60 * 1000));
+    notice.unref?.();
+    timers.set(noticeKey, notice);
+  }
   const timer = setTimeout(() => {
     timers.delete(key);
     publish(client, config, channelId).catch(async error => {
@@ -136,18 +152,20 @@ async function publish(client, config, channelId) {
       userId: String(current.userId), planKey: String(current.planKey).toLowerCase(),
       guildId: guild.id, channelId: String(channelId), guildName: guild.name,
       reward: rnd(...rule.reward), winnerCount: rnd(1, 5), createdAt: now,
-      endsAt: now + 60000, status: "active", entries: {}, winners: [], payouts: []
+      endsAt: now + 60000, status: "active", entries: {}, winners: [], payouts: [], forfeited: [], createdDate: new Date(now).toISOString().slice(0, 10)
     };
     const inserted = await runs.insertOne(doc);
     doc._id = inserted.insertedId;
     try {
       const message = await channel.send({ embeds: [embed(doc)], components: [row(String(doc._id))], allowedMentions: { parse: [] } });
       await runs.updateOne({ _id: doc._id }, { $set: { messageId: message.id } });
+      await db.collection("drop_auto_history").insertOne({ runId: String(doc._id), guildId: String(guild.id), channelId: String(channelId), ownerId: String(current.userId), planKey: doc.planKey, reward: doc.reward, winnerCount: doc.winnerCount, createdAt: new Date(now), status: "active" });
       const timer = setTimeout(() => finish(client, String(doc._id)).catch(console.error), 60000);
       timer.unref?.();
       timers.set("run:" + doc._id, timer);
     } catch (error) {
       await runs.deleteOne({ _id: doc._id });
+      await db.collection("drop_auto_history").deleteOne({ runId: String(doc._id) });
       throw error;
     }
     await configs.updateOne({ _id: current._id }, { $unset: { ["nextRunAtByChannel." + String(channelId)]: "", nextRunAt: "" } });
@@ -225,8 +243,26 @@ async function finish(client, runId) {
   if (run.status === "active") {
     const participantIds = Object.keys(run.entries || {});
     const winners = [];
+    const luckSnapshot = new Map();
+    for (const userId of participantIds) {
+      const record = await luck.findOne({ guildId: String(run.guildId), userId: String(userId) });
+      luckSnapshot.set(userId, Math.min(5, Math.max(0, Number(record?.points) || 0)));
+    }
     while (participantIds.length && winners.length < Math.min(5, Math.max(1, run.winnerCount))) {
-      winners.push(participantIds.splice(rnd(0, participantIds.length - 1), 1)[0]);
+      const weights = participantIds.map(userId => 1 + (luckSnapshot.get(userId) || 0));
+      const totalWeight = weights.reduce((sum, value) => sum + value, 0);
+      let ticket = Math.random() * totalWeight;
+      let index = 0;
+      for (; index < weights.length - 1; index++) { ticket -= weights[index]; if (ticket < 0) break; }
+      winners.push(participantIds.splice(index, 1)[0]);
+    }
+    for (const userId of Object.keys(run.entries || {})) {
+      const won = winners.includes(userId);
+      await luck.updateOne(
+        { guildId: String(run.guildId), userId: String(userId) },
+        { $set: { points: won ? 0 : Math.min(5, (luckSnapshot.get(userId) || 0) + 1), lastParticipatedAt: new Date(), updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
+        { upsert: true }
+      );
     }
     const claimed = await runs.updateOne(
       { _id: id, status: "active" },
@@ -234,6 +270,7 @@ async function finish(client, runId) {
     );
     if (!claimed.modifiedCount) return;
     run = await runs.findOne({ _id: id });
+    await db.collection("drop_auto_history").updateOne({ runId: String(id) }, { $set: { status: "paying", winners, participantCount: participantIds.length + winners.length, selectedAt: new Date() } });
   }
 
   const guild = await client.guilds.fetch(String(run.guildId)).catch(() => null);
@@ -269,10 +306,13 @@ async function finish(client, runId) {
           break;
         }
         try {
+          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { runId: String(runId), userId: String(userId), attempt, status: "started", startedAt: new Date() } }, { upsert: true });
           await creditWinner(run.guildId, userId, run.reward, runId);
+          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { status: "success", finishedAt: new Date() }, $unset: { error: "" } });
           success = true;
           break;
         } catch (error) {
+          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { status: "failed", finishedAt: new Date(), error: String(error.message || error).slice(0, 500) } }, { upsert: true });
           console.error("[Drop Automático] Tentativa " + attempt + "/5 falhou para " + userId + ":", error.message || error);
           if (attempt < 5) await wait(attempt * 2500);
         }
@@ -304,6 +344,7 @@ async function finish(client, runId) {
   }
 
   await runs.updateOne({ _id: id }, { $set: { status: "ended", endedAt: Date.now() } });
+  await db.collection("drop_auto_history").updateOne({ runId: String(id) }, { $set: { status: "ended", endedAt: new Date(), paidCount: (run.payouts || []).length, forfeitedCount: (run.forfeited || []).length } });
   const config = await configs.findOne({ userId: String(run.userId), status: "active", enabled: true });
   if (config && config.channelIds?.includes(String(run.channelId)) && await validPlan(config.userId, config.planKey)) {
     await scheduleNext(client, config, run.channelId);
@@ -327,8 +368,23 @@ async function onMemberJoin(member) {
       console.error("[Drop Automático] Sem permissão para criar canal de entrega manual em " + member.guild.id);
       continue;
     }
-    const deliveryRole = CARGO_YUKINA ? await member.guild.roles.fetch(CARGO_YUKINA).catch(() => null) : null;
-    if (deliveryRole) overwrites.push({ id: deliveryRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
+    if (!CARGO_YUKINA) {
+      await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member", lastError: "CARGO_YUKINA não configurado", updatedAt: new Date() } });
+      console.error("[Drop Automático] CARGO_YUKINA não configurado; canal privado não será criado.");
+      continue;
+    }
+    const deliveryRole = await member.guild.roles.fetch(CARGO_YUKINA).catch(() => null);
+    if (!deliveryRole) {
+      await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member", lastError: "Cargo CARGO_YUKINA não encontrado neste servidor", updatedAt: new Date() } });
+      console.error("[Drop Automático] O ID CARGO_YUKINA não corresponde a um cargo no servidor oficial.");
+      continue;
+    }
+    const overwrites = [
+      { id: member.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
+      { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
+      { id: member.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] },
+      { id: deliveryRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
+    ];
     const privateChannel = await member.guild.channels.create({
       name: "entrega-drop-" + member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 12) + "-" + member.id.slice(-4),
       type: ChannelType.GuildText,
@@ -358,6 +414,7 @@ async function onMemberJoin(member) {
 async function initialize(client) {
   await initDb();
   client.on("guildMemberAdd", member => onMemberJoin(member).catch(error => console.error("[Drop Automático] Falha no fluxo de entrega manual:", error)));
+  await payouts.updateMany({ status: "creating_channel", channelCreationStartedAt: { $lt: new Date(Date.now() - 5 * 60 * 1000) } }, { $set: { status: "waiting_member", recoveredAt: new Date(), lastError: "Criação de canal interrompida por reinicialização" } });
   for (const run of await runs.find({ status: { $in: ["active", "paying"] } }).toArray()) {
     const delay = run.status === "active" ? Math.max(0, run.endsAt - Date.now()) : 1000;
     const timer = setTimeout(() => finish(client, String(run._id)).catch(console.error), delay);
@@ -418,6 +475,7 @@ async function markManualDelivered(interaction) {
   if (!result.modifiedCount) return interaction.reply({ content: "🌙 Esta entrega já foi registrada.", flags: MessageFlags.Ephemeral });
   await interaction.reply({ content: "🎁 Entrega registrada. Este atendimento será encerrado.", flags: MessageFlags.Ephemeral });
   await interaction.channel.send({ content: "🌸 Prêmio de **" + fmt(payout.amount) + "** marcado como entregue por <@" + interaction.user.id + ">. Atendimento encerrado." });
+  await db.collection("drop_auto_history").updateOne({ runId: payout.runId }, { $push: { manualDeliveries: { userId: payout.userId, amount: payout.amount, deliveredBy: String(interaction.user.id), deliveredAt: new Date() } } });
   await wait(3000);
   await interaction.channel.delete("Entrega manual do Drop confirmada por membro com CARGO_YUKINA").catch(console.error);
 }
