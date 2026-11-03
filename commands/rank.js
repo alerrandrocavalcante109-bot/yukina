@@ -3,9 +3,36 @@
 const { SlashCommandBuilder, AttachmentBuilder } = require("discord.js");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const memberData = require("../member-data");
+const xpRoleStorage = require("../system-storage").forSystem("xp-level-roles");
 
 const WIDTH = 1000;
 const HEIGHT = 430;
+async function getNextConfiguredRole(guild, currentLevel) {
+  try {
+    const config = await xpRoleStorage.get(guild.id, "config", null);
+    const rules = Array.isArray(config?.xpRules) ? config.xpRules : [];
+    const nextRule = rules
+      .map(rule => ({
+        level: Number(rule?.level),
+        roleId: String(rule?.roleId || rule?.role_id || rule?.role || ""),
+      }))
+      .filter(rule => Number.isInteger(rule.level) && rule.level > currentLevel && rule.roleId)
+      .sort((a, b) => a.level - b.level)[0];
+    if (!nextRule) return null;
+    const role = guild.roles.cache.get(nextRule.roleId)
+      || await guild.roles.fetch(nextRule.roleId).catch(() => null);
+    if (!role) return { level: nextRule.level, roleName: "Cargo configurado (não encontrado)" };
+    return {
+      level: nextRule.level,
+      roleName: role.name,
+      requiredXp: (nextRule.level - 1) * 1000,
+    };
+  } catch (error) {
+    console.error("[Yukina /xp] Não consegui consultar o próximo cargo:", error.message);
+    return null;
+  }
+}
+
 function levelForXp(xp) {
   const total = Math.max(0, Number(xp) || 0);
   const level = Math.floor(total / 1000) + 1;
@@ -36,13 +63,14 @@ function drawText(ctx, text, x, y, font, color, maxWidth) {
   ctx.fillText(String(text), x, y, maxWidth);
 }
 
-async function buildRankCard(user, record, position, total) {
+async function buildRankCard(user, record, position, total, guild) {
   const canvas = createCanvas(WIDTH, HEIGHT);
   const ctx = canvas.getContext("2d");
   const xp = Math.max(0, Number(record.xp) || 0);
   const current = levelForXp(xp);
   const nextXp = current.nextLevelXp;
   const progress = current.progress;
+  const nextRole = await getNextConfiguredRole(guild, current.level);
   const displayName = user.globalName || user.username || "Aventureiro";
 
   // Fundo personalizado: noite azul, luar e detalhes de neve da Yukina.
@@ -142,6 +170,12 @@ async function buildRankCard(user, record, position, total) {
   }
   drawText(ctx, progress + "%", 930, 284, "bold 14px sans-serif", "#ffffff", 48);
   drawText(ctx, xp.toLocaleString("pt-BR") + " / " + nextXp.toLocaleString("pt-BR") + " XP para o próximo nível", 270, 316, "15px sans-serif", "#d4e5f8", 650);
+  if (nextRole) {
+    drawText(ctx, "PRÓXIMO CARGO: " + nextRole.roleName, 270, 360, "bold 17px sans-serif", "#f4c9e8", 650);
+    drawText(ctx, "Nível " + nextRole.level + "  ·  " + (nextRole.requiredXp ?? ((nextRole.level - 1) * 1000)).toLocaleString("pt-BR") + " XP necessários", 270, 386, "15px sans-serif", "#d4e5f8", 650);
+  } else {
+    drawText(ctx, "PRÓXIMO CARGO: nenhum cargo futuro configurado", 270, 370, "bold 15px sans-serif", "#c8d9f2", 650);
+  }
   drawText(ctx, total + " membros registrados  ·  Yukina ❄", 270, 405, "12px sans-serif", "#a9c7e8", 650);
 
   return canvas.toBuffer("image/png");
@@ -159,7 +193,7 @@ async function respond(interaction, target) {
     }))
     .sort((a, b) => b.xp - a.xp);
   const index = members.findIndex(item => item.userId === target.id);
-  const buffer = await buildRankCard(target, record, index >= 0 ? index + 1 : null, members.length);
+  const buffer = await buildRankCard(target, record, index >= 0 ? index + 1 : null, members.length, interaction.guild);
   const attachment = new AttachmentBuilder(buffer, { name: "yukina-rank.png" });
   return interaction.reply({
     files: [attachment],
