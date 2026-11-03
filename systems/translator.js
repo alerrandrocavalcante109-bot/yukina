@@ -139,14 +139,38 @@ async function translateToPortuguese(text) {
   if (!phrase) throw new Error("EMPTY");
   if (phrase.length > MAX_INPUT) throw new Error("TOO_LONG");
 
-  const endpoint = "https://translate.googleapis.com/translate_a/single?client=gtx&sl=auto&tl=pt&dt=t&q=" + encodeURIComponent(phrase);
-  const response = await fetch(endpoint, {
-    method: "GET",
-    headers: { "User-Agent": "Mozilla/5.0 YukinaDiscordBot/1.0" },
-    signal: AbortSignal.timeout(15000),
-  });
-  if (!response.ok) throw new Error("TRANSLATION_SERVICE");
-  const data = await response.json();
+  const params = new URLSearchParams({ client: "gtx", sl: "auto", tl: "pt", dt: "t", q: phrase });
+  const hosts = ["translate.googleapis.com", "translate.google.com"];
+  let data = null;
+  const failures = [];
+
+  for (const host of hosts) {
+    const endpoint = "https://" + host + "/translate_a/single?" + params.toString();
+    try {
+      const response = await fetch(endpoint, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
+          "Accept": "application/json,text/plain,*/*",
+        },
+        signal: AbortSignal.timeout(15000),
+      });
+      if (!response.ok) {
+        failures.push(host + ":HTTP_" + response.status);
+        continue;
+      }
+      data = await response.json();
+      break;
+    } catch (error) {
+      failures.push(host + ":" + (error?.name || error?.message || "NETWORK_ERROR"));
+    }
+  }
+
+  if (!data) {
+    const error = new Error("TRANSLATION_SERVICE");
+    error.details = failures.join(", ");
+    throw error;
+  }
   const translated = Array.isArray(data?.[0])
     ? data[0].map(part => Array.isArray(part) ? part[0] : "").filter(Boolean).join("")
     : "";
