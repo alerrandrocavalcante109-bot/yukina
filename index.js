@@ -794,7 +794,7 @@ async function panelApi(req, res, url) {
         $set: {
           userId: String(user.id), planKey, status: "active", enabled: true,
           guildId: guild.id, guildName: guild.name, channelIds: channels.map(channel => channel.id),
-          activatedAt: now, updatedAt: now, surface: "web-panel"
+          activatedAt: now, updatedAt: now, surface: "web-panel", pausedChannelIds: [], nextRunAtByChannel: {}
         },
         $setOnInsert: { createdAt: now }
       }, { upsert: true });
