@@ -53,9 +53,40 @@ async function getXpMultiplier(guildId, member) {
 
 // Os cargos de XP e de tempo são aplicados pelos sistemas próprios, lendo as configurações salvas no painel.
 
+// Só considera mensagens com texto real: mais de 5 caracteres,
+ // pelo menos 6 letras e palavras formadas por letras (acentos incluídos).
+ // Também bloqueia sequências artificiais como "aaaaaa" ou "kkkkkk".
+function isValidXpMessage(content) {
+  const text = String(content || "").trim();
+  if (text.length <= 5) return false;
+
+  const normalized = text.normalize("NFC").toLocaleLowerCase("pt-BR");
+  const letters = normalized.match(/[\\p{L}]/gu) || [];
+  if (letters.length < 6) return false;
+
+  // Não permite mensagens compostas apenas por números/símbolos ou links.
+  if (!/[\\p{L}]{1,}/u.test(normalized)) return false;
+  if (/https?:\\/\\/|www\\./i.test(normalized)) return false;
+
+  // Rejeita spam de uma mesma letra repetida em sequência.
+  if (/(.)\\1{3,}/u.test(normalized)) return false;
+
+  // Cada trecho de texto deve ser uma palavra; pontuação comum é permitida.
+  const words = normalized.match(/[\\p{L}]+/gu) || [];
+  if (!words.length) return false;
+  if (words.some((word) => word.length === 1 && words.length > 1)) return false;
+
+  // Bloqueia repetição artificial da mesma palavra.
+  if (new Set(words).size !== words.length) return false;
+
+  return true;
+}
+
 function startRankSystem(client) {
   client.on("messageCreate", async (message) => {
     if (!message.guild || message.author.bot || !message.member) return;
+    if (!isValidXpMessage(message.content)) return;
+
     await memberData.initialize();
     const key = memberData.keyFor(message.guild.id, message.author.id);
     const now = Date.now();
