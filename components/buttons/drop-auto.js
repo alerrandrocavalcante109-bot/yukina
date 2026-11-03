@@ -160,7 +160,7 @@ async function publish(client, config, channelId) {
     try {
       const message = await channel.send({ embeds: [embed(doc)], components: [row(String(doc._id))], allowedMentions: { parse: [] } });
       await runs.updateOne({ _id: doc._id }, { $set: { messageId: message.id } });
-      await db.collection("drop_auto_history").insertOne({ runId: String(doc._id), guildId: String(guild.id), channelId: String(channelId), ownerId: String(current.userId), planKey: doc.planKey, reward: doc.reward, winnerCount: doc.winnerCount, createdAt: new Date(now), status: "active" });
+      await db.collection("drop_auto_history").insertOne({ runId: String(doc._id), guildId: String(guild.id), channelId: String(channelId), ownerId: String(current.userId), planKey: doc.planKey, reward: doc.reward, winnerCount: doc.winnerCount, createdAt: new Date(now), status: "active" }).catch(error => console.error("[Drop Automático] Falha ao gravar histórico inicial:", error));
       const timer = setTimeout(() => finish(client, String(doc._id)).catch(console.error), 60000);
       timer.unref?.();
       timers.set("run:" + doc._id, timer);
@@ -345,7 +345,8 @@ async function finish(client, runId) {
   }
 
   await runs.updateOne({ _id: id }, { $set: { status: "ended", endedAt: Date.now() } });
-  await db.collection("drop_auto_history").updateOne({ runId: String(id) }, { $set: { status: "ended", endedAt: new Date(), paidCount: (run.payouts || []).length, forfeitedCount: (run.forfeited || []).length } });
+  const finalRun = await runs.findOne({ _id: id });
+  await db.collection("drop_auto_history").updateOne({ runId: String(id) }, { $set: { status: "ended", endedAt: new Date(), paidCount: (finalRun?.payouts || []).length, forfeitedCount: (finalRun?.forfeited || []).length } });
   const config = await configs.findOne({ userId: String(run.userId), status: "active", enabled: true });
   if (config && config.channelIds?.includes(String(run.channelId)) && await validPlan(config.userId, config.planKey)) {
     await scheduleNext(client, config, run.channelId);
