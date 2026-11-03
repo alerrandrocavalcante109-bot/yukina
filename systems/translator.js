@@ -253,7 +253,7 @@ async function translateToPortuguese(text) {
 
   return {
     original: phrase,
-    translated: translatedParts.join(""),
+    translated: translatedParts.join(" "),
     sourceLanguage,
   };
 }
