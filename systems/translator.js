@@ -139,7 +139,8 @@ async function translateToPortuguese(text) {
   if (!phrase) throw new Error("EMPTY");
   if (phrase.length > MAX_INPUT) throw new Error("TOO_LONG");
 
-  const baseUrl = String(process.env.LIBRETRANSLATE_URL || "").trim().replace(/\\/+$/, "");
+  let baseUrl = String(process.env.LIBRETRANSLATE_URL || "").trim();
+  while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
   if (!baseUrl) throw new Error("TRANSLATION_NOT_CONFIGURED");
 
   const headers = { "Content-Type": "application/json", "Accept": "application/json" };
