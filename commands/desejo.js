@@ -35,6 +35,16 @@ const WISH_ITEMS = {
   ],
 };
 
+function parseCap(value) {
+  const raw = String(value ?? "").trim().toLowerCase().replace(/\\s+/g, "");
+  const match = raw.match(/^(\\d+(?:[.,]\\d+)?)\\s*([km])?$/);
+  if (!match) return NaN;
+  const number = Number(match[1].replace(",", "."));
+  const multiplier = match[2] === "m" ? 1000000 : match[2] === "k" ? 1000 : 1;
+  const result = number * multiplier;
+  return Number.isSafeInteger(result) ? result : NaN;
+}
+
 function rollWish(cap) {
   const category = weightedPick([
     { type: "kz", weight: 85 },
@@ -75,15 +85,15 @@ module.exports = {
     .setName("desejo")
     .setDescription("[Infinity] Faça um desejo e receba uma recompensa aleatória.")
     .setDMPermission(false)
-    .addIntegerOption(option => option
+    .addStringOption(option => option
       .setName("limite")
       .setDescription("Teto máximo desejado de recompensa (não garante esse valor).")
       .setRequired(true)
       .setMinValue(100000)
-      .setMaxValue(10000000)),
+      .setMaxLength(16)),
   aliases: ["desejo"],
   async execute(interaction) {
-    const cap = interaction.options.getInteger("limite", true);
+    const cap = parseCap(interaction.options.getString("limite", true));\n    if (!Number.isInteger(cap) || cap < 100000 || cap > 10000000) {\n      return interaction.reply({ content: "🌠 Informe um limite entre **100k** e **10m** KZ. Exemplos: **100k**, **500k**, **1m**, **2,5m**.", ephemeral: true });\n    }
     return runPlanCommand({
       interaction,
       command: "desejo",
@@ -104,15 +114,15 @@ module.exports = {
     });
   },
   async prefixExecute(message, args = []) {
-    const cap = Number(String(args[0] || "").replace(/[.,]/g, ""));
+    const cap = parseCap(args[0]);
     if (!Number.isInteger(cap) || cap < 100000 || cap > 10000000) {
-      return message.reply("🌠 Informe um limite entre **100000** e **10000000** KZ. Exemplo: **Ydesejo 1000000**.");
+      return message.reply("🌠 Informe um limite entre **100k** e **10m** KZ. Exemplos: **Ydesejo 100k**, **Ydesejo 1m**, **Ydesejo 2,5m**.");
     }
     const fake = {
       inGuild: () => Boolean(message.guild),
       guild: message.guild,
       user: message.author,
-      options: { getInteger: () => cap },
+      options: { getString: () => String(cap) },
       reply: payload => { const { flags, ephemeral, ...rest } = payload || {}; return message.channel.send(rest); },
       followUp: payload => { const { flags, ephemeral, ...rest } = payload || {}; return message.channel.send(rest); },
       deferred: false,
