@@ -231,7 +231,7 @@ module.exports = {
         status: "active", enabled: true, guildId: guild.id, guildName: guild.name,
         channelIds: channels.map(channel => channel.id), planKey: setup.planKey,
         activatedAt: now, updatedAt: now,
-      }, $unset: { setupMessageId: "", selectedGuildId: "", selectedGuildName: "", selectedOwnerId: "", selectedOwnerName: "", selectedChannelIds: "" } });
+      }, $unset: { setupMessageId: "", selectedGuildId: "", selectedGuildName: "", selectedOwnerId: "", selectedOwnerName: "", selectedChannelIds: "", pausedChannelIds: "", nextRunAtByChannel: "" } });
       let schedulerStarted = false;
       try {
         const dropAuto = require("../buttons/drop-auto");
