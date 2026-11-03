@@ -14,7 +14,7 @@ const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DATABASE_NAME = (process.env.MONGODB_DB || "yukina").trim();
 const COLLECTION_NAME = "member_ranks";
 
-let store = { members: {} };
+let store = { members: {}, xpResetVersion: 0 };
 let mongoClient = null;
 let collection = null;
 let initPromise = null;
@@ -24,7 +24,7 @@ function loadLocal() {
     fs.mkdirSync(DATA_DIR, { recursive: true });
     if (fs.existsSync(DATA_FILE)) {
       const parsed = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
-      if (parsed?.members && typeof parsed.members === "object") store = parsed;
+      if (parsed?.members && typeof parsed.members === "object") store = { ...parsed, xpResetVersion: Number(parsed.xpResetVersion) || 0 };
     }
   } catch (error) {
     console.error("[Banco de membros] Não consegui ler o arquivo local:", error.message);
@@ -68,6 +68,7 @@ async function persistRecord(key) {
       {
         $set: {
           xp: Math.max(0, Number(record.xp) || 0),
+          xpResetVersion: 1,
           joinedAt: record.joinedAt || null,
           rank: record.rank || null,
           warnings: Array.isArray(record.warnings) ? record.warnings : [],
@@ -104,6 +105,15 @@ async function initialize() {
   if (initPromise) return initPromise;
   initPromise = (async () => {
     loadLocal();
+    // Reinicialização única da progressão: preserva avisos, data de entrada e demais dados.
+    if (store.xpResetVersion !== 1) {
+      for (const record of Object.values(store.members)) {
+        if (record && typeof record === "object") record.xp = 0;
+      }
+      store.xpResetVersion = 1;
+      saveLocal();
+      console.log("[XP] Reinicialização única concluída: todos os membros começam no nível 0.");
+    }
     if (!MONGODB_ENABLED) {
       console.warn("[Banco de membros] MongoDB temporariamente desativado (MONGODB_ENABLED=false); usando armazenamento JSON local. Dados novos podem não persistir entre reinicializações do Render.");
       return;
@@ -126,6 +136,10 @@ async function initialize() {
       const db = mongoClient.db(DATABASE_NAME);
       await db.command({ ping: 1 });
       collection = db.collection(COLLECTION_NAME);
+      await collection.updateMany(
+        { xpResetVersion: { $ne: 1 } },
+        { $set: { xp: 0, xpResetVersion: 1, updatedAt: new Date() } }
+      );
 
       const documents = await collection.find({}).toArray();
       const mongoKeys = new Set();
@@ -150,6 +164,7 @@ async function initialize() {
           {
             $set: {
               xp: Math.max(0, Number(record.xp) || 0),
+              xpResetVersion: 1,
               joinedAt: record.joinedAt || null,
               rank: record.rank || null,
               warnings: Array.isArray(record.warnings) ? record.warnings : [],
