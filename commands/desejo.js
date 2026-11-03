@@ -100,19 +100,13 @@ module.exports = {
       interaction,
       command: "desejo",
       minimumPlan: "infinity",
-      cooldownMs: 0,
+      cooldownMs: 7 * 24 * 60 * 60 * 1000,
       title: "Desejo sob a Lua",
       description: "Você confiou seu desejo à Yukina. O limite escolhido foi **" + cap.toLocaleString("pt-BR") + " KZ**. Ele define o teto, não o valor garantido.",
-      rewardFactory: () => {
-        const amount = rollWish(cap);
-        return {
-          amount,
-          emoji: "🌠",
-          color: 0xD9B7FF,
-          message: "Seu desejo foi atendido! A recompensa é aleatória. Você pode fazer outro desejo enquanto o sistema estiver em fase de testes.",
-          details: { selectedCap: cap },
-        };
-      },
+      rewardFactory: () => ({
+        ...rollWish(cap),
+        details: { selectedCap: cap },
+      }),
     });
   },
   async prefixExecute(message, args = []) {
