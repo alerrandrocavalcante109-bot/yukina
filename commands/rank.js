@@ -178,7 +178,10 @@ async function buildRankCard(user, record, position, total, guild) {
   }
   drawText(ctx, total + " membros registrados  ·  Yukina ❄", 270, 405, "12px sans-serif", "#a9c7e8", 650);
 
-  return canvas.toBuffer("image/png");
+  const compactCanvas = createCanvas(220, 160);
+  const compactCtx = compactCanvas.getContext("2d");
+  compactCtx.drawImage(canvas, 0, 0, 220, 160);
+  return compactCanvas.toBuffer("image/png");
 }
 
 async function respond(interaction, target) {
