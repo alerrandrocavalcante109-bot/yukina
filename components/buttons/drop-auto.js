@@ -249,8 +249,10 @@ async function finish(client, runId) {
         runId: String(run._id), userId: String(userId), status: { $in: ["waiting_member", "staff_review"] }
       });
       if (existingManual) continue;
-      const member = guild ? await guild.members.fetch(String(userId)).catch(() => null) : null;
-      if (!member) {
+      const memberLookup = guild
+        ? await guild.members.fetch(String(userId)).then(member => ({ member })).catch(error => ({ error }))
+        : null;
+      if (memberLookup?.error?.code === 10007) {
         forfeited.push(String(userId));
         await runs.updateOne({ _id: id }, { $addToSet: { forfeited: String(userId) } });
         continue;
@@ -258,8 +260,10 @@ async function finish(client, runId) {
       let success = false;
       let leftDuringAttempts = false;
       for (let attempt = 1; attempt <= 5; attempt++) {
-        const stillInServer = guild ? await guild.members.fetch(String(userId)).catch(() => null) : null;
-        if (!stillInServer) {
+        const membership = guild
+          ? await guild.members.fetch(String(userId)).then(member => ({ member })).catch(error => ({ error }))
+          : null;
+        if (membership?.error?.code === 10007) {
           leftDuringAttempts = true;
           break;
         }
