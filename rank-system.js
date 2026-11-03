@@ -6,8 +6,8 @@ const memberData = require("./member-data");
 const xpMultiplierStorage = require("./system-storage").forSystem("xp-multipliers");
 
 const XP_COOLDOWN_MS = 60_000;
-const XP_MIN = 8;
-const XP_MAX = 15;
+const XP_MIN = 30;
+const XP_MAX = 46;
 const TENURE_CHECK_MS = 10 * 60_000;
 
 const lastXpAt = new Map();
