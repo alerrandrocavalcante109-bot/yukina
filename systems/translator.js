@@ -139,25 +139,26 @@ async function translateToPortuguese(text) {
   if (!phrase) throw new Error("EMPTY");
   if (phrase.length > MAX_INPUT) throw new Error("TOO_LONG");
 
-  let baseUrl = String(process.env.LIBRETRANSLATE_URL || "").trim();
-  while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
-  if (!baseUrl) throw new Error("TRANSLATION_NOT_CONFIGURED");
+  const apiKey = String(process.env.AZURE_TRANSLATOR_KEY || "").trim();
+  const region = String(process.env.AZURE_TRANSLATOR_REGION || "").trim();
+  const endpoint = String(
+    process.env.AZURE_TRANSLATOR_ENDPOINT || "https://api.cognitive.microsofttranslator.com"
+  ).trim().replace(/\/+$/, "");
 
-  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
-  const apiKey = String(process.env.LIBRETRANSLATE_API_KEY || "").trim();
+  if (!apiKey || !region) throw new Error("TRANSLATION_NOT_CONFIGURED");
 
+  const url = endpoint + "/translate?api-version=3.0&to=pt";
   let response;
   try {
-    response = await fetch(baseUrl + "/translate", {
+    response = await fetch(url, {
       method: "POST",
-      headers,
-      body: JSON.stringify({
-        q: phrase,
-        source: "auto",
-        target: "pt",
-        format: "text",
-        ...(apiKey ? { api_key: apiKey } : {}),
-      }),
+      headers: {
+        "Ocp-Apim-Subscription-Key": apiKey,
+        "Ocp-Apim-Subscription-Region": region,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify([{ Text: phrase }]),
       signal: AbortSignal.timeout(30000),
     });
   } catch (error) {
@@ -167,8 +168,13 @@ async function translateToPortuguese(text) {
   }
 
   if (!response.ok) {
+    let detail = "HTTP_" + response.status;
+    try {
+      const body = await response.json();
+      detail = String(body?.error?.message || detail).slice(0, 300);
+    } catch {}
     const failure = new Error("TRANSLATION_SERVICE");
-    failure.details = "LibreTranslate HTTP_" + response.status;
+    failure.details = "Microsoft Translator: " + detail;
     throw failure;
   }
 
@@ -179,17 +185,29 @@ async function translateToPortuguese(text) {
     throw new Error("NO_RESULT");
   }
 
-  const translated = String(data?.translatedText || "").trim();
+  const item = Array.isArray(data) ? data[0] : null;
+  const translated = String(item?.translations?.[0]?.text || "").trim();
   if (!translated) {
     const failure = new Error("TRANSLATION_SERVICE");
-    failure.details = String(data?.error || "EMPTY_TRANSLATION_RESPONSE").slice(0, 300);
+    failure.details = "EMPTY_TRANSLATION_RESPONSE";
+    throw failure;
+  }
+
+  const detected = String(item?.detectedLanguage?.language || "auto").toLowerCase();
+  const sourceLanguage = detected === "zh-hans" ? "zh-CN"
+    : detected === "zh-hant" ? "zh-TW"
+    : detected;
+
+  if (sourceLanguage !== "auto" && !SUPPORTED_SOURCE_LANGUAGES.has(sourceLanguage)) {
+    const failure = new Error("UNSUPPORTED_LANGUAGE");
+    failure.detectedLanguage = sourceLanguage;
     throw failure;
   }
 
   return {
     original: phrase,
     translated,
-    sourceLanguage: "auto",
+    sourceLanguage,
   };
 }
 
