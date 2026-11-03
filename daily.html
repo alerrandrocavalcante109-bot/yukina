@@ -164,6 +164,8 @@
           widgetId = window.turnstile.render(widget, {
             sitekey: config.siteKey,
             theme: "dark",
+            size: "normal",
+            appearance: "always",
             callback: token => {
               captchaToken = token;
               setStatus("Verificação concluída! ❄️");
