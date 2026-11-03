@@ -139,64 +139,56 @@ async function translateToPortuguese(text) {
   if (!phrase) throw new Error("EMPTY");
   if (phrase.length > MAX_INPUT) throw new Error("TOO_LONG");
 
-  // Lingva usa uma API REST própria e não depende do endpoint público bloqueado do Google.
-  const hosts = [
-    "https://lingva.ml",
-    "https://translate.jae.fi",
-    "https://translate.dr460nf1r3.org",
-    "https://lingva.garudalinux.org",
-  ];
-  let translated = "";
-  let sourceLanguage = "";
-  const failures = [];
+  const baseUrl = String(process.env.LIBRETRANSLATE_URL || "").trim().replace(/\\/+$/, "");
+  if (!baseUrl) throw new Error("TRANSLATION_NOT_CONFIGURED");
 
-  for (const host of hosts) {
-    try {
-      const endpoint = host + "/api/v1/auto/pt/" + encodeURIComponent(phrase);
-      const response = await fetch(endpoint, {
-        method: "GET",
-        headers: {
-          "User-Agent": "Mozilla/5.0 YukinaDiscordBot/1.0",
-          "Accept": "application/json",
-        },
-        signal: AbortSignal.timeout(12000),
-      });
-      if (!response.ok) {
-        failures.push(new URL(host).hostname + ":HTTP_" + response.status);
-        continue;
-      }
+  const headers = { "Content-Type": "application/json", "Accept": "application/json" };
+  const apiKey = String(process.env.LIBRETRANSLATE_API_KEY || "").trim();
+  if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
 
-      const data = await response.json();
-      const candidate = String(data?.translation || "").trim();
-      if (!candidate || data?.error) {
-        failures.push(new URL(host).hostname + ":NO_RESULT");
-        continue;
-      }
-
-      translated = candidate;
-      sourceLanguage = String(
-        data?.info?.detected?.code ||
-        data?.source?.lang?.code ||
-        data?.detected?.code ||
-        "auto"
-      ).trim();
-      break;
-    } catch (error) {
-      failures.push(new URL(host).hostname + ":" + (error?.name || "NETWORK_ERROR"));
-    }
+  let response;
+  try {
+    response = await fetch(baseUrl + "/translate", {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        q: phrase,
+        source: "auto",
+        target: "pt",
+        format: "text",
+      }),
+      signal: AbortSignal.timeout(30000),
+    });
+  } catch (error) {
+    const failure = new Error("TRANSLATION_SERVICE");
+    failure.details = error?.name || "NETWORK_ERROR";
+    throw failure;
   }
 
+  if (!response.ok) {
+    const failure = new Error("TRANSLATION_SERVICE");
+    failure.details = "LibreTranslate HTTP_" + response.status;
+    throw failure;
+  }
+
+  let data;
+  try {
+    data = await response.json();
+  } catch {
+    throw new Error("NO_RESULT");
+  }
+
+  const translated = String(data?.translatedText || "").trim();
   if (!translated) {
-    const error = new Error("TRANSLATION_SERVICE");
-    error.details = failures.join(", ");
-    throw error;
+    const failure = new Error("TRANSLATION_SERVICE");
+    failure.details = String(data?.error || "EMPTY_TRANSLATION_RESPONSE").slice(0, 300);
+    throw failure;
   }
-  if (!translated.trim()) throw new Error("NO_RESULT");
 
   return {
     original: phrase,
-    translated: translated.trim(),
-    sourceLanguage: sourceLanguage || "auto",
+    translated,
+    sourceLanguage: "auto",
   };
 }
 
@@ -245,6 +237,7 @@ function buildTranslationEmbed(result, user) {
 function errorMessage(error) {
   if (error?.message === "EMPTY") return "🌙 Não encontrei uma frase para traduzir.";
   if (error?.message === "TOO_LONG") return "🫧 A frase é muito longa. Envie um texto com até " + MAX_INPUT + " caracteres.";
+  if (error?.message === "TRANSLATION_NOT_CONFIGURED") return "❄️ O serviço de tradução ainda está sendo configurado. Tente novamente mais tarde.";
   if (error?.message === "UNSUPPORTED_LANGUAGE") return "🌙 Ainda não consigo traduzir esse idioma. Atualmente aceito português, inglês, espanhol, francês, japonês, russo e chinês.";
   if (error?.message === "INSUFFICIENT_CREDITS") {
     return "❄️ Seus créditos diários são insuficientes para essa tradução. Você tem **" +
