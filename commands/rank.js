@@ -64,126 +64,117 @@ function drawText(ctx, text, x, y, font, color, maxWidth) {
 }
 
 async function buildRankCard(user, record, position, total, guild) {
-  const canvas = createCanvas(WIDTH, HEIGHT);
+  // Renderização em alta densidade: mantém proporção 220x160 e textos nítidos.
+  const SCALE = 3;
+  const CARD_W = 220;
+  const CARD_H = 160;
+  const canvas = createCanvas(CARD_W * SCALE, CARD_H * SCALE);
   const ctx = canvas.getContext("2d");
+  ctx.scale(SCALE, SCALE);
+
   const xp = Math.max(0, Number(record.xp) || 0);
   const current = levelForXp(xp);
-  const nextXp = current.nextLevelXp;
-  const progress = current.progress;
   const nextRole = await getNextConfiguredRole(guild, current.level);
   const displayName = user.globalName || user.username || "Aventureiro";
 
-  // Fundo personalizado: noite azul, luar e detalhes de neve da Yukina.
-  const bg = ctx.createLinearGradient(0, 0, WIDTH, HEIGHT);
-  bg.addColorStop(0, "#101a36");
-  bg.addColorStop(0.55, "#263e68");
-  bg.addColorStop(1, "#765f91");
+  const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
+  bg.addColorStop(0, "#101b3b");
+  bg.addColorStop(0.55, "#263f70");
+  bg.addColorStop(1, "#77558f");
   ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, WIDTH, HEIGHT);
+  ctx.fillRect(0, 0, CARD_W, CARD_H);
 
-  // Brilho lunar no canto superior direito.
-  const moon = ctx.createRadialGradient(830, 48, 4, 830, 48, 210);
-  moon.addColorStop(0, "rgba(224,245,255,0.24)");
-  moon.addColorStop(1, "rgba(224,245,255,0)");
+  const moon = ctx.createRadialGradient(188, 12, 2, 188, 12, 72);
+  moon.addColorStop(0, "rgba(224,248,255,0.32)");
+  moon.addColorStop(1, "rgba(224,248,255,0)");
   ctx.fillStyle = moon;
-  ctx.fillRect(600, 0, 400, 250);
+  ctx.fillRect(130, 0, 90, 85);
 
-  // Flocos decorativos.
-  for (let i = 0; i < 48; i++) {
-    const x = (i * 137 + 29) % WIDTH;
-    const y = (i * 71 + 17) % HEIGHT;
+  for (let i = 0; i < 28; i++) {
+    const x = (i * 47 + 13) % CARD_W;
+    const y = (i * 29 + 7) % CARD_H;
     ctx.beginPath();
-    ctx.arc(x, y, i % 4 === 0 ? 2.2 : 1.1, 0, Math.PI * 2);
-    ctx.fillStyle = i % 3 === 0 ? "rgba(255,220,242,0.72)" : "rgba(220,244,255,0.65)";
+    ctx.arc(x, y, i % 4 === 0 ? 1 : 0.55, 0, Math.PI * 2);
+    ctx.fillStyle = i % 3 === 0 ? "rgba(255,220,246,0.9)" : "rgba(220,246,255,0.9)";
     ctx.fill();
   }
 
-  // Painel de vidro.
-  roundedRect(ctx, 18, 18, WIDTH - 36, HEIGHT - 36, 28);
-  ctx.fillStyle = "rgba(9, 17, 39, 0.55)";
+  roundedRect(ctx, 5, 5, 210, 150, 12);
+  ctx.fillStyle = "rgba(7,14,34,0.76)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(219, 241, 255, 0.42)";
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = "rgba(207,239,255,0.72)";
+  ctx.lineWidth = 1;
   ctx.stroke();
 
-  // Avatar com aro de gelo.
-  const avatarSize = 176;
-  const avatarX = 58;
-  const avatarY = 92;
+  // Avatar e identificação.
+  const avatarX = 13, avatarY = 17, avatarSize = 48;
   ctx.save();
   ctx.beginPath();
-  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 7, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(183, 231, 255, 0.2)";
+  ctx.arc(avatarX + 24, avatarY + 24, 25.5, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(174,232,255,0.35)";
   ctx.fill();
-  ctx.strokeStyle = "#c9f0ff";
-  ctx.lineWidth = 5;
+  ctx.strokeStyle = "#c8f2ff";
+  ctx.lineWidth = 1.8;
   ctx.stroke();
   ctx.beginPath();
-  ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+  ctx.arc(avatarX + 24, avatarY + 24, 23.5, 0, Math.PI * 2);
   ctx.clip();
   try {
-    const avatar = await loadImage(user.displayAvatarURL({ extension: "png", size: 256 }));
-    ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+    const avatar = await loadImage(user.displayAvatarURL({ extension: "png", size: 128 }));
+    ctx.drawImage(avatar, avatarX + 1, avatarY + 1, avatarSize - 2, avatarSize - 2);
   } catch {
-    ctx.fillStyle = "#6f8fb8";
+    ctx.fillStyle = "#5279a8";
     ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
-    drawText(ctx, "❄", avatarX + 58, avatarY + 108, "64px sans-serif", "#ffffff");
   }
   ctx.restore();
 
-  drawText(ctx, "YUKINA  /  JORNADA DO MEMBRO", 270, 65, "bold 18px sans-serif", "#bfeaff", 600);
-  drawText(ctx, displayName, 270, 112, "bold 38px sans-serif", "#ffffff", 650);
-  drawText(ctx, "Seu caminho continua sob o luar.", 272, 143, "18px sans-serif", "#c8d9f2", 620);
+  ctx.shadowColor = "rgba(112,213,255,0.55)";
+  ctx.shadowBlur = 5;
+  drawText(ctx, "YUKINA  ❄  PERFIL XP", 70, 25, "bold 8px sans-serif", "#9fe8ff", 142);
+  ctx.shadowBlur = 0;
+  drawText(ctx, displayName, 70, 43, "bold 12px sans-serif", "#ffffff", 140);
+  drawText(ctx, "POSIÇÃO  " + (position ? "#" + position : "—"), 70, 56, "bold 7.5px sans-serif", "#ffd4f0", 140);
 
-  // Blocos de estatística.
-  const stats = [
-    { x: 270, label: "NÍVEL", value: current.level },
-    { x: 455, label: "POSIÇÃO", value: position ? "#" + position : "—" },
-    { x: 650, label: "PATAMAR", value: current.name },
-  ];
-  for (const stat of stats) {
-    roundedRect(ctx, stat.x, 166, stat.x === 650 ? 286 : 160, 68, 14);
-    ctx.fillStyle = "rgba(211, 235, 255, 0.10)";
-    ctx.fill();
-    ctx.strokeStyle = "rgba(211, 235, 255, 0.18)";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    drawText(ctx, stat.label, stat.x + 14, 190, "bold 12px sans-serif", "#a9c7e8", stat.x === 650 ? 250 : 135);
-    drawText(ctx, stat.value, stat.x + 14, 219, "bold 21px sans-serif", "#ffffff", stat.x === 650 ? 250 : 135);
-  }
-
-  drawText(ctx, "XP TOTAL ACUMULADO", 62, 300, "bold 14px sans-serif", "#bfeaff");
-  drawText(ctx, xp.toLocaleString("pt-BR") + " XP", 62, 328, "bold 21px sans-serif", "#ffffff");
-  drawText(ctx, "PRÓXIMO NÍVEL", 62, 370, "bold 13px sans-serif", "#bfeaff");
-  drawText(ctx, (nextXp - xp).toLocaleString("pt-BR") + " XP restantes", 62, 395, "bold 17px sans-serif", "#ffffff");
-  const barX = 270, barY = 270, barW = 650, barH = 17;
-  roundedRect(ctx, barX, barY, barW, barH, 9);
-  ctx.fillStyle = "rgba(230, 243, 255, 0.18)";
+  // Nível em destaque e XP total.
+  roundedRect(ctx, 13, 74, 54, 47, 7);
+  ctx.fillStyle = "rgba(120,190,255,0.16)";
   ctx.fill();
-  if (progress > 0) {
-    roundedRect(ctx, barX, barY, Math.max(18, barW * progress / 100), barH, 9);
-    const fill = ctx.createLinearGradient(barX, 0, barX + barW, 0);
-    fill.addColorStop(0, "#a5e8ff");
-    fill.addColorStop(1, "#f4b8e5");
-    ctx.fillStyle = fill;
+  ctx.strokeStyle = "rgba(164,225,255,0.48)";
+  ctx.stroke();
+  drawText(ctx, "NÍVEL", 20, 86, "bold 7px sans-serif", "#aeeaff");
+  ctx.shadowColor = "rgba(255,255,255,0.35)";
+  ctx.shadowBlur = 4;
+  drawText(ctx, current.level.toLocaleString("pt-BR"), 19, 109, "bold 21px sans-serif", "#ffffff", 43);
+  ctx.shadowBlur = 0;
+
+  drawText(ctx, "XP ACUMULADO", 77, 83, "bold 7.5px sans-serif", "#aeeaff", 130);
+  drawText(ctx, xp.toLocaleString("pt-BR") + " XP", 77, 101, "bold 13px sans-serif", "#ffffff", 130);
+  drawText(ctx, "PRÓXIMO NÍVEL  " + current.progress + "%", 77, 114, "bold 7px sans-serif", "#f6d6ef", 130);
+
+  // Barra de progresso viva e de alto contraste.
+  roundedRect(ctx, 77, 119, 128, 7, 3.5);
+  ctx.fillStyle = "rgba(230,244,255,0.25)";
+  ctx.fill();
+  if (current.progress > 0) {
+    roundedRect(ctx, 77, 119, Math.max(3, 128 * current.progress / 100), 7, 3.5);
+    const bar = ctx.createLinearGradient(77, 0, 205, 0);
+    bar.addColorStop(0, "#65dcff");
+    bar.addColorStop(0.55, "#b5eaff");
+    bar.addColorStop(1, "#ff9bd8");
+    ctx.fillStyle = bar;
     ctx.fill();
   }
-  drawText(ctx, progress + "%", 930, 284, "bold 14px sans-serif", "#ffffff", 48);
-  drawText(ctx, xp.toLocaleString("pt-BR") + " / " + nextXp.toLocaleString("pt-BR") + " XP para o próximo nível", 270, 316, "15px sans-serif", "#d4e5f8", 650);
+
+  // Cargo seguinte e requisito.
   if (nextRole) {
-    drawText(ctx, "PRÓXIMO CARGO: " + nextRole.roleName, 270, 360, "bold 17px sans-serif", "#f4c9e8", 650);
-    drawText(ctx, "Nível " + nextRole.level + "  ·  " + (nextRole.requiredXp ?? ((nextRole.level - 1) * 1000)).toLocaleString("pt-BR") + " XP necessários", 270, 386, "15px sans-serif", "#d4e5f8", 650);
+    drawText(ctx, "PRÓXIMO CARGO: " + nextRole.roleName, 13, 139, "bold 7.5px sans-serif", "#ffbce8", 192);
+    drawText(ctx, "Nível " + nextRole.level + "  •  " + (nextRole.requiredXp ?? ((nextRole.level - 1) * 1000)).toLocaleString("pt-BR") + " XP", 13, 149, "bold 7px sans-serif", "#e5f4ff", 192);
   } else {
-    drawText(ctx, "PRÓXIMO CARGO: nenhum cargo futuro configurado", 270, 370, "bold 15px sans-serif", "#c8d9f2", 650);
+    drawText(ctx, "Sem próximo cargo configurado", 13, 144, "bold 7.5px sans-serif", "#d9eaff", 192);
   }
-  drawText(ctx, total + " membros registrados  ·  Yukina ❄", 270, 405, "12px sans-serif", "#a9c7e8", 650);
 
-  const compactCanvas = createCanvas(220, 160);
-  const compactCtx = compactCanvas.getContext("2d");
-  compactCtx.drawImage(canvas, 0, 0, 220, 160);
-  return compactCanvas.toBuffer("image/png");
+  return canvas.toBuffer("image/png");
 }
-
 async function respond(interaction, target) {
   await memberData.initialize();
   const guildId = interaction.guild.id;
