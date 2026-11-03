@@ -121,14 +121,16 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
 
     const db = await getDb();
     const now = new Date();
-    claim = await claimCooldown(db, {
-      guildId: "global",
-      userId: interaction.user.id,
-      command,
-      cooldownMs,
-      now,
-    });
-    if (!claim.ok) {
+    if (cooldownMs > 0) {
+      claim = await claimCooldown(db, {
+        guildId: "global",
+        userId: interaction.user.id,
+        command,
+        cooldownMs,
+        now,
+      });
+    }
+    if (claim && !claim.ok) {
       const timestamp = Math.ceil(claim.nextAvailableAt.getTime() / 1000);
       return respond({
         content: `🌙 Você já utilizou este benefício. Ele estará disponível novamente <t:${timestamp}:R>.`,
@@ -193,7 +195,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
         ...(reward > 0 ? [{ name: "💴 Kizunas recebidas", value: `+${format(reward)} KZ`, inline: true }] : []),
         ...(result.item ? [{ name: "🎁 Item desbloqueado", value: result.item.name, inline: true }] : []),
         { name: "👛 Sua carteira", value: `${format(balanceDoc?.balance)} KZ`, inline: true },
-        { name: "🌙 Próxima utilização", value: `<t:${Math.floor(claim.nextAvailableAt.getTime() / 1000)}:R>`, inline: true }
+        ...(claim ? [{ name: "🌙 Próxima utilização", value: `<t:${Math.floor(claim.nextAvailableAt.getTime() / 1000)}:R>`, inline: true }] : [])
       )
       .setFooter({ text: `Benefício do plano ${PLAN_NAMES[String(subscription.planKey).toLowerCase()] || subscription.planKey}` })
       .setTimestamp();
