@@ -40,15 +40,16 @@ function serverMenu(guilds) {
 
 function introEmbed(planKey) {
   return new EmbedBuilder().setColor(0xA7D8F0)
-    .setTitle("❄️ Ativação do Drop Automático")
+    .setTitle("❄️ Seu plano da Yukina está ativo!")
     .setDescription([
-      "Seu plano foi ativado! Agora vamos configurar onde os Drops Automáticos serão publicados.",
+      "A configuração do **Drop Automático** agora é feita diretamente no painel do site.",
       "",
       "**Plano:** " + (PLAN_NAMES[planKey] || planKey),
-      "**Canais por servidor:** " + (PLAN_CHANNELS[planKey] || 1),
+      "**Canais permitidos:** " + (PLAN_CHANNELS[planKey] || 1),
       "",
-      "Escolha um servidor em que você esteja e no qual a Yukina também esteja presente.",
-      "A configuração só será ativada depois da sua confirmação.",
+      "Acesse o painel, entre com sua conta Discord e escolha o servidor e os canais. Você poderá revisar tudo antes de confirmar.",
+      "",
+      "🌸 https://yukina-6uo.pages.dev/drop-config.html"
     ].join("\n"))
     .setFooter({ text: "Yukina · Sob o luar, entre estrelas" });
 }
@@ -63,69 +64,25 @@ async function eligibleGuilds(client, userId) {
 }
 
 async function start(client, userId, planKey) {
-  const guilds = await eligibleGuilds(client, userId);
-  if (!guilds.length) {
-    console.warn("[Drop Automático] Usuário " + userId + " não compartilha servidores com a Yukina.");
-    return false;
-  }
-  const payload = {
-    embeds: [introEmbed(planKey)],
-    components: [serverMenu(guilds)],
-    allowedMentions: { parse: [] },
-  };
   const user = await client.users.fetch(userId).catch(() => null);
-  if (user) {
-    try {
-      const message = await user.send(payload);
-      const col = await getCollection();
-      await col.updateOne({ userId }, { $set: {
-        userId, planKey, status: "selecting", surface: "dm", setupMessageId: message.id,
-        startedAt: new Date(), updatedAt: new Date(),
-      } }, { upsert: true });
-      return true;
-    } catch (error) {
-      console.warn("[Drop Automático] Não foi possível enviar DM para " + userId + ": " + (error.message || error));
-    }
-  }
-
-  const ownerGuild = guilds.find(guild => guild.ownerId === userId);
-  let targetGuild = ownerGuild || null;
-  if (!targetGuild) {
-    for (const guild of guilds) {
-      const member = await guild.members.fetch(userId).catch(() => null);
-      if (member && (member.permissions.has(PermissionFlagsBits.Administrator) ||
-        member.permissions.has(PermissionFlagsBits.ManageGuild) ||
-        member.permissions.has(PermissionFlagsBits.ManageChannels))) {
-        targetGuild = guild;
-        break;
-      }
-    }
-  }
-  if (!targetGuild) {
-    console.warn("[Drop Automático] DM indisponível e nenhum servidor elegível de dono/staff para " + userId + ".");
-    return false;
-  }
-
-  const me = targetGuild.members.me || await targetGuild.members.fetch(client.user.id).catch(() => null);
-  if (!me?.permissions.has(PermissionFlagsBits.ManageChannels)) return false;
-  const safeName = "drop-config-" + userId.slice(-6);
-  const privateChannel = await targetGuild.channels.create({
-    name: safeName,
-    type: ChannelType.GuildText,
-    topic: "yukina-drop-auto-setup:" + userId,
-    permissionOverwrites: [
-      { id: targetGuild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { id: userId, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-      { id: client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] },
-    ],
-    reason: "Canal temporário para configurar o Drop Automático de " + userId,
+  if (!user) return false;
+  const message = await user.send({
+    embeds: [introEmbed(planKey)],
+    allowedMentions: { parse: [] },
+  }).catch(error => {
+    console.warn("[Drop Automático] Não foi possível enviar o aviso por DM para " + userId + ": " + (error.message || error));
+    return null;
   });
-  const col = await getCollection();
-  await col.updateOne({ userId }, { $set: {
-    userId, planKey, status: "selecting", surface: "guild-channel", setupGuildId: targetGuild.id,
-    setupChannelId: privateChannel.id, startedAt: new Date(), updatedAt: new Date(),
-  } }, { upsert: true });
-  await privateChannel.send({ ...payload, content: "<@" + userId + ">", allowedMentions: { users: [userId] } });
+  if (!message) return false;
+  try {
+    const col = await getCollection();
+    await col.updateOne({ userId: String(userId) }, { $set: {
+      userId: String(userId), planKey, status: "awaiting-web-setup", surface: "web-panel",
+      setupMessageId: message.id, startedAt: new Date(), updatedAt: new Date()
+    } }, { upsert: true });
+  } catch (error) {
+    console.error("[Drop Automático] Aviso enviado, mas não consegui registrar o estado:", error.message || error);
+  }
   return true;
 }
 
