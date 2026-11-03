@@ -336,7 +336,7 @@ async function onMemberJoin(member) {
       await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member" } });
       continue;
     }
-    await payouts.updateOne({ _id: payout._id, status: "waiting_member" }, { $set: { status: "staff_review", privateChannelId: privateChannel.id, joinedAt: new Date() } });
+    await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "staff_review", privateChannelId: privateChannel.id, joinedAt: new Date() } });
     await privateChannel.send({
       content: "🌸 **Entrega manual de Drop Automático**\nMembro: <@" + member.id + ">\nPrêmio pendente: **" + fmt(payout.amount) + "**\nServidor: **" + member.guild.name + "**\nID do Drop: `" + payout.runId + "`\n\nA equipe deve conferir o registro e atribuir o valor manualmente. Após a entrega, marque este atendimento como concluído e feche o canal.",
       allowedMentions: { users: [member.id] }
