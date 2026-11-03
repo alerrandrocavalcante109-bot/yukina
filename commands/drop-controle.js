@@ -32,7 +32,8 @@ module.exports = {
       { name: "Histórico recente", value: "history" },
       { name: "Pausar canal ou todos", value: "pause" },
       { name: "Retomar canal ou todos", value: "resume" },
-      { name: "Recompensas pendentes", value: "pending" }
+      { name: "Recompensas pendentes", value: "pending" },
+      { name: "Falhas de pagamento", value: "failures" }
     ))
     .addChannelOption(option => option.setName("canal").setDescription("Canal específico; sem seleção, aplica a todos os canais configurados.").addChannelTypes(ChannelType.GuildText))
     .addIntegerOption(option => option.setName("quantidade").setDescription("Quantidade de registros no histórico (1 a 10).").setMinValue(1).setMaxValue(10)),
@@ -48,6 +49,7 @@ module.exports = {
       const runs = database.collection("drop_auto_runs");
       const ledger = database.collection("drop_auto_payout_ledger");
       const payouts = database.collection("drop_auto_manual_payouts");
+      const attempts = database.collection("drop_auto_payout_attempts");
       const action = interaction.options.getString("acao", true);
       const selectedChannel = interaction.options.getChannel("canal");
       const config = await configs.findOne({ guildId: String(interaction.guildId), status: "active" });
@@ -110,6 +112,13 @@ module.exports = {
             "\nVencedores: " + winners;
         });
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xA7D8F0).setTitle("📜 Histórico de Drops").setDescription(lines.join("\n\n")).setFooter({ text: "Exibindo os " + docs.length + " registros mais recentes." })] });
+      }
+
+      if (action === "failures") {
+        const docs = await attempts.find({ status: "failed" }).sort({ finishedAt: -1 }).limit(10).toArray();
+        if (!docs.length) return interaction.editReply("🌸 Não há falhas de pagamento registradas.");
+        const lines = docs.map((item, index) => "**" + (index + 1) + ".** <@" + item.userId + "> · tentativa " + item.attempt + "/5\nDrop: `" + item.runId + "`\nMotivo: " + String(item.error || "Não informado").slice(0, 300));
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle("⚠️ Falhas de pagamento").setDescription(lines.join("\n\n")).setFooter({ text: "Exibindo as 10 falhas mais recentes." })] });
       }
 
       if (action === "pending") {
