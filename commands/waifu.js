@@ -229,7 +229,13 @@ function safeImageUrl(url) {
   return typeof url === "string" && /^https:\/\//i.test(url) ? url : null;
 }
 
-function rarityName(rarity) {\n  if (rarity.rank === "∞") return "Suprema (∞)";\n  if (rarity.rank === "✦") return "Infinita (✦)";\n  return rarity.rank;\n}\n\nfunction makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RARITIES[0]) {
+function rarityName(rarity) {
+  if (rarity.rank === "∞") return "Suprema (∞)";
+  if (rarity.rank === "✦") return "Infinita (✦)";
+  return rarity.rank;
+}
+
+function makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RARITIES[0]) {
   const embed = new EmbedBuilder()
     .setColor(COLOR)
     .setAuthor({
