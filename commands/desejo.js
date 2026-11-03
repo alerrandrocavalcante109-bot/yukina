@@ -13,10 +13,62 @@ const BANDS = [
   { min: 5000000, max: 10000000, weight: 3 },
 ];
 
+const WISH_ITEMS = {
+  moldura: [
+    "Moldura Luar de Cristal",
+    "Moldura Sakura Celeste",
+    "Moldura Jardim Lunar",
+  ],
+  enfeite: [
+    "Lanterna da Raposa Branca",
+    "Sino de Vento das Cerejeiras",
+    "Amuleto da Lua Serena",
+  ],
+  titulo: [
+    "Guardião das Pétalas",
+    "Herdeiro do Luar",
+    "Viajante das Estrelas",
+  ],
+  colecionavel: [
+    "Omamori da Sorte",
+    "Miniatura Kitsune Lunar",
+    "Cristal do Santuário",
+  ],
+};
+
 function rollWish(cap) {
+  const category = weightedPick([
+    { type: "kz", weight: 85 },
+    { type: "moldura", weight: 4 },
+    { type: "enfeite", weight: 4 },
+    { type: "titulo", weight: 3 },
+    { type: "colecionavel", weight: 4 },
+  ]);
+  if (category.type !== "kz") {
+    const pool = WISH_ITEMS[category.type];
+    const name = pool[Math.floor(Math.random() * pool.length)];
+    const labels = {
+      moldura: "Moldura lendária",
+      enfeite: "Enfeite exclusivo",
+      titulo: "Título especial",
+      colecionavel: "Colecionável",
+    };
+    return {
+      amount: 0,
+      item: { type: category.type, name, rarity: "especial" },
+      emoji: "🌠",
+      color: 0xD9B7FF,
+      message: "Seu desejo trouxe um item especial! Ele foi registrado na sua coleção de recompensas da Yukina.",
+    };
+  }
   const eligible = BANDS.filter(band => band.min <= cap);
   const selected = weightedPick(eligible);
-  return randomInt(selected.min, Math.min(selected.max, cap));
+  return {
+    amount: randomInt(selected.min, Math.min(selected.max, cap)),
+    emoji: "🌠",
+    color: 0xD9B7FF,
+    message: "Seu desejo foi atendido! A recompensa em KZ é aleatória e respeita o limite escolhido.",
+  };
 }
 
 module.exports = {
