@@ -204,9 +204,7 @@
           reels.forEach((reel, index) => {
             if (symbols[index]) reel.innerHTML = "<span>" + symbols[index] + "</span>";
           });
-          result.textContent = "✨ Você ganhou " + Number(data.reward).toLocaleString("pt-BR") + " Kizunas!
-Combinação: " + String(data.combination || "sorteio diário") + (data.plan && data.plan !== "Sem VIP" ? "
-Plano: " + data.plan + " (x" + data.multiplier + ")" : "");
+          result.textContent = "✨ Você ganhou " + Number(data.reward).toLocaleString("pt-BR") + " Kizunas!\\nCombinação: " + String(data.combination || "sorteio diário") + (data.plan && data.plan !== "Sem VIP" ? "\\nPlano: " + data.plan + " (x" + data.multiplier + ")" : "");
           setStatus("Daily coletado com sucesso!");
           spin.textContent = "Daily coletado";
           if (widgetId !== null && window.turnstile) window.turnstile.reset(widgetId);
