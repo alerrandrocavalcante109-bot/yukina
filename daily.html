@@ -317,10 +317,8 @@
         backButton.focus();
       };
       const closeMenu=()=>{
-        menu.classList.remove("open");
-        menu.style.display="none";
-        menu.setAttribute("aria-hidden","true");
-        profile.focus({preventScroll:true});
+        // O botão Voltar retorna à página inicial do painel da Yukina.
+        window.location.assign("/");
       };
       profile.setAttribute("role","button");
       profile.setAttribute("tabindex","0");
