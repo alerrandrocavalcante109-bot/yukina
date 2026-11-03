@@ -134,7 +134,9 @@ function registerInteractionHandlers(client) {
 
   client.on("interactionCreate", async (interaction) => {
     try {
-      if (interaction.isChatInputCommand()) {
+      if (interaction.isChatInputCommand() ||
+          interaction.isMessageContextMenuCommand() ||
+          interaction.isUserContextMenuCommand()) {
         const command = client.commands.get(interaction.commandName);
         if (!command) {
           if (!interaction.replied && !interaction.deferred) {
