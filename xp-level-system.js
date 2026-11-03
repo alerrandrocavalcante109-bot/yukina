@@ -9,10 +9,10 @@ const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const updateLocks = new Set();
 
-// Cada nível exige mais 1.000 XP acumulados. O XP nunca é zerado ao subir.
+// Nível 0 começa com 0 XP; cada 1.000 XP avança um nível.
 function getCurrentLevel(xp) {
   const value = Math.max(0, Number(xp) || 0);
-  return Math.floor(value / 1000) + 1;
+  return Math.floor(value / 1000);
 }
 
 const knownConfiguredRoleIds = new Map();
