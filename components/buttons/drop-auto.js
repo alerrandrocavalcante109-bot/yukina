@@ -387,29 +387,44 @@ async function onMemberJoin(member) {
       { id: member.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] },
       { id: deliveryRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] }
     ];
-    const privateChannel = await member.guild.channels.create({
-      name: "entrega-drop-" + member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 12) + "-" + member.id.slice(-4),
-      type: ChannelType.GuildText,
-      topic: "Entrega manual do Drop " + payout.runId + " · Usuário " + member.id,
-      permissionOverwrites: overwrites,
-      reason: "Entrega manual de prêmio do Drop Automático"
-    }).catch(error => {
-      console.error("[Drop Automático] Não foi possível criar canal privado de entrega:", error);
-      return null;
-    });
+    const topic = "Entrega manual do Drop " + payout.runId + " · Usuário " + member.id;
+    let privateChannel = member.guild.channels.cache.find(channel => channel.type === ChannelType.GuildText && channel.topic === topic);
+    if (!privateChannel) {
+      privateChannel = await member.guild.channels.create({
+        name: "entrega-drop-" + member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 12) + "-" + member.id.slice(-4),
+        type: ChannelType.GuildText,
+        topic,
+        permissionOverwrites: overwrites,
+        reason: "Entrega manual de prêmio do Drop Automático"
+      }).catch(error => {
+        console.error("[Drop Automático] Não foi possível criar canal privado de entrega:", error);
+        return null;
+      });
+    }
     if (!privateChannel) {
       await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member" } });
       continue;
     }
-    await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "staff_review", privateChannelId: privateChannel.id, joinedAt: new Date() } });
     const deliveredButton = new ActionRowBuilder().addComponents(
       new ButtonBuilder().setCustomId("dropauto:manual-delivered:" + String(payout._id)).setLabel("Prêmio entregue").setEmoji("🎁").setStyle(ButtonStyle.Success)
     );
-    await privateChannel.send({
-      content: "🌸 **Entrega manual de Drop Automático**\nMembro: <@" + member.id + ">\nPrêmio pendente: **" + fmt(payout.amount) + "**\nServidor: **" + member.guild.name + "**\nID do Drop: `" + payout.runId + "`\n\nA equipe autorizada deve atribuir o valor manualmente e clicar em **Prêmio entregue** para registrar a conclusão.",
-      components: [deliveredButton],
-      allowedMentions: { users: [member.id] }
-    });
+    const existingNotice = await privateChannel.messages.fetch({ limit: 10 }).then(messages =>
+      messages.find(message => message.author.id === member.client.user.id && message.content.includes("Entrega manual de Drop Automático"))
+    ).catch(() => null);
+    if (!existingNotice) {
+      try {
+        await privateChannel.send({
+          content: "🌸 **Entrega manual de Drop Automático**\nMembro: <@" + member.id + ">\nPrêmio pendente: **" + fmt(payout.amount) + "**\nServidor: **" + member.guild.name + "**\nID do Drop: `" + payout.runId + "`\n\nA equipe autorizada deve atribuir o valor manualmente e clicar em **Prêmio entregue** para registrar a conclusão.",
+          components: [deliveredButton],
+          allowedMentions: { users: [member.id] }
+        });
+      } catch (error) {
+        await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "waiting_member", lastError: String(error.message || error).slice(0, 500) } });
+        console.error("[Drop Automático] Não foi possível enviar as instruções no canal privado:", error);
+        continue;
+      }
+    }
+    await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "staff_review", privateChannelId: privateChannel.id, joinedAt: new Date() } });
   }
 }
 
