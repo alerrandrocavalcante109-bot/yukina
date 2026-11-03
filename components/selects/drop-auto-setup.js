@@ -241,9 +241,9 @@ module.exports = {
         console.error("[Drop Setup] Configuração salva, mas não consegui iniciar o agendador:", scheduleError);
       }
       await respond(interaction, {
-        content: "🌸 **Drop Automático ativado!**\\nServidor: **" + guild.name + "**\\nCanais: " + channels.map(c => c.toString()).join(", ") +
-          (schedulerStarted ? "\\n\\n❄️ O primeiro Drop já foi agendado." : "\\n\\n⚠️ A configuração foi salva, mas o agendador não iniciou. A equipe deve verificar os logs.") +
-          "\\n\\nObrigado por configurar! ❄️",
+        content: "🌸 **Drop Automático ativado!**\nServidor: **" + guild.name + "**\nCanais: " + channels.map(c => c.toString()).join(", ") +
+          (schedulerStarted ? "\n\n❄️ O primeiro Drop já foi agendado." : "\n\n⚠️ A configuração foi salva, mas o agendador não iniciou. A equipe deve verificar os logs.") +
+          "\n\nObrigado por configurar! ❄️",
         components: []
       });
       if (setup.surface === "guild-channel" && setup.setupChannelId) {
