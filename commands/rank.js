@@ -125,7 +125,7 @@ async function buildRankCard(user, record, position, total, guild) {
   // Renderização em alta densidade: mantém proporção 220x160 e textos nítidos.
   const SCALE = 3;
   const CARD_W = 220;
-  const CARD_H = 160;
+  const CARD_H = 180;
   const canvas = createCanvas(CARD_W * SCALE, CARD_H * SCALE);
   const ctx = canvas.getContext("2d");
   ctx.scale(SCALE, SCALE);
@@ -158,7 +158,7 @@ async function buildRankCard(user, record, position, total, guild) {
     ctx.fill();
   }
 
-  roundedRect(ctx, 5, 5, 210, 150, 12);
+  roundedRect(ctx, 5, 5, 210, 170, 12);
   ctx.fillStyle = "rgba(7,14,34,0.76)";
   ctx.fill();
   ctx.strokeStyle = "rgba(207,239,255,0.72)";
