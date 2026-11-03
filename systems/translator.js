@@ -139,48 +139,59 @@ async function translateToPortuguese(text) {
   if (!phrase) throw new Error("EMPTY");
   if (phrase.length > MAX_INPUT) throw new Error("TOO_LONG");
 
-  const params = new URLSearchParams({ client: "gtx", sl: "auto", tl: "pt", dt: "t", q: phrase });
-  const hosts = ["translate.googleapis.com", "translate.google.com"];
-  let data = null;
+  // Lingva usa uma API REST própria e não depende do endpoint público bloqueado do Google.
+  const hosts = [
+    "https://lingva.ml",
+    "https://translate.jae.fi",
+    "https://translate.dr460nf1r3.org",
+    "https://lingva.garudalinux.org",
+  ];
+  let translated = "";
+  let sourceLanguage = "";
   const failures = [];
 
   for (const host of hosts) {
-    const endpoint = "https://" + host + "/translate_a/single?" + params.toString();
     try {
+      const endpoint = host + "/api/v1/auto/pt/" + encodeURIComponent(phrase);
       const response = await fetch(endpoint, {
         method: "GET",
         headers: {
-          "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36",
-          "Accept": "application/json,text/plain,*/*",
+          "User-Agent": "Mozilla/5.0 YukinaDiscordBot/1.0",
+          "Accept": "application/json",
         },
-        signal: AbortSignal.timeout(15000),
+        signal: AbortSignal.timeout(12000),
       });
       if (!response.ok) {
-        failures.push(host + ":HTTP_" + response.status);
+        failures.push(new URL(host).hostname + ":HTTP_" + response.status);
         continue;
       }
-      data = await response.json();
+
+      const data = await response.json();
+      const candidate = String(data?.translation || "").trim();
+      if (!candidate || data?.error) {
+        failures.push(new URL(host).hostname + ":NO_RESULT");
+        continue;
+      }
+
+      translated = candidate;
+      sourceLanguage = String(
+        data?.info?.detected?.code ||
+        data?.source?.lang?.code ||
+        data?.detected?.code ||
+        "auto"
+      ).trim();
       break;
     } catch (error) {
-      failures.push(host + ":" + (error?.name || error?.message || "NETWORK_ERROR"));
+      failures.push(new URL(host).hostname + ":" + (error?.name || "NETWORK_ERROR"));
     }
   }
 
-  if (!data) {
+  if (!translated) {
     const error = new Error("TRANSLATION_SERVICE");
     error.details = failures.join(", ");
     throw error;
   }
-  const translated = Array.isArray(data?.[0])
-    ? data[0].map(part => Array.isArray(part) ? part[0] : "").filter(Boolean).join("")
-    : "";
   if (!translated.trim()) throw new Error("NO_RESULT");
-
-  const sourceLanguage = String(data?.[2] || "").trim();
-  const normalizedLanguage = sourceLanguage.split("-")[0];
-  if (!SUPPORTED_SOURCE_LANGUAGES.has(sourceLanguage) && !SUPPORTED_SOURCE_LANGUAGES.has(normalizedLanguage)) {
-    throw new Error("UNSUPPORTED_LANGUAGE");
-  }
 
   return {
     original: phrase,
