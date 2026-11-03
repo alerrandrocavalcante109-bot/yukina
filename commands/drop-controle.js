@@ -74,10 +74,9 @@ module.exports = {
           runs.countDocuments({ ...filter, status: "active" }),
           runs.countDocuments({ ...filter, status: "ended" }),
           ledger.aggregate([{ $match: filter }, { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }]).toArray(),
-          database.collection("drop_auto_history").aggregate([
-            { $match: filter },
-            { $unwind: "$manualDeliveries" },
-            { $group: { _id: null, total: { $sum: "$manualDeliveries.amount" }, count: { $sum: 1 } } }
+          payouts.aggregate([
+            { $match: { guildId: String(interaction.guildId), status: "delivered" } },
+            { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }
           ]).toArray(),
           payouts.countDocuments({ guildId: String(interaction.guildId), status: { $in: ["waiting_member", "staff_review", "creating_channel"] } }),
           configs.findOne({ _id: config._id })
