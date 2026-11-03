@@ -40,6 +40,7 @@ async function initDb() {
     await Promise.all([
       runs.createIndex({ status: 1, endsAt: 1 }),
       configs.createIndex({ status: 1, enabled: 1, nextRunAt: 1 }),
+      db.collection("drop_auto_history").createIndex({ guildId: 1, createdAt: -1 }),
       payouts.createIndex({ guildId: 1, userId: 1, status: 1 }),
       payouts.createIndex({ runId: 1, userId: 1 }, { unique: true }),
       ledger.createIndex({ runId: 1, userId: 1 }, { unique: true, name: "unique_drop_payout" }),
@@ -119,7 +120,7 @@ async function schedule(client, config, channelId, dueAt) {
 
 async function scheduleNext(client, config, channelId) {
   const rule = RULES[String(config.planKey).toLowerCase()];
-  if (!rule) return;
+  if (!rule || (config.pausedChannelIds || []).map(String).includes(String(channelId))) return;
   const nextRunAt = Date.now() + rnd(...rule.interval);
   await configs.updateOne(
     { _id: config._id, status: "active", enabled: true },
@@ -135,7 +136,7 @@ async function publish(client, config, channelId) {
   locks.add(key);
   try {
     const current = await configs.findOne({ userId: String(config.userId), status: "active", enabled: true });
-    if (!current || !current.channelIds?.includes(String(channelId))) return;
+    if (!current || !current.channelIds?.includes(String(channelId)) || (current.pausedChannelIds || []).map(String).includes(String(channelId))) return;
     if (!await validPlan(current.userId, current.planKey)) {
       await configs.updateOne({ _id: current._id }, { $set: { status: "paused", enabled: false, pausedAt: new Date(), pauseReason: "plan_expired" }, $unset: { nextRunAt: "" } });
       return;
@@ -427,6 +428,7 @@ async function initialize(client) {
       continue;
     }
     for (const channelId of config.channelIds || []) {
+      if ((config.pausedChannelIds || []).map(String).includes(String(channelId))) continue;
       const savedDueAt = Number(config.nextRunAtByChannel?.[String(channelId)]) || 0;
       const dueAt = savedDueAt || Date.now() + rnd(...RULES[String(config.planKey).toLowerCase()].interval);
       if (!savedDueAt) await configs.updateOne(
@@ -436,7 +438,14 @@ async function initialize(client) {
       await schedule(client, config, channelId, dueAt);
     }
   }
-  console.log("[Drop Automático] Agendador iniciado; execuções e próximos horários restaurados.");
+  const waiting = await payouts.find({ status: "waiting_member", officialGuildId: { $exists: true } }).limit(100).toArray();
+  for (const payout of waiting) {
+    const guild = client.guilds.cache.get(String(payout.officialGuildId)) || await client.guilds.fetch(String(payout.officialGuildId)).catch(() => null);
+    if (!guild) continue;
+    const member = await guild.members.fetch(String(payout.userId)).catch(() => null);
+    if (member) await onMemberJoin(member).catch(error => console.error("[Drop Automático] Falha ao recuperar entrega pendente:", error));
+  }
+  console.log("[Drop Automático] Agendador iniciado; execuções, entregas pendentes e próximos horários restaurados.");
 }
 
 async function join(interaction, id) {
@@ -480,7 +489,33 @@ async function markManualDelivered(interaction) {
   await interaction.channel.delete("Entrega manual do Drop confirmada por membro com CARGO_YUKINA").catch(console.error);
 }
 
+
+async function pauseChannel(config, channelId) {
+  await initDb();
+  const id = String(channelId);
+  const key = String(config.userId) + ":" + id;
+  for (const timerKey of [key, "notice:" + key]) {
+    const timer = timers.get(timerKey);
+    if (timer) clearTimeout(timer);
+    timers.delete(timerKey);
+  }
+  await configs.updateOne({ _id: config._id }, { $addToSet: { pausedChannelIds: id }, $set: { updatedAt: new Date() } });
+  return true;
+}
+
+async function resumeChannel(client, config, channelId) {
+  await initDb();
+  const id = String(channelId);
+  if (!await validPlan(config.userId, config.planKey)) throw new Error("O plano está expirado.");
+  await configs.updateOne({ _id: config._id }, { $pull: { pausedChannelIds: id }, $set: { updatedAt: new Date() } });
+  const fresh = await configs.findOne({ _id: config._id });
+  await scheduleNext(client, fresh, id);
+  return true;
+}
+
 module.exports = {
+  pauseChannel,
+  resumeChannel,
   customId: /^(?:dropauto:join:[a-f0-9]{24}|dropauto:manual-delivered:[a-f0-9]{24})$/i,
   async execute(interaction) {
     if (interaction.customId.startsWith("dropauto:manual-delivered:")) return markManualDelivered(interaction);
