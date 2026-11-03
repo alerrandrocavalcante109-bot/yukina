@@ -499,9 +499,9 @@ async function markManualDelivered(interaction) {
   if (!payout || String(payout.privateChannelId) !== String(interaction.channelId)) return interaction.reply({ content: "🌙 Esta entrega já foi concluída ou não pertence a este canal.", flags: MessageFlags.Ephemeral });
   const result = await payouts.updateOne({ _id: payout._id, status: "staff_review" }, { $set: { status: "delivered", deliveredBy: String(interaction.user.id), deliveredAt: new Date() } });
   if (!result.modifiedCount) return interaction.reply({ content: "🌙 Esta entrega já foi registrada.", flags: MessageFlags.Ephemeral });
+  await db.collection("drop_auto_history").updateOne({ runId: payout.runId }, { $push: { manualDeliveries: { userId: payout.userId, amount: payout.amount, deliveredBy: String(interaction.user.id), deliveredAt: new Date() } } }).catch(error => console.error("[Drop Automático] Falha ao registrar entrega manual no histórico:", error));
   await interaction.reply({ content: "🎁 Entrega registrada. Este atendimento será encerrado.", flags: MessageFlags.Ephemeral });
-  await interaction.channel.send({ content: "🌸 Prêmio de **" + fmt(payout.amount) + "** marcado como entregue por <@" + interaction.user.id + ">. Atendimento encerrado." });
-  await db.collection("drop_auto_history").updateOne({ runId: payout.runId }, { $push: { manualDeliveries: { userId: payout.userId, amount: payout.amount, deliveredBy: String(interaction.user.id), deliveredAt: new Date() } } });
+  await interaction.channel.send({ content: "🌸 Prêmio de **" + fmt(payout.amount) + "** marcado como entregue por <@" + interaction.user.id + ">. Atendimento encerrado." }).catch(error => console.error("[Drop Automático] Falha ao publicar confirmação da entrega:", error));
   await wait(3000);
   await interaction.channel.delete("Entrega manual do Drop confirmada por membro com CARGO_YUKINA").catch(console.error);
 }
