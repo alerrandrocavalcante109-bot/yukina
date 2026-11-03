@@ -89,8 +89,7 @@ async function updateLevel(member, announce = false) {
       if (channel && channel.viewable &&
           channel.permissionsFor(member.guild.members.me)?.has(PermissionFlagsBits.SendMessages)) {
         await channel.send({
-          content: "✨ Parabéns, " + member.toString() + "! Você alcançou o nível **" + selected.level +
-            "** e recebeu o cargo **" + selectedRole.name + "** com **" + xp.toLocaleString("pt-BR") + " XP**!",
+          content: "# 🌸 Um novo florescer!\\n## ❄️ Parabéns, " + member.toString() + "!\\n### Você alcançou o nível " + selected.level + "!\\n\\n**🌙 XP TOTAL ACUMULADO: " + xp.toLocaleString("pt-BR") + " XP**\\n**🎖️ Novo cargo: " + selectedRole.name + "**\\n\\n*Cada mensagem é uma pequena estrela que ilumina sua jornada. Continue florescendo no universo da Yukina!* ✨",
           allowedMentions: { users: [member.id] },
         }).catch(() => {});
       }
