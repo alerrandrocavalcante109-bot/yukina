@@ -2,10 +2,13 @@
 
 const { EmbedBuilder } = require("discord.js");
 const { getCollection } = require("../system-storage");
+const { getVipCollection } = require("../vip-store");
 
 const COLOR = 0xB9DDF5;
 const MAX_INPUT = 4500;
 const DAILY_CREDITS = 300;
+const PLAN_DAILY_CREDITS = { starter: 500, plus: 750, premium: 1000, ultra: 1500, infinity: 2000 };
+const PLAN_TIERS = { starter: 1, plus: 2, premium: 3, ultra: 4, infinity: 5 };
 const CREDIT_SYSTEM = "translator_credits";
 const CREDIT_GUILD = "global";
 const CREDIT_KEY = "daily";
@@ -40,61 +43,72 @@ function creditFilter(userId) {
   };
 }
 
+async function getUserDailyLimit(userId) {
+  const subscriptions = await getVipCollection();
+  const active = await subscriptions.find({
+    userId: String(userId),
+    status: "active",
+    expiresAt: { $gt: new Date() },
+  }).toArray();
+  active.sort((a, b) =>
+    (PLAN_TIERS[String(b.planKey || "").toLowerCase()] || 0) -
+    (PLAN_TIERS[String(a.planKey || "").toLowerCase()] || 0)
+  );
+  const planKey = String(active[0]?.planKey || "").toLowerCase();
+  return {
+    planKey: PLAN_DAILY_CREDITS[planKey] ? planKey : null,
+    limit: PLAN_DAILY_CREDITS[planKey] || DAILY_CREDITS,
+  };
+}
+
+function dailyResetPipeline(today, limit, planKey) {
+  return [{
+    $set: {
+      credits: {
+        $cond: [
+          { $and: [{ $eq: ["$dailyDate", today] }, { $eq: ["$dailyLimit", limit] }] },
+          { $ifNull: ["$credits", limit] },
+          limit,
+        ],
+      },
+      dailyDate: today,
+      dailyLimit: limit,
+      planKey: planKey,
+    },
+  }];
+}
+
 async function getDailyCredits(userId) {
   const today = getLocalDateKey();
+  const { planKey, limit } = await getUserDailyLimit(userId);
   const collection = await getCollection();
   const doc = await collection.findOneAndUpdate(
     creditFilter(userId),
-    [
-      {
-        $set: {
-          dailyDate: today,
-          credits: {
-            $cond: [
-              { $eq: ["$dailyDate", today] },
-              { $ifNull: ["$credits", DAILY_CREDITS] },
-              DAILY_CREDITS,
-            ],
-          },
-        },
-      },
-    ],
+    dailyResetPipeline(today, limit, planKey),
     { upsert: true, returnDocument: "after" }
   );
-  return { credits: Number(doc?.credits ?? DAILY_CREDITS), resetsAt: "00:00", date: today };
+  return {
+    credits: Number(doc?.credits ?? limit),
+    limit: Number(doc?.dailyLimit ?? limit),
+    planKey,
+    resetsAt: "00:00",
+    date: today,
+  };
 }
 
 async function consumeDailyCredits(userId, cost) {
   const today = getLocalDateKey();
+  const { planKey, limit } = await getUserDailyLimit(userId);
   const collection = await getCollection();
   const doc = await collection.findOneAndUpdate(
     creditFilter(userId),
     [
-      {
-        $set: {
-          dailyDate: today,
-          credits: {
-            $cond: [
-              { $eq: ["$dailyDate", today] },
-              { $ifNull: ["$credits", DAILY_CREDITS] },
-              DAILY_CREDITS,
-            ],
-          },
-        },
-      },
-      {
-        $set: {
-          chargeAccepted: { $gte: ["$credits", cost] },
-        },
-      },
+      ...dailyResetPipeline(today, limit, planKey),
+      { $set: { chargeAccepted: { $gte: ["$credits", cost] } } },
       {
         $set: {
           credits: {
-            $cond: [
-              "$chargeAccepted",
-              { $subtract: ["$credits", cost] },
-              "$credits",
-            ],
+            $cond: ["$chargeAccepted", { $subtract: ["$credits", cost] }, "$credits"],
           },
         },
       },
@@ -104,16 +118,19 @@ async function consumeDailyCredits(userId, cost) {
 
   return {
     accepted: doc?.chargeAccepted === true,
-    credits: Number(doc?.credits ?? DAILY_CREDITS),
+    credits: Number(doc?.credits ?? limit),
+    limit: Number(doc?.dailyLimit ?? limit),
+    planKey,
     date: today,
   };
 }
 
 async function refundDailyCredits(userId, cost, date) {
+  const { limit } = await getUserDailyLimit(userId);
   const collection = await getCollection();
   await collection.updateOne(
     { ...creditFilter(userId), dailyDate: date },
-    [{ $set: { credits: { $min: [DAILY_CREDITS, { $add: ["$credits", cost] }] } } }]
+    [{ $set: { credits: { $min: [limit, { $add: ["$credits", cost] }] }, dailyLimit: limit } }]
   );
 }
 
@@ -159,12 +176,13 @@ async function translateWithCredits(userId, text) {
     const error = new Error("INSUFFICIENT_CREDITS");
     error.credits = charge.credits;
     error.cost = cost;
+    error.limit = charge.limit;
     throw error;
   }
 
   try {
     const result = await translateToPortuguese(phrase);
-    return { ...result, creditsSpent: cost, creditsRemaining: charge.credits };
+    return { ...result, creditsSpent: cost, creditsRemaining: charge.credits, dailyLimit: charge.limit, planKey: charge.planKey };
   } catch (error) {
     await refundDailyCredits(userId, cost, charge.date).catch(refundError => {
       console.error("[Yukina tradução] Falha ao devolver créditos:", refundError?.message || refundError);
@@ -183,7 +201,7 @@ function buildTranslationEmbed(result, user) {
     )
     .addFields({
       name: "❄️ Créditos utilizados",
-      value: result.creditsSpent + " tokens · Restam " + result.creditsRemaining + "/" + DAILY_CREDITS,
+      value: result.creditsSpent + " tokens · Restam " + result.creditsRemaining + "/" + (result.dailyLimit || DAILY_CREDITS),
     })
     .setFooter({ text: "Créditos renovados diariamente à meia-noite · Horário de Brasília" })
     .setTimestamp();
@@ -196,7 +214,7 @@ function errorMessage(error) {
   if (error?.message === "INSUFFICIENT_CREDITS") {
     return "❄️ Seus créditos diários são insuficientes para essa tradução. Você tem **" +
       Number(error.credits || 0) + "** tokens e precisa de **" + Number(error.cost || 0) +
-      "**. Seus 300 créditos serão renovados à meia-noite (horário de Brasília).";
+      "**. Seu limite diário é de **" + Number(error.limit || DAILY_CREDITS) + "** créditos, renovados à meia-noite (horário de Brasília).";
   }
   return "❄️ Não consegui realizar a tradução agora. Tente novamente em alguns instantes. Seus créditos foram preservados.";
 }
@@ -209,4 +227,5 @@ module.exports = {
   buildTranslationEmbed,
   errorMessage,
   DAILY_CREDITS,
+  PLAN_DAILY_CREDITS,
 };
