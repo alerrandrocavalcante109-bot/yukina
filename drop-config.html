@@ -103,7 +103,7 @@ async function init(){
   if(saved?.guildId&&guilds.some(g=>g.id===saved.guildId)){select.value=saved.guildId;await loadChannels(saved.guildId);}
  }catch(error){$("loginCard").classList.remove("hidden");$("loginStatus").textContent=error.message;}
 }
-$("loginButton").addEventListener("click",()=>location.href="./login.html");
+$("loginButton").addEventListener("click",()=>location.href="./login.html?next=drop-config.html");
 $("guildSelect").addEventListener("change",event=>{saved={...saved,channelIds:[]};if(event.target.value)loadChannels(event.target.value);else $("channelSection").classList.add("hidden");});
 $("reloadButton").addEventListener("click",()=>{if($("guildSelect").value)loadChannels($("guildSelect").value);});
 $("saveButton").addEventListener("click",async()=>{
