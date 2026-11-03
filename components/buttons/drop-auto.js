@@ -475,7 +475,8 @@ async function join(interaction, id) {
 async function markManualDelivered(interaction) {
   await initDb();
   if (!CARGO_YUKINA) return interaction.reply({ content: "⚠️ O cargo CARGO_YUKINA não está configurado no Render.", flags: MessageFlags.Ephemeral });
-  if (!interaction.member?.roles?.cache?.has(CARGO_YUKINA)) return interaction.reply({ content: "❄️ Você não possui autorização para confirmar esta entrega.", flags: MessageFlags.Ephemeral });
+  const staffMember = interaction.guild ? await interaction.guild.members.fetch(interaction.user.id).catch(() => null) : null;
+  if (!staffMember?.roles?.cache?.has(CARGO_YUKINA)) return interaction.reply({ content: "❄️ Você não possui autorização para confirmar esta entrega.", flags: MessageFlags.Ephemeral });
   const id = interaction.customId.split(":")[2];
   if (!/^[a-f0-9]{24}$/i.test(id)) return interaction.reply({ content: "🌙 Registro de entrega inválido.", flags: MessageFlags.Ephemeral });
   const payout = await payouts.findOne({ _id: new ObjectId(id), status: "staff_review" });
