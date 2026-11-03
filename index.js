@@ -852,14 +852,28 @@ async function panelApi(req, res, url) {
       const planKey = String(subscription?.planKey || "").toLowerCase();
       const multiplier = subscription && multipliers[planKey] ? multipliers[planKey] : 1;
       const planName = subscription && multipliers[planKey] ? planKey[0].toUpperCase() + planKey.slice(1) : "Sem VIP";
-      const ranges = [{ min: 5000, max: 10000 }, { min: 10000, max: 15000 }, { min: 10000, max: 20000 }, { min: 20000, max: 25000 }];
-      const baseReward = Math.floor(Math.random() * (ranges[0].max - ranges[0].min + 1)) + ranges[0].min;
+      const symbols = ["🌸", "❄️", "🎰", "⛩️"];
+      const slots = Array.from({ length: 4 }, () => symbols[Math.floor(Math.random() * symbols.length)]);
+      const counts = Object.values(slots.reduce((acc, symbol) => {
+        acc[symbol] = (acc[symbol] || 0) + 1;
+        return acc;
+      }, {}));
+      const matchCount = Math.max(...counts);
+      const rewardRange = matchCount === 4 ? { min: 10000, max: 20000 }
+        : matchCount === 3 ? { min: 5000, max: 15000 }
+        : matchCount === 2 ? { min: 5000, max: 10000 }
+        : { min: 1000, max: 5000 };
+      const baseReward = Math.floor(Math.random() * (rewardRange.max - rewardRange.min + 1)) + rewardRange.min;
       const reward = Math.round(baseReward * multiplier);
+      const combination = matchCount === 4 ? "4 símbolos iguais"
+        : matchCount === 3 ? "3 símbolos iguais"
+        : matchCount === 2 ? "2 símbolos iguais"
+        : "4 símbolos diferentes";
       const feeResult = await applyDailyInactivityFee({ db: settingsMongoClient.db(MONGODB_DB), guildId, userId: String(user.id), now });
       const session = settingsMongoClient.startSession();
       try {
         await session.withTransaction(async () => {
-          await daily.insertOne({ guildId, userId: String(user.id), day, plan: planKey || null, multiplier, baseReward, reward, claimedAt: now }, { session });
+          await daily.insertOne({ guildId, userId: String(user.id), day, plan: planKey || null, multiplier, slots, combination, baseReward, reward, claimedAt: now }, { session });
           await settingsMongoClient.db(MONGODB_DB).collection("economy_balances").updateOne(
             { guildId, userId: String(user.id) },
             { $inc: { balance: reward }, $set: { updatedAt: now }, $setOnInsert: { createdAt: now } },
@@ -872,7 +886,7 @@ async function panelApi(req, res, url) {
       } finally {
         await session.endSession();
       }
-      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, baseReward, reward, bankFee: feeResult.fee, bankFeeOverdueDays: feeResult.overdueDays, balanceUpdated: true, nextReset: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1)).toISOString() });
+      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, slots, combination, baseReward, reward, bankFee: feeResult.fee, bankFeeOverdueDays: feeResult.overdueDays, balanceUpdated: true, nextReset: getNextDailyReset(now) });
     } catch (error) {
       console.error("[Daily] Falha na coleta:", error.message || error);
       return sendJson(res, 500, { ok: false, detail: "Não foi possível verificar a coleta do Daily. Tente novamente." });
