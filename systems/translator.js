@@ -145,7 +145,7 @@ async function translateToPortuguese(text) {
     process.env.AZURE_TRANSLATOR_ENDPOINT || "https://api.cognitive.microsofttranslator.com"
   ).trim().replace(/\/+$/, "");
 
-  if (!apiKey || !region) throw new Error("TRANSLATION_NOT_CONFIGURED");
+  if (!apiKey) throw new Error("TRANSLATION_NOT_CONFIGURED");
 
   const url = endpoint + "/translate?api-version=3.0&to=pt";
   let response;
@@ -154,7 +154,7 @@ async function translateToPortuguese(text) {
       method: "POST",
       headers: {
         "Ocp-Apim-Subscription-Key": apiKey,
-        "Ocp-Apim-Subscription-Region": region,
+        ...(region ? { "Ocp-Apim-Subscription-Region": region } : {}),
         "Content-Type": "application/json",
         "Accept": "application/json",
       },
