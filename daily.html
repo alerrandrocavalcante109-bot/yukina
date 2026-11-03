@@ -42,6 +42,18 @@
     .reel-field:nth-child(1){border-color:rgba(255,174,220,.48)}.reel-field:nth-child(2){border-color:rgba(190,222,255,.48)}.reel-field:nth-child(3){border-color:rgba(255,215,143,.48)}.reel-field:nth-child(4){border-color:rgba(255,190,190,.48)}
     @keyframes welcome-in{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
     @media(max-width:650px){.welcome{gap:30px;padding:100px 16px 30px}.welcome h1{font-size:clamp(2.7rem,12vw,4.4rem)}.daily-reel{grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px}.reel-field{min-height:104px;border-radius:18px}.reel-field span{font-size:clamp(1.8rem,8vw,2.5rem)}}
+
+    .profile{cursor:pointer;user-select:none;transition:transform .2s,background .2s}
+    .profile:hover{transform:translateY(-2px);background:rgba(45,18,62,.86)}
+    .profile:focus-visible{outline:2px solid #ffd8ef;outline-offset:4px}
+    .account-menu{position:fixed;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:22px;background:rgba(8,4,16,.72);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
+    .account-menu.open{display:flex;animation:welcome-in .2s ease both}
+    .account-menu-card{width:min(420px,100%);padding:28px 22px;border:1px solid rgba(255,203,235,.34);border-radius:24px;background:linear-gradient(145deg,rgba(42,18,58,.96),rgba(17,10,34,.97));box-shadow:0 20px 70px rgba(0,0,0,.48);text-align:center}
+    .account-menu-card img{width:82px;height:82px;border-radius:50%;object-fit:cover;border:2px solid rgba(255,192,229,.7);box-shadow:0 0 25px rgba(255,190,230,.2)}
+    .account-menu-card h2{margin:14px 0 6px;color:#fff0fb;font-size:22px}
+    .account-menu-card p{margin:0 0 24px;color:#e9c7e5;font-size:13px}
+    .account-back{width:100%;padding:13px 20px;border:1px solid rgba(255,203,235,.48);border-radius:999px;background:linear-gradient(135deg,#e9a6d0,#9c79c9);color:#24102f;font-size:15px;font-weight:850;cursor:pointer}
+
     .profile img{width:38px;height:38px;flex:0 0 38px;border-radius:50%;object-fit:cover;border:1px solid rgba(255,192,229,.6)}
     .profile span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#fff0fb;font-size:14px;font-weight:700}
     @media(max-width:520px){.profile{top:14px;right:14px;padding:6px 11px 6px 6px;gap:8px}.profile img{width:34px;height:34px;flex-basis:34px}.profile span{font-size:13px}}
@@ -68,6 +80,14 @@
     </section>
     <blockquote class="daily-quote"><span class="quote-mark">☾</span>Se algum dia o mundo parecer grande demais e seus passos ficarem cansados, olhe para a lua: ela continua brilhando mesmo quando apenas uma pequena parte de sua luz pode ser vista. Você também não precisa estar bem o tempo inteiro para continuar sendo alguém especial. Respire, recomece quantas vezes precisar e guarde no peito a certeza de que ainda existem encontros bonitos, caminhos inesperados e motivos delicados para sorrir esperando por você.<span class="quote-sign">— Que sua noite seja leve e seu amanhã floresça</span></blockquote>
   </main>
+  <div class="account-menu" id="accountMenu" aria-hidden="true">
+    <section class="account-menu-card" role="dialog" aria-modal="true" aria-labelledby="accountMenuTitle">
+      <img id="accountMenuAvatar" alt="">
+      <h2 id="accountMenuTitle"></h2>
+      <p>Conta Discord conectada</p>
+      <button class="account-back" id="accountMenuBack" type="button">← Voltar</button>
+    </section>
+  </div>
   <div class="profile" id="dailyProfile" aria-label="Usuário conectado">
     <img id="dailyAvatar" alt="">
     <span id="dailyName"></span>
@@ -283,6 +303,34 @@
       const profile=document.getElementById("dailyProfile");
       const avatar=document.getElementById("dailyAvatar");
       const name=document.getElementById("dailyName");
+      const menu=document.getElementById("accountMenu");
+      const menuAvatar=document.getElementById("accountMenuAvatar");
+      const menuTitle=document.getElementById("accountMenuTitle");
+      const backButton=document.getElementById("accountMenuBack");
+      const openMenu=()=>{
+        menuAvatar.src=avatar.src;
+        menuAvatar.alt=avatar.alt;
+        menuTitle.textContent=name.textContent;
+        menu.classList.add("open");
+        menu.setAttribute("aria-hidden","false");
+        backButton.focus();
+      };
+      const closeMenu=()=>{
+        menu.classList.remove("open");
+        menu.setAttribute("aria-hidden","true");
+        profile.focus();
+      };
+      profile.setAttribute("role","button");
+      profile.setAttribute("tabindex","0");
+      profile.setAttribute("aria-haspopup","dialog");
+      profile.setAttribute("aria-label","Abrir menu da conta");
+      profile.addEventListener("click",openMenu);
+      profile.addEventListener("keydown",event=>{
+        if(event.key==="Enter"||event.key===" "){event.preventDefault();openMenu();}
+      });
+      backButton.addEventListener("click",closeMenu);
+      menu.addEventListener("click",event=>{if(event.target===menu)closeMenu();});
+      document.addEventListener("keydown",event=>{if(event.key==="Escape"&&menu.classList.contains("open"))closeMenu();});
       const getStored=key=>{try{return localStorage.getItem(key)||""}catch(_){return""}};
       const setStored=(key,value)=>{try{localStorage.setItem(key,value)}catch(_){}};
       const apiUrl=()=>String(window.YUKINA_API_URL||window.YUKINA_API_BACKUP_URL||"https://yukina-jspa.onrender.com").replace(/\/+$/,"");
