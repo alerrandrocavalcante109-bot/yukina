@@ -106,7 +106,7 @@ async function scheduleNext(client, config, channelId) {
   const nextRunAt = Date.now() + rnd(...rule.interval);
   await configs.updateOne(
     { _id: config._id, status: "active", enabled: true },
-    { $set: { nextRunAt, updatedAt: new Date() } }
+    { $set: { ["nextRunAtByChannel." + String(channelId)]: nextRunAt, updatedAt: new Date() }, $unset: { nextRunAt: "" } }
   );
   await schedule(client, config, channelId, nextRunAt);
 }
@@ -149,7 +149,7 @@ async function publish(client, config, channelId) {
       await runs.deleteOne({ _id: doc._id });
       throw error;
     }
-    await configs.updateOne({ _id: current._id }, { $unset: { nextRunAt: "" } });
+    await configs.updateOne({ _id: current._id }, { $unset: { ["nextRunAtByChannel." + String(channelId)]: "", nextRunAt: "" } });
   } finally {
     locks.delete(key);
   }
@@ -332,8 +332,12 @@ async function initialize(client) {
       continue;
     }
     for (const channelId of config.channelIds || []) {
-      const dueAt = Number(config.nextRunAt) || Date.now() + rnd(...RULES[String(config.planKey).toLowerCase()].interval);
-      if (!config.nextRunAt) await configs.updateOne({ _id: config._id }, { $set: { nextRunAt: dueAt } });
+      const savedDueAt = Number(config.nextRunAtByChannel?.[String(channelId)]) || 0;
+      const dueAt = savedDueAt || Date.now() + rnd(...RULES[String(config.planKey).toLowerCase()].interval);
+      if (!savedDueAt) await configs.updateOne(
+        { _id: config._id },
+        { $set: { ["nextRunAtByChannel." + String(channelId)]: dueAt }, $unset: { nextRunAt: "" } }
+      );
       await schedule(client, config, channelId, dueAt);
     }
   }
