@@ -99,6 +99,16 @@ module.exports = {
         { upsert: true }
       );
 
+      // Inicia o fluxo de configuração do Drop Automático após salvar a assinatura.
+      // O módulo tenta DM e, se falhar, cria um canal privado temporário em servidor elegível.
+      let dropSetupStarted = false;
+      try {
+        const dropSetup = require("../components/selects/drop-auto-setup");
+        dropSetupStarted = await dropSetup.start(interaction.client, target.id, planKey);
+      } catch (setupError) {
+        console.error("[Plano Atribuir] Falha ao iniciar configuração do Drop Automático:", setupError);
+      }
+
       return interaction.editReply({
         content: [
           "🌸 **Plano atribuído com sucesso!**",
@@ -107,7 +117,9 @@ module.exports = {
           `**Duração:** ${period === "annual" ? "365 dias" : "30 dias"}`,
           `**Validade até:** <t:${Math.floor(expiresAt.getTime() / 1000)}:F>`,
           "",
-          "❄️ A assinatura já pode ser reconhecida pelo multiplicador do Daily.",
+          dropSetupStarted
+            ? "❄️ A Yukina iniciou o envio das instruções para configurar o Drop Automático."
+            : "🫧 O plano foi salvo, mas a configuração do Drop Automático não pôde ser iniciada. Verifique se a Yukina compartilha um servidor com o usuário e possui permissão para criar canais privados.",
         ].join("\n"),
         allowedMentions: { users: [target.id] },
       });
