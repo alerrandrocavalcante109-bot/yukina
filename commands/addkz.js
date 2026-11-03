@@ -70,13 +70,11 @@ module.exports = {
     }
 
     const mentions = [...message.mentions.users.values()].filter(user => !user.bot);
-    const separatorIndex = args.indexOf(">");
-    if (separatorIndex < 0) {
-      return message.reply("🫧 Use: Yaddkz @membro1 @membro2 > valor");
-    }
-    const amount = parseAmount(args.slice(separatorIndex + 1).join(""));
+    const amountText = args.filter(arg => !/^<@!?\d+>$/.test(arg)).join("");
+    const amount = parseAmount(amountText);
+
     if (!mentions.length || !amount) {
-      return message.reply("🫧 Informe pelo menos um membro e um valor válido. Exemplos: Yaddkz @membro > 5k ou Yaddkz @membro > 1.5m");
+      return message.reply("🫧 Use: Yaddkz @membro valor. Exemplos: Yaddkz @membro 5k ou Yaddkz @membro1 @membro2 1.5m");
     }
 
     try {
