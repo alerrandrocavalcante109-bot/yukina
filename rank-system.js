@@ -13,7 +13,7 @@ const TENURE_CHECK_MS = 10 * 60_000;
 
 const lastXpAt = new Map();
 const multiplierCache = new Map();
-const MULTIPLIER_CACHE_MS = 60_000;
+const MULTIPLIER_CACHE_MS = 10_000;
 const planMultiplierCache = new Map();
 const PLAN_XP_MULTIPLIERS = { starter: 1.1, plus: 1.2, premium: 1.35, ultra: 1.5, infinity: 1.75 };
 
@@ -79,7 +79,7 @@ async function getXpMultiplier(guildId, member) {
   // O cargo não precisa ser exclusivo: qualquer combinação de cargos é aceita.
   let highestMultiplier = null;
   for (const rule of rules || []) {
-    const roleId = String(rule?.role || "");
+    const roleId = String(rule?.role || rule?.roleId || rule?.role_id || "");
     const value = Number(rule?.multiplier);
     if (roleId && member.roles.cache.has(roleId) && Number.isFinite(value) && value >= 0.1) {
       highestMultiplier = highestMultiplier === null
