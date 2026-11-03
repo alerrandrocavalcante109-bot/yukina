@@ -87,8 +87,23 @@ async function claimCooldown(db, { guildId, userId, command, cooldownMs, now }) 
 }
 
 async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, title, description, rewardFactory }) {
+  // O Discord exige uma confirmação em até 3 segundos. As consultas de plano,
+  // MongoDB e transação podem demorar; deferimos antes de iniciar esse trabalho.
+  try {
+    if (!interaction.deferred && !interaction.replied) {
+      await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    }
+  } catch (error) {
+    console.error(`[Yukina /${command}] Não foi possível confirmar a interação:`, error);
+    return;
+  }
+
+  const respond = payload => interaction.deferred || interaction.replied
+    ? interaction.editReply(payload)
+    : interaction.reply(payload);
+
   if (!interaction.inGuild() || !interaction.guild) {
-    return interaction.reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor.", flags: MessageFlags.Ephemeral });
+    return respond({ content: "❄️ Este comando só pode ser usado dentro de um servidor." });
   }
 
   let claim;
@@ -98,7 +113,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     const actualTier = TIERS[String(subscription?.planKey || "").toLowerCase()] || 0;
     if (!subscription || actualTier < TIERS[minimumPlan]) {
       const requiredName = PLAN_NAMES[minimumPlan];
-      return interaction.reply({
+      return respond({
         content: `🌸 Este comando é exclusivo do plano **${requiredName}** ou superior. Assine ou renove seu plano para desbloqueá-lo.`,
         flags: MessageFlags.Ephemeral,
       });
@@ -115,7 +130,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     });
     if (!claim.ok) {
       const timestamp = Math.ceil(claim.nextAvailableAt.getTime() / 1000);
-      return interaction.reply({
+      return respond({
         content: `🌙 Você já utilizou este benefício. Ele estará disponível novamente <t:${timestamp}:R>.`,
         flags: MessageFlags.Ephemeral,
       });
@@ -183,7 +198,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
       .setFooter({ text: `Benefício do plano ${PLAN_NAMES[String(subscription.planKey).toLowerCase()] || subscription.planKey}` })
       .setTimestamp();
 
-    return interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
+    return respond({ embeds: [embed], allowedMentions: { parse: [] } });
   } catch (error) {
     if (!rewardCommitted && claim?.ok && claim.claimId) {
       try {
@@ -197,9 +212,9 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
       }
     }
     console.error(`[Yukina /${command}] Falha ao executar benefício:`, error);
-    const payload = { content: "🫧 Não consegui concluir seu benefício agora. Tente novamente em instantes.", flags: MessageFlags.Ephemeral };
-    if (interaction.deferred || interaction.replied) return interaction.followUp(payload).catch(() => {});
-    return interaction.reply(payload).catch(() => {});
+    const payload = { content: "🫧 Não consegui concluir seu benefício agora. Tente novamente em instantes." };
+    if (interaction.deferred || interaction.replied) return interaction.editReply(payload).catch(() => {});
+    return interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => {});
   }
 }
 
