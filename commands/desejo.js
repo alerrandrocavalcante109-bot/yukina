@@ -89,7 +89,6 @@ module.exports = {
       .setName("limite")
       .setDescription("Teto máximo desejado de recompensa (não garante esse valor).")
       .setRequired(true)
-      .setMinValue(100000)
       .setMaxLength(16)),
   aliases: ["desejo"],
   async execute(interaction) {
