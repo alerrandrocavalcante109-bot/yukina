@@ -269,7 +269,7 @@ async function finish(client, runId) {
         { guildId: String(run.guildId), userId: String(userId) },
         { $set: { points: won ? 0 : Math.min(5, (luckSnapshot.get(userId) || 0) + 1), lastParticipatedAt: new Date(), updatedAt: new Date() }, $setOnInsert: { createdAt: new Date() } },
         { upsert: true }
-      );
+      ).catch(error => console.error("[Drop Automático] Não foi possível atualizar a sorte de " + userId + ":", error));
     }
     await db.collection("drop_auto_history").updateOne({ runId: String(id) }, { $set: { status: "paying", winners, participantCount: participantIds.length + winners.length, selectedAt: new Date() } });
   }
@@ -406,7 +406,7 @@ async function onMemberJoin(member) {
       new ButtonBuilder().setCustomId("dropauto:manual-delivered:" + String(payout._id)).setLabel("Prêmio entregue").setEmoji("🎁").setStyle(ButtonStyle.Success)
     );
     await privateChannel.send({
-      content: "🌸 **Entrega manual de Drop Automático**\\nMembro: <@" + member.id + ">\\nPrêmio pendente: **" + fmt(payout.amount) + "**\\nServidor: **" + member.guild.name + "**\\nID do Drop: `" + payout.runId + "`\\n\\nA equipe autorizada deve atribuir o valor manualmente e clicar em **Prêmio entregue** para registrar a conclusão.",
+      content: "🌸 **Entrega manual de Drop Automático**\nMembro: <@" + member.id + ">\nPrêmio pendente: **" + fmt(payout.amount) + "**\nServidor: **" + member.guild.name + "**\nID do Drop: `" + payout.runId + "`\n\nA equipe autorizada deve atribuir o valor manualmente e clicar em **Prêmio entregue** para registrar a conclusão.",
       components: [deliveredButton],
       allowedMentions: { users: [member.id] }
     });
