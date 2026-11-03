@@ -257,6 +257,12 @@ async function finish(client, runId) {
       for (; index < weights.length - 1; index++) { ticket -= weights[index]; if (ticket < 0) break; }
       winners.push(participantIds.splice(index, 1)[0]);
     }
+    const claimed = await runs.updateOne(
+      { _id: id, status: "active" },
+      { $set: { status: "paying", winners, winnerCount: winners.length, payoutStartedAt: new Date() } }
+    );
+    if (!claimed.modifiedCount) return;
+    run = await runs.findOne({ _id: id });
     for (const userId of Object.keys(run.entries || {})) {
       const won = winners.includes(userId);
       await luck.updateOne(
@@ -265,12 +271,6 @@ async function finish(client, runId) {
         { upsert: true }
       );
     }
-    const claimed = await runs.updateOne(
-      { _id: id, status: "active" },
-      { $set: { status: "paying", winners, winnerCount: winners.length, payoutStartedAt: new Date() } }
-    );
-    if (!claimed.modifiedCount) return;
-    run = await runs.findOne({ _id: id });
     await db.collection("drop_auto_history").updateOne({ runId: String(id) }, { $set: { status: "paying", winners, participantCount: participantIds.length + winners.length, selectedAt: new Date() } });
   }
 
@@ -285,7 +285,7 @@ async function finish(client, runId) {
     const paid = [], forfeited = [];
     for (const userId of run.winners) {
       const existingManual = await payouts.findOne({
-        runId: String(run._id), userId: String(userId), status: { $in: ["waiting_member", "staff_review"] }
+        runId: String(run._id), userId: String(userId)
       });
       if (existingManual) continue;
       const memberLookup = guild
