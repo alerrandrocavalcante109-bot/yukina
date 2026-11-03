@@ -11,6 +11,9 @@ const CREDIT_GUILD = "global";
 const CREDIT_KEY = "daily";
 const TIME_ZONE = "America/Sao_Paulo";
 
+// Idiomas de origem aceitos; o destino continua sendo português.
+const SUPPORTED_SOURCE_LANGUAGES = new Set(["pt", "en", "es", "fr", "ja", "ru", "zh", "zh-CN", "zh-TW"]);
+
 // 5 créditos a cada bloco de até 500 caracteres.
 function calculateCreditCost(text) {
   const length = String(text || "").trim().length;
@@ -132,10 +135,16 @@ async function translateToPortuguese(text) {
     : "";
   if (!translated.trim()) throw new Error("NO_RESULT");
 
+  const sourceLanguage = String(data?.[2] || "").trim();
+  const normalizedLanguage = sourceLanguage.split("-")[0];
+  if (!SUPPORTED_SOURCE_LANGUAGES.has(sourceLanguage) && !SUPPORTED_SOURCE_LANGUAGES.has(normalizedLanguage)) {
+    throw new Error("UNSUPPORTED_LANGUAGE");
+  }
+
   return {
     original: phrase,
     translated: translated.trim(),
-    sourceLanguage: data?.[2] || "auto",
+    sourceLanguage: sourceLanguage || "auto",
   };
 }
 
@@ -183,6 +192,7 @@ function buildTranslationEmbed(result, user) {
 function errorMessage(error) {
   if (error?.message === "EMPTY") return "🌙 Não encontrei uma frase para traduzir.";
   if (error?.message === "TOO_LONG") return "🫧 A frase é muito longa. Envie um texto com até " + MAX_INPUT + " caracteres.";
+  if (error?.message === "UNSUPPORTED_LANGUAGE") return "🌙 Ainda não consigo traduzir esse idioma. Atualmente aceito português, inglês, espanhol, francês, japonês, russo e chinês.";
   if (error?.message === "INSUFFICIENT_CREDITS") {
     return "❄️ Seus créditos diários são insuficientes para essa tradução. Você tem **" +
       Number(error.credits || 0) + "** tokens e precisa de **" + Number(error.cost || 0) +
