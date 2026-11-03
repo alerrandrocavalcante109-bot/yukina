@@ -175,7 +175,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
           amount: reward,
           item: result.item || null,
           details: result.details || null,
-          claimId: claim.claimId,
+          claimId: claim?.claimId || randomUUID(),
           createdAt: nowAfterRoll,
         }, { session });
       });
