@@ -5,26 +5,19 @@ const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const memberData = require("../member-data");
 
 const WIDTH = 1000;
-const HEIGHT = 360;
-const LEVELS = [
-  { level: 1, xp: 0, name: "Iniciante" },
-  { level: 5, xp: 500, name: "Aprendiz" },
-  { level: 10, xp: 1500, name: "Explorador" },
-  { level: 15, xp: 3000, name: "Participante" },
-  { level: 20, xp: 5000, name: "Dedicado" },
-  { level: 25, xp: 7500, name: "Experiente" },
-  { level: 30, xp: 10500, name: "Veterano" },
-  { level: 40, xp: 15000, name: "Elite" },
-  { level: 50, xp: 20000, name: "Mestre" },
-  { level: 60, xp: 26000, name: "Lendário" },
-  { level: 75, xp: 35000, name: "Mítico" },
-  { level: 100, xp: 50000, name: "Imortal" },
-];
-
+const HEIGHT = 430;
 function levelForXp(xp) {
-  let selected = LEVELS[0];
-  for (const level of LEVELS) if (xp >= level.xp) selected = level;
-  return selected;
+  const total = Math.max(0, Number(xp) || 0);
+  const level = Math.floor(total / 1000) + 1;
+  const currentLevelXp = (level - 1) * 1000;
+  const nextLevelXp = level * 1000;
+  return {
+    level,
+    name: level < 5 ? "Iniciante" : level < 15 ? "Aprendiz" : level < 30 ? "Explorador" : level < 50 ? "Veterano" : level < 100 ? "Lendário" : "Mítico",
+    currentLevelXp,
+    nextLevelXp,
+    progress: Math.max(0, Math.min(100, Math.floor(((total - currentLevelXp) / 1000) * 100))),
+  };
 }
 
 function roundedRect(ctx, x, y, width, height, radius) {
@@ -48,10 +41,8 @@ async function buildRankCard(user, record, position, total) {
   const ctx = canvas.getContext("2d");
   const xp = Math.max(0, Number(record.xp) || 0);
   const current = levelForXp(xp);
-  const next = LEVELS.find(item => item.xp > xp);
-  const progress = next
-    ? Math.max(0, Math.min(100, Math.floor(((xp - current.xp) / (next.xp - current.xp)) * 100)))
-    : 100;
+  const nextXp = current.nextLevelXp;
+  const progress = current.progress;
   const displayName = user.globalName || user.username || "Aventureiro";
 
   // Fundo personalizado: noite azul, luar e detalhes de neve da Yukina.
@@ -133,8 +124,10 @@ async function buildRankCard(user, record, position, total) {
     drawText(ctx, stat.value, stat.x + 14, 219, "bold 21px sans-serif", "#ffffff", stat.x === 650 ? 250 : 135);
   }
 
-  drawText(ctx, "EXPERIÊNCIA", 62, 300, "bold 14px sans-serif", "#bfeaff");
+  drawText(ctx, "XP TOTAL ACUMULADO", 62, 300, "bold 14px sans-serif", "#bfeaff");
   drawText(ctx, xp.toLocaleString("pt-BR") + " XP", 62, 328, "bold 21px sans-serif", "#ffffff");
+  drawText(ctx, "PRÓXIMO NÍVEL", 62, 370, "bold 13px sans-serif", "#bfeaff");
+  drawText(ctx, (nextXp - xp).toLocaleString("pt-BR") + " XP restantes", 62, 395, "bold 17px sans-serif", "#ffffff");
   const barX = 270, barY = 270, barW = 650, barH = 17;
   roundedRect(ctx, barX, barY, barW, barH, 9);
   ctx.fillStyle = "rgba(230, 243, 255, 0.18)";
@@ -148,8 +141,8 @@ async function buildRankCard(user, record, position, total) {
     ctx.fill();
   }
   drawText(ctx, progress + "%", 930, 284, "bold 14px sans-serif", "#ffffff", 48);
-  drawText(ctx, next ? xp.toLocaleString("pt-BR") + " / " + next.xp.toLocaleString("pt-BR") + " XP para o próximo nível" : "Nível máximo alcançado", 270, 316, "15px sans-serif", "#d4e5f8", 650);
-  drawText(ctx, total + " membros registrados  ·  Yukina ❄", 270, 339, "12px sans-serif", "#a9c7e8", 650);
+  drawText(ctx, xp.toLocaleString("pt-BR") + " / " + nextXp.toLocaleString("pt-BR") + " XP para o próximo nível", 270, 316, "15px sans-serif", "#d4e5f8", 650);
+  drawText(ctx, total + " membros registrados  ·  Yukina ❄", 270, 405, "12px sans-serif", "#a9c7e8", 650);
 
   return canvas.toBuffer("image/png");
 }
@@ -176,11 +169,11 @@ async function respond(interaction, target) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("rank")
+    .setName("xp")
     .setDescription("Mostra seu nível, XP e posição no servidor.")
     .setDMPermission(false)
     .addUserOption(option => option.setName("membro").setDescription("Membro cujo perfil deseja consultar.").setRequired(false)),
-  aliases: ["ranking", "nivel", "nível"],
+  aliases: ["rank", "ranking", "nivel", "nível"],
   async execute(interaction) {
     if (!interaction.inGuild() || !interaction.guild) {
       return interaction.reply({ content: "❄️ Este comando só funciona dentro de um servidor.", ephemeral: true });
@@ -189,7 +182,7 @@ module.exports = {
     try {
       return await respond(interaction, target);
     } catch (error) {
-      console.error("[Yukina /rank]", error);
+      console.error("[Yukina /xp]", error);
       if (interaction.deferred || interaction.replied) {
         return interaction.followUp({ content: "💧 Não consegui gerar seu cartão de rank agora.", ephemeral: true }).catch(() => {});
       }
@@ -212,7 +205,7 @@ module.exports = {
     try {
       return await respond(interactionLike, target);
     } catch (error) {
-      console.error("[Yukina Yrank]", error);
+      console.error("[Yukina Yxp]", error);
       return message.reply("💧 Não consegui gerar seu cartão de rank agora.").catch(() => {});
     }
   },
