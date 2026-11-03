@@ -9,6 +9,7 @@ const {
 const URI = (process.env.MONGODB_URI || "").trim();
 const DB = (process.env.MONGODB_DB || "Yukina").trim();
 const OFFICIAL_INVITE = "https://discord.gg/NJR3YNd2G";
+const CARGO_YUKINA = (process.env.CARGO_YUKINA || "").trim();
 const NAMES = { starter: "Starter", plus: "Plus", premium: "Premium", ultra: "Ultra", infinity: "Infinity" };
 const RULES = {
   starter: { interval: [18000000, 21600000], reward: [25000, 50000] },
@@ -326,17 +327,8 @@ async function onMemberJoin(member) {
       console.error("[Drop Automático] Sem permissão para criar canal de entrega manual em " + member.guild.id);
       continue;
     }
-    const staff = await member.guild.roles.fetch().catch(() => null);
-    const overwrites = [
-      { id: member.guild.roles.everyone.id, deny: [PermissionFlagsBits.ViewChannel] },
-      { id: member.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] },
-      { id: member.client.user.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory, PermissionFlagsBits.ManageChannels] }
-    ];
-    for (const role of staff?.values?.() || []) {
-      if (role.permissions.has(PermissionFlagsBits.Administrator) || role.permissions.has(PermissionFlagsBits.ManageGuild) || role.permissions.has(PermissionFlagsBits.ManageChannels)) {
-        overwrites.push({ id: role.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
-      }
-    }
+    const deliveryRole = CARGO_YUKINA ? await member.guild.roles.fetch(CARGO_YUKINA).catch(() => null) : null;
+    if (deliveryRole) overwrites.push({ id: deliveryRole.id, allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.ReadMessageHistory] });
     const privateChannel = await member.guild.channels.create({
       name: "entrega-drop-" + member.user.username.toLowerCase().replace(/[^a-z0-9-]/g, "").slice(0, 12) + "-" + member.id.slice(-4),
       type: ChannelType.GuildText,
@@ -352,8 +344,12 @@ async function onMemberJoin(member) {
       continue;
     }
     await payouts.updateOne({ _id: payout._id, status: "creating_channel" }, { $set: { status: "staff_review", privateChannelId: privateChannel.id, joinedAt: new Date() } });
+    const deliveredButton = new ActionRowBuilder().addComponents(
+      new ButtonBuilder().setCustomId("dropauto:manual-delivered:" + String(payout._id)).setLabel("Prêmio entregue").setEmoji("🎁").setStyle(ButtonStyle.Success)
+    );
     await privateChannel.send({
-      content: "🌸 **Entrega manual de Drop Automático**\nMembro: <@" + member.id + ">\nPrêmio pendente: **" + fmt(payout.amount) + "**\nServidor: **" + member.guild.name + "**\nID do Drop: `" + payout.runId + "`\n\nA equipe deve conferir o registro e atribuir o valor manualmente. Após a entrega, marque este atendimento como concluído e feche o canal.",
+      content: "🌸 **Entrega manual de Drop Automático**\\nMembro: <@" + member.id + ">\\nPrêmio pendente: **" + fmt(payout.amount) + "**\\nServidor: **" + member.guild.name + "**\\nID do Drop: `" + payout.runId + "`\\n\\nA equipe autorizada deve atribuir o valor manualmente e clicar em **Prêmio entregue** para registrar a conclusão.",
+      components: [deliveredButton],
       allowedMentions: { users: [member.id] }
     });
   }
@@ -410,8 +406,27 @@ async function join(interaction, id) {
   return interaction.reply({ content: "🎁 Sua participação foi registrada. Boa sorte!", flags: MessageFlags.Ephemeral });
 }
 
+async function markManualDelivered(interaction) {
+  await initDb();
+  if (!CARGO_YUKINA) return interaction.reply({ content: "⚠️ O cargo CARGO_YUKINA não está configurado no Render.", flags: MessageFlags.Ephemeral });
+  if (!interaction.member?.roles?.cache?.has(CARGO_YUKINA)) return interaction.reply({ content: "❄️ Você não possui autorização para confirmar esta entrega.", flags: MessageFlags.Ephemeral });
+  const id = interaction.customId.split(":")[2];
+  if (!/^[a-f0-9]{24}$/i.test(id)) return interaction.reply({ content: "🌙 Registro de entrega inválido.", flags: MessageFlags.Ephemeral });
+  const payout = await payouts.findOne({ _id: new ObjectId(id), status: "staff_review" });
+  if (!payout || String(payout.privateChannelId) !== String(interaction.channelId)) return interaction.reply({ content: "🌙 Esta entrega já foi concluída ou não pertence a este canal.", flags: MessageFlags.Ephemeral });
+  const result = await payouts.updateOne({ _id: payout._id, status: "staff_review" }, { $set: { status: "delivered", deliveredBy: String(interaction.user.id), deliveredAt: new Date() } });
+  if (!result.modifiedCount) return interaction.reply({ content: "🌙 Esta entrega já foi registrada.", flags: MessageFlags.Ephemeral });
+  await interaction.reply({ content: "🎁 Entrega registrada. Este atendimento será encerrado.", flags: MessageFlags.Ephemeral });
+  await interaction.channel.send({ content: "🌸 Prêmio de **" + fmt(payout.amount) + "** marcado como entregue por <@" + interaction.user.id + ">. Atendimento encerrado." });
+  await wait(3000);
+  await interaction.channel.delete("Entrega manual do Drop confirmada por membro com CARGO_YUKINA").catch(console.error);
+}
+
 module.exports = {
-  customId: /^dropauto:join:[a-f0-9]{24}$/i,
-  async execute(interaction) { return join(interaction, interaction.customId.split(":")[2]); },
+  customId: /^(?:dropauto:join:[a-f0-9]{24}|dropauto:manual-delivered:[a-f0-9]{24})$/i,
+  async execute(interaction) {
+    if (interaction.customId.startsWith("dropauto:manual-delivered:")) return markManualDelivered(interaction);
+    return join(interaction, interaction.customId.split(":")[2]);
+  },
   async initialize(client) { return initialize(client); }
 };
