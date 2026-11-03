@@ -1,12 +1,12 @@
 "use strict";
 
-const { SlashCommandBuilder, MessageFlags } = require("discord.js");
+const { SlashCommandBuilder } = require("discord.js");
 const translator = require("../systems/translator");
 
 async function respond(interaction, phrase) {
   await interaction.deferReply();
   try {
-    const result = await translator.translateToPortuguese(phrase);
+    const result = await translator.translateWithCredits(interaction.user.id, phrase);
     return interaction.editReply({ embeds: [translator.buildTranslationEmbed(result, interaction.user)] });
   } catch (error) {
     console.error("[Yukina /traduzir] Falha na tradução:", error?.message || error);
@@ -37,7 +37,7 @@ module.exports = {
       return message.reply("🌸 Envie a frase depois do comando. Exemplo: `Ytraduzir good morning`");
     }
     try {
-      const result = await translator.translateToPortuguese(phrase);
+      const result = await translator.translateWithCredits(message.author.id, phrase);
       return message.reply({ embeds: [translator.buildTranslationEmbed(result, message.author)] });
     } catch (error) {
       console.error("[Yukina Ytraduzir] Falha na tradução:", error?.message || error);
