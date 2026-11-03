@@ -20,7 +20,7 @@ module.exports = {
 
     await interaction.deferReply();
     try {
-      const result = await translator.translateToPortuguese(phrase);
+      const result = await translator.translateWithCredits(interaction.user.id, phrase);
       return interaction.editReply({
         embeds: [translator.buildTranslationEmbed(result, interaction.user)],
       });
