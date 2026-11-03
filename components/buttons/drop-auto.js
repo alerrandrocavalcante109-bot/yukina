@@ -307,13 +307,13 @@ async function finish(client, runId) {
           break;
         }
         try {
-          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { runId: String(runId), userId: String(userId), attempt, status: "started", startedAt: new Date() } }, { upsert: true });
+          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { runId: String(runId), guildId: String(run.guildId), userId: String(userId), attempt, status: "started", startedAt: new Date() } }, { upsert: true });
           await creditWinner(run.guildId, userId, run.reward, runId);
           await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { status: "success", finishedAt: new Date() }, $unset: { error: "" } });
           success = true;
           break;
         } catch (error) {
-          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { status: "failed", finishedAt: new Date(), error: String(error.message || error).slice(0, 500) } }, { upsert: true });
+          await attempts.updateOne({ runId: String(runId), userId: String(userId), attempt }, { $set: { guildId: String(run.guildId), status: "failed", finishedAt: new Date(), error: String(error.message || error).slice(0, 500) } }, { upsert: true });
           console.error("[Drop Automático] Tentativa " + attempt + "/5 falhou para " + userId + ":", error.message || error);
           if (attempt < 5) await wait(attempt * 2500);
         }
