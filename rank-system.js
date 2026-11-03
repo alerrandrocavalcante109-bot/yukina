@@ -61,18 +61,18 @@ function isValidXpMessage(content) {
   if (text.length <= 5) return false;
 
   const normalized = text.normalize("NFC").toLocaleLowerCase("pt-BR");
-  const letters = normalized.match(/[\\p{L}]/gu) || [];
+  const letters = normalized.match(/[\p{L}]/gu) || [];
   if (letters.length < 6) return false;
 
   // Não permite mensagens compostas apenas por números/símbolos ou links.
-  if (!/[\\p{L}]{1,}/u.test(normalized)) return false;
-  if (/https?:\\/\\/|www\\./i.test(normalized)) return false;
+  if (!/[\p{L}]{1,}/u.test(normalized)) return false;
+  if (/https?:\/\/|www\./i.test(normalized)) return false;
 
   // Rejeita spam de uma mesma letra repetida em sequência.
-  if (/(.)\\1{3,}/u.test(normalized)) return false;
+  if (/(.)\1{3,}/u.test(normalized)) return false;
 
   // Cada trecho de texto deve ser uma palavra; pontuação comum é permitida.
-  const words = normalized.match(/[\\p{L}]+/gu) || [];
+  const words = normalized.match(/[\p{L}]+/gu) || [];
   if (!words.length) return false;
   if (words.some((word) => word.length === 1 && words.length > 1)) return false;
 
