@@ -69,22 +69,30 @@ module.exports = {
 
       if (action === "stats") {
         const filter = { guildId: String(interaction.guildId) };
-        const [total, active, ended, paid, pending, configFresh] = await Promise.all([
+        const [total, active, ended, paid, manual, pending, configFresh] = await Promise.all([
           runs.countDocuments(filter),
           runs.countDocuments({ ...filter, status: "active" }),
           runs.countDocuments({ ...filter, status: "ended" }),
           ledger.aggregate([{ $match: filter }, { $group: { _id: null, total: { $sum: "$amount" }, count: { $sum: 1 } } }]).toArray(),
+          database.collection("drop_auto_history").aggregate([
+            { $match: filter },
+            { $unwind: "$manualDeliveries" },
+            { $group: { _id: null, total: { $sum: "$manualDeliveries.amount" }, count: { $sum: 1 } } }
+          ]).toArray(),
           payouts.countDocuments({ guildId: String(interaction.guildId), status: { $in: ["waiting_member", "staff_review", "creating_channel"] } }),
           configs.findOne({ _id: config._id })
         ]);
         const paidInfo = paid[0] || { total: 0, count: 0 };
+        const manualInfo = manual[0] || { total: 0, count: 0 };
+        const totalPaid = paidInfo.total + manualInfo.total;
+        const paidCount = paidInfo.count + manualInfo.count;
         const embed = new EmbedBuilder().setColor(0xA7D8F0).setTitle("🌸 Estatísticas do Drop Automático")
           .addFields(
             { name: "🎁 Drops realizados", value: fmt(total), inline: true },
             { name: "⌛ Drops ativos", value: fmt(active), inline: true },
             { name: "🌙 Drops encerrados", value: fmt(ended), inline: true },
-            { name: "🏆 Prêmios automáticos", value: fmt(paidInfo.count), inline: true },
-            { name: "💴 KZ distribuídas", value: fmt(paidInfo.total) + " KZ", inline: true },
+            { name: "🏆 Prêmios entregues", value: fmt(paidCount), inline: true },
+            { name: "💴 KZ distribuídas", value: fmt(totalPaid) + " KZ", inline: true },
             { name: "📦 Entregas pendentes", value: fmt(pending), inline: true },
             { name: "📢 Canais configurados", value: fmt((configFresh?.channelIds || []).length), inline: true },
             { name: "🌸 Plano", value: PLAN_NAMES[config.planKey] || config.planKey, inline: true }
