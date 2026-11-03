@@ -7,28 +7,27 @@ const xpRoleStorage = require("../system-storage").forSystem("xp-level-roles");
 
 const WIDTH = 1000;
 const HEIGHT = 430;
-async function getNextConfiguredRole(guild, currentLevel) {
+async function getHighestConfiguredXpRole(guild) {
   try {
     const config = await xpRoleStorage.get(guild.id, "config", null);
     const rules = Array.isArray(config?.xpRules) ? config.xpRules : [];
-    const nextRule = rules
+    const highestRule = rules
       .map(rule => ({
         level: Number(rule?.level),
         roleId: String(rule?.roleId || rule?.role_id || rule?.role || ""),
       }))
-      .filter(rule => Number.isInteger(rule.level) && rule.level > currentLevel && rule.roleId)
-      .sort((a, b) => a.level - b.level)[0];
-    if (!nextRule) return null;
-    const role = guild.roles.cache.get(nextRule.roleId)
-      || await guild.roles.fetch(nextRule.roleId).catch(() => null);
-    if (!role) return { level: nextRule.level, roleName: "Cargo configurado (não encontrado)" };
+      .filter(rule => Number.isInteger(rule.level) && rule.level > 0 && rule.roleId)
+      .sort((a, b) => b.level - a.level)[0];
+    if (!highestRule) return null;
+    const role = guild.roles.cache.get(highestRule.roleId)
+      || await guild.roles.fetch(highestRule.roleId).catch(() => null);
     return {
-      level: nextRule.level,
-      roleName: role.name,
-      requiredXp: (nextRule.level - 1) * 1000,
+      level: highestRule.level,
+      roleName: role?.name || "Cargo não encontrado",
+      requiredXp: (highestRule.level - 1) * 1000,
     };
   } catch (error) {
-    console.error("[Yukina /xp] Não consegui consultar o próximo cargo:", error.message);
+    console.error("[Yukina /xp] Não consegui consultar o cargo máximo de XP:", error.message);
     return null;
   }
 }
@@ -93,7 +92,7 @@ async function buildRankCard(user, record, position, total, guild) {
 
   const xp = Math.max(0, Number(record.xp) || 0);
   const current = levelForXp(xp);
-  const nextRole = await getNextConfiguredRole(guild, current.level);
+  const highestXpRole = await getHighestConfiguredXpRole(guild);
   const displayName = normalizeCanvasName(user.globalName || user.username || "Aventureiro");
 
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
@@ -184,12 +183,12 @@ async function buildRankCard(user, record, position, total, guild) {
     ctx.fill();
   }
 
-  // Cargo seguinte e requisito.
-  if (nextRole) {
-    drawText(ctx, "PRÓXIMO CARGO: " + normalizeCanvasName(nextRole.roleName), 13, 139, "bold 7.5px sans-serif", "#ffbce8", 192);
-    drawText(ctx, "Nível " + nextRole.level + "  •  " + (nextRole.requiredXp ?? ((nextRole.level - 1) * 1000)).toLocaleString("pt-BR") + " XP", 13, 149, "bold 7px sans-serif", "#e5f4ff", 192);
+  // Maior cargo de XP configurado no painel.
+  if (highestXpRole) {
+    drawText(ctx, "CARGO DE XP MAIS ALTO: " + normalizeCanvasName(highestXpRole.roleName), 13, 139, "bold 7.5px sans-serif", "#ffbce8", 192);
+    drawText(ctx, "Nível " + highestXpRole.level + "  •  " + highestXpRole.requiredXp.toLocaleString("pt-BR") + " XP necessários", 13, 149, "bold 7px sans-serif", "#e5f4ff", 192);
   } else {
-    drawText(ctx, "Sem próximo cargo configurado", 13, 144, "bold 7.5px sans-serif", "#d9eaff", 192);
+    drawText(ctx, "Nenhum cargo de XP configurado", 13, 144, "bold 7.5px sans-serif", "#d9eaff", 192);
   }
 
   return canvas.toBuffer("image/png");
