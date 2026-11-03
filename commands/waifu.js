@@ -45,18 +45,56 @@ const RANK_WEIGHT_TOTAL = RANK_BASE.reduce((sum, rank) => sum + rank.weight, 0);
 const RARITIES = [
   ...RANK_BASE.map(rank => ({
     rank: rank.rank,
-    chance: (rank.weight / RANK_WEIGHT_TOTAL) * 99.8,
+    chance: (rank.weight / RANK_WEIGHT_TOTAL) * 99.78,
     value: rank.value,
     label: rank.label,
   })),
   { rank: "∞", chance: 0.2, value: 100000, label: "👑 Suprema" },
+  { rank: "✦", chance: 0.02, value: 150000, label: "🌌 Infinita" },
 ];
 
-function rollRarity() {
-  const roll = Math.random() * 100;
+const PLAN_BENEFITS = {
+  starter: { draws: 15, luck: 1.15 },
+  plus: { draws: 20, luck: 1.30 },
+  premium: { draws: 30, luck: 1.50 },
+  ultra: { draws: 40, luck: 1.75 },
+  infinity: { draws: 50, luck: 2.00 },
+};
+const DEFAULT_DRAWS = 10;
+
+async function getWaifuBenefits(userId) {
+  try {
+    const { getVipCollection } = require("../vip-store");
+    const subscriptions = await getVipCollection();
+    const active = await subscriptions.find({
+      userId: String(userId),
+      status: "active",
+      expiresAt: { $gt: new Date() },
+    }).toArray();
+    const tiers = ["starter", "plus", "premium", "ultra", "infinity"];
+    const selected = active
+      .map(subscription => String(subscription.planKey || "").toLowerCase())
+      .filter(planKey => tiers.includes(planKey))
+      .sort((a, b) => tiers.indexOf(b) - tiers.indexOf(a))[0];
+    return selected ? { planKey: selected, ...PLAN_BENEFITS[selected] } : {
+      planKey: null, draws: DEFAULT_DRAWS, luck: 1,
+    };
+  } catch (error) {
+    console.error("[Yukina waifu VIP] Não consegui consultar o plano:", error.message);
+    return { planKey: null, draws: DEFAULT_DRAWS, luck: 1 };
+  }
+}
+
+async function rollRarity(luck = 1) {
+  const boosted = RARITIES.map(rarity => ({
+    ...rarity,
+    weight: rarity.chance * ((rarity.rank === "∞" || rarity.rank === "✦") ? Math.max(1, Number(luck) || 1) : 1),
+  }));
+  const total = boosted.reduce((sum, rarity) => sum + rarity.weight, 0);
+  const roll = Math.random() * total;
   let cumulative = 0;
-  for (const rarity of RARITIES) {
-    cumulative += rarity.chance;
+  for (const rarity of boosted) {
+    cumulative += rarity.weight;
     if (roll < cumulative) return rarity;
   }
   return RARITIES[0];
@@ -70,8 +108,6 @@ function normalizeItem(item) {
 }
 
 const WAIFU_COOLDOWN_MS = 2 * 60 * 60 * 1000;
-const MAX_DRAWS_PER_CYCLE = 10;
-
 async function getWaifuCooldownUntil(guildId, userId) {
   const value = await storage.get(String(guildId), "cooldownUntil", 0, String(userId));
   const timestamp = Number(value);
@@ -84,7 +120,7 @@ async function getDrawCount(guildId, userId) {
   return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
 }
 
-async function getCooldownMessage(guildId, userId) {
+async function getCooldownMessage(guildId, userId, maxDraws = DEFAULT_DRAWS) {
   const until = await getWaifuCooldownUntil(guildId, userId);
   const remaining = until - Date.now();
   if (remaining <= 0) {
@@ -99,14 +135,14 @@ async function getCooldownMessage(guildId, userId) {
   const timeText = hours > 0
     ? hours + "h" + (minutes > 0 ? " " + minutes + "min" : "")
     : minutes + "min";
-  return "🌙 **Seus sorteios de waifu acabaram!** Você já usou as **" + MAX_DRAWS_PER_CYCLE + " tentativas** desta rodada.\\n\\n⏳ Novos sorteios estarão disponíveis em **" + timeText + "**.\\n\\n💎 Quer mais benefícios e vantagens? Conheça os planos **Yukina VIP**: https://yukina-6uo.pages.dev/vip.html\\n\\n📚 Enquanto espera, você ainda pode consultar seu álbum.";
+  return "🌙 **Seus sorteios de waifu acabaram!** Você já usou as **" + maxDraws + " tentativas** desta rodada.\\n\\n⏳ Novos sorteios estarão disponíveis em **" + timeText + "**.\\n\\n💎 Quer mais benefícios e vantagens? Conheça os planos **Yukina VIP**: https://yukina-6uo.pages.dev/vip.html\\n\\n📚 Enquanto espera, você ainda pode consultar seu álbum.";
 }
 
-async function registerWaifuDraw(guildId, userId) {
+async function registerWaifuDraw(guildId, userId, maxDraws = DEFAULT_DRAWS) {
   const key = String(userId);
   const count = (await getDrawCount(guildId, userId)) + 1;
   await storage.set(String(guildId), "drawCount", count, key);
-  if (count >= MAX_DRAWS_PER_CYCLE) {
+  if (count >= maxDraws) {
     const until = Date.now() + WAIFU_COOLDOWN_MS;
     await storage.set(String(guildId), "cooldownUntil", until, key);
   }
@@ -150,14 +186,15 @@ async function scheduleAvailabilityNotification(client, guildId, userId, until) 
 }
 
 async function getCooldownPayload(guildId, userId, client) {
+  const benefits = await getWaifuBenefits(userId);
   const until = await getWaifuCooldownUntil(guildId, userId);
-  const remainingDraws = Math.max(0, MAX_DRAWS_PER_CYCLE - await getDrawCount(guildId, userId));
-  const cooldownMessage = await getCooldownMessage(guildId, userId);
+  const remainingDraws = Math.max(0, benefits.draws - await getDrawCount(guildId, userId));
+  const cooldownMessage = await getCooldownMessage(guildId, userId, benefits.draws);
   if (!cooldownMessage) return null;
   const notifyAt = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
   if (notifyAt > Date.now()) await scheduleAvailabilityNotification(client, guildId, userId, notifyAt);
   return {
-    content: cooldownMessage + "\n\n🎲 **Sorteios restantes nesta rodada:** " + remainingDraws + "/" + MAX_DRAWS_PER_CYCLE,
+    content: cooldownMessage + "\n\n🎲 **Sorteios restantes nesta rodada:** " + remainingDraws + "/" + benefits.draws,
     components: [makeCooldownButtons(userId)],
     allowedMentions: { parse: [] },
   };
@@ -192,7 +229,7 @@ function safeImageUrl(url) {
   return typeof url === "string" && /^https:\/\//i.test(url) ? url : null;
 }
 
-function makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RARITIES[0]) {
+function rarityName(rarity) {\n  if (rarity.rank === "∞") return "Suprema (∞)";\n  if (rarity.rank === "✦") return "Infinita (✦)";\n  return rarity.rank;\n}\n\nfunction makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RARITIES[0]) {
   const embed = new EmbedBuilder()
     .setColor(COLOR)
     .setAuthor({
@@ -211,7 +248,7 @@ function makeEmbed(url, user, savedCount = 0, isCollection = false, rarity = RAR
   if (url) embed.setImage(url);
   if (!isCollection) {
     embed.addFields(
-      { name: "🏷️ Rank", value: "**" + (rarity.rank === "∞" ? "Suprema (∞)" : rarity.rank) + "** · " + rarity.label, inline: true },
+      { name: "🏷️ Rank", value: "**" + rarityName(rarity) + "** · " + rarity.label, inline: true },
       { name: "💎 Valor", value: "**" + money(rarity.value) + "**", inline: true },
       { name: "📚 Sua coleção", value: savedCount + "/" + MAX_COLLECTION + " personagens guardadas", inline: true }
     );
@@ -251,7 +288,7 @@ function makeAlbumEmbed(item, user, index, total) {
     .setColor(COLOR)
     .setAuthor({ name: "Yukina · Álbum Lunar", iconURL: user.displayAvatarURL({ size: 128 }) })
     .setTitle("📖 Álbum de Waifus")
-    .setDescription("**Personagem " + (index + 1) + " de " + total + "**\n\n🌸 **Tipo:** Waifu de anime\n🏷️ **Raridade:** " + (rarity.rank === "∞" ? "Suprema (∞)" : rarity.rank) + " · " + rarity.label + "\n💎 **Valor:** " + money(item.value))
+    .setDescription("**Personagem " + (index + 1) + " de " + total + "**\n\n🌸 **Tipo:** Waifu de anime\n🏷️ **Raridade:** " + rarityName(rarity) + " · " + rarity.label + "\n💎 **Valor:** " + money(item.value))
     .setImage(item.url)
     .setFooter({ text: "Yukina · Use ◀️ e ▶️ para navegar pelo seu álbum." })
     .setTimestamp();
@@ -296,13 +333,14 @@ async function showAlbumPage({ guildId, user, reply, index = 0, edit = false }) 
 
 
 async function showWaifu({ guildId, user, reply, edit = false }) {
+  const benefits = await getWaifuBenefits(user.id);
   const imageUrl = await getRandomWaifu();
-  const rarity = rollRarity();
+  const rarity = await rollRarity(benefits.luck);
   const items = await getCollection(guildId, user.id);
-  const drawCount = await registerWaifuDraw(guildId, user.id);
+  const drawCount = await registerWaifuDraw(guildId, user.id, benefits.draws);
   const payload = {
     embeds: [makeEmbed(imageUrl, user, items.length, false, rarity).setDescription(
-      "「 Uma nova estrela apareceu no céu de Yukina! 」\n\nGostou desta personagem? Guarde-a na sua coleção ou peça outra para o arquivo lunar.\n\n🎲 **Sorteios nesta rodada:** " + drawCount + "/" + MAX_DRAWS_PER_CYCLE + (drawCount >= MAX_DRAWS_PER_CYCLE ? "\n🌙 Você atingiu o limite. O cooldown de 2 horas já começou." : "")
+      "「 Uma nova estrela apareceu no céu de Yukina! 」\n\nGostou desta personagem? Guarde-a na sua coleção ou peça outra para o arquivo lunar.\n\n🎲 **Sorteios nesta rodada:** " + drawCount + "/" + benefits.draws + (drawCount >= benefits.draws ? "\n🌙 Você atingiu o limite. O cooldown de 2 horas já começou." : "")
     )],
     components: [makeButtons(user.id, imageUrl, items.length)],
     allowedMentions: { parse: [] },
