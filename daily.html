@@ -212,7 +212,7 @@
           reels.forEach((reel, index) => {
             if (symbols[index]) reel.innerHTML = "<span>" + symbols[index] + "</span>";
           });
-          result.textContent = "✨ Você ganhou " + Number(data.reward).toLocaleString("pt-BR") + " Kizunas!\\nCombinação: " + String(data.combination || "sorteio diário") + (data.plan && data.plan !== "Sem VIP" ? "\\nPlano: " + data.plan + " (x" + data.multiplier + ")" : "");
+          result.textContent = "🎁 Recompensa do Daily: " + Number(data.baseReward ?? data.reward).toLocaleString("pt-BR") + " Kizunas" + (data.plan && data.plan !== "Sem VIP" ? "\nMultiplicador: " + data.plan + " (x" + Number(data.multiplier).toLocaleString("pt-BR") + ")" : "") + "\nTotal: " + Number(data.reward).toLocaleString("pt-BR") + " Kizunas recebidos.\nCombinação: " + String(data.combination || "sorteio diário");
           setStatus("Daily coletado com sucesso!");
           spin.textContent = "Daily coletado";
           if (widgetId !== null && window.turnstile) window.turnstile.reset(widgetId);
