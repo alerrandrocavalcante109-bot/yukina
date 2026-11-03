@@ -233,6 +233,10 @@ async function finish(client, runId) {
   } else {
     const paid = [], forfeited = [];
     for (const userId of run.winners) {
+      const existingManual = await payouts.findOne({
+        runId: String(run._id), userId: String(userId), status: { $in: ["waiting_member", "staff_review"] }
+      });
+      if (existingManual) continue;
       const member = guild ? await guild.members.fetch(String(userId)).catch(() => null) : null;
       if (!member) {
         forfeited.push(String(userId));
