@@ -7,6 +7,46 @@ const xpRoleStorage = require("../system-storage").forSystem("xp-level-roles");
 
 const WIDTH = 1000;
 const HEIGHT = 430;
+async function getActiveMultiplierRole(guild, userId) {
+  try {
+    const storage = require("../system-storage").forSystem("xp-multipliers");
+    const config = await storage.get(guild.id, "config", null);
+    let rules = Array.isArray(config?.multiplierRules) ? config.multiplierRules : null;
+
+    if (!rules) {
+      const { getGuildSettings } = require("../guild-settings-store");
+      const legacy = await getGuildSettings(guild.id);
+      rules = Array.isArray(legacy?.multiplierRules) ? legacy.multiplierRules : [];
+    }
+
+    const member = await guild.members.fetch(userId).catch(() => null);
+    if (!member) return null;
+
+    const eligible = rules.map(rule => ({
+      roleId: String(rule?.role || rule?.roleId || rule?.role_id || ""),
+      multiplier: Number(rule?.multiplier),
+    })).filter(rule =>
+      rule.roleId &&
+      member.roles.cache.has(rule.roleId) &&
+      Number.isFinite(rule.multiplier) &&
+      rule.multiplier >= 0.1
+    ).sort((a, b) => b.multiplier - a.multiplier);
+
+    if (!eligible.length) return null;
+    const selected = eligible[0];
+    const role = guild.roles.cache.get(selected.roleId)
+      || await guild.roles.fetch(selected.roleId).catch(() => null);
+
+    return {
+      roleName: role?.name || "Cargo não encontrado",
+      multiplier: selected.multiplier,
+    };
+  } catch (error) {
+    console.error("[Yukina /xp] Não consegui consultar o cargo multiplicador:", error.message);
+    return null;
+  }
+}
+
 async function getHighestConfiguredXpRole(guild) {
   try {
     const config = await xpRoleStorage.get(guild.id, "config", null);
@@ -93,6 +133,7 @@ async function buildRankCard(user, record, position, total, guild) {
   const xp = Math.max(0, Number(record.xp) || 0);
   const current = levelForXp(xp);
   const highestXpRole = await getHighestConfiguredXpRole(guild);
+  const activeMultiplierRole = await getActiveMultiplierRole(guild, user.id);
   const displayName = normalizeCanvasName(user.globalName || user.username || "Aventureiro");
 
   const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
@@ -183,12 +224,21 @@ async function buildRankCard(user, record, position, total, guild) {
     ctx.fill();
   }
 
-  // Maior cargo de XP configurado no painel.
+  // Maior cargo de XP configurado e cargo multiplicador atualmente ativo.
   if (highestXpRole) {
-    drawText(ctx, "CARGO DE XP MAIS ALTO: " + normalizeCanvasName(highestXpRole.roleName), 13, 139, "bold 7.5px sans-serif", "#ffbce8", 192);
-    drawText(ctx, "Nível " + highestXpRole.level + "  •  " + highestXpRole.requiredXp.toLocaleString("pt-BR") + " XP necessários", 13, 149, "bold 7px sans-serif", "#e5f4ff", 192);
+    drawText(ctx, "PRÓXIMO CARGO / TOPO XP: " + normalizeCanvasName(highestXpRole.roleName), 13, 137, "bold 6.8px sans-serif", "#ffbce8", 192);
+    drawText(ctx, "Nível " + highestXpRole.level + " • " + highestXpRole.requiredXp.toLocaleString("pt-BR") + " XP", 13, 145, "bold 6.5px sans-serif", "#e5f4ff", 192);
   } else {
-    drawText(ctx, "Nenhum cargo de XP configurado", 13, 144, "bold 7.5px sans-serif", "#d9eaff", 192);
+    drawText(ctx, "Nenhum cargo de XP configurado", 13, 141, "bold 6.8px sans-serif", "#d9eaff", 192);
+  }
+
+  if (activeMultiplierRole) {
+    const multiplierLabel = "MULTIPLICADOR: " + normalizeCanvasName(activeMultiplierRole.roleName);
+    const multiplierValue = "x" + activeMultiplierRole.multiplier.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
+    drawText(ctx, multiplierLabel, 13, 155, "bold 6.8px sans-serif", "#9fffdc", 150);
+    drawText(ctx, multiplierValue, 164, 155, "bold 7px sans-serif", "#ffffff", 40);
+  } else {
+    drawText(ctx, "MULTIPLICADOR: nenhum cargo ativo", 13, 155, "bold 6.8px sans-serif", "#c9d8ec", 192);
   }
 
   return canvas.toBuffer("image/png");
