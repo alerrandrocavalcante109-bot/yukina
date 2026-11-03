@@ -9,25 +9,10 @@ const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const updateLocks = new Set();
 
-const LEVEL_THRESHOLDS = [
-  [1, 0], [5, 500], [10, 1500], [15, 3000], [20, 5000], [25, 7500],
-  [30, 10500], [40, 15000], [50, 20000], [60, 26000], [75, 35000], [100, 50000],
-];
+// Cada nível exige mais 1.000 XP acumulados. O XP nunca é zerado ao subir.
 function getCurrentLevel(xp) {
   const value = Math.max(0, Number(xp) || 0);
-  // Interpola entre os marcos de XP para que qualquer nível de 1 a 100
-  // configurado no painel possa realmente conceder o cargo selecionado.
-  for (let i = 1; i < LEVEL_THRESHOLDS.length; i++) {
-    const [nextLevel, nextXp] = LEVEL_THRESHOLDS[i];
-    const [previousLevel, previousXp] = LEVEL_THRESHOLDS[i - 1];
-    if (value < nextXp) {
-      const xpPerLevel = (nextXp - previousXp) / (nextLevel - previousLevel);
-      return Math.min(nextLevel - 1, previousLevel + Math.floor((value - previousXp) / xpPerLevel));
-    }
-  }
-  const [lastLevel, lastXp] = LEVEL_THRESHOLDS[LEVEL_THRESHOLDS.length - 1];
-  if (value >= lastXp) return Math.min(100, lastLevel + Math.floor((value - lastXp) / 1000));
-  return 1;
+  return Math.min(100, Math.floor(value / 1000) + 1);
 }
 
 const knownConfiguredRoleIds = new Map();
