@@ -58,8 +58,8 @@ module.exports = {
       guild: message.guild,
       user: message.author,
       options: { getString: () => routeKey },
-      reply: payload => message.channel.send(payload),
-      followUp: payload => message.channel.send(payload),
+      reply: payload => { const { flags, ephemeral, ...rest } = payload || {}; return message.channel.send(rest); },
+      followUp: payload => { const { flags, ephemeral, ...rest } = payload || {}; return message.channel.send(rest); },
       deferred: false,
       replied: false,
     };
