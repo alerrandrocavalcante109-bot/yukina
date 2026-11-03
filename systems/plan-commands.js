@@ -92,6 +92,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
   }
 
   let claim;
+  let rewardCommitted = false;
   try {
     const subscription = await getPlan(interaction.user.id);
     const actualTier = TIERS[String(subscription?.planKey || "").toLowerCase()] || 0;
@@ -164,6 +165,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     } finally {
       await session.endSession();
     }
+    rewardCommitted = true;
 
     const balanceDoc = await balances.findOne({ guildId: String(interaction.guild.id), userId: String(interaction.user.id) });
 
@@ -183,7 +185,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
 
     return interaction.reply({ embeds: [embed], allowedMentions: { parse: [] } });
   } catch (error) {
-    if (claim?.ok && claim.claimId) {
+    if (!rewardCommitted && claim?.ok && claim.claimId) {
       try {
         const db = await getDb();
         await db.collection("vip_plan_command_state").updateOne(
