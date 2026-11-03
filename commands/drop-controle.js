@@ -107,7 +107,7 @@ module.exports = {
         const lines = docs.map((run, index) => {
           const winners = (run.winners || []).length ? run.winners.map(id => "<@" + id + ">").join(", ") : "Sem vencedores";
           return "**" + (index + 1) + ".** " + (run.status === "active" ? "Em andamento" : run.status === "paying" ? "Processando" : "Encerrado") +
-            " · " + fmt(run.reward) + " KZ\nCanal: <#" + run.channelId + "> · Participantes: " + Object.keys(run.entries || {}).length +
+            " · " + fmt(run.reward) + " KZ\nCanal: <#" + run.channelId + "> · Participantes: " + (run.participantCount ?? Object.keys(run.entries || {}).length) +
             "\nVencedores: " + winners;
         });
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xA7D8F0).setTitle("📜 Histórico de Drops").setDescription(lines.join("\n\n")).setFooter({ text: "Exibindo os " + docs.length + " registros mais recentes." })] });
