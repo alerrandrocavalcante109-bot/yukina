@@ -179,10 +179,16 @@
             }
           });
           setStatus("Conclua a verificação acima.");
-          await loadStatus();
+          // A consulta do status diário é independente do carregamento do Turnstile.
+          // Uma falha na API não deve esconder nem interromper o desafio de segurança.
+          loadStatus().catch(error => {
+            console.warn("[Daily] Falha ao consultar status:", error);
+            result.textContent = "Não foi possível consultar seu Daily. A verificação de segurança continua disponível.";
+          });
         } catch (error) {
-          setStatus(error.message || "Falha ao carregar a verificação.");
-          console.warn("[Daily] Turnstile:", error);
+          const message = error && error.message ? error.message : "Falha ao carregar a verificação.";
+          setStatus(message);
+          console.warn("[Daily] Falha ao carregar Turnstile:", error);
         }
       };
       spin.addEventListener("click", async () => {
