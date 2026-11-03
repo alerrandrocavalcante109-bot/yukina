@@ -16,6 +16,7 @@ function getCurrentLevel(xp) {
 }
 
 const knownConfiguredRoleIds = new Map();
+const lastAnnouncedMilestone = new Map();
 
 async function resolveXpRoles(guild) {
   let settings = await xpStorage.get(guild.id, "config", null);
@@ -84,14 +85,26 @@ async function updateLevel(member, announce = false) {
     if (removeIds.length) await member.roles.remove(removeIds, "Atualização de cargo por nível de XP");
     if (selectedRole && !hadSelected) await member.roles.add(selectedRole, "Cargo automático por nível de XP da Yukina");
 
-    if (announce && selectedRole && !hadSelected) {
+    const announcementKey = member.guild.id + ":" + member.id;
+    // No início do bot, registra marcos já alcançados para não repetir anúncios antigos.
+    if (!announce && currentLevel % 5 === 0 && !lastAnnouncedMilestone.has(announcementKey)) {
+      lastAnnouncedMilestone.set(announcementKey, currentLevel);
+    }
+
+    // A mensagem de evolução é enviada somente nos níveis 5, 10, 15, 20...
+    if (announce && currentLevel % 5 === 0 &&
+        lastAnnouncedMilestone.get(announcementKey) !== currentLevel) {
       const channel = member.guild.systemChannel;
       if (channel && channel.viewable &&
           channel.permissionsFor(member.guild.members.me)?.has(PermissionFlagsBits.SendMessages)) {
+        const roleLine = selectedRole && !hadSelected
+          ? "\\n**🎖️ Novo cargo: " + selectedRole.name + "**"
+          : "";
         await channel.send({
-          content: "# 🌸 Um novo florescer!\\n## ❄️ Parabéns, " + member.toString() + "!\\n### Você alcançou o nível " + selected.level + "!\\n\\n**🌙 XP TOTAL ACUMULADO: " + xp.toLocaleString("pt-BR") + " XP**\\n**🎖️ Novo cargo: " + selectedRole.name + "**\\n\\n*Cada mensagem é uma pequena estrela que ilumina sua jornada. Continue florescendo no universo da Yukina!* ✨",
+          content: "# 🌸 Um novo florescer!\\n## ❄️ Parabéns, " + member.toString() + "!\\n### Você alcançou o nível " + currentLevel + "!\\n\\n**🌙 XP TOTAL ACUMULADO: " + xp.toLocaleString("pt-BR") + " XP**" + roleLine + "\\n\\n*Cada mensagem é uma pequena estrela que ilumina sua jornada. Continue florescendo no universo da Yukina!* ✨",
           allowedMentions: { users: [member.id] },
-        }).catch(() => {});
+        });
+        lastAnnouncedMilestone.set(announcementKey, currentLevel);
       }
     }
   } catch (error) {
