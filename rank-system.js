@@ -4,6 +4,7 @@
  */
 const memberData = require("./member-data");
 const xpMultiplierStorage = require("./system-storage").forSystem("xp-multipliers");
+const { getVipCollection } = require("./vip-store");
 
 const XP_COOLDOWN_MS = 60_000;
 const XP_MIN = 30;
@@ -13,6 +14,41 @@ const TENURE_CHECK_MS = 10 * 60_000;
 const lastXpAt = new Map();
 const multiplierCache = new Map();
 const MULTIPLIER_CACHE_MS = 60_000;
+const planMultiplierCache = new Map();
+const PLAN_XP_MULTIPLIERS = { starter: 1.1, plus: 1.2, premium: 1.35, ultra: 1.5, infinity: 1.75 };
+
+async function getActivePlanXpMultiplier(userId) {
+  const now = Date.now();
+  const cached = planMultiplierCache.get(String(userId));
+  if (cached && now < cached.cacheUntil && (!cached.expiresAt || now < cached.expiresAt)) {
+    return cached.multiplier;
+  }
+
+  try {
+    const subscriptions = await getVipCollection();
+    const active = await subscriptions.find({
+      userId: String(userId),
+      status: "active",
+      expiresAt: { $gt: new Date(now) }
+    }).toArray();
+    // Em caso de mais de uma assinatura ativa, prevalece o maior plano.
+    let multiplier = 1;
+    let expiresAt = 0;
+    for (const subscription of active) {
+      const value = PLAN_XP_MULTIPLIERS[String(subscription.planKey || "").toLowerCase()] || 1;
+      if (value > multiplier) {
+        multiplier = value;
+        expiresAt = new Date(subscription.expiresAt).getTime();
+      }
+    }
+    const cacheUntil = Math.min(now + MULTIPLIER_CACHE_MS, expiresAt || Infinity);
+    planMultiplierCache.set(String(userId), { multiplier, expiresAt, cacheUntil });
+    return multiplier;
+  } catch (error) {
+    console.error("[XP plano] Falha ao consultar assinatura de " + userId + ":", error.message);
+    return 1;
+  }
+}
 
 async function getXpMultiplier(guildId, member) {
   const cached = multiplierCache.get(guildId);
@@ -51,7 +87,8 @@ async function getXpMultiplier(guildId, member) {
         : Math.max(highestMultiplier, value);
     }
   }
-  return highestMultiplier ?? 1;
+  const planMultiplier = await getActivePlanXpMultiplier(member.id);
+  return Math.max(highestMultiplier ?? 1, planMultiplier);
 }
 
 
