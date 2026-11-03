@@ -92,6 +92,47 @@
       let captchaToken = "";
       let widgetId = null;
       let busy = false;
+      let spinAudioContext = null;
+      let spinMusicTimer = null;
+      let spinMusicStep = 0;
+      const spinMelody = [659.25, 783.99, 987.77, 783.99, 880, 1046.5, 987.77, 783.99, 659.25, 587.33, 659.25, 783.99, 880, 783.99, 659.25, 523.25];
+      const playSpinNote = () => {
+        if (!spinAudioContext || spinAudioContext.state !== "running") return;
+        const now = spinAudioContext.currentTime;
+        const frequency = spinMelody[spinMusicStep % spinMelody.length];
+        const oscillator = spinAudioContext.createOscillator();
+        const gain = spinAudioContext.createGain();
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, now);
+        gain.gain.setValueAtTime(0.0001, now);
+        gain.gain.exponentialRampToValueAtTime(0.055, now + 0.035);
+        gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.24);
+        oscillator.connect(gain);
+        gain.connect(spinAudioContext.destination);
+        oscillator.start(now);
+        oscillator.stop(now + 0.26);
+        spinMusicStep++;
+      };
+      const startSpinMusic = async () => {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!spinAudioContext) spinAudioContext = new AudioContextClass();
+          if (spinAudioContext.state === "suspended") await spinAudioContext.resume();
+          stopSpinMusic();
+          spinMusicStep = 0;
+          playSpinNote();
+          spinMusicTimer = window.setInterval(playSpinNote, 280);
+        } catch (error) {
+          console.warn("[Daily] Não foi possível iniciar a música:", error);
+        }
+      };
+      const stopSpinMusic = () => {
+        if (spinMusicTimer !== null) {
+          window.clearInterval(spinMusicTimer);
+          spinMusicTimer = null;
+        }
+      };
       const getStored = key => { try { return localStorage.getItem(key) || ""; } catch (_) { return ""; } };
       const setStored = (key, value) => { try { localStorage.setItem(key, value); } catch (_) {} };
       const setStatus = message => { status.textContent = message; };
@@ -197,6 +238,7 @@
         if (busy || !captchaToken) return;
         busy = true; spin.disabled = true; spin.textContent = "Girando...";
         result.textContent = "A roleta está girando... 🌸❄️";
+        startSpinMusic();
         try {
           const token = await getAccessToken();
           if (!token) throw new Error("Entre com sua conta Discord para coletar o Daily.");
@@ -223,6 +265,7 @@
           if (widgetId !== null && window.turnstile) window.turnstile.reset(widgetId);
           spin.textContent = "Tentar novamente";
         } finally {
+          stopSpinMusic();
           busy = false;
           if (spin.textContent !== "Daily coletado") spin.disabled = true;
         }
