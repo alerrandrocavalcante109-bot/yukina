@@ -145,7 +145,6 @@ async function translateToPortuguese(text) {
 
   const headers = { "Content-Type": "application/json", "Accept": "application/json" };
   const apiKey = String(process.env.LIBRETRANSLATE_API_KEY || "").trim();
-  if (apiKey) headers["Authorization"] = "Bearer " + apiKey;
 
   let response;
   try {
@@ -157,6 +156,7 @@ async function translateToPortuguese(text) {
         source: "auto",
         target: "pt",
         format: "text",
+        ...(apiKey ? { api_key: apiKey } : {}),
       }),
       signal: AbortSignal.timeout(30000),
     });
