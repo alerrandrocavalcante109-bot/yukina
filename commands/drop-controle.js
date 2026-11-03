@@ -115,7 +115,7 @@ module.exports = {
       }
 
       if (action === "failures") {
-        const docs = await attempts.find({ status: "failed" }).sort({ finishedAt: -1 }).limit(10).toArray();
+        const docs = await attempts.find({ guildId: String(interaction.guildId), status: "failed" }).sort({ finishedAt: -1 }).limit(10).toArray();
         if (!docs.length) return interaction.editReply("🌸 Não há falhas de pagamento registradas.");
         const lines = docs.map((item, index) => "**" + (index + 1) + ".** <@" + item.userId + "> · tentativa " + item.attempt + "/5\nDrop: `" + item.runId + "`\nMotivo: " + String(item.error || "Não informado").slice(0, 300));
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle("⚠️ Falhas de pagamento").setDescription(lines.join("\n\n")).setFooter({ text: "Exibindo as 10 falhas mais recentes." })] });
