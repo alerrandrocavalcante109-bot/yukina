@@ -3,7 +3,6 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { runPlanCommand, weightedPick, randomInt } = require("../systems/plan-commands");
 
-const COOLDOWN = 7 * 24 * 60 * 60 * 1000;
 const BANDS = [
   { min: 100000, max: 250000, weight: 35 },
   { min: 250000, max: 500000, weight: 25 },
@@ -74,7 +73,7 @@ function rollWish(cap) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("desejo")
-    .setDescription("[Infinity] Faça um desejo semanal e receba uma recompensa aleatória.")
+    .setDescription("[Infinity] Faça um desejo e receba uma recompensa aleatória.")
     .setDMPermission(false)
     .addIntegerOption(option => option
       .setName("limite")
@@ -89,7 +88,7 @@ module.exports = {
       interaction,
       command: "desejo",
       minimumPlan: "infinity",
-      cooldownMs: COOLDOWN,
+      cooldownMs: 0,
       title: "Desejo sob a Lua",
       description: "Você confiou seu desejo à Yukina. O limite escolhido foi **" + cap.toLocaleString("pt-BR") + " KZ**. Ele define o teto, não o valor garantido.",
       rewardFactory: () => {
@@ -98,7 +97,7 @@ module.exports = {
           amount,
           emoji: "🌠",
           color: 0xD9B7FF,
-          message: "Seu desejo foi atendido! A recompensa é aleatória e a próxima tentativa chega em 7 dias. Tentativas não utilizadas não acumulam.",
+          message: "Seu desejo foi atendido! A recompensa é aleatória. Você pode fazer outro desejo enquanto o sistema estiver em fase de testes.",
           details: { selectedCap: cap },
         };
       },
