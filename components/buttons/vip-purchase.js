@@ -66,6 +66,15 @@ module.exports = {
     const user = await interaction.client.users.fetch(buyerId).catch(() => null);
     if (user) await user.send({ embeds: [new EmbedBuilder().setColor(0x22C55E).setTitle("✨ Pagamento aprovado — Yukina VIP").setDescription([`Olá, <@${buyerId}>! Seu pagamento foi conferido e aprovado pela equipe.`, "", `**Plano:** ${PLANS[planKey].name}`, `**Duração:** ${period === "annual" ? "Anual" : "Mensal"}`, `**Cargo liberado:** ${role.name}`, `**Válido até:** <t:${Math.floor(expiresAt.getTime() / 1000)}:D>`, "", "Seu acesso VIP já foi ativado no servidor da Yukina. Obrigado por apoiar o projeto! ❄️", "", "A Yukina enviará lembretes na DM antes do vencimento, com a chave Pix para renovação."].join("\n")).setFooter({ text: "Yukina · Obrigado por fazer parte da nossa comunidade" }).setTimestamp()] }).catch(() => {});
     await interaction.channel.send({ embeds: [new EmbedBuilder().setColor(0x22C55E).setTitle("Compra VIP aprovada").setDescription(`O cargo ${role} foi atribuído ao comprador. Este canal será fechado em alguns segundos.`)] });
+
+    // Inicia a configuração do Drop Automático somente depois que o pagamento e a assinatura
+    // forem confirmados e persistidos. O módulo tenta DM e usa canal privado como alternativa.
+    try {
+      const dropSetup = require("../selects/drop-auto-setup");
+      await dropSetup.start(interaction.client, buyerId, planKey);
+    } catch (error) {
+      console.error("[Drop Automático] Não foi possível iniciar a configuração:", error.message || error);
+    }
     setTimeout(() => interaction.channel.delete("Compra VIP aprovada e cargo atribuído").catch(() => {}), 10000).unref?.();
   },
 };
