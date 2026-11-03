@@ -19,19 +19,24 @@ function loadCommands(client) {
     try {
       delete require.cache[require.resolve(file)];
       const command = require(file);
-      const name = command?.data?.name || command?.name;
-      if (!name || typeof command.execute !== "function") {
-        console.warn(`⚠️ [Motor] Módulo ignorado: ${path.relative(__dirname, file)}`);
+      const prefixHandler = command?.prefixExecute || command?.executePrefix;
+      const isSlash = Boolean(command?.data?.name && typeof command.execute === "function");
+      const isPrefix = typeof prefixHandler === "function";
+      const name = command?.data?.name || command?.name || command?.aliases?.[0];
+      if (!name || (!isSlash && !isPrefix)) {
+        console.warn(\`⚠️ [Motor] Módulo ignorado: \${path.relative(__dirname, file)}\`);
         continue;
       }
       if (client.commands.has(name)) {
-        console.warn(`⚠️ [Motor] Comando duplicado ignorado: ${name}`);
+        console.warn(\`⚠️ [Motor] Comando duplicado ignorado: \${name}\`);
         continue;
       }
       client.commands.set(name, command);
-      console.log(`🌙 [SLASH] /${name} — carregado pelo motor`);
+      console.log(isSlash
+        ? \`🌙 [SLASH] /\${name} — carregado pelo motor\`
+        : \`⌨️ [PREFIXO] Y\${name} — carregado pelo motor\`);
     } catch (error) {
-      console.error(`❌ [Motor] Falha ao carregar ${path.relative(__dirname, file)}:`, error);
+      console.error(\`❌ [Motor] Falha ao carregar \${path.relative(__dirname, file)}:\`, error);
     }
   }
 }
