@@ -1,12 +1,10 @@
-// Configuração central da API da Yukina.
-// Prioriza a API reserva (atual principal do site) e mantém a API anterior como fallback.
+// API central da Yukina. O serviço antigo de reserva foi suspenso; usar somente a API ativa.
 (() => {
   const primary = "https://yukina-s1lz.onrender.com";
-  const backup = "https://yukina-jspa.onrender.com";
-  const bases = [primary, backup];
+  const bases = [primary];
   let activeBase = primary;
   window.YUKINA_API_URL = primary;
-  window.YUKINA_API_BACKUP_URL = backup;
+  window.YUKINA_API_BACKUP_URL = "";
   window.YUKINA_API_URLS = bases.slice();
 
   if (window.__YUKINA_API_FAILOVER_INSTALLED__) return;
@@ -41,8 +39,7 @@
     const pathname = (() => { try { return new URL(originalUrl).pathname; } catch (_) { return pathAndQuery.split("?")[0]; } })();
     const method = String(init?.method || (typeof input !== "string" && input?.method) || "GET").toUpperCase();
     const firstBase = activeBase;
-    const secondBase = bases.find(base => base !== firstBase);
-    const orderedBases = [firstBase, secondBase];
+    const orderedBases = [firstBase];
     let lastError;
 
     for (let index = 0; index < orderedBases.length; index++) {
@@ -53,18 +50,11 @@
         const response = await nativeFetch(requestInput, init);
         const fallback = index === 0 && await needsFallback(response, pathname, method);
         if (fallback) {
-          activeBase = secondBase;
-          window.YUKINA_API_URL = activeBase;
-          continue;
+          throw new Error("A API principal da Yukina retornou uma resposta indisponível.");
         }
         return response;
       } catch (error) {
         lastError = error;
-        if (index === 0) {
-          activeBase = secondBase;
-          window.YUKINA_API_URL = activeBase;
-          continue;
-        }
         throw error;
       }
     }
