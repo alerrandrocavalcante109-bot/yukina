@@ -24,19 +24,19 @@ function loadCommands(client) {
       const isPrefix = typeof prefixHandler === "function";
       const name = command?.data?.name || command?.name || command?.aliases?.[0];
       if (!name || (!isSlash && !isPrefix)) {
-        console.warn(\`⚠️ [Motor] Módulo ignorado: \${path.relative(__dirname, file)}\`);
+        console.warn(`⚠️ [Motor] Módulo ignorado: ${path.relative(__dirname, file)}`);
         continue;
       }
       if (client.commands.has(name)) {
-        console.warn(\`⚠️ [Motor] Comando duplicado ignorado: \${name}\`);
+        console.warn(`⚠️ [Motor] Comando duplicado ignorado: ${name}`);
         continue;
       }
       client.commands.set(name, command);
       console.log(isSlash
-        ? \`🌙 [SLASH] /\${name} — carregado pelo motor\`
-        : \`⌨️ [PREFIXO] Y\${name} — carregado pelo motor\`);
+        ? `🌙 [SLASH] /${name} — carregado pelo motor`
+        : `⌨️ [PREFIXO] Y${name} — carregado pelo motor`);
     } catch (error) {
-      console.error(\`❌ [Motor] Falha ao carregar \${path.relative(__dirname, file)}:\`, error);
+      console.error(`❌ [Motor] Falha ao carregar ${path.relative(__dirname, file)}:`, error);
     }
   }
 }
