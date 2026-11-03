@@ -492,6 +492,23 @@ async function markManualDelivered(interaction) {
 }
 
 
+async function activateConfig(client, userId) {
+  await initDb();
+  const config = await configs.findOne({ userId: String(userId), status: "active", enabled: true });
+  if (!config) throw new Error("Configuração ativa do Drop não encontrada.");
+  if (!await validPlan(config.userId, config.planKey)) {
+    await configs.updateOne({ _id: config._id }, { $set: { status: "paused", enabled: false, pausedAt: new Date(), pauseReason: "plan_expired" } });
+    throw new Error("O plano está expirado.");
+  }
+  for (const channelId of config.channelIds || []) {
+    if ((config.pausedChannelIds || []).map(String).includes(String(channelId))) continue;
+    const savedDueAt = Number(config.nextRunAtByChannel?.[String(channelId)]) || 0;
+    if (savedDueAt > Date.now()) await schedule(client, config, channelId, savedDueAt);
+    else await scheduleNext(client, config, channelId);
+  }
+  return true;
+}
+
 async function pauseChannel(config, channelId) {
   await initDb();
   const id = String(channelId);
@@ -516,6 +533,7 @@ async function resumeChannel(client, config, channelId) {
 }
 
 module.exports = {
+  activateConfig,
   pauseChannel,
   resumeChannel,
   customId: /^(?:dropauto:join:[a-f0-9]{24}|dropauto:manual-delivered:[a-f0-9]{24})$/i,
