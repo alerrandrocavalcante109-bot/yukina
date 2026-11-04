@@ -40,6 +40,10 @@ async function render(user, xp, plan, profile) {
   ctx.fillStyle=glow; ctx.fillRect(90,0,140,110);
   for(let i=0;i<24;i++){ctx.beginPath();ctx.arc((i*43+17)%W,(i*31+9)%H,i%4===0?1:.55,0,Math.PI*2);ctx.fillStyle="rgba(238,245,255,.75)";ctx.fill();}
   rounded(ctx,3,3,224,174,10); ctx.fillStyle="rgba(7,13,31,.72)"; ctx.fill(); ctx.strokeStyle="rgba(222,220,255,.7)";ctx.lineWidth=.8;ctx.stroke();
+  // Identidade do Modelo 1: faixa cinza, cabeçalho azul e área Sobre mim preta.
+  ctx.fillStyle="#777b84";ctx.fillRect(5,7,18,166);
+  ctx.fillStyle="#416b9b";ctx.fillRect(29,7,188,56);
+  ctx.fillStyle="#101116";ctx.fillRect(29,149,188,22);
 
   // Avatar e identificação.
   ctx.save(); ctx.beginPath();ctx.arc(31,35,22,0,Math.PI*2);ctx.clip();
@@ -48,12 +52,12 @@ async function render(user, xp, plan, profile) {
   ctx.restore();ctx.beginPath();ctx.arc(31,35,22.5,0,Math.PI*2);ctx.strokeStyle="#d8c8ff";ctx.lineWidth=1.4;ctx.stroke();
 
   const name=String(user.globalName||user.username||"Aventureiro").replace(/[\u0000-\u001f]/g,"").slice(0,32);
-  ctx.fillStyle="#aeeaff";ctx.font="bold 7px sans-serif";ctx.fillText("YUKINA  ✦  PERFIL",62,19);
+  ctx.fillStyle="#e7f2ff";ctx.font="bold 7px sans-serif";ctx.fillText("YUKINA  ✦  PERFIL",62,19);
   ctx.fillStyle="#fff";ctx.font=fit(ctx,name,122);ctx.fillText(name,62,34,122);
   const level=levelForXp(xp);
   ctx.fillStyle="#f5d9f1";ctx.font="bold 7px sans-serif";ctx.fillText("XP " + Math.max(0,Number(xp)||0).toLocaleString("pt-BR") + "  •  NÍVEL " + level,62,46,125);
   if(plan){ctx.fillStyle="#ffdf9b";ctx.font="bold 7px sans-serif";ctx.fillText("PLANO " + plan.toUpperCase(),62,57,125);}
-  ctx.fillStyle="#bcecff";ctx.font="bold 7px sans-serif";ctx.fillText("REPUTAÇÃO",177,18);
+  ctx.fillStyle="#e7f2ff";ctx.font="bold 7px sans-serif";ctx.fillText("REPUTAÇÃO",177,18);
   ctx.fillStyle="#fff";ctx.font="bold 13px sans-serif";ctx.fillText("0",193,34);
 
   // Oito espaços reservados aos emblemas de conquistas selecionados pelo membro.
@@ -71,7 +75,7 @@ async function render(user, xp, plan, profile) {
     try{const bg=await loadImage(profile.backgroundUrl);ctx.save();rounded(ctx,29,68,188,76,6);ctx.clip();ctx.globalAlpha=.42;ctx.drawImage(bg,29,68,188,76);ctx.restore();}catch{}
   }
   rounded(ctx,29,149,188,22,5);ctx.fillStyle="rgba(7,12,28,.68)";ctx.fill();ctx.strokeStyle="rgba(240,210,245,.38)";ctx.stroke();
-  ctx.fillStyle="#f7c7e8";ctx.font="bold 6px sans-serif";ctx.fillText("SOBRE MIM",36,158);
+  ctx.fillStyle="#f2f2f2";ctx.font="bold 6px sans-serif";ctx.fillText("SOBRE MIM",36,158);
   const about=String(profile.about||"Ainda não escreveu sobre si.").replace(/\s+/g," ").slice(0,MAX_ABOUT);
   ctx.fillStyle="#fff";ctx.font="6.5px sans-serif";
   const words=about.split(" ");let line="",lines=[],maxWidth=170;
