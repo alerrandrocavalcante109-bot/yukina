@@ -3,16 +3,16 @@
 const { EmbedBuilder, PermissionsBitField } = require("discord.js");
 
 const COLORS = [
-  { key: "red", name: "Vermelho", hex: "#E74C3C", emoji: "🔴" },
-  { key: "orange", name: "Laranja", hex: "#E67E22", emoji: "🟠" },
-  { key: "yellow", name: "Amarelo", hex: "#F1C40F", emoji: "🟡" },
-  { key: "green", name: "Verde", hex: "#2ECC71", emoji: "🟢" },
-  { key: "blue", name: "Azul", hex: "#3498DB", emoji: "🔵" },
-  { key: "cyan", name: "Ciano", hex: "#1ABC9C", emoji: "🩵" },
-  { key: "purple", name: "Roxo", hex: "#9B59B6", emoji: "🟣" },
-  { key: "pink", name: "Rosa", hex: "#E84393", emoji: "🌸" },
-  { key: "white", name: "Branco", hex: "#ECF0F1", emoji: "⚪" },
-  { key: "black", name: "Preto", hex: "#2C3E50", emoji: "⚫" }
+  { key: "red", name: "Vermelho", emoji: "🔴" },
+  { key: "orange", name: "Laranja", emoji: "🟠" },
+  { key: "yellow", name: "Amarelo", emoji: "🟡" },
+  { key: "green", name: "Verde", emoji: "🟢" },
+  { key: "blue", name: "Azul", emoji: "🔵" },
+  { key: "cyan", name: "Ciano", emoji: "🩵" },
+  { key: "purple", name: "Roxo", emoji: "🟣" },
+  { key: "pink", name: "Rosa", emoji: "🌸" },
+  { key: "white", name: "Branco", emoji: "⚪" },
+  { key: "black", name: "Preto", emoji: "⚫" }
 ];
 
 function install(client, getSettingsCollection) {
@@ -37,16 +37,15 @@ function install(client, getSettingsCollection) {
       const resolved = await resolveReaction(reaction);
       if (!resolved) return;
       const member = await resolved.guild.members.fetch(user.id).catch(() => null);
-      if (!member) return;
+      if (!member || !member.manageable && member.id === client.user.id) return;
       const roleIds = (resolved.config.colors || []).map(item => String(item.roleId || "")).filter(Boolean);
-      const current = roleIds.filter(id => member.roles.cache.has(id));
+      const selectedId = String(resolved.color.roleId);
       if (adding) {
-        const selectedId = String(resolved.color.roleId);
-        const remove = current.filter(id => id !== selectedId);
+        const remove = roleIds.filter(id => id !== selectedId && member.roles.cache.has(id));
         if (remove.length) await member.roles.remove(remove, "Troca de cor do nick pela Yukina");
         if (!member.roles.cache.has(selectedId)) await member.roles.add(selectedId, "Cor de nick escolhida pelo membro");
-      } else if (member.roles.cache.has(String(resolved.color.roleId))) {
-        await member.roles.remove(String(resolved.color.roleId), "Reação de cor removida");
+      } else if (member.roles.cache.has(selectedId)) {
+        await member.roles.remove(selectedId, "Reação de cor removida");
       }
     } catch (error) {
       console.error("[Cores de Nick] Falha ao atualizar a cor:", error.message || error);
@@ -73,8 +72,14 @@ async function handleApi(req, res, url, context) {
       sendJson(res, 400, { detail: "Selecione um servidor válido." });
       return true;
     }
+
+    // A autorização é validada no servidor; não confiamos em IDs ou permissões enviados pelo navegador.
     const authorized = await authorizePanel(req, targetGuildId);
-    const guild = authorized.guild;
+    const guild = authorized?.guild;
+    if (!guild || guild.id !== targetGuildId) {
+      sendJson(res, 403, { detail: "Você não tem autorização para configurar este servidor." });
+      return true;
+    }
     const collection = await getSettingsCollection();
     if (req.method === "GET") {
       const doc = await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } });
@@ -82,14 +87,30 @@ async function handleApi(req, res, url, context) {
       return true;
     }
 
-    const channelId = String(body.channelId || "");
-    const messageText = String(body.message || "Escolha a cor do seu nick reagindo ao emoji correspondente abaixo.").trim().slice(0, 1800);
-    const selectedKeys = Array.isArray(body.colors) ? [...new Set(body.colors.map(String))] : [];
-    const selected = COLORS.filter(color => selectedKeys.includes(color.key));
-    if (!/^\d{17,20}$/.test(channelId) || !selected.length) {
-      sendJson(res, 400, { detail: "Escolha um canal e pelo menos uma cor." });
+    const channelId = String(body.channelId || "").trim();
+    const messageText = String(body.message || "").trim().slice(0, 1800);
+    const submitted = Array.isArray(body.colors) ? body.colors : [];
+    if (!/^\d{17,20}$/.test(channelId) || !messageText || !submitted.length || submitted.length > COLORS.length) {
+      sendJson(res, 400, { detail: "Informe uma mensagem, escolha um canal e selecione ao menos uma cor." });
       return true;
     }
+    const keys = new Set();
+    const roleIds = new Set();
+    const selected = [];
+    for (const entry of submitted) {
+      const key = String(entry?.key || "");
+      const roleId = String(entry?.roleId || "").trim();
+      const hex = String(entry?.hex || "").toUpperCase();
+      const palette = COLORS.find(item => item.key === key);
+      if (!palette || keys.has(key) || !/^\d{17,20}$/.test(roleId) || roleIds.has(roleId) || !/^#[0-9A-F]{6}$/.test(hex)) {
+        sendJson(res, 400, { detail: "Uma das cores ou cargos selecionados é inválida. Confira a seleção e tente novamente." });
+        return true;
+      }
+      keys.add(key);
+      roleIds.add(roleId);
+      selected.push({ ...palette, roleId, hex });
+    }
+
     const channel = await guild.channels.fetch(channelId).catch(() => null);
     if (!channel || channel.type !== 0) {
       sendJson(res, 400, { detail: "Escolha um canal de texto válido." });
@@ -106,37 +127,27 @@ async function handleApi(req, res, url, context) {
       sendJson(res, 403, { detail: "A Yukina não tem todas as permissões necessárias no canal escolhido." });
       return true;
     }
-    const oldDoc = await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } });
-    const oldConfig = oldDoc?.settings?.nickColors || {};
-    const oldColors = Array.isArray(oldConfig.colors) ? oldConfig.colors : [];
-    const oldByKey = new Map(oldColors.map(item => [String(item.key), item]));
-    const selectedKeySet = new Set(selected.map(item => item.key));
-    const removedBeforeSave = oldColors.filter(item => item.roleId && !selectedKeySet.has(String(item.key)));
-    for (const item of removedBeforeSave) {
-      const role = await guild.roles.fetch(String(item.roleId)).catch(() => null);
-      if (role && role.position >= botMember.roles.highest.position) {
-        sendJson(res, 403, { detail: "Não consigo excluir o cargo " + role.name + " porque ele está acima ou na mesma posição do cargo da Yukina. Mova o cargo da Yukina acima dele e tente novamente." });
-        return true;
-      }
-    }
+
+    // Confere todos os cargos antes de alterar qualquer um: somente cargos existentes, únicos e abaixo da Yukina.
     const roles = [];
     for (const color of selected) {
-      let role = oldByKey.has(color.key) ? await guild.roles.fetch(String(oldByKey.get(color.key).roleId)).catch(() => null) : null;
-      if (role && role.managed) throw new Error("Um cargo gerenciado não pode ser usado como cor: " + color.name + ".");
-      if (!role) {
-        role = await guild.roles.create({
-          name: "Cor • " + color.name,
-          color: color.hex,
-          reason: "Cargo automático do sistema Cores de Nick da Yukina"
-        });
-      } else if (role.name !== "Cor • " + color.name || role.hexColor.toLowerCase() !== color.hex.toLowerCase()) {
-        await role.edit({ name: "Cor • " + color.name, color: color.hex }, "Atualização da paleta de cores da Yukina");
-      }
-      if (role.position >= botMember.roles.highest.position) {
-        sendJson(res, 403, { detail: "Mova o cargo da Yukina acima dos cargos de cor para que ela consiga gerenciá-los." });
+      const role = await guild.roles.fetch(color.roleId).catch(() => null);
+      if (!role || role.guild.id !== guild.id || role.id === guild.id || role.managed) {
+        sendJson(res, 400, { detail: "Selecione somente cargos existentes e não gerenciados deste servidor." });
         return true;
       }
-      roles.push({ ...color, roleId: role.id });
+      if (role.position >= botMember.roles.highest.position) {
+        sendJson(res, 403, { detail: "O cargo @" + role.name + " está acima ou na mesma posição do cargo da Yukina. Mova o cargo da Yukina acima dele e tente novamente." });
+        return true;
+      }
+      roles.push({ ...color, name: role.name, previousHex: role.hexColor, role });
+    }
+
+    // A cor visual é atualizada no cargo escolhido pelo administrador; nenhum cargo é criado ou excluído.
+    for (const item of roles) {
+      if (item.role.hexColor.toUpperCase() !== item.hex) {
+        await item.role.edit({ color: item.hex }, "Cor definida pelo administrador no painel da Yukina");
+      }
     }
 
     const embed = new EmbedBuilder()
@@ -154,7 +165,8 @@ async function handleApi(req, res, url, context) {
 
     const saved = {
       enabled: true, channelId, channelName: channel.name, messageId: sent.id,
-      message: messageText, colors: roles, updatedAt: new Date().toISOString()
+      message: messageText, colors: roles.map(({ role, previousHex, ...item }) => item),
+      updatedAt: new Date().toISOString()
     };
     await collection.updateOne(
       { guildId: targetGuildId },
@@ -162,18 +174,14 @@ async function handleApi(req, res, url, context) {
       { upsert: true }
     );
 
-    if (oldConfig.messageId && oldConfig.messageId !== sent.id) {
+    const oldConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors;
+    // A mensagem antiga é removida; cargos não selecionados permanecem intactos no servidor.
+    if (oldConfig?.messageId && oldConfig.messageId !== sent.id) {
       const oldChannel = await guild.channels.fetch(String(oldConfig.channelId)).catch(() => null);
       const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(oldConfig.messageId)).catch(() => null) : null;
       if (oldMessage) await oldMessage.delete().catch(() => {});
     }
-    const selectedIds = new Set(roles.map(item => String(item.roleId)));
-    const removed = oldColors.filter(item => item.roleId && !selectedIds.has(String(item.roleId)));
-    for (const item of removed) {
-      const role = await guild.roles.fetch(String(item.roleId)).catch(() => null);
-      if (role && !role.managed) await role.delete("Cor removida no painel da Yukina; cargo correspondente excluído");
-    }
-    sendJson(res, 200, { ok: true, config: saved, detail: "Cores salvas e mensagem publicada. Os cargos das cores removidas também foram excluídos." });
+    sendJson(res, 200, { ok: true, config: saved, detail: "Cores salvas e mensagem publicada. A Yukina utilizou apenas cargos existentes; nenhum cargo foi criado ou excluído." });
     return true;
   } catch (error) {
     console.error("[Cores de Nick] Falha ao salvar:", error.stack || error.message || error);
