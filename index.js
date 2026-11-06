@@ -25,6 +25,7 @@ const { parseCountingValue } = require("./counting-number-parser");
 const { getVipCollection, activateSubscription } = require("./vip-store");
 const { applyDailyInactivityFee } = require("./systems/bank-inactivity-fee");
 const { invalidateGuildSettings } = require("./guild-settings-store");
+const nickColorsSystem = require("./systems/nick-colors");
 
 const TOKEN = (process.env.TOKEN || "").trim();
 
@@ -86,6 +87,7 @@ function loadYukinaSystems() {
   require("./time-role-system")(client);
   require("./staff-promotion-announcements")(client);
   require("./interaction")(client);
+  nickColorsSystem.install(client, getSettingsCollection);
 }
 
 
@@ -688,6 +690,8 @@ async function panelApi(req, res, url) {
     }catch(e){console.error("[Wyvi webhook]",e.stack||e.message||e);return sendJson(res,500,{detail:"Falha ao processar webhook."});}
   }
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
+
+  if (await nickColorsSystem.handleApi(req, res, url, { sendJson, readBody, authorizePanel, getSettingsCollection })) return;
 
 
   if (url.pathname === "/api/tickets/manage") {
