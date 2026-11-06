@@ -30,20 +30,41 @@
       if(!AudioCtx)return;
       const ctx=new AudioCtx();
       const presets={
-        success:[{f:660,t:0,d:.11},{f:880,t:.12,d:.16}],
+        // Toque Sakura: dois sinos ascendentes e um brilho cristalino.
+        success:[{f:587.33,t:0,d:.34},{f:880,t:.16,d:.42},{f:1174.66,t:.38,d:.48}],
         discard:[{f:520,t:0,d:.13},{f:390,t:.14,d:.17}],
         error:[{f:240,t:0,d:.19},{f:185,t:.2,d:.22}]
       };
-      for(const note of (presets[type]||presets.success)){
+      const playBell=(frequency,start,duration)=>{
+        // Fundamental + harmônicos suaves para dar caráter de sino.
+        for(const partial of [{ratio:1,level:.075},{ratio:2.01,level:.022},{ratio:3.9,level:.009}]){
+          const osc=ctx.createOscillator(),gain=ctx.createGain();
+          const at=ctx.currentTime+start;
+          osc.type="sine";
+          osc.frequency.setValueAtTime(frequency*partial.ratio,at);
+          gain.gain.setValueAtTime(.0001,at);
+          gain.gain.exponentialRampToValueAtTime(partial.level,at+.012);
+          gain.gain.exponentialRampToValueAtTime(.0001,at+duration);
+          osc.connect(gain);gain.connect(ctx.destination);
+          osc.start(at);osc.stop(at+duration+.025);
+        }
+      };
+      const playSimple=(note)=>{
         const osc=ctx.createOscillator(),gain=ctx.createGain();
-        osc.type="sine";osc.frequency.setValueAtTime(note.f,ctx.currentTime+note.t);
-        gain.gain.setValueAtTime(.0001,ctx.currentTime+note.t);
-        gain.gain.exponentialRampToValueAtTime(.12,ctx.currentTime+note.t+.015);
-        gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+note.t+note.d);
+        const at=ctx.currentTime+note.t;
+        osc.type="sine";osc.frequency.setValueAtTime(note.f,at);
+        gain.gain.setValueAtTime(.0001,at);
+        gain.gain.exponentialRampToValueAtTime(.12,at+.015);
+        gain.gain.exponentialRampToValueAtTime(.0001,at+note.d);
         osc.connect(gain);gain.connect(ctx.destination);
-        osc.start(ctx.currentTime+note.t);osc.stop(ctx.currentTime+note.t+note.d+.02);
+        osc.start(at);osc.stop(at+note.d+.02);
+      };
+      if(ctx.state==="suspended")ctx.resume().catch(()=>{});
+      for(const note of (presets[type]||presets.success)){
+        if(type==="success")playBell(note.f,note.t,note.d);
+        else playSimple(note);
       }
-      setTimeout(()=>ctx.close().catch(()=>{}),900);
+      setTimeout(()=>ctx.close().catch(()=>{}),1500);
     }catch(_){}
   }
   function show(id){activeId=id;bar.classList.add("visible");}
