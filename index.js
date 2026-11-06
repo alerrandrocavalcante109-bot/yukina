@@ -11,6 +11,7 @@ const {
   ButtonStyle,
   REST,
   Routes,
+  Partials,
 } = require("discord.js");
 const http = require("node:http");
 const crypto = require("node:crypto");
@@ -68,7 +69,8 @@ if (!TOKEN) {
 }
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
+  intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.GuildMessages, GatewayIntentBits.GuildMessageReactions, GatewayIntentBits.MessageContent, GatewayIntentBits.GuildModeration],
+  partials: [Partials.Message, Partials.Channel, Partials.Reaction],
   // Evita depender da descoberta automática do Gateway se o endpoint padrão estiver bloqueado.
   ws: { handshakeTimeout: 30000 },
   rest: { timeout: 15000 },
