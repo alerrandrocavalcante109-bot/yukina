@@ -110,6 +110,15 @@ async function handleApi(req, res, url, context) {
     const oldConfig = oldDoc?.settings?.nickColors || {};
     const oldColors = Array.isArray(oldConfig.colors) ? oldConfig.colors : [];
     const oldByKey = new Map(oldColors.map(item => [String(item.key), item]));
+    const selectedKeySet = new Set(selected.map(item => item.key));
+    const removedBeforeSave = oldColors.filter(item => item.roleId && !selectedKeySet.has(String(item.key)));
+    for (const item of removedBeforeSave) {
+      const role = await guild.roles.fetch(String(item.roleId)).catch(() => null);
+      if (role && role.position >= botMember.roles.highest.position) {
+        sendJson(res, 403, { detail: "Não consigo excluir o cargo " + role.name + " porque ele está acima ou na mesma posição do cargo da Yukina. Mova o cargo da Yukina acima dele e tente novamente." });
+        return true;
+      }
+    }
     const roles = [];
     for (const color of selected) {
       let role = oldByKey.has(color.key) ? await guild.roles.fetch(String(oldByKey.get(color.key).roleId)).catch(() => null) : null;
@@ -162,9 +171,9 @@ async function handleApi(req, res, url, context) {
     const removed = oldColors.filter(item => item.roleId && !selectedIds.has(String(item.roleId)));
     for (const item of removed) {
       const role = await guild.roles.fetch(String(item.roleId)).catch(() => null);
-      if (role && !role.managed) await role.delete("Cor removida no painel da Yukina; cargo correspondente excluído").catch(error => console.error("[Cores de Nick] Não foi possível excluir cargo removido:", error.message || error));
+      if (role && !role.managed) await role.delete("Cor removida no painel da Yukina; cargo correspondente excluído");
     }
-    sendJson(res, 200, { ok: true, config: saved, detail: "Cores salvas e mensagem publicada." });
+    sendJson(res, 200, { ok: true, config: saved, detail: "Cores salvas e mensagem publicada. Os cargos das cores removidas também foram excluídos." });
     return true;
   } catch (error) {
     console.error("[Cores de Nick] Falha ao salvar:", error.stack || error.message || error);
