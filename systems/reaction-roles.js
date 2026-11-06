@@ -23,9 +23,20 @@ function install(client, getSettingsCollection) {
       const found = await resolve(reaction);
       if (!found) return;
       const member = await found.guild.members.fetch(user.id).catch(() => null);
-      if (!member || !member.manageable) return;
+      if (!member || !member.manageable) {
+        console.warn("[Cargos por reação] Não foi possível gerenciar o membro: o cargo mais alto dele está acima ou no mesmo nível da Yukina.");
+        return;
+      }
+      const botMember = found.guild.members.me || await found.guild.members.fetchMe().catch(() => null);
+      if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
+        console.error("[Cargos por reação] A Yukina está sem a permissão Gerenciar cargos.");
+        return;
+      }
       const role = await found.guild.roles.fetch(String(found.item.roleId)).catch(() => null);
-      if (!role || role.managed || role.id === found.guild.id) return;
+      if (!role || role.managed || role.id === found.guild.id || role.position >= botMember.roles.highest.position) {
+        console.warn("[Cargos por reação] Cargo inválido ou acima do cargo mais alto da Yukina.");
+        return;
+      }
       if (add && !member.roles.cache.has(role.id)) await member.roles.add(role, "Cargo obtido por reação configurada no painel da Yukina");
       if (!add && member.roles.cache.has(role.id)) await member.roles.remove(role, "Reação de cargo removida");
     } catch (error) {
@@ -100,8 +111,9 @@ async function handleApi(req, res, url, context) {
       return true;
     }
     const channelPerms = channel.permissionsFor(botMember);
-    if (!channelPerms || ![PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.AddReactions].every(flag => channelPerms.has(flag))) {
-      sendJson(res, 403, { detail: "A Yukina não tem as permissões necessárias no canal escolhido." });
+    const channelRequired = [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.AddReactions, PermissionsBitField.Flags.ManageMessages];
+    if (!channelPerms || !channelRequired.every(flag => channelPerms.has(flag))) {
+      sendJson(res, 403, { detail: "No canal escolhido, dê à Yukina: Ver canal, Ler histórico de mensagens, Enviar mensagens, Incorporar links, Adicionar reações e Gerenciar mensagens. Gerenciar mensagens é necessário para limpar as reações antigas e atualizar o painel existente." });
       return true;
     }
     for (const item of items) {
@@ -148,8 +160,9 @@ async function handleApi(req, res, url, context) {
     sendJson(res, 200, { ok: true, config: saved, detail: "Painel de cargos por reação atualizado na mesma mensagem." });
     return true;
   } catch (error) {
-    console.error("[Cargos por reação] Falha ao salvar:", error.stack || error.message || error);
-    sendJson(res, error.status || 500, { detail: error.message || "Não foi possível salvar os cargos por reação." });
+    console.error("[Cargos por reação] Falha ao salvar:", { code: error.code, message: error.message, stack: error.stack });
+    const missingPermissions = Number(error.code) === 50013;
+    sendJson(res, missingPermissions ? 403 : (error.status || 500), { detail: missingPermissions ? "O Discord bloqueou uma ação da Yukina (Missing Permissions). Confira Gerenciar cargos no servidor e, no canal escolhido, Ver canal, Ler histórico, Enviar mensagens, Incorporar links, Adicionar reações e Gerenciar mensagens. Os cargos selecionados também precisam ficar abaixo do cargo mais alto da Yukina." : (error.message || "Não foi possível salvar os cargos por reação.") });
     return true;
   }
 }
