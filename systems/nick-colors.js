@@ -255,7 +255,7 @@ async function handleApi(req, res, url, context) {
     const container = new ContainerBuilder()
       .setAccentColor(0xc4b5fd)
       .addTextDisplayComponents(
-        new TextDisplayBuilder().setContent("## 🎨 Escolha a cor do seu nick\\n" + messageText)
+        new TextDisplayBuilder().setContent("## 🎨 Escolha a cor do seu nick\n" + messageText)
       )
       .addMediaGalleryComponents(
         new MediaGalleryBuilder().addItems(
