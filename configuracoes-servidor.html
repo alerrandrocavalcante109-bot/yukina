@@ -1356,7 +1356,8 @@
           savedColors.slice(0,20).forEach((item,index)=>addNickColor(item.hex||"#c4b5fd"));
         }else addNickColor();
         nickColorsLoadedGuild=guild.id;options.dataset.ready="true";
-        originalNickColorsConfig=JSON.stringify({channelId:String(config.channelId||""),message:$("nickColorsMessage").value,colors:savedColors.map(item=>item.hex||"#c4b5fd")});\n        status.textContent=config.messageId?"Configuração carregada. As alterações aparecerão na barra inferior.":"Configure as opções; depois use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();
+        originalNickColorsConfig=JSON.stringify({channelId:String(config.channelId||""),message:$("nickColorsMessage").value,colors:[...options.children].map(row=>row.querySelector('input[type="color"]')?.value||"#c4b5fd")});
+        status.textContent=config.messageId?"Configuração carregada. As alterações aparecerão na barra inferior.":"Configure as opções; depois use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();
       }catch(error){status.textContent=error.message||"Não foi possível carregar o sistema de cores.";}
     }
     function getNickColorsConfig(){
