@@ -234,7 +234,7 @@
     <section class="system-screen" data-screen-panel="nickColors" hidden>
       <p class="eyebrow">PERSONALIZAÇÃO DA COMUNIDADE</p>
       <h1>🎨 Cores de Nick</h1>
-      <p class="screen-description">Adicione opções e escolha livremente cada tonalidade pelo círculo com pincel. A Yukina cria os cargos de cor automaticamente e reutiliza os mesmos cargos quando você editar a configuração, sem gerar duplicatas.</p>
+      <p class="screen-description">Adicione opções e escolha livremente cada tonalidade pelo círculo com pincel. As alterações serão reunidas na barra inferior, como nos sistemas de XP.</p>
       <div class="system-placeholder">
         <h2>1. Mensagem para os membros</h2>
         <label for="nickColorsMessage">Texto acima do embed</label>
@@ -243,10 +243,9 @@
         <label for="nickColorsChannel">Canal onde a mensagem será enviada</label>
         <select id="nickColorsChannel" class="prefix-input"><option value="">Carregando canais…</option></select>
         <h2 style="margin-top:22px">3. Cores disponíveis</h2>
-        <p class="prefix-system-help">Adicione quantas opções precisar (até 10) e escolha qualquer tonalidade no seletor circular com pincel. A Yukina cria e organiza os cargos automaticamente.</p>
+        <p class="prefix-system-help">Adicione quantas opções precisar (até 20) e escolha qualquer tonalidade no seletor circular com pincel. A Yukina cria e organiza os cargos automaticamente.</p>
         <div id="nickColorsOptions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-top:12px"></div><button type="button" class="prefix-save" id="nickColorsAdd" style="margin-top:12px">＋ Adicionar cor</button>
         <p id="nickColorsStatus" class="prefix-status" role="status" aria-live="polite"></p>
-        <button type="button" class="primary-action" id="nickColorsSave">Salvar e publicar no Discord</button>
       </div>
     </section>
     <section class="system-screen" data-screen-panel="reactionRoles" hidden>
@@ -1283,7 +1282,7 @@
       }catch(error){status.textContent=error.message||"Falha ao salvar as configurações.";}
       finally{button.disabled=false;}
     });
-    let nickColorsPalette=[],nickColorsLoadedGuild="";
+    let nickColorsPalette=[],nickColorsLoadedGuild="",originalNickColorsConfig="";
     const nickColorEmojis=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"];
     function makeNickColorRow(color,configColor){
       const row=document.createElement("div");
@@ -1301,12 +1300,12 @@
       input.setAttribute("aria-label","Cor personalizada "+color.name);
       input.style.cssText="position:absolute;inset:-8px;width:62px;height:62px;opacity:0;cursor:pointer";
       const brush=document.createElement("span");brush.textContent="🖌️";brush.style.cssText="pointer-events:none;font-size:19px;text-shadow:0 1px 4px #000";
-      input.addEventListener("input",()=>{pickerWrap.style.background=input.value;});
+      input.addEventListener("input",()=>{pickerWrap.style.background=input.value;window.YukinaPendingChanges?.refresh();});
       pickerWrap.append(input,brush);
       const remove=document.createElement("button");
       remove.type="button";remove.textContent="×";remove.title="Remover esta cor";
       remove.style.cssText="width:28px;height:28px;border:1px solid #ffffff40;border-radius:8px;background:#ffffff12;color:#fff;font-size:20px";
-      remove.addEventListener("click",()=>{row.remove();refreshNickColorLabels();});
+      remove.addEventListener("click",()=>{row.remove();refreshNickColorLabels();window.YukinaPendingChanges?.refresh();});
       row.append(label,pickerWrap,remove);
       return row;
     }
@@ -1327,7 +1326,7 @@
       options.appendChild(makeNickColorRow(color,{hex}));
       refreshNickColorLabels();
     }
-    $("nickColorsAdd").addEventListener("click",()=>addNickColor());
+    $("nickColorsAdd").addEventListener("click",()=>{addNickColor();window.YukinaPendingChanges?.refresh();});
     async function loadNickColors(){
       const status=$("nickColorsStatus"),channelSelect=$("nickColorsChannel"),options=$("nickColorsOptions"),guild=selectedGuild();
       if(!guild.id){status.textContent="Selecione um servidor no menu lateral.";return;}
@@ -1357,93 +1356,29 @@
           savedColors.slice(0,20).forEach((item,index)=>addNickColor(item.hex||"#c4b5fd"));
         }else addNickColor();
         nickColorsLoadedGuild=guild.id;options.dataset.ready="true";
-        status.textContent=config.messageId?"Configuração carregada. Edite as tonalidades e salve para atualizar a mensagem.":"Adicione cores e escolha suas tonalidades para publicar a primeira mensagem.";
+        originalNickColorsConfig=JSON.stringify({channelId:String(config.channelId||""),message:$("nickColorsMessage").value,colors:savedColors.map(item=>item.hex||"#c4b5fd")});\n        status.textContent=config.messageId?"Configuração carregada. As alterações aparecerão na barra inferior.":"Configure as opções; depois use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();
       }catch(error){status.textContent=error.message||"Não foi possível carregar o sistema de cores.";}
     }
-    $("nickColorsSave").addEventListener("click",async()=>{
-      const guild=selectedGuild(),status=$("nickColorsStatus"),button=$("nickColorsSave");
-      if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}
-      const channelId=$("nickColorsChannel").value,message=$("nickColorsMessage").value.trim();
-      const colors=[...$("nickColorsOptions").children].map((row,index)=>({
-        key:"color"+(index+1),roleId:"",hex:row.querySelector('input[type="color"]')?.value||"#c4b5fd"
-      }));
-      if(!channelId){status.textContent="Escolha o canal onde a Yukina publicará as cores.";return;}
-      if(!message){status.textContent="Digite a mensagem que ficará acima do embed.";return;}
-      if(!colors.length){status.textContent="Adicione pelo menos uma cor.";return;}
-      if(new Set(colors.map(item=>item.hex.toUpperCase())).size!==colors.length){status.textContent="Escolha uma tonalidade diferente para cada opção.";return;}
+    function getNickColorsConfig(){
+      return {channelId:$("nickColorsChannel").value,message:$("nickColorsMessage").value.trim(),colors:[...$("nickColorsOptions").children].map(row=>row.querySelector('input[type="color"]')?.value||"#c4b5fd")};
+    }
+    function nickColorsIsDirty(){return JSON.stringify(getNickColorsConfig())!==originalNickColorsConfig;}
+    $("nickColorsChannel").addEventListener("change",()=>{ $("nickColorsStatus").textContent="Alteração pendente. Use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    $("nickColorsMessage").addEventListener("input",()=>{ $("nickColorsStatus").textContent="Alteração pendente. Use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    window.YukinaPendingChanges?.register({id:"nick-colors",isDirty:nickColorsIsDirty,reset:async()=>{nickColorsLoadedGuild="";$("nickColorsOptions").dataset.ready="false";await loadNickColors();$("nickColorsStatus").textContent="Alterações descartadas.";},save:async()=>{
+      const guild=selectedGuild();if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
+      const config=getNickColorsConfig();
+      if(!config.channelId)throw new Error("Escolha o canal onde a Yukina publicará as cores.");
+      if(!config.message)throw new Error("Digite a mensagem que ficará acima do embed.");
+      if(!config.colors.length)throw new Error("Adicione pelo menos uma cor.");
+      if(new Set(config.colors.map(x=>x.toUpperCase())).size!==config.colors.length)throw new Error("Escolha uma tonalidade diferente para cada opção.");
       let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
-      if(!accessToken){status.textContent="Sua sessão expirou. Entre novamente com o Discord.";return;}
-      button.disabled=true;button.textContent="Salvando…";status.textContent="Criando ou reutilizando os cargos de cor…";
-      try{
-        const response=await fetch(API_BASE+"/api/nick-colors/config",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId,message,colors}),cache:"no-store"});
-        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as cores.");
-        status.textContent="🌸 "+(data.detail||"Cores atualizadas no Discord.");
-        nickColorsLoadedGuild="";$("nickColorsOptions").dataset.ready="false";
-      }catch(error){status.textContent=error.message||"Falha ao salvar o sistema de cores.";}
-      finally{button.disabled=false;button.textContent="Salvar e publicar no Discord";}
-    });
-    const reactionEmoji=["🎮","🎨","🎵","🎬","📚","⚽","🌸","🌙","⭐","🔥","💎","🦋","🐺","🐱","🐼","🍀","🌻","🍓","☕","🎧"];
-    let reactionRolesLoadedGuild="";
-    function addReactionRoleRow(roleId=""){
-      const list=$("reactionRolesOptions");if(list.children.length>=20)return;
-      const index=list.children.length,row=document.createElement("div");
-      row.style.cssText="display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:12px;border:1px solid #ffffff30;border-radius:12px;background:#ffffff08";
-      const emoji=document.createElement("strong");emoji.textContent=reactionEmoji[index];emoji.style.cssText="font-size:1.5rem;min-width:34px;text-align:center";
-      const select=document.createElement("select");select.className="prefix-input";select.style.flex="1 1 220px";
-      select.add(new Option("Selecione um cargo existente…",""));
-      (window.__reactionRoleChoices||[]).forEach(role=>select.add(new Option(role.name,String(role.id))));
-      select.value=roleId;
-      const remove=document.createElement("button");remove.type="button";remove.textContent="Remover";remove.className="prefix-save";remove.addEventListener("click",()=>{row.remove();refreshReactionRoleRows();});
-      row.append(emoji,select,remove);list.append(row);refreshReactionRoleRows();
-    }
-    function refreshReactionRoleRows(){
-      [...$("reactionRolesOptions").children].forEach((row,index)=>row.querySelector("strong").textContent=reactionEmoji[index]);
-      $("reactionRolesAdd").disabled=$("reactionRolesOptions").children.length>=20;
-    }
-    $("reactionRolesAdd").addEventListener("click",()=>addReactionRoleRow());
-    async function loadReactionRoles(){
-      const guild=selectedGuild(),status=$("reactionRolesStatus"),list=$("reactionRolesOptions");
-      if(!guild.id){status.textContent="Selecione um servidor no menu lateral.";return;}
-      if(reactionRolesLoadedGuild===guild.id&&list.dataset.ready==="true")return;
-      status.textContent="Carregando canais, cargos e configuração…";list.replaceChildren();list.dataset.ready="false";
-      try{
-        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
-        if(!accessToken)throw new Error("Entre com o Discord para configurar os cargos por reação.");
-        const headers={Authorization:"Bearer "+accessToken,Accept:"application/json"};
-        const [rr,cr]=await Promise.all([
-          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"}),
-          fetch(API_BASE+"/api/reaction-roles/config?guildId="+encodeURIComponent(guild.id),{headers,cache:"no-store"})
-        ]);
-        const resources=await rr.json().catch(()=>({})),saved=await cr.json().catch(()=>({}));
-        if(!rr.ok)throw new Error(resources.detail||"Não foi possível carregar os cargos.");
-        if(!cr.ok)throw new Error(saved.detail||"Não foi possível carregar a configuração.");
-        window.__reactionRoleChoices=(Array.isArray(resources.roles)?resources.roles:[]).filter(role=>!role.managed&&String(role.id)!==String(guild.id)).sort((a,b)=>(a.name||"").localeCompare(b.name||""));
-        const channels=(Array.isArray(resources.channels)?resources.channels:[]).filter(ch=>Number(ch.type)===0),channel=$("reactionRolesChannel");
-        channel.replaceChildren();channel.add(new Option("Selecione um canal…",""));channels.forEach(ch=>channel.add(new Option("# "+ch.name,String(ch.id))));
-        const config=saved.config||{};channel.value=String(config.channelId||"");$("reactionRolesMessage").value=config.message||"Reaja abaixo para receber o cargo correspondente. Você pode remover a reação para retirar o cargo. 🌸";
-        (Array.isArray(config.items)?config.items:[]).forEach(item=>addReactionRoleRow(item.roleId));
-        if(!list.children.length)addReactionRoleRow();
-        reactionRolesLoadedGuild=guild.id;list.dataset.ready="true";
-        status.textContent=config.messageId?"Configuração carregada. Salvar atualizará a mesma mensagem.":"Selecione os cargos e publique o primeiro painel.";
-      }catch(error){status.textContent=error.message||"Não foi possível carregar cargos por reação.";}
-    }
-    $("reactionRolesSave").addEventListener("click",async()=>{
-      const guild=selectedGuild(),button=$("reactionRolesSave"),status=$("reactionRolesStatus");
-      if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}
-      const channelId=$("reactionRolesChannel").value,message=$("reactionRolesMessage").value.trim();
-      const items=[...$("reactionRolesOptions").children].map(row=>({roleId:row.querySelector("select").value}));
-      if(!channelId||!message||!items.length||items.some(item=>!item.roleId)){status.textContent="Escolha o canal e selecione um cargo em cada opção.";return;}
-      if(new Set(items.map(item=>item.roleId)).size!==items.length){status.textContent="Cada cargo só pode aparecer uma vez.";return;}
-      let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
-      if(!accessToken){status.textContent="Sua sessão expirou. Entre novamente com o Discord.";return;}
-      button.disabled=true;button.textContent="Salvando…";status.textContent="Sincronizando o painel e as reações…";
-      try{
-        const response=await fetch(API_BASE+"/api/reaction-roles/config",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId,message,items}),cache:"no-store"});
-        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar.");
-        status.textContent="🌸 "+(data.detail||"Painel atualizado.");reactionRolesLoadedGuild="";$("reactionRolesOptions").dataset.ready="false";
-      }catch(error){status.textContent=error.message||"Falha ao salvar os cargos por reação.";}
-      finally{button.disabled=false;button.textContent="Salvar e atualizar no Discord";}
-    });
+      if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+      const colors=config.colors.map((hex,index)=>({key:"color"+(index+1),roleId:"",hex}));
+      const response=await fetch(API_BASE+"/api/nick-colors/config",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId:config.channelId,message:config.message,colors}),cache:"no-store"});
+      const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as cores.");
+      originalNickColorsConfig=JSON.stringify(config);$("nickColorsStatus").textContent="🌸 "+(data.detail||"Cores atualizadas no Discord.");
+    }});
     loadPrefix();
     loadCounting();
     loadXpRoles();
