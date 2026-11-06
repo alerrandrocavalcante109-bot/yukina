@@ -250,7 +250,7 @@ async function handleApi(req, res, url, context) {
     const embed = new EmbedBuilder()
       .setColor(0xc4b5fd)
       .setTitle("🎨 Escolha a cor do seu nick")
-      .setDescription(roles.map(color => color.emoji + "・**" + getColorName(color.hex) + "**").join("\n"))
+      .setDescription(messageText + "\n\n" + roles.map(color => color.emoji + "・**" + getColorName(color.hex) + "**").join("\n"))
       .setFooter({ text: "Yukina • Reaja com o número ou letra da cor desejada. Uma cor por membro." });
 
     // Mantém uma única mensagem: edita a publicação anterior e sincroniza suas reações.
@@ -259,10 +259,10 @@ async function handleApi(req, res, url, context) {
       targetMessage = await channel.messages.fetch(String(previousConfig.messageId)).catch(() => null);
     }
     if (targetMessage) {
-      await targetMessage.edit({ content: messageText, embeds: [embed], files: [], attachments: [] });
+      await targetMessage.edit({ content: null, embeds: [embed], files: [], attachments: [] });
       await targetMessage.reactions.removeAll().catch(() => {});
     } else {
-      targetMessage = await channel.send({ content: messageText, embeds: [embed] });
+      targetMessage = await channel.send({ embeds: [embed] });
     }
     try {
       for (const color of roles) await targetMessage.react(color.emoji);
