@@ -1,6 +1,7 @@
 "use strict";
 
-const { EmbedBuilder, PermissionsBitField } = require("discord.js");
+const { EmbedBuilder, AttachmentBuilder, PermissionsBitField } = require("discord.js");
+const { createCanvas } = require("@napi-rs/canvas");
 
 const activeGuildSaves = new Set();
 
@@ -29,19 +30,33 @@ function install(client, getSettingsCollection) {
     try {
       const resolved = await resolveReaction(reaction);
       if (!resolved) return;
-      const member = await resolved.guild.members.fetch(user.id).catch(() => null);
-      if (!member || !member.manageable) return;
-      const roleIds = (resolved.config.colors || []).map(item => String(item.roleId || "")).filter(Boolean);
+      const guild = resolved.guild;
+      const member = await guild.members.fetch(user.id).catch(() => null);
+      if (!member) return;
+      if (!member.manageable) {
+        console.warn("[Cores de Nick] Não foi possível alterar o membro: cargo mais alto do membro está acima da Yukina.", { guildId: guild.id, userId: user.id });
+        return;
+      }
       const selectedId = String(resolved.color.roleId);
+      const selectedRole = await guild.roles.fetch(selectedId).catch(() => null);
+      const botMember = await guild.members.fetchMe();
+      if (!selectedRole || !selectedRole.editable || selectedRole.position >= botMember.roles.highest.position) {
+        console.warn("[Cores de Nick] Cargo de cor inexistente ou fora da hierarquia do bot.", { guildId: guild.id, roleId: selectedId });
+        return;
+      }
+      const roleIds = (resolved.config.colors || []).map(item => String(item.roleId || "")).filter(Boolean);
       if (adding) {
+        // Adiciona a nova cor antes de remover a anterior para não deixar o membro sem cor se o Discord recusar a operação.
+        if (!member.roles.cache.has(selectedId)) await member.roles.add(selectedRole, "Cor de nick escolhida pelo membro");
         const remove = roleIds.filter(id => id !== selectedId && member.roles.cache.has(id));
         if (remove.length) await member.roles.remove(remove, "Troca de cor do nick pela Yukina");
-        if (!member.roles.cache.has(selectedId)) await member.roles.add(selectedId, "Cor de nick escolhida pelo membro");
+        console.log("[Cores de Nick] Cor aplicada.", { guildId: guild.id, userId: user.id, roleId: selectedId });
       } else if (member.roles.cache.has(selectedId)) {
-        await member.roles.remove(selectedId, "Reação de cor removida");
+        await member.roles.remove(selectedRole, "Reação de cor removida");
+        console.log("[Cores de Nick] Cor removida.", { guildId: guild.id, userId: user.id, roleId: selectedId });
       }
     } catch (error) {
-      console.error("[Cores de Nick] Falha ao atualizar a cor:", error.message || error);
+      console.error("[Cores de Nick] Falha ao atualizar a cor:", { code: error.code, message: error.message, stack: error.stack });
     }
   }
 
@@ -152,16 +167,18 @@ async function handleApi(req, res, url, context) {
       roles.push({ ...color, name: color.name, role });
     }
 
-    // Não reposiciona cargos em lote: o endpoint de posições pode retornar
-    // Missing Permissions mesmo quando os cargos já são gerenciáveis.
-    // Cargos recém-criados pelo bot já ficam abaixo do cargo mais alto da Yukina.
-    const refreshedBotMember = await guild.members.fetchMe();
-    const botHighestPosition = refreshedBotMember.roles.highest.position;
+    // Cargos de cor precisam ficar acima dos cargos comuns para que sua cor apareça no nick,
+    // mas sempre abaixo do cargo mais alto da Yukina. Movemos um por vez para evitar setPositions em lote.
     for (const item of roles) {
-      const freshRole = await guild.roles.fetch(item.role.id);
-      if (!freshRole || freshRole.managed || freshRole.position >= botHighestPosition) {
-        sendJson(res, 403, { detail: "O cargo " + item.role.name + " está acima ou no mesmo nível do cargo mais alto da Yukina. Mova o cargo da Yukina para cima dele ou escolha outro cargo." });
+      let freshRole = await guild.roles.fetch(item.role.id);
+      let refreshedBotMember = await guild.members.fetchMe();
+      if (!freshRole || freshRole.managed || freshRole.position >= refreshedBotMember.roles.highest.position || !freshRole.editable) {
+        sendJson(res, 403, { detail: "O cargo " + item.role.name + " não pode ser gerenciado pela Yukina. Coloque o cargo mais alto da Yukina acima dele e tente novamente." });
         return true;
+      }
+      const targetPosition = Math.max(1, refreshedBotMember.roles.highest.position - 1);
+      if (freshRole.position !== targetPosition) {
+        freshRole = await freshRole.setPosition(targetPosition, { reason: "Priorizar a cor de nick sem ultrapassar a hierarquia da Yukina" });
       }
       item.role = freshRole;
     }
@@ -173,11 +190,37 @@ async function handleApi(req, res, url, context) {
       }
     }
 
+    // O embed do Discord não consegue pintar cada linha com um HEX diferente.
+    // Criamos uma imagem de amostras reais para mostrar as tonalidades escolhidas no painel.
+    const swatchCanvas = createCanvas(760, Math.max(150, roles.length * 66 + 36));
+    const ctx = swatchCanvas.getContext("2d");
+    ctx.fillStyle = "#211b2b";
+    ctx.fillRect(0, 0, swatchCanvas.width, swatchCanvas.height);
+    ctx.font = "bold 22px sans-serif";
+    ctx.textBaseline = "middle";
+    roles.forEach((color, index) => {
+      const y = 34 + index * 66;
+      ctx.beginPath();
+      ctx.arc(42, y, 18, 0, Math.PI * 2);
+      ctx.fillStyle = color.hex;
+      ctx.fill();
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = "#ffffff";
+      ctx.stroke();
+      ctx.fillStyle = "#ffffff";
+      ctx.fillText(color.name, 78, y);
+      ctx.font = "18px sans-serif";
+      ctx.fillStyle = "#d8cfe5";
+      ctx.fillText(color.hex, 610, y);
+      ctx.font = "bold 22px sans-serif";
+    });
+    const swatchAttachment = new AttachmentBuilder(swatchCanvas.toBuffer("image/png"), { name: "yukina-nick-colors.png" });
     const embed = new EmbedBuilder()
       .setColor(0xc4b5fd)
       .setTitle("🎨 Escolha a cor do seu nick")
-      .setDescription(roles.map(color => color.emoji + "  **" + color.name + "**").join("\n"))
-      .setFooter({ text: "Yukina • Reaja para escolher. Uma cor por membro." });
+      .setDescription(roles.map(color => color.emoji + "  **" + color.name + "** — " + color.hex).join("\n"))
+      .setImage("attachment://yukina-nick-colors.png")
+      .setFooter({ text: "Yukina • Reaja com o número da cor desejada. Uma cor por membro." });
 
     // Mantém uma única mensagem: edita a publicação anterior e sincroniza suas reações.
     let targetMessage = null;
@@ -185,10 +228,10 @@ async function handleApi(req, res, url, context) {
       targetMessage = await channel.messages.fetch(String(previousConfig.messageId)).catch(() => null);
     }
     if (targetMessage) {
-      await targetMessage.edit({ content: messageText, embeds: [embed] });
+      await targetMessage.edit({ content: messageText, embeds: [embed], files: [swatchAttachment], attachments: [] });
       await targetMessage.reactions.removeAll().catch(() => {});
     } else {
-      targetMessage = await channel.send({ content: messageText, embeds: [embed] });
+      targetMessage = await channel.send({ content: messageText, embeds: [embed], files: [swatchAttachment] });
     }
     try {
       for (const color of roles) await targetMessage.react(color.emoji);
