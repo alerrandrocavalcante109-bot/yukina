@@ -163,6 +163,7 @@ async function handleApi(req, res, url, context) {
       throw new Error("Não consegui adicionar todas as reações. Confira a permissão Adicionar reações.");
     }
 
+    const previousConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors || {};
     const saved = {
       enabled: true, channelId, channelName: channel.name, messageId: sent.id,
       message: messageText, colors: roles.map(({ role, previousHex, ...item }) => item),
@@ -174,11 +175,10 @@ async function handleApi(req, res, url, context) {
       { upsert: true }
     );
 
-    const oldConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors;
     // A mensagem antiga é removida; cargos não selecionados permanecem intactos no servidor.
-    if (oldConfig?.messageId && oldConfig.messageId !== sent.id) {
-      const oldChannel = await guild.channels.fetch(String(oldConfig.channelId)).catch(() => null);
-      const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(oldConfig.messageId)).catch(() => null) : null;
+    if (previousConfig.messageId && previousConfig.messageId !== sent.id) {
+      const oldChannel = await guild.channels.fetch(String(previousConfig.channelId)).catch(() => null);
+      const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(previousConfig.messageId)).catch(() => null) : null;
       if (oldMessage) await oldMessage.delete().catch(() => {});
     }
     sendJson(res, 200, { ok: true, config: saved, detail: "Cores salvas e mensagem publicada. A Yukina utilizou apenas cargos existentes; nenhum cargo foi criado ou excluído." });
