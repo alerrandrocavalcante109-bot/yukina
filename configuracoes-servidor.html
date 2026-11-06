@@ -47,6 +47,12 @@
     .prefix-edit[hidden]{display:none}
     .prefix-input{width:100%;min-width:0;padding:9px 10px;border:1px solid #c4b5fd88;border-radius:9px;background:#140d24;color:#fff;font:inherit}
     .reaction-select-menu{display:block;width:100%;min-height:46px;padding:11px 42px 11px 13px;border:1px solid #c4b5fd99;border-radius:12px;background-color:#1b1230;color:#fff;font:inherit;font-weight:650;appearance:none;-webkit-appearance:none;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,#e8d9ff 50%),linear-gradient(135deg,#e8d9ff 50%,transparent 50%);background-position:calc(100% - 19px) 19px,calc(100% - 13px) 19px;background-size:6px 6px,6px 6px;background-repeat:no-repeat;box-shadow:0 5px 16px #09051125;transition:border-color .15s,background-color .15s}
+    .reaction-picker-card{display:grid;gap:7px;max-height:260px;overflow:auto;margin-top:8px;padding:10px;border:1px solid #c4b5fd88;border-radius:14px;background:rgba(20,13,36,.98);box-shadow:0 12px 28px #09051155}
+    .reaction-picker-card[hidden]{display:none!important}
+    .reaction-picker-option{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid #ffffff20;border-radius:10px;background:#ffffff08;color:#fff;text-align:left;cursor:pointer}
+    .reaction-picker-option:hover,.reaction-picker-option[aria-pressed="true"]{border-color:#c4b5fd;background:#c4b5fd20}
+    .reaction-picker-option input{accent-color:#c4b5fd;width:17px;height:17px}
+    .reaction-picker-empty{padding:10px;color:#e6d9f5;font-size:.86rem}
     .reaction-select-menu:focus{outline:none;border-color:#d8b4fe;background-color:#24163d;box-shadow:0 0 0 3px #c4b5fd25}
     .reaction-select-menu option{background:#1b1230;color:#fff;padding:10px}
     .prefix-save{padding:9px 12px;border:1px solid #c4b5fd88;border-radius:9px;background:#c4b5fd20;color:#fff;font-weight:750}
@@ -258,10 +264,10 @@
         <h2>1. Mensagem para os membros</h2><label for="reactionRolesMessage">Texto acima do embed</label>
         <textarea id="reactionRolesMessage" class="prefix-input" rows="3" maxlength="1800">Reaja abaixo para receber o cargo correspondente. Você pode remover a reação para retirar o cargo. 🌸</textarea>
         <h2 style="margin-top:22px">2. Canal de publicação</h2><label for="reactionRolesChannel">Canal onde o painel ficará</label>
-        <select id="reactionRolesChannel" class="reaction-select-menu"><option value="">Carregando canais…</option></select>
+        <select id="reactionRolesChannel" class="reaction-select-menu" hidden><option value="">Carregando canais…</option></select><button type="button" id="reactionChannelPickerButton" class="reaction-select-menu" aria-expanded="false">Selecione um canal…</button><div id="reactionChannelPickerCard" class="reaction-picker-card" hidden></div>
         <h2 style="margin-top:22px">3. Cargos e reações</h2><p class="prefix-system-help">A Yukina atribui um emoji diferente para cada cargo. Não é permitido repetir o mesmo cargo.</p>
-        <div id="reactionRolesOptions" style="display:grid;gap:9px;margin-top:12px"></div>
-        <button type="button" class="prefix-save" id="reactionRolesAdd" style="margin-top:12px">＋ Adicionar cargo</button>
+        <button type="button" id="reactionRolePickerButton" class="reaction-select-menu" aria-expanded="false" style="margin-top:12px">Selecionar cargos…</button><div id="reactionRolePickerCard" class="reaction-picker-card" hidden></div><div id="reactionRolesOptions" style="display:grid;gap:9px;margin-top:12px"></div>
+        <button type="button" class="prefix-save" id="reactionRolesAdd" style="margin-top:12px" hidden>＋ Adicionar cargo</button>
         <p id="reactionRolesStatus" class="prefix-status" role="status" aria-live="polite"></p>
         <p class="prefix-system-help">As alterações serão aplicadas pelo botão Salvar na barra inferior.</p>
       </div>
@@ -1386,21 +1392,36 @@
     }});
 
     let reactionRolesLoadedGuild="", reactionRolesChannels=[], reactionRolesAvailable=[], originalReactionRolesConfig="", reactionRolesEmojis=["🎮","🎨","🎵","🎬","📚","⚽","🌸","🌙","⭐","🔥","💎","🦋","🐺","🐱","🐼","🍀","🌻","🍓","☕","🎧"];
-    function getReactionRoleItems(){return [...$("reactionRolesOptions").querySelectorAll("[data-reaction-role-select]")].map(s=>({roleId:s.value})).filter(x=>x.roleId);}
+    function getReactionRoleItems(){return [...$("reactionRolesOptions").querySelectorAll("[data-reaction-role-id]")].map(el=>({roleId:el.dataset.reactionRoleId}));}
     function getReactionRolesConfig(){return {channelId:$("reactionRolesChannel").value,message:$("reactionRolesMessage").value.trim(),items:getReactionRoleItems()};}
     function reactionRolesIsDirty(){return JSON.stringify(getReactionRolesConfig())!==originalReactionRolesConfig;}
+    function setReactionChannelPicker(){
+      const select=$("reactionRolesChannel"),button=$("reactionChannelPickerButton"),card=$("reactionChannelPickerCard");
+      const chosen=reactionRolesChannels.find(x=>String(x.id)===String(select.value));
+      button.textContent=chosen?"# "+chosen.name:(select.value?"Canal salvo (não encontrado)":"Selecione um canal…");
+      card.replaceChildren();
+      if(!reactionRolesChannels.length){const empty=document.createElement("div");empty.className="reaction-picker-empty";empty.textContent="Nenhum canal disponível.";card.append(empty);return;}
+      reactionRolesChannels.forEach(channel=>{const option=document.createElement("button");option.type="button";option.className="reaction-picker-option";option.setAttribute("aria-pressed",String(String(channel.id)===String(select.value)));option.textContent="# "+channel.name;option.addEventListener("click",()=>{select.value=String(channel.id);setReactionChannelPicker();card.hidden=true;button.setAttribute("aria-expanded","false");window.YukinaPendingChanges?.refresh();});card.append(option);});
+    }
+    function setReactionRolePicker(){
+      const card=$("reactionRolePickerCard"),button=$("reactionRolePickerButton"),selected=new Set(getReactionRoleItems().map(x=>x.roleId));
+      button.textContent=selected.size?selected.size+" cargo(s) selecionado(s)":"Selecionar cargos…";card.replaceChildren();
+      const roles=reactionRolesAvailable.filter(r=>!r.managed);
+      if(!roles.length){const empty=document.createElement("div");empty.className="reaction-picker-empty";empty.textContent="Nenhum cargo disponível.";card.append(empty);return;}
+      roles.forEach(role=>{const label=document.createElement("label");label.className="reaction-picker-option";const check=document.createElement("input");check.type="checkbox";check.checked=selected.has(String(role.id));check.addEventListener("change",()=>{let items=getReactionRoleItems();const id=String(role.id);if(check.checked&&!selected.has(id)){if(items.length>=20){check.checked=false;return;}items.push({roleId:id});}else if(!check.checked){items=items.filter(x=>x.roleId!==id);}renderReactionRoleRows(items);setReactionRolePicker();window.YukinaPendingChanges?.refresh();});const name=document.createElement("span");name.textContent="@"+role.name;label.append(check,name);card.append(label);});
+    }
     function renderReactionRoleRows(items){
       const root=$("reactionRolesOptions");root.replaceChildren();
       items.slice(0,20).forEach((item,index)=>{
-        const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:42px minmax(0,1fr) 34px;gap:9px;align-items:center;padding:10px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff08";
+        const role=reactionRolesAvailable.find(r=>String(r.id)===String(item.roleId));
+        const row=document.createElement("div");row.dataset.reactionRoleId=String(item.roleId||"");row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff08";
         const emoji=document.createElement("strong");emoji.textContent=reactionRolesEmojis[index]||"🎭";emoji.style.cssText="font-size:22px;text-align:center";
-        const select=document.createElement("select");select.className="reaction-select-menu";select.dataset.reactionRoleSelect="true";select.style.margin="0";select.add(new Option("Selecione um cargo existente…",""));
-        reactionRolesAvailable.filter(r=>!r.managed).forEach(role=>select.add(new Option("@"+role.name,String(role.id))));select.value=String(item.roleId||"");
-        const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Remover opção";remove.style.cssText="width:32px;height:32px;border:1px solid #ffffff35;border-radius:9px;background:#ffffff10;color:#fff;font-size:20px";
-        remove.addEventListener("click",()=>{const next=getReactionRoleItems();next.splice(index,1);renderReactionRoleRows(next);window.YukinaPendingChanges?.refresh();});
-        row.append(emoji,select,remove);root.appendChild(row);
+        const name=document.createElement("span");name.textContent=role?"@"+role.name:"Cargo não encontrado";name.style.cssText="flex:1;min-width:0;overflow-wrap:anywhere";
+        const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Remover cargo";remove.style.cssText="width:32px;height:32px;border:1px solid #ffffff35;border-radius:9px;background:#ffffff10;color:#fff;font-size:20px";
+        remove.addEventListener("click",()=>{const next=getReactionRoleItems();next.splice(index,1);renderReactionRoleRows(next);setReactionRolePicker();window.YukinaPendingChanges?.refresh();});
+        row.append(emoji,name,remove);root.appendChild(row);
       });
-      $("reactionRolesAdd").disabled=items.length>=20||!reactionRolesAvailable.length;
+      $("reactionRolesAdd").hidden=true;setReactionRolePicker();
     }
     async function loadReactionRoles(force=false){
       const status=$("reactionRolesStatus"),channelSelect=$("reactionRolesChannel"),guild=selectedGuild();if(!status||!channelSelect)return;
@@ -1416,15 +1437,17 @@
         reactionRolesChannels=(Array.isArray(d.channels)?d.channels:[]).filter(x=>Number(x.type)===0);reactionRolesAvailable=Array.isArray(d.roles)?d.roles:[];reactionRolesEmojis=Array.isArray(saved.emojis)&&saved.emojis.length?saved.emojis:reactionRolesEmojis;
         channelSelect.replaceChildren(new Option("Selecione um canal…",""));reactionRolesChannels.forEach(x=>channelSelect.add(new Option("# "+x.name,String(x.id))));
         const config=saved.config||{};if(config.channelId&&!reactionRolesChannels.some(x=>String(x.id)===String(config.channelId)))channelSelect.add(new Option("Canal salvo (não encontrado)",String(config.channelId)));
-        channelSelect.value=String(config.channelId||"");$("reactionRolesMessage").value=config.message||"Reaja abaixo para receber o cargo correspondente. Você pode remover a reação para retirar o cargo. 🌸";
-        renderReactionRoleRows(Array.isArray(config.items)&&config.items.length?config.items:[{}]);reactionRolesLoadedGuild=guild.id;
+        channelSelect.value=String(config.channelId||"");setReactionChannelPicker();$("reactionRolesMessage").value=config.message||"Reaja abaixo para receber o cargo correspondente. Você pode remover a reação para retirar o cargo. 🌸";
+        renderReactionRoleRows(Array.isArray(config.items)?config.items:[]);reactionRolesLoadedGuild=guild.id;
         originalReactionRolesConfig=JSON.stringify(getReactionRolesConfig());
         status.textContent=config.messageId?"Configuração carregada. As alterações serão salvas pela barra inferior.":"Canais e cargos carregados. Configure e use Salvar na barra inferior.";
         window.YukinaPendingChanges?.refresh();
-      }catch(e){channelSelect.replaceChildren(new Option("Falha ao carregar canais",""));$("reactionRolesOptions").replaceChildren();status.textContent=e.message||"Não foi possível carregar os cargos por reação.";}
+      }catch(e){channelSelect.replaceChildren(new Option("Falha ao carregar canais",""));setReactionChannelPicker();$("reactionRolesOptions").replaceChildren();status.textContent=e.message||"Não foi possível carregar os cargos por reação.";}
     }
-    $("reactionRolesAdd").addEventListener("click",()=>{const items=getReactionRoleItems();if(items.length<20){renderReactionRoleRows([...items,{}]);window.YukinaPendingChanges?.refresh();}});
-    $("reactionRolesChannel").addEventListener("change",()=>{window.YukinaPendingChanges?.refresh();});
+    $("reactionRolesAdd").addEventListener("click",()=>{});
+    $("reactionChannelPickerButton").addEventListener("click",()=>{const card=$("reactionChannelPickerCard"),open=card.hidden;card.hidden=!open;$("reactionChannelPickerButton").setAttribute("aria-expanded",String(open));$("reactionRolePickerCard").hidden=true;$("reactionRolePickerButton").setAttribute("aria-expanded","false");});
+    $("reactionRolePickerButton").addEventListener("click",()=>{const card=$("reactionRolePickerCard"),open=card.hidden;card.hidden=!open;$("reactionRolePickerButton").setAttribute("aria-expanded",String(open));$("reactionChannelPickerCard").hidden=true;$("reactionChannelPickerButton").setAttribute("aria-expanded","false");});
+    $("reactionRolesChannel").addEventListener("change",()=>{setReactionChannelPicker();window.YukinaPendingChanges?.refresh();});
     $("reactionRolesMessage").addEventListener("input",()=>{window.YukinaPendingChanges?.refresh();});
     $("reactionRolesOptions").addEventListener("change",event=>{if(event.target.matches("[data-reaction-role-select]"))window.YukinaPendingChanges?.refresh();});
     window.YukinaPendingChanges?.register({
