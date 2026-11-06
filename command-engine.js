@@ -70,6 +70,12 @@ function startPrefixEngine(client, getSettingsCollection) {
   });
   client.on("messageCreate", async (message) => {
     if (message.author.bot || !message.guild) return;
+    for (const command of client.commands.values()) {
+      if (typeof command?.handleMessage === "function") {
+        try { await command.handleMessage(message); }
+        catch (error) { console.error("[Motor] Falha em handler de jogo:", error); }
+      }
+    }
     let configuredPrefix = "Y";
     const cachedPrefix = prefixCache.get(message.guild.id);
     if (cachedPrefix && cachedPrefix.expiresAt > Date.now()) {
