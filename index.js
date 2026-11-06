@@ -1151,7 +1151,17 @@ async function panelApi(req, res, url) {
       const mr=await fetch("https://api.wyvipay.com.br/api/v1/subscriptions/metodos",{headers:{Authorization:"Bearer "+key},signal:AbortSignal.timeout(15000)});
       const md=await mr.json().catch(()=>({}));
       if(!mr.ok){await orders.updateOne({_id:orderId},{$set:{status:"provider_error",updatedAt:new Date()}});return sendJson(res,mr.status===403?503:502,{detail:md.detail||md.message||"A chave Wyvi não possui permissão para consultar recorrências."});}
-      const methods=(Array.isArray(md.metodos)?md.metodos:[]).filter(m=>m?.disponivel===true&&["pix","pix_automatico","cartao"].includes(m.meio)&&(m.meio!=="pix_automatico"||amount>=Number(m.minimoCentavos||650))&&(m.meio!=="cartao"||amount>=Number(m.minimoCentavos||260))).map(m=>m.meio);
+      // A Wyvi não processa recorrência de cartão com chave de teste (wy_test_).
+      // Mesmo que o catálogo informe o cartão como disponível na conta, incluí-lo
+      // no link de teste provoca 422. Em produção, a habilitação e o escopo do cartão
+      // continuam sendo validados pela própria Wyvi.
+      const isTestKey=/^wy_test_/i.test(key);
+      const methods=(Array.isArray(md.metodos)?md.metodos:[]).filter(m=>
+        m?.disponivel===true&&["pix","pix_automatico","cartao"].includes(m.meio)&&
+        !(isTestKey&&m.meio==="cartao")&&
+        (m.meio!=="pix_automatico"||amount>=Number(m.minimoCentavos||650))&&
+        (m.meio!=="cartao"||amount>=Number(m.minimoCentavos||260))
+      ).map(m=>m.meio);
       if(!methods.length){await orders.updateOne({_id:orderId},{$set:{status:"unavailable",updatedAt:new Date()}});return sendJson(res,503,{detail:"Nenhum meio recorrente está habilitado para esta conta Wyvi Pay. Verifique permissões e habilitações."});}
       const pr=await fetch("https://api.wyvipay.com.br/api/v1/recorrencia-links",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json","Idempotency-Key":"yukina-vip-"+orderId},body:JSON.stringify({titulo:"Yukina VIP "+plans[planKey].name+(period==="annual"?" anual":" mensal"),valor_centavos:amount,frequencia:period==="annual"?"anual":"mensal",max_ciclos:null,meios:methods,primeira_cobranca:{modo:"no_aceite"},rota:"white",referencia:orderId}),signal:AbortSignal.timeout(20000)});
       const pd=await pr.json().catch(()=>({})),checkout=pd.checkout_url||pd.url||pd.link;
