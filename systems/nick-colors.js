@@ -2,6 +2,8 @@
 
 const { EmbedBuilder, PermissionsBitField } = require("discord.js");
 
+const activeGuildSaves = new Set();
+
 const COLORS = [
   { key: "red", name: "Vermelho", emoji: "🔴" },
   { key: "orange", name: "Laranja", emoji: "🟠" },
@@ -63,6 +65,7 @@ async function handleApi(req, res, url, context) {
     sendJson(res, 405, { detail: "Use GET para carregar ou POST para salvar as cores." });
     return true;
   }
+  let saveLockGuildId = null;
   try {
     const guildId = String(req.method === "GET" ? url.searchParams.get("guildId") || "" : "").trim();
     let body = {};
@@ -79,6 +82,14 @@ async function handleApi(req, res, url, context) {
     if (!guild || guild.id !== targetGuildId) {
       sendJson(res, 403, { detail: "Você não tem autorização para configurar este servidor." });
       return true;
+    }
+    if (req.method === "POST") {
+      if (activeGuildSaves.has(targetGuildId)) {
+        sendJson(res, 409, { detail: "Já existe uma atualização de cores em andamento neste servidor. Aguarde alguns segundos e tente novamente." });
+        return true;
+      }
+      activeGuildSaves.add(targetGuildId);
+      saveLockGuildId = targetGuildId;
     }
     const collection = await getSettingsCollection();
     if (req.method === "GET") {
@@ -130,12 +141,19 @@ async function handleApi(req, res, url, context) {
 
     // Confere todos os cargos antes de alterar qualquer um: somente cargos existentes, decorativos e abaixo da Yukina.
     const roles = [];
+    const normalizedRoleNames = new Set();
     for (const color of selected) {
       const role = await guild.roles.fetch(color.roleId).catch(() => null);
       if (!role || role.guild.id !== guild.id || role.id === guild.id || role.managed) {
         sendJson(res, 400, { detail: "Selecione somente cargos existentes e não gerenciados deste servidor." });
         return true;
       }
+      const normalizedRoleName = role.name.trim().normalize("NFKC").toLocaleLowerCase("pt-BR");
+      if (normalizedRoleNames.has(normalizedRoleName)) {
+        sendJson(res, 400, { detail: "Dois cargos selecionados possuem o mesmo nome. Escolha cargos diferentes para evitar opções de cor duplicadas." });
+        return true;
+      }
+      normalizedRoleNames.add(normalizedRoleName);
       if (role.permissions.bitfield !== 0n) {
         sendJson(res, 400, { detail: "O cargo @" + role.name + " possui permissões. Por segurança, use somente cargos decorativos sem permissões." });
         return true;
@@ -213,6 +231,8 @@ async function handleApi(req, res, url, context) {
     console.error("[Cores de Nick] Falha ao salvar:", error.stack || error.message || error);
     sendJson(res, error.status || 500, { detail: error.message || "Não foi possível salvar o sistema de cores." });
     return true;
+  } finally {
+    if (saveLockGuildId) activeGuildSaves.delete(saveLockGuildId);
   }
 }
 
