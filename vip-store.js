@@ -17,10 +17,14 @@ async function getVipCollection() {
   return collection;
 }
 
+// O plano mensal dura exatamente 30 dias; o anual termina na mesma data do ano seguinte.
 function addPeriod(date, period) {
   const result = new Date(date);
-  if (period === "annual") result.setUTCFullYear(result.getUTCFullYear() + 1);
-  else result.setUTCMonth(result.getUTCMonth() + 1);
+  if (period === "annual") {
+    result.setUTCFullYear(result.getUTCFullYear() + 1);
+  } else {
+    result.setUTCDate(result.getUTCDate() + 30);
+  }
   return result;
 }
 
