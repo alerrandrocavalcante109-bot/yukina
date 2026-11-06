@@ -1,9 +1,49 @@
 "use strict";
 
-const { EmbedBuilder, AttachmentBuilder, PermissionsBitField } = require("discord.js");
-const { createCanvas } = require("@napi-rs/canvas");
+const { EmbedBuilder, PermissionsBitField } = require("discord.js");
 
 const activeGuildSaves = new Set();
+
+function getColorName(hex) {
+  const value = String(hex || "").replace("#", "");
+  if (!/^[0-9A-Fa-f]{6}$/.test(value)) return "Cor personalizada";
+  const r = parseInt(value.slice(0, 2), 16) / 255;
+  const g = parseInt(value.slice(2, 4), 16) / 255;
+  const b = parseInt(value.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  const delta = max - min;
+  const lightness = (max + min) / 2;
+  const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+
+  if (saturation < 0.12) {
+    if (lightness < 0.12) return "Preto";
+    if (lightness > 0.90) return "Branco";
+    return lightness < 0.38 ? "Cinza-escuro" : lightness > 0.72 ? "Cinza-claro" : "Cinza";
+  }
+
+  let hue;
+  if (delta === 0) hue = 0;
+  else if (max === r) hue = 60 * (((g - b) / delta) % 6);
+  else if (max === g) hue = 60 * ((b - r) / delta + 2);
+  else hue = 60 * ((r - g) / delta + 4);
+  if (hue < 0) hue += 360;
+
+  let name;
+  if (hue < 12 || hue >= 345) name = "Vermelho";
+  else if (hue < 38) name = "Laranja";
+  else if (hue < 68) name = "Amarelo";
+  else if (hue < 165) name = "Verde";
+  else if (hue < 195) name = "Ciano";
+  else if (hue < 255) name = "Azul";
+  else if (hue < 290) name = "Roxo";
+  else if (hue < 325) name = "Rosa";
+  else name = "Magenta";
+
+  if (lightness < 0.22) return name + "-escuro";
+  if (lightness > 0.82) return name + "-claro";
+  return name;
+}
 
 const COLORS = Array.from({ length: 20 }, (_, index) => ({
   key: "color" + (index + 1), name: "Cor " + (index + 1), emoji: ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"][index]
@@ -207,37 +247,11 @@ async function handleApi(req, res, url, context) {
       }
     }
 
-    // O embed do Discord não consegue pintar cada linha com um HEX diferente.
-    // Criamos uma imagem de amostras reais para mostrar as tonalidades escolhidas no painel.
-    const swatchCanvas = createCanvas(760, Math.max(150, roles.length * 66 + 36));
-    const ctx = swatchCanvas.getContext("2d");
-    ctx.fillStyle = "#211b2b";
-    ctx.fillRect(0, 0, swatchCanvas.width, swatchCanvas.height);
-    ctx.font = "bold 22px sans-serif";
-    ctx.textBaseline = "middle";
-    roles.forEach((color, index) => {
-      const y = 34 + index * 66;
-      ctx.beginPath();
-      ctx.arc(42, y, 18, 0, Math.PI * 2);
-      ctx.fillStyle = color.hex;
-      ctx.fill();
-      ctx.lineWidth = 3;
-      ctx.strokeStyle = "#ffffff";
-      ctx.stroke();
-      ctx.fillStyle = "#ffffff";
-      ctx.fillText(color.name, 78, y);
-      ctx.font = "18px sans-serif";
-      ctx.fillStyle = "#d8cfe5";
-      ctx.fillText(color.hex, 610, y);
-      ctx.font = "bold 22px sans-serif";
-    });
-    const swatchAttachment = new AttachmentBuilder(swatchCanvas.toBuffer("image/png"), { name: "yukina-nick-colors.png" });
     const embed = new EmbedBuilder()
       .setColor(0xc4b5fd)
       .setTitle("🎨 Escolha a cor do seu nick")
-      .setDescription(roles.map(color => color.emoji + "  **" + color.name + "** — " + color.hex).join("\n"))
-      .setImage("attachment://yukina-nick-colors.png")
-      .setFooter({ text: "Yukina • Reaja com o número da cor desejada. Uma cor por membro." });
+      .setDescription(roles.map(color => color.emoji + "・**" + getColorName(color.hex) + "**").join("\n"))
+      .setFooter({ text: "Yukina • Reaja com o número ou letra da cor desejada. Uma cor por membro." });
 
     // Mantém uma única mensagem: edita a publicação anterior e sincroniza suas reações.
     let targetMessage = null;
@@ -245,10 +259,10 @@ async function handleApi(req, res, url, context) {
       targetMessage = await channel.messages.fetch(String(previousConfig.messageId)).catch(() => null);
     }
     if (targetMessage) {
-      await targetMessage.edit({ content: messageText, embeds: [embed], files: [swatchAttachment], attachments: [] });
+      await targetMessage.edit({ content: messageText, embeds: [embed], files: [], attachments: [] });
       await targetMessage.reactions.removeAll().catch(() => {});
     } else {
-      targetMessage = await channel.send({ content: messageText, embeds: [embed], files: [swatchAttachment] });
+      targetMessage = await channel.send({ content: messageText, embeds: [embed] });
     }
     try {
       for (const color of roles) await targetMessage.react(color.emoji);
