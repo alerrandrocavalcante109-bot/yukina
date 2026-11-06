@@ -147,6 +147,8 @@
     </nav>
     <div class="drawer-category" aria-label="Categoria Cargos &amp; XP">🏅 Cargos &amp; XP</div>
     <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="multiplier"><span class="symbol">⚡</span><span>Multiplicador de XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button><button class="menu-link" type="button" data-screen="staffPromotion"><span class="symbol">📣</span><span>Aviso de promoções staff</span></button></nav>
+    <div class="drawer-category" aria-label="Categoria Personalização">🎨 Personalização</div>
+    <nav class="menu-links" aria-label="Personalização"><button class="menu-link" type="button" data-screen="nickColors"><span class="symbol">🎨</span><span>Cores de Nick</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
@@ -229,6 +231,24 @@
         <button type="button" class="primary-action" id="timeAddButton">Adicionar</button><p class="prefix-status" id="timeStatus" role="status" aria-live="polite"></p>
       </div>
       <div class="system-placeholder" style="margin-top:16px"><h2>Cargos temporais configurados</h2><div id="timeRulesList"><p>Carregando…</p></div></div>
+    </section>
+    <section class="system-screen" data-screen-panel="nickColors" hidden>
+      <p class="eyebrow">PERSONALIZAÇÃO DA COMUNIDADE</p>
+      <h1>🎨 Cores de Nick</h1>
+      <p class="screen-description">Escolha o canal e as cores que os membros poderão usar. Ao salvar, a Yukina cria os cargos automaticamente e publica a mensagem com as reações. Se você retirar uma cor da seleção, o cargo correspondente também será excluído do servidor.</p>
+      <div class="system-placeholder">
+        <h2>1. Canal de publicação</h2>
+        <label for="nickColorsChannel">Canal onde a mensagem será enviada</label>
+        <select id="nickColorsChannel" class="prefix-input"><option value="">Carregando canais…</option></select>
+        <h2 style="margin-top:22px">2. Mensagem para os membros</h2>
+        <label for="nickColorsMessage">Texto acima do embed</label>
+        <textarea id="nickColorsMessage" class="prefix-input" rows="3" maxlength="1800">Escolha a cor do seu nick reagindo ao emoji correspondente abaixo. Você poderá trocar de cor quando quiser. 🌸</textarea>
+        <h2 style="margin-top:22px">3. Cores disponíveis</h2>
+        <p class="prefix-system-help">Marque as cores que os membros poderão escolher. O cargo de uma cor desmarcada será excluído ao salvar.</p>
+        <div id="nickColorsOptions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-top:12px"><p>Carregando paleta…</p></div>
+        <p id="nickColorsStatus" class="prefix-status" role="status" aria-live="polite"></p>
+        <button type="button" class="primary-action" id="nickColorsSave">Salvar e publicar no Discord</button>
+      </div>
     </section>
     <section class="system-screen" data-screen-panel="tickets" hidden>
       <p class="eyebrow">ATENDIMENTO DA COMUNIDADE</p>
@@ -580,6 +600,7 @@
       if(id==="drop") loadDropRoles();
       if(id==="staffPromotion") loadStaffPromotion();
       if(id==="tickets") loadPublishedTicketPanels();
+      if(id==="nickColors") loadNickColors();
     }
     document.addEventListener("click",event=>{
       const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]");
@@ -1252,6 +1273,60 @@
         window.YukinaPendingChanges?.refresh();
       }catch(error){status.textContent=error.message||"Falha ao salvar as configurações.";}
       finally{button.disabled=false;}
+    });
+    let nickColorsPalette=[],nickColorsLoadedGuild="";
+    async function loadNickColors(){
+      const status=$("nickColorsStatus"),channelSelect=$("nickColorsChannel"),options=$("nickColorsOptions"),guild=selectedGuild();
+      if(!guild.id){status.textContent="Selecione um servidor no menu lateral.";return;}
+      if(nickColorsLoadedGuild===guild.id&&options.dataset.ready==="true")return;
+      status.textContent="Carregando canais e configuração…";options.replaceChildren();options.dataset.ready="false";
+      try{
+        let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+        if(!accessToken)throw new Error("Entre com o Discord para configurar as cores.");
+        const headers={Authorization:"Bearer "+accessToken,Accept:"application/json"};
+        const [resourceResponse,configResponse]=await Promise.all([
+          fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"}),
+          fetch(API_BASE+"/api/nick-colors/config?guildId="+encodeURIComponent(guild.id),{headers,cache:"no-store"})
+        ]);
+        const resources=await resourceResponse.json().catch(()=>({})),saved=await configResponse.json().catch(()=>({}));
+        if(!resourceResponse.ok)throw new Error(resources.detail||"Não foi possível carregar os canais.");
+        if(!configResponse.ok)throw new Error(saved.detail||"Não foi possível carregar as cores.");
+        const channels=(Array.isArray(resources.channels)?resources.channels:[]).filter(ch=>Number(ch.type)===0);
+        channelSelect.replaceChildren();channelSelect.add(new Option("Selecione um canal…",""));
+        channels.forEach(ch=>channelSelect.add(new Option("# "+ch.name,String(ch.id))));
+        nickColorsPalette=Array.isArray(saved.palette)?saved.palette:[];
+        const config=saved.config||{};
+        channelSelect.value=String(config.channelId||"");
+        $("nickColorsMessage").value=config.message||"Escolha a cor do seu nick reagindo ao emoji correspondente abaixo. Você poderá trocar de cor quando quiser. 🌸";
+        const enabled=new Set((config.colors||[]).map(color=>String(color.key)));
+        options.replaceChildren();
+        nickColorsPalette.forEach(color=>{
+          const label=document.createElement("label");label.style.cssText="display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #ffffff30;border-radius:11px;background:#ffffff08;cursor:pointer";
+          const input=document.createElement("input");input.type="checkbox";input.value=color.key;input.checked=config.colors?enabled.has(color.key):true;
+          const swatch=document.createElement("span");swatch.textContent=color.emoji+" "+color.name;swatch.style.cssText="font-weight:750;color:"+color.hex;
+          label.append(input,swatch);options.appendChild(label);
+        });
+        nickColorsLoadedGuild=guild.id;options.dataset.ready="true";
+        status.textContent=config.messageId?"Configuração carregada. Ao salvar, a mensagem no Discord será atualizada.":"Escolha as opções e salve para publicar a primeira mensagem.";
+      }catch(error){status.textContent=error.message||"Não foi possível carregar o sistema de cores.";}
+    }
+    $("nickColorsSave").addEventListener("click",async()=>{
+      const guild=selectedGuild(),status=$("nickColorsStatus"),button=$("nickColorsSave");
+      if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}
+      const channelId=$("nickColorsChannel").value,message=$("nickColorsMessage").value.trim();
+      const colors=[...$("nickColorsOptions").querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
+      if(!channelId){status.textContent="Escolha o canal onde a Yukina publicará as cores.";return;}
+      if(!colors.length){status.textContent="Selecione pelo menos uma cor.";return;}
+      let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
+      if(!accessToken){status.textContent="Sua sessão expirou. Entre novamente com o Discord.";return;}
+      button.disabled=true;button.textContent="Salvando…";status.textContent="A Yukina está criando os cargos e publicando a mensagem…";
+      try{
+        const response=await fetch(API_BASE+"/api/nick-colors/config",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId,message,colors}),cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as cores.");
+        status.textContent="🌸 "+(data.detail||"Cores salvas e publicadas com sucesso.");
+        nickColorsLoadedGuild="";$("nickColorsOptions").dataset.ready="false";
+      }catch(error){status.textContent=error.message||"Falha ao salvar o sistema de cores.";}
+      finally{button.disabled=false;button.textContent="Salvar e publicar no Discord";}
     });
     loadPrefix();
     loadCounting();
