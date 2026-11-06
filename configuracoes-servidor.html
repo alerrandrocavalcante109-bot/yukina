@@ -260,7 +260,7 @@
         <div id="reactionRolesOptions" style="display:grid;gap:9px;margin-top:12px"></div>
         <button type="button" class="prefix-save" id="reactionRolesAdd" style="margin-top:12px">＋ Adicionar cargo</button>
         <p id="reactionRolesStatus" class="prefix-status" role="status" aria-live="polite"></p>
-        <button type="button" class="primary-action" id="reactionRolesSave">Salvar e atualizar no Discord</button>
+        <p class="prefix-system-help">As alterações serão aplicadas pelo botão Salvar na barra inferior.</p>
       </div>
     </section>
     <section class="system-screen" data-screen-panel="tickets" hidden>
@@ -1382,8 +1382,10 @@
       originalNickColorsConfig=JSON.stringify(config);$("nickColorsStatus").textContent="🌸 "+(data.detail||"Cores atualizadas no Discord.");
     }});
 
-    let reactionRolesLoadedGuild="", reactionRolesChannels=[], reactionRolesAvailable=[], reactionRolesEmojis=["🎮","🎨","🎵","🎬","📚","⚽","🌸","🌙","⭐","🔥","💎","🦋","🐺","🐱","🐼","🍀","🌻","🍓","☕","🎧"];
+    let reactionRolesLoadedGuild="", reactionRolesChannels=[], reactionRolesAvailable=[], originalReactionRolesConfig="", reactionRolesEmojis=["🎮","🎨","🎵","🎬","📚","⚽","🌸","🌙","⭐","🔥","💎","🦋","🐺","🐱","🐼","🍀","🌻","🍓","☕","🎧"];
     function getReactionRoleItems(){return [...$("reactionRolesOptions").querySelectorAll("[data-reaction-role-select]")].map(s=>({roleId:s.value})).filter(x=>x.roleId);}
+    function getReactionRolesConfig(){return {channelId:$("reactionRolesChannel").value,message:$("reactionRolesMessage").value.trim(),items:getReactionRoleItems()};}
+    function reactionRolesIsDirty(){return JSON.stringify(getReactionRolesConfig())!==originalReactionRolesConfig;}
     function renderReactionRoleRows(items){
       const root=$("reactionRolesOptions");root.replaceChildren();
       items.slice(0,20).forEach((item,index)=>{
@@ -1392,15 +1394,15 @@
         const select=document.createElement("select");select.className="prefix-input";select.dataset.reactionRoleSelect="true";select.style.margin="0";select.add(new Option("Selecione um cargo existente…",""));
         reactionRolesAvailable.filter(r=>!r.managed).forEach(role=>select.add(new Option("@"+role.name,String(role.id))));select.value=String(item.roleId||"");
         const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Remover opção";remove.style.cssText="width:32px;height:32px;border:1px solid #ffffff35;border-radius:9px;background:#ffffff10;color:#fff;font-size:20px";
-        remove.addEventListener("click",()=>{const next=getReactionRoleItems();next.splice(index,1);renderReactionRoleRows(next);});
+        remove.addEventListener("click",()=>{const next=getReactionRoleItems();next.splice(index,1);renderReactionRoleRows(next);window.YukinaPendingChanges?.refresh();});
         row.append(emoji,select,remove);root.appendChild(row);
       });
       $("reactionRolesAdd").disabled=items.length>=20||!reactionRolesAvailable.length;
     }
-    async function loadReactionRoles(){
+    async function loadReactionRoles(force=false){
       const status=$("reactionRolesStatus"),channelSelect=$("reactionRolesChannel"),guild=selectedGuild();if(!status||!channelSelect)return;
       if(!guild.id){channelSelect.replaceChildren(new Option("Selecione um servidor primeiro",""));status.textContent="Selecione um servidor no menu lateral.";return;}
-      if(reactionRolesLoadedGuild===guild.id)return;
+      if(reactionRolesLoadedGuild===guild.id&&!force)return;
       status.textContent="Carregando canais e cargos…";channelSelect.replaceChildren(new Option("Carregando canais…",""));
       try{
         let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Entre com o Discord para carregar canais e cargos.");
@@ -1413,18 +1415,33 @@
         const config=saved.config||{};if(config.channelId&&!reactionRolesChannels.some(x=>String(x.id)===String(config.channelId)))channelSelect.add(new Option("Canal salvo (não encontrado)",String(config.channelId)));
         channelSelect.value=String(config.channelId||"");$("reactionRolesMessage").value=config.message||"Reaja abaixo para receber o cargo correspondente. Você pode remover a reação para retirar o cargo. 🌸";
         renderReactionRoleRows(Array.isArray(config.items)&&config.items.length?config.items:[{}]);reactionRolesLoadedGuild=guild.id;
-        status.textContent=config.messageId?"Configuração carregada. Você pode editar e atualizar o painel.":"Canais e cargos carregados. Configure e salve.";
+        originalReactionRolesConfig=JSON.stringify(getReactionRolesConfig());
+        status.textContent=config.messageId?"Configuração carregada. As alterações serão salvas pela barra inferior.":"Canais e cargos carregados. Configure e use Salvar na barra inferior.";
+        window.YukinaPendingChanges?.refresh();
       }catch(e){channelSelect.replaceChildren(new Option("Falha ao carregar canais",""));$("reactionRolesOptions").replaceChildren();status.textContent=e.message||"Não foi possível carregar os cargos por reação.";}
     }
-    $("reactionRolesAdd").addEventListener("click",()=>{const items=getReactionRoleItems();if(items.length<20)renderReactionRoleRows([...items,{}]);});
-    $("reactionRolesSave").addEventListener("click",async()=>{
-      const button=$("reactionRolesSave"),status=$("reactionRolesStatus"),guild=selectedGuild(),channelId=$("reactionRolesChannel").value,message=$("reactionRolesMessage").value.trim(),items=getReactionRoleItems();
-      if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}if(!channelId){status.textContent="Escolha o canal de publicação.";return;}if(!message){status.textContent="Digite a mensagem para os membros.";return;}if(!items.length){status.textContent="Adicione pelo menos um cargo.";return;}if(new Set(items.map(x=>x.roleId)).size!==items.length){status.textContent="Não repita o mesmo cargo.";return;}
-      button.disabled=true;status.textContent="Salvando e atualizando no Discord…";
-      try{let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
-        const r=await fetch(API_BASE+"/api/reaction-roles/config",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId,message,items}),cache:"no-store"});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||"Não foi possível salvar os cargos por reação.");status.textContent="🌸 "+(d.detail||"Cargos por reação atualizados no Discord.");
-      }catch(e){status.textContent=e.message||"Falha ao salvar os cargos por reação.";}finally{button.disabled=false;}
+    $("reactionRolesAdd").addEventListener("click",()=>{const items=getReactionRoleItems();if(items.length<20){renderReactionRoleRows([...items,{}]);window.YukinaPendingChanges?.refresh();}});
+    $("reactionRolesChannel").addEventListener("change",()=>{window.YukinaPendingChanges?.refresh();});
+    $("reactionRolesMessage").addEventListener("input",()=>{window.YukinaPendingChanges?.refresh();});
+    $("reactionRolesOptions").addEventListener("change",event=>{if(event.target.matches("[data-reaction-role-select]"))window.YukinaPendingChanges?.refresh();});
+    window.YukinaPendingChanges?.register({
+      id:"reaction-roles",
+      isDirty:reactionRolesIsDirty,
+      reset:async()=>{reactionRolesLoadedGuild="";await loadReactionRoles(true);statusText("Alterações descartadas.");},
+      save:async()=>{
+        const guild=selectedGuild(),config=getReactionRolesConfig(),status=$("reactionRolesStatus");
+        if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
+        if(!config.channelId)throw new Error("Escolha o canal onde o painel será publicado.");
+        if(!config.message)throw new Error("Digite a mensagem para os membros.");
+        if(!config.items.length)throw new Error("Adicione pelo menos um cargo.");
+        if(new Set(config.items.map(x=>x.roleId)).size!==config.items.length)throw new Error("Não repita o mesmo cargo.");
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+        const r=await fetch(API_BASE+"/api/reaction-roles/config",{method:"POST",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,...config}),cache:"no-store"});
+        const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.detail||"Não foi possível salvar os cargos por reação.");
+        originalReactionRolesConfig=JSON.stringify(config);status.textContent="🌸 "+(d.detail||"Cargos por reação atualizados no Discord.");
+      }
     });
+
 
     loadPrefix();
     loadCounting();
