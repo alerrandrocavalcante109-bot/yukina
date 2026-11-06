@@ -152,16 +152,19 @@ async function handleApi(req, res, url, context) {
       roles.push({ ...color, name: color.name, role });
     }
 
-    // Mantém os cargos criados pela Yukina agrupados logo abaixo do cargo mais alto do bot.
-    const orderedPositions = roles.map((item, index) => ({
-      role: item.role.id,
-      position: Math.max(1, botMember.roles.highest.position - 1 - index)
-    }));
-    if (orderedPositions.some(item => item.position >= botMember.roles.highest.position)) {
-      sendJson(res, 403, { detail: "Não há posições disponíveis abaixo do cargo mais alto da Yukina para organizar os cargos de cor." });
-      return true;
+    // Não reposiciona cargos em lote: o endpoint de posições pode retornar
+    // Missing Permissions mesmo quando os cargos já são gerenciáveis.
+    // Cargos recém-criados pelo bot já ficam abaixo do cargo mais alto da Yukina.
+    const refreshedBotMember = await guild.members.fetchMe();
+    const botHighestPosition = refreshedBotMember.roles.highest.position;
+    for (const item of roles) {
+      const freshRole = await guild.roles.fetch(item.role.id);
+      if (!freshRole || freshRole.managed || freshRole.position >= botHighestPosition) {
+        sendJson(res, 403, { detail: "O cargo " + item.role.name + " está acima ou no mesmo nível do cargo mais alto da Yukina. Mova o cargo da Yukina para cima dele ou escolha outro cargo." });
+        return true;
+      }
+      item.role = freshRole;
     }
-    if (orderedPositions.length) await guild.roles.setPositions(orderedPositions, { reason: "Organização automática dos cargos de cor da Yukina" });
 
     for (const item of roles) {
       const currentRole = await guild.roles.fetch(item.role.id);
