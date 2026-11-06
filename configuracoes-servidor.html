@@ -148,7 +148,7 @@
     <div class="drawer-category" aria-label="Categoria Cargos &amp; XP">🏅 Cargos &amp; XP</div>
     <nav class="menu-links" id="hierarchyNavigation" aria-label="Cargos &amp; XP"><button class="menu-link" type="button" data-screen="xp"><span class="symbol">✨</span><span>Cargos &amp; XP</span></button><button class="menu-link" type="button" data-screen="multiplier"><span class="symbol">⚡</span><span>Multiplicador de XP</span></button><button class="menu-link" type="button" data-screen="temporal"><span class="symbol">⏳</span><span>Hierarquia temporal</span></button><button class="menu-link" type="button" data-screen="staffPromotion"><span class="symbol">📣</span><span>Aviso de promoções staff</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Personalização">🎨 Personalização</div>
-    <nav class="menu-links" aria-label="Personalização"><button class="menu-link" type="button" data-screen="nickColors"><span class="symbol">🎨</span><span>Cores de Nick</span></button></nav>
+    <nav class="menu-links" id="personalizationNavigation" aria-label="Personalização"><button class="menu-link" type="button" data-screen="nickColors"><span class="symbol">🎨</span><span>Cores de Nick</span></button></nav>
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
@@ -441,7 +441,7 @@
       shade.addEventListener("click", close);
       document.addEventListener("keydown", event => { if (event.key === "Escape") close(); });
       document.addEventListener("click", event => {
-        if (event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]")) close();
+        if (event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen], #personalizationNavigation [data-screen]")) close();
       });
       document.addEventListener("touchstart", event => { if(event.touches?.length) window.__yukinaMenuTouchX = event.touches[0].clientX; }, {passive:true});
       document.addEventListener("touchend", event => {
@@ -603,7 +603,7 @@
       if(id==="nickColors") loadNickColors();
     }
     document.addEventListener("click",event=>{
-      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen]");
+      const button=event.target.closest("#systemNavigation [data-screen], #gamesNavigation [data-screen], #hierarchyNavigation [data-screen], #ticketsNavigation [data-screen], #personalizationNavigation [data-screen]");
       if(!button)return;
       event.preventDefault();
       showScreen(button.dataset.screen);
