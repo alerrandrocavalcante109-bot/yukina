@@ -665,19 +665,24 @@ async function panelApi(req, res, url) {
       const secret=String(process.env.WYVIPAY_WEBHOOK_SECRET||"").trim();if(!secret)return sendJson(res,503,{detail:"Segredo do webhook não configurado."});
       const chunks=[];let size=0;for await(const chunk of req){size+=chunk.length;if(size>65536)return sendJson(res,413,{detail:"Webhook muito grande."});chunks.push(chunk);}
       const raw=Buffer.concat(chunks),stamp=String(req.headers["x-wyvi-carimbo"]||""),sig=String(req.headers["x-wyvi-assinatura"]||""),delivery=String(req.headers["x-wyvi-entrega"]||"");
-      if(!/^\\d{10}$/.test(stamp)||Math.abs(Math.floor(Date.now()/1000)-Number(stamp))>300||!/^v1=[a-f0-9]{64}$/i.test(sig)||!delivery)return sendJson(res,401,{detail:"Assinatura inválida ou expirada."});
+      if(!/^\d{10}$/.test(stamp)||Math.abs(Math.floor(Date.now()/1000)-Number(stamp))>300||!/^v1=[a-f0-9]{64}$/i.test(sig)||!delivery)return sendJson(res,401,{detail:"Assinatura inválida ou expirada."});
       const expected=crypto.createHmac("sha256",secret).update(stamp+".").update(raw).digest(),given=Buffer.from(sig.slice(3),"hex");
       if(given.length!==expected.length||!crypto.timingSafeEqual(expected,given))return sendJson(res,401,{detail:"Assinatura inválida."});
       const ev=JSON.parse(raw.toString("utf8"));if(String(ev.id||"")!==delivery||String(ev.evento||"")!==String(req.headers["x-wyvi-evento"]||""))return sendJson(res,400,{detail:"Entrega inconsistente."});
       await getSettingsCollection();const db=settingsMongoClient.db(MONGODB_DB),deliveries=db.collection("wyvi_webhook_deliveries");
       try{await deliveries.insertOne({_id:delivery,evento:ev.evento,receivedAt:new Date(),processed:false});}catch(e){if(e?.code===11000)return sendJson(res,200,{ok:true,duplicate:true});throw e;}
       if(ev.evento==="cobranca.paga"){
-        const d=ev.dados||{},ref=String(d.referencia||""),orders=db.collection("vip_orders"),order=ref?await orders.findOne({_id:ref,provider:"wyvipay"}):null;
-        if(order&&Number(d.valor_centavos)===Number(order.amountCents)){
-          await activateSubscription({guildId:String(process.env.VIP_GUILD_ID||"").trim(),userId:order.userId,planKey:order.planKey,period:order.period});
-          await orders.updateOne({_id:ref},{$set:{status:"active",lastPaidAt:new Date(),lastTxid:String(d.txid||""),lastPaymentMethod:String(d.meio||""),updatedAt:new Date()}});
-          await deliveries.updateOne({_id:delivery},{$set:{processed:true,orderId:ref}});
-        }else await deliveries.updateOne({_id:delivery},{$set:{processed:true,ignored:true,reason:order?"amount_mismatch":"order_not_found"}});
+        const d=ev.dados||{},ref=String(d.referencia||""),txid=String(d.txid||""),orders=db.collection("vip_orders"),order=ref?await orders.findOne({_id:ref,provider:"wyvipay"}):null;
+        if(order&&txid&&Number(d.valor_centavos)===Number(order.amountCents)){
+          const payments=db.collection("vip_payment_events");
+          try{await payments.insertOne({_id:txid,orderId:ref,deliveryId:delivery,receivedAt:new Date()});}
+          catch(e){if(e?.code===11000){await deliveries.updateOne({_id:delivery},{$set:{processed:true,duplicatePayment:true,orderId:ref}});return sendJson(res,200,{ok:true,duplicatePayment:true});}throw e;}
+          try{
+            await activateSubscription({guildId:String(process.env.VIP_GUILD_ID||"").trim(),userId:order.userId,planKey:order.planKey,period:order.period});
+            await orders.updateOne({_id:ref},{$set:{status:"active",lastPaidAt:new Date(),lastTxid:txid,lastPaymentMethod:String(d.meio||""),updatedAt:new Date()}});
+            await deliveries.updateOne({_id:delivery},{$set:{processed:true,orderId:ref}});
+          }catch(processError){await payments.deleteOne({_id:txid});await deliveries.deleteOne({_id:delivery});throw processError;}
+        }else await deliveries.updateOne({_id:delivery},{$set:{processed:true,ignored:true,reason:order?"missing_txid_or_amount_mismatch":"order_not_found"}});
       }else await deliveries.updateOne({_id:delivery},{$set:{processed:true,ignored:true}});
       return sendJson(res,200,{ok:true});
     }catch(e){console.error("[Wyvi webhook]",e.stack||e.message||e);return sendJson(res,500,{detail:"Falha ao processar webhook."});}
@@ -1132,14 +1137,14 @@ async function panelApi(req, res, url) {
       if(!token)return sendJson(res,401,{detail:"Entre com o Discord antes de continuar."});
       const ur=await fetch("https://discord.com/api/users/@me",{headers:{Authorization:"Bearer "+token},signal:AbortSignal.timeout(10000)});
       const user=ur.ok?await ur.json().catch(()=>null):null;
-      if(!user||!/^\\d{17,20}$/.test(String(user.id||"")))return sendJson(res,401,{detail:"Sua sessão do Discord expirou. Entre novamente."});
+      if(!user||!/^\d{17,20}$/.test(String(user.id||"")))return sendJson(res,401,{detail:"Sua sessão do Discord expirou. Entre novamente."});
       const body=await readBody(req), planKey=String(body.plan||"").toLowerCase(),period=String(body.period||"").toLowerCase();
       const plans={starter:{name:"Starter",monthly:690,annual:6990},plus:{name:"Plus",monthly:1190,annual:11990},premium:{name:"Premium",monthly:1790,annual:17990},ultra:{name:"Ultra",monthly:2490,annual:24990},infinity:{name:"Infinity",monthly:3490,annual:34990}};
       if(!plans[planKey]||!["monthly","annual"].includes(period))return sendJson(res,400,{detail:"Plano ou período inválido."});
       if(body.recurringConsent!==true)return sendJson(res,400,{detail:"Confirme a autorização para cobranças recorrentes."});
       const key=String(process.env.WYVIPAY_API_KEY||"").trim(),guildId=String(process.env.VIP_GUILD_ID||"").trim();
       if(!key)return sendJson(res,503,{detail:"WYVIPAY_API_KEY não configurada no Render."});
-      if(!/^\\d{17,20}$/.test(guildId))return sendJson(res,503,{detail:"Servidor oficial VIP não configurado."});
+      if(!/^\d{17,20}$/.test(guildId))return sendJson(res,503,{detail:"Servidor oficial VIP não configurado."});
       await getSettingsCollection();
       const db=settingsMongoClient.db(MONGODB_DB),orders=db.collection("vip_orders"),orderId=crypto.randomUUID(),amount=plans[planKey][period],now=new Date();
       await orders.insertOne({_id:orderId,userId:String(user.id),planKey,period,amountCents:amount,status:"pending_authorization",provider:"wyvipay",recurringConsent:true,consentAt:now,createdAt:now,updatedAt:now});
@@ -1150,7 +1155,7 @@ async function panelApi(req, res, url) {
       if(!methods.length){await orders.updateOne({_id:orderId},{$set:{status:"unavailable",updatedAt:new Date()}});return sendJson(res,503,{detail:"Nenhum meio recorrente está habilitado para esta conta Wyvi Pay. Verifique permissões e habilitações."});}
       const pr=await fetch("https://api.wyvipay.com.br/api/v1/recorrencia-links",{method:"POST",headers:{Authorization:"Bearer "+key,"Content-Type":"application/json","Idempotency-Key":"yukina-vip-"+orderId},body:JSON.stringify({titulo:"Yukina VIP "+plans[planKey].name+(period==="annual"?" anual":" mensal"),valor_centavos:amount,frequencia:period==="annual"?"anual":"mensal",max_ciclos:null,meios:methods,primeira_cobranca:{modo:"no_aceite"},rota:"white",referencia:orderId}),signal:AbortSignal.timeout(20000)});
       const pd=await pr.json().catch(()=>({})),checkout=pd.checkout_url||pd.url||pd.link;
-      if(!pr.ok||!checkout||!/^https:\\/\\//i.test(checkout)){await orders.updateOne({_id:orderId},{$set:{status:"provider_error",updatedAt:new Date()}});console.error("[VIP Wyvi] Link recorrente:",pr.status,pd);return sendJson(res,502,{detail:pd.detail||pd.message||"Falha ao criar link recorrente. Confira os escopos da chave."});}
+      if(!pr.ok||!checkout||!/^https:\/\//i.test(checkout)){await orders.updateOne({_id:orderId},{$set:{status:"provider_error",updatedAt:new Date()}});console.error("[VIP Wyvi] Link recorrente:",pr.status,pd);return sendJson(res,502,{detail:pd.detail||pd.message||"Falha ao criar link recorrente. Confira os escopos da chave."});}
       await orders.updateOne({_id:orderId},{$set:{status:"awaiting_authorization",providerLinkId:pd.id||pd.link_id||null,checkoutUrl:checkout,availableMethods:methods,updatedAt:new Date()}});
       return sendJson(res,201,{ok:true,orderId,checkoutUrl:checkout,methods,plan:plans[planKey].name,period,amountCents:amount});
     }catch(error){console.error("[VIP Wyvi] Erro:",error.stack||error.message||error);return sendJson(res,500,{detail:"Não foi possível iniciar a assinatura. Tente novamente."});}
