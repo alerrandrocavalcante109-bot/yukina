@@ -32,9 +32,10 @@ function createColorGrid(colors) {
     ctx.fill();
 
     ctx.fillStyle = "#f4efff";
-    ctx.font = "bold 30px sans-serif";
+    ctx.font = "bold 34px Arial, sans-serif";
     ctx.textBaseline = "middle";
-    ctx.fillText(color.emoji, x + 24, y + cellHeight / 2);
+    ctx.textAlign = "left";
+    ctx.fillText(color.label, x + 28, y + cellHeight / 2);
 
     ctx.fillStyle = /^#[0-9A-Fa-f]{6}$/.test(color.hex) ? color.hex : "#c4b5fd";
     ctx.beginPath();
@@ -50,7 +51,7 @@ function createColorGrid(colors) {
 }
 
 const COLORS = Array.from({ length: 20 }, (_, index) => ({
-  key: "color" + (index + 1), name: "Cor " + (index + 1), emoji: ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"][index]
+  key: "color" + (index + 1), name: "Cor " + (index + 1), label: index < 10 ? String(index + 1) : String.fromCharCode(65 + index - 10), emoji: ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"][index]
 }));
 
 function install(client, getSettingsCollection) {
