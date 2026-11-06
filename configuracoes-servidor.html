@@ -235,7 +235,7 @@
     <section class="system-screen" data-screen-panel="nickColors" hidden>
       <p class="eyebrow">PERSONALIZAÇÃO DA COMUNIDADE</p>
       <h1>🎨 Cores de Nick</h1>
-      <p class="screen-description">Escolha cargos que já existem no servidor, defina a cor de cada um e selecione o canal. A Yukina não cria nem exclui cargos: ela apenas utiliza os cargos escolhidos e aplica a cor configurada.</p>
+      <p class="screen-description">Escolha cargos que já existem no servidor, defina a cor de cada um e selecione o canal. A Yukina não cria nem exclui cargos. Ao salvar, ela atualiza a mesma mensagem no canal e organiza os cargos de cor no topo dos cargos comuns, logo abaixo do cargo mais alto dela.</p>
       <div class="system-placeholder">
         <h2>1. Mensagem para os membros</h2>
         <label for="nickColorsMessage">Texto acima do embed</label>
@@ -1352,10 +1352,10 @@
       try{
         const response=await fetch(API_BASE+"/api/nick-colors/config",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId,message,colors}),cache:"no-store"});
         const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as cores.");
-        status.textContent="🌸 "+(data.detail||"Cores salvas e publicadas com sucesso.");
+        status.textContent="🌸 "+(data.detail||"Configuração atualizada na mensagem existente.");
         nickColorsLoadedGuild="";$("nickColorsOptions").dataset.ready="false";
       }catch(error){status.textContent=error.message||"Falha ao salvar o sistema de cores.";}
-      finally{button.disabled=false;button.textContent="Salvar e publicar no Discord";}
+      finally{button.disabled=false;button.textContent="Salvar e atualizar no Discord";}
     });
     loadPrefix();
     loadCounting();
