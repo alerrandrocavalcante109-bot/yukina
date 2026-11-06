@@ -58,17 +58,158 @@
 <script src="./api-config.js"></script>
 <script>
 (() => {
- const plans={starter:{name:'Starter',monthly:'R$ 6,90',annual:'R$ 69,90'},plus:{name:'Plus',monthly:'R$ 11,90',annual:'R$ 119,90'},premium:{name:'Premium',monthly:'R$ 17,90',annual:'R$ 179,90'},ultra:{name:'Ultra',monthly:'R$ 24,90',annual:'R$ 249,90'},infinity:{name:'Infinity',monthly:'R$ 34,90',annual:'R$ 349,90'}};
- let billing='monthly',selected=null;const card=document.getElementById('purchaseCard'),name=document.getElementById('purchasePlan'),price=document.getElementById('purchasePrice'),total=document.getElementById('purchaseTotal'),msg=document.getElementById('purchaseMessage');
- function summary(k,scroll){const p=plans[k];if(!p)return;selected=k;name.textContent=p.name+' — '+(billing==='annual'?'anual':'mensal');price.textContent='Valor da assinatura: '+p[billing]+(billing==='annual'?' por ano':' por mês');total.textContent=p[billing];msg.classList.remove('show');msg.textContent='';document.getElementById('recurringConsent').checked=false;card.classList.add('show');if(scroll)card.scrollIntoView({behavior:'smooth',block:'center'});}
- function billingTo(n){billing=n==='annual'?'annual':'monthly';document.querySelectorAll('[data-billing]').forEach(b=>{const a=b.dataset.billing===billing;b.classList.toggle('active',a);b.setAttribute('aria-pressed',String(a));});document.querySelectorAll('.plan').forEach(c=>{const p=c.querySelector('.price'),note=c.querySelector('.annual-note'),period=c.querySelector('.period');if(p)p.textContent=p.dataset[billing]||'';if(note)note.textContent=billing==='annual'?'Economia de cerca de 2 mensalidades':'';if(period)period.textContent=billing==='annual'?'por ano':'por mês';});if(selected)summary(selected,false);}
- document.addEventListener('click',async e=>{const b=e.target.closest('[data-billing]');if(b){billingTo(b.dataset.billing);return;}const c=e.target.closest('[data-choose]');if(c){summary(c.dataset.choose,true);return;}if(!e.target.closest('#confirmPurchase'))return;if(!selected){msg.textContent='Escolha um plano.';msg.classList.add('show');return;}if(!document.getElementById('recurringConsent').checked){msg.textContent='Confirme a autorização recorrente para continuar.';msg.classList.add('show');return;}const api=String(window.YUKINA_API_URL||'https://yukina.onrender.com').replace(/\\/$/,'');let token=localStorage.getItem('yukina_discord_token');if(!token){window.location.href='./login.html?return='+encodeURIComponent('./vip.html?plan='+selected+'&billing='+billing);return;}const btn=document.getElementById('confirmPurchase');btn.disabled=true;btn.textContent='Preparando assinatura…';msg.textContent='Consultando os meios recorrentes disponíveis.';msg.classList.add('show');try{const response=await fetch(api+'/api/vip/ticket',{method:'POST',headers:{'Content-Type':'application/json','Authorization':'Bearer '+token},body:JSON.stringify({plan:selected,period:billing,recurringConsent:true})});const data=await response.json().catch(()=>({}));if(response.status===401){localStorage.removeItem('yukina_discord_token');window.location.href='./login.html?return='+encodeURIComponent('./vip.html?plan='+selected+'&billing='+billing);return;}if(!response.ok||!data.checkoutUrl)throw new Error(data.detail||'Não foi possível criar a assinatura.');msg.textContent='Redirecionando para a autorização segura da Wyvi Pay.';window.location.assign(data.checkoutUrl);}catch(err){msg.textContent=err.message||'Erro ao iniciar assinatura.';btn.disabled=false;btn.textContent='Continuar para autorização';}});
- const y=document.getElementById('year');if(y)y.textContent=new Date().getFullYear();const params=new URLSearchParams(location.search),valid=['starter','plus','premium','ultra','infinity'];const saved=(()=>{try{return JSON.parse(localStorage.getItem('yukina_vip_pending')||'null')}catch(_){return null}})();const initial=valid.includes(params.get('plan'))?params.get('plan'):(valid.includes(saved?.plan)?saved.plan:null);const initialPeriod=['monthly','annual'].includes(params.get('billing'))?params.get('billing'):(['monthly','annual'].includes(saved?.billing)?saved.billing:'monthly');billingTo(initialPeriod);if(initial)summary(initial,false);
-})();
- const initialPlan=validPlans.includes(params.get('plan'))?params.get('plan'):(validPlans.includes(saved?.plan)?saved.plan:null);
- const initialBilling=['monthly','annual'].includes(params.get('billing'))?params.get('billing'):(['monthly','annual'].includes(saved?.billing)?saved.billing:'monthly');
- billingTo(initialBilling);
- if(initialPlan){summary(initialPlan,false);localStorage.removeItem('yukina_vip_pending');}
+  const plans = {
+    starter: { name: 'Starter', monthly: 'R$ 6,90', annual: 'R$ 69,90' },
+    plus: { name: 'Plus', monthly: 'R$ 11,90', annual: 'R$ 119,90' },
+    premium: { name: 'Premium', monthly: 'R$ 17,90', annual: 'R$ 179,90' },
+    ultra: { name: 'Ultra', monthly: 'R$ 24,90', annual: 'R$ 249,90' },
+    infinity: { name: 'Infinity', monthly: 'R$ 34,90', annual: 'R$ 349,90' }
+  };
+  const validPlans = Object.keys(plans);
+  let billing = 'monthly';
+  let selected = null;
+
+  const card = document.getElementById('purchaseCard');
+  const name = document.getElementById('purchasePlan');
+  const price = document.getElementById('purchasePrice');
+  const total = document.getElementById('purchaseTotal');
+  const msg = document.getElementById('purchaseMessage');
+  const consent = document.getElementById('recurringConsent');
+  const confirmButton = document.getElementById('confirmPurchase');
+
+  function showMessage(message) {
+    msg.textContent = message;
+    msg.classList.add('show');
+  }
+
+  function summary(key, scroll) {
+    const plan = plans[key];
+    if (!plan) return;
+    selected = key;
+    name.textContent = plan.name + ' — ' + (billing === 'annual' ? 'anual' : 'mensal');
+    price.textContent = 'Valor da assinatura: ' + plan[billing] + (billing === 'annual' ? ' por ano' : ' por mês');
+    total.textContent = plan[billing];
+    msg.classList.remove('show');
+    msg.textContent = '';
+    consent.checked = false;
+    card.classList.add('show');
+    if (scroll) card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function billingTo(value) {
+    billing = value === 'annual' ? 'annual' : 'monthly';
+    document.querySelectorAll('[data-billing]').forEach(button => {
+      const active = button.dataset.billing === billing;
+      button.classList.toggle('active', active);
+      button.setAttribute('aria-pressed', String(active));
+    });
+    document.querySelectorAll('.plan').forEach(planCard => {
+      const priceElement = planCard.querySelector('.price');
+      const note = planCard.querySelector('.annual-note');
+      const period = planCard.querySelector('.period');
+      if (priceElement) priceElement.textContent = priceElement.dataset[billing] || '';
+      if (note) note.textContent = billing === 'annual' ? 'Economia de cerca de 2 mensalidades' : '';
+      if (period) period.textContent = billing === 'annual' ? 'por ano' : 'por mês';
+    });
+    if (selected) summary(selected, false);
+  }
+
+  document.addEventListener('click', async event => {
+    const target = event.target instanceof Element ? event.target : null;
+    if (!target) return;
+
+    const billingButton = target.closest('[data-billing]');
+    if (billingButton) {
+      billingTo(billingButton.dataset.billing);
+      return;
+    }
+
+    const chooseButton = target.closest('[data-choose]');
+    if (chooseButton) {
+      summary(chooseButton.dataset.choose, true);
+      return;
+    }
+
+    if (!target.closest('#confirmPurchase')) return;
+
+    if (!selected || !plans[selected]) {
+      showMessage('Escolha um plano para continuar.');
+      return;
+    }
+    if (!consent.checked) {
+      showMessage('Confirme a autorização recorrente para continuar.');
+      return;
+    }
+
+    const api = String(window.YUKINA_API_URL || 'https://yukina-jspa.onrender.com').replace(/\/$/, '');
+    const token = localStorage.getItem('yukina_discord_token');
+    if (!token) {
+      const returnTo = './vip.html?plan=' + encodeURIComponent(selected) + '&billing=' + encodeURIComponent(billing);
+      window.location.href = './login.html?return=' + encodeURIComponent(returnTo);
+      return;
+    }
+
+    confirmButton.disabled = true;
+    confirmButton.textContent = 'Preparando assinatura…';
+    showMessage('Consultando os meios de pagamento disponíveis.');
+
+    try {
+      const response = await fetch(api + '/api/vip/ticket', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer ' + token
+        },
+        body: JSON.stringify({
+          plan: selected,
+          period: billing,
+          recurringConsent: true
+        })
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (response.status === 401) {
+        localStorage.removeItem('yukina_discord_token');
+        const returnTo = './vip.html?plan=' + encodeURIComponent(selected) + '&billing=' + encodeURIComponent(billing);
+        window.location.href = './login.html?return=' + encodeURIComponent(returnTo);
+        return;
+      }
+      if (!response.ok || !data.checkoutUrl) {
+        throw new Error(data.detail || data.message || 'Não foi possível criar a assinatura.');
+      }
+
+      showMessage('Redirecionando para a autorização segura da Wyvi Pay.');
+      window.location.assign(data.checkoutUrl);
+    } catch (error) {
+      showMessage(error.message || 'Erro ao iniciar a assinatura. Tente novamente.');
+      confirmButton.disabled = false;
+      confirmButton.textContent = 'Continuar para autorização';
+    }
+  });
+
+  const year = document.getElementById('year');
+  if (year) year.textContent = new Date().getFullYear();
+
+  const params = new URLSearchParams(window.location.search);
+  let saved = null;
+  try {
+    saved = JSON.parse(localStorage.getItem('yukina_vip_pending') || 'null');
+  } catch (_) {
+    saved = null;
+  }
+
+  const initialPlan = validPlans.includes(params.get('plan'))
+    ? params.get('plan')
+    : (validPlans.includes(saved?.plan) ? saved.plan : null);
+  const initialBilling = ['monthly', 'annual'].includes(params.get('billing'))
+    ? params.get('billing')
+    : (['monthly', 'annual'].includes(saved?.billing) ? saved.billing : 'monthly');
+
+  billingTo(initialBilling);
+  if (initialPlan) {
+    summary(initialPlan, false);
+    localStorage.removeItem('yukina_vip_pending');
+  }
 })();
 </script>
   <script src="./assets/pending-changes.js"></script>
