@@ -235,7 +235,7 @@
     <section class="system-screen" data-screen-panel="nickColors" hidden>
       <p class="eyebrow">PERSONALIZAÇÃO DA COMUNIDADE</p>
       <h1>🎨 Cores de Nick</h1>
-      <p class="screen-description">Escolha o canal e as cores que os membros poderão usar. Ao salvar, a Yukina cria os cargos automaticamente e publica a mensagem com as reações. Se você retirar uma cor da seleção, o cargo correspondente também será excluído do servidor.</p>
+      <p class="screen-description">Escolha cargos que já existem no servidor, defina a cor de cada um e selecione o canal. A Yukina não cria nem exclui cargos: ela apenas utiliza os cargos escolhidos e aplica a cor configurada.</p>
       <div class="system-placeholder">
         <h2>1. Mensagem para os membros</h2>
         <label for="nickColorsMessage">Texto acima do embed</label>
@@ -244,7 +244,7 @@
         <label for="nickColorsChannel">Canal onde a mensagem será enviada</label>
         <select id="nickColorsChannel" class="prefix-input"><option value="">Carregando canais…</option></select>
         <h2 style="margin-top:22px">3. Cores disponíveis</h2>
-        <p class="prefix-system-help">Marque as cores que os membros poderão escolher. O cargo de uma cor desmarcada será excluído ao salvar.</p>
+        <p class="prefix-system-help">Marque as opções, associe cada cor a um cargo existente e use o círculo com pincel para escolher a tonalidade. Cargos não selecionados continuam no servidor sem alterações.</p>
         <div id="nickColorsOptions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-top:12px"><p>Carregando paleta…</p></div>
         <p id="nickColorsStatus" class="prefix-status" role="status" aria-live="polite"></p>
         <button type="button" class="primary-action" id="nickColorsSave">Salvar e publicar no Discord</button>
@@ -1274,12 +1274,36 @@
       }catch(error){status.textContent=error.message||"Falha ao salvar as configurações.";}
       finally{button.disabled=false;}
     });
-    let nickColorsPalette=[],nickColorsLoadedGuild="";
+    let nickColorsPalette=[],nickColorsLoadedGuild="",nickColorsRoles=[];
+    function makeNickColorRow(color,configColor){
+      const row=document.createElement("div");
+      row.style.cssText="display:grid;grid-template-columns:minmax(0,1fr) 46px;align-items:center;gap:10px;padding:12px;border:1px solid #ffffff30;border-radius:14px;background:#ffffff08";
+      const left=document.createElement("div");left.style.cssText="display:grid;gap:8px;min-width:0";
+      const checkLabel=document.createElement("label");checkLabel.style.cssText="display:flex;align-items:center;gap:8px;font-weight:800";
+      const check=document.createElement("input");check.type="checkbox";check.value=color.key;check.checked=!!configColor;
+      const name=document.createElement("span");name.textContent=color.emoji+"  "+color.name;
+      checkLabel.append(check,name);
+      const roleSelect=document.createElement("select");roleSelect.className="prefix-input";roleSelect.dataset.colorRole=color.key;
+      roleSelect.add(new Option("Selecione um cargo existente…",""));
+      nickColorsRoles.filter(role=>!role.managed&&String(role.id)!==String(selectedGuild().id)).forEach(role=>roleSelect.add(new Option("@"+role.name,String(role.id))));
+      roleSelect.value=String(configColor?.roleId||"");
+      roleSelect.disabled=!check.checked;
+      const colorInput=document.createElement("input");colorInput.type="color";colorInput.value=/^#[0-9a-f]{6}$/i.test(configColor?.hex||"")?configColor.hex:"#c4b5fd";colorInput.dataset.colorHex=color.key;colorInput.disabled=!check.checked;
+      colorInput.style.cssText="width:44px;height:44px;padding:0;border:3px solid #ffffffaa;border-radius:50%;background:transparent;cursor:pointer;overflow:hidden";
+      colorInput.title="Escolher cor personalizada";
+      const brush=document.createElement("span");brush.textContent="🖌️";brush.style.cssText="grid-column:2;grid-row:1;align-self:center;justify-self:center;pointer-events:none;font-size:18px;text-shadow:0 1px 4px #000";
+      const pickerWrap=document.createElement("div");pickerWrap.style.cssText="position:relative;width:44px;height:44px;grid-column:2;grid-row:1";
+      colorInput.style.cssText+=";position:absolute;inset:0;opacity:.92";
+      pickerWrap.append(colorInput,brush);
+      check.addEventListener("change",()=>{roleSelect.disabled=!check.checked;colorInput.disabled=!check.checked;});
+      left.append(checkLabel,roleSelect);row.append(left,pickerWrap);
+      return row;
+    }
     async function loadNickColors(){
       const status=$("nickColorsStatus"),channelSelect=$("nickColorsChannel"),options=$("nickColorsOptions"),guild=selectedGuild();
       if(!guild.id){status.textContent="Selecione um servidor no menu lateral.";return;}
       if(nickColorsLoadedGuild===guild.id&&options.dataset.ready==="true")return;
-      status.textContent="Carregando canais e configuração…";options.replaceChildren();options.dataset.ready="false";
+      status.textContent="Carregando cargos, canais e configuração…";options.replaceChildren();options.dataset.ready="false";
       try{
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
         if(!accessToken)throw new Error("Entre com o Discord para configurar as cores.");
@@ -1289,37 +1313,42 @@
           fetch(API_BASE+"/api/nick-colors/config?guildId="+encodeURIComponent(guild.id),{headers,cache:"no-store"})
         ]);
         const resources=await resourceResponse.json().catch(()=>({})),saved=await configResponse.json().catch(()=>({}));
-        if(!resourceResponse.ok)throw new Error(resources.detail||"Não foi possível carregar os canais.");
+        if(!resourceResponse.ok)throw new Error(resources.detail||"Não foi possível carregar os recursos do servidor.");
         if(!configResponse.ok)throw new Error(saved.detail||"Não foi possível carregar as cores.");
         const channels=(Array.isArray(resources.channels)?resources.channels:[]).filter(ch=>Number(ch.type)===0);
         channelSelect.replaceChildren();channelSelect.add(new Option("Selecione um canal…",""));
         channels.forEach(ch=>channelSelect.add(new Option("# "+ch.name,String(ch.id))));
+        nickColorsRoles=Array.isArray(resources.roles)?resources.roles:[];
         nickColorsPalette=Array.isArray(saved.palette)?saved.palette:[];
         const config=saved.config||{};
         channelSelect.value=String(config.channelId||"");
         $("nickColorsMessage").value=config.message||"Escolha a cor do seu nick reagindo ao emoji correspondente abaixo. Você poderá trocar de cor quando quiser. 🌸";
-        const enabled=new Set((config.colors||[]).map(color=>String(color.key)));
+        const byKey=new Map((config.colors||[]).map(item=>[String(item.key),item]));
         options.replaceChildren();
-        nickColorsPalette.forEach(color=>{
-          const label=document.createElement("label");label.style.cssText="display:flex;align-items:center;gap:9px;padding:11px;border:1px solid #ffffff30;border-radius:11px;background:#ffffff08;cursor:pointer";
-          const input=document.createElement("input");input.type="checkbox";input.value=color.key;input.checked=config.colors?enabled.has(color.key):true;
-          const swatch=document.createElement("span");swatch.textContent=color.emoji+" "+color.name;swatch.style.cssText="font-weight:750;color:"+color.hex;
-          label.append(input,swatch);options.appendChild(label);
-        });
+        nickColorsPalette.forEach(color=>options.appendChild(makeNickColorRow(color,byKey.get(color.key))));
         nickColorsLoadedGuild=guild.id;options.dataset.ready="true";
-        status.textContent=config.messageId?"Configuração carregada. Ao salvar, a mensagem no Discord será atualizada.":"Escolha as opções e salve para publicar a primeira mensagem.";
+        status.textContent=config.messageId?"Configuração carregada. Revise os cargos e cores antes de publicar novamente.":"Escolha cargos existentes e configure as cores para publicar a primeira mensagem.";
       }catch(error){status.textContent=error.message||"Não foi possível carregar o sistema de cores.";}
     }
     $("nickColorsSave").addEventListener("click",async()=>{
       const guild=selectedGuild(),status=$("nickColorsStatus"),button=$("nickColorsSave");
       if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}
       const channelId=$("nickColorsChannel").value,message=$("nickColorsMessage").value.trim();
-      const colors=[...$("nickColorsOptions").querySelectorAll('input[type="checkbox"]:checked')].map(input=>input.value);
+      const colors=[...$("nickColorsOptions").children].map(row=>{
+        const check=row.querySelector('input[type="checkbox"]');
+        if(!check?.checked)return null;
+        const roleId=row.querySelector("select[data-color-role]")?.value||"";
+        const hex=row.querySelector('input[type="color"]')?.value||"";
+        return {key:check.value,roleId,hex};
+      }).filter(Boolean);
       if(!channelId){status.textContent="Escolha o canal onde a Yukina publicará as cores.";return;}
+      if(!message){status.textContent="Digite a mensagem que ficará acima do embed.";return;}
       if(!colors.length){status.textContent="Selecione pelo menos uma cor.";return;}
+      if(colors.some(item=>!item.roleId)){status.textContent="Associe cada cor selecionada a um cargo que já existe no servidor.";return;}
+      if(new Set(colors.map(item=>item.roleId)).size!==colors.length){status.textContent="Cada cor precisa usar um cargo diferente.";return;}
       let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
       if(!accessToken){status.textContent="Sua sessão expirou. Entre novamente com o Discord.";return;}
-      button.disabled=true;button.textContent="Salvando…";status.textContent="A Yukina está criando os cargos e publicando a mensagem…";
+      button.disabled=true;button.textContent="Salvando…";status.textContent="Validando permissões e cargos existentes…";
       try{
         const response=await fetch(API_BASE+"/api/nick-colors/config",{method:"POST",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({guildId:guild.id,channelId,message,colors}),cache:"no-store"});
         const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as cores.");
