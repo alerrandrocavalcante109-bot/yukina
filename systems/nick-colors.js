@@ -37,7 +37,7 @@ function install(client, getSettingsCollection) {
       const resolved = await resolveReaction(reaction);
       if (!resolved) return;
       const member = await resolved.guild.members.fetch(user.id).catch(() => null);
-      if (!member || !member.manageable && member.id === client.user.id) return;
+      if (!member || !member.manageable) return;
       const roleIds = (resolved.config.colors || []).map(item => String(item.roleId || "")).filter(Boolean);
       const selectedId = String(resolved.color.roleId);
       if (adding) {
@@ -134,6 +134,11 @@ async function handleApi(req, res, url, context) {
       const role = await guild.roles.fetch(color.roleId).catch(() => null);
       if (!role || role.guild.id !== guild.id || role.id === guild.id || role.managed) {
         sendJson(res, 400, { detail: "Selecione somente cargos existentes e não gerenciados deste servidor." });
+        return true;
+      }
+      // Cargos com permissões não podem ser distribuídos por reação: isso evitará conceder acesso administrativo ou moderação.
+      if (role.permissions.bitfield !== 0n) {
+        sendJson(res, 400, { detail: "O cargo @" + role.name + " possui permissões. Por segurança, use somente cargos decorativos sem permissões." });
         return true;
       }
       if (role.position >= botMember.roles.highest.position) {
