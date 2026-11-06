@@ -31,15 +31,32 @@ function install(client, getSettingsCollection) {
       const resolved = await resolveReaction(reaction);
       if (!resolved) return;
       const guild = resolved.guild;
-      const member = await guild.members.fetch(user.id).catch(() => null);
+      // Atualiza os dois membros antes de comparar: GuildMember.manageable pode usar
+      // a referência guild.members.me em cache, que pode estar desatualizada após mover cargos.
+      const [member, botMember] = await Promise.all([
+        guild.members.fetch({ user: user.id, force: true }).catch(() => null),
+        guild.members.fetchMe({ force: true })
+      ]);
       if (!member) return;
-      if (!member.manageable) {
-        console.warn("[Cores de Nick] Não foi possível alterar o membro: cargo mais alto do membro está acima da Yukina.", { guildId: guild.id, userId: user.id });
+      const memberHighest = member.roles.highest;
+      const botHighest = botMember.roles.highest;
+      const hierarchyComparison = memberHighest.comparePositionTo(botHighest);
+      if (hierarchyComparison >= 0) {
+        console.warn("[Cores de Nick] Hierarquia impede alterar o membro após atualizar os dados do Discord.", {
+          guildId: guild.id,
+          userId: user.id,
+          memberHighestRole: memberHighest.name,
+          memberHighestRoleId: memberHighest.id,
+          memberHighestPosition: memberHighest.position,
+          botHighestRole: botHighest.name,
+          botHighestRoleId: botHighest.id,
+          botHighestPosition: botHighest.position,
+          comparison: hierarchyComparison
+        });
         return;
       }
       const selectedId = String(resolved.color.roleId);
       const selectedRole = await guild.roles.fetch(selectedId).catch(() => null);
-      const botMember = await guild.members.fetchMe();
       if (!selectedRole || !selectedRole.editable || selectedRole.position >= botMember.roles.highest.position) {
         console.warn("[Cores de Nick] Cargo de cor inexistente ou fora da hierarquia do bot.", { guildId: guild.id, roleId: selectedId });
         return;
