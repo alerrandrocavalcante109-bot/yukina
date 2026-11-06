@@ -11,7 +11,7 @@ const MAX_SLOWMODE_SECONDS = 21600;
 
 function parseDuration(value) {
   const raw = String(value ?? "").trim().toLowerCase();
-  if (["off", "off", "desativar", "desligar", "0"].includes(raw)) return 0;
+  if (["off", "desativar", "desligar", "0"].includes(raw)) return 0;
   const match = raw.match(/^(\d+)\s*(s|seg|segs|segundo|segundos|m|min|minuto|minutos|h|hora|horas)?$/);
   if (!match) return null;
   const amount = Number(match[1]);
@@ -33,26 +33,6 @@ function isTextChannel(channel) {
     channel.type === ChannelType.PrivateThread ||
     channel.type === ChannelType.AnnouncementThread
   ) && typeof channel.setRateLimitPerUser === "function");
-}
-
-async function applySlowmode({ guild, channel, member, reply }) {
-  if (!guild || !channel || !isTextChannel(channel)) {
-    return reply("❄️ Selecione um canal de texto válido deste servidor.");
-  }
-
-  const memberPermissions = member?.permissions;
-  if (!memberPermissions?.has(PermissionFlagsBits.ManageChannels) &&
-      !memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-    return reply("🔒 Você precisa da permissão **Gerenciar canais** para alterar o modo lento.");
-  }
-
-  const botMember = guild.members.me || await guild.members.fetchMe().catch(() => null);
-  if (!botMember?.permissionsIn(channel).has(PermissionFlagsBits.ManageChannels)) {
-    return reply("🫧 Preciso da permissão **Gerenciar canais** neste canal para aplicar o modo lento.");
-  }
-
-  const current = Number(channel.rateLimitPerUser) || 0;
-  const next = arguments; // placeholder
 }
 
 async function changeSlowmode({ guild, channel, member, seconds, reply, actor }) {
