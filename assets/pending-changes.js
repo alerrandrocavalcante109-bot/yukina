@@ -24,12 +24,34 @@
   const msg=bar.querySelector(".ypb-message");
   const result=bar.querySelector("#yukina-pending-result");
   let hideTimer=null;
+  function playFeedbackSound(type){
+    try{
+      const AudioCtx=window.AudioContext||window.webkitAudioContext;
+      if(!AudioCtx)return;
+      const ctx=new AudioCtx();
+      const presets={
+        success:[{f:660,t:0,d:.11},{f:880,t:.12,d:.16}],
+        discard:[{f:520,t:0,d:.13},{f:390,t:.14,d:.17}],
+        error:[{f:240,t:0,d:.19},{f:185,t:.2,d:.22}]
+      };
+      for(const note of (presets[type]||presets.success)){
+        const osc=ctx.createOscillator(),gain=ctx.createGain();
+        osc.type="sine";osc.frequency.setValueAtTime(note.f,ctx.currentTime+note.t);
+        gain.gain.setValueAtTime(.0001,ctx.currentTime+note.t);
+        gain.gain.exponentialRampToValueAtTime(.12,ctx.currentTime+note.t+.015);
+        gain.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+note.t+note.d);
+        osc.connect(gain);gain.connect(ctx.destination);
+        osc.start(ctx.currentTime+note.t);osc.stop(ctx.currentTime+note.t+note.d+.02);
+      }
+      setTimeout(()=>ctx.close().catch(()=>{}),900);
+    }catch(_){}
+  }
   function show(id){activeId=id;bar.classList.add("visible");}
   function hide(){bar.classList.remove("visible");activeId=null;}
   function clearHideTimer(){if(hideTimer){clearTimeout(hideTimer);hideTimer=null;}}
   function update(){const dirty=[...systems.values()].filter(s=>s.isDirty());if(!dirty.length){hide();return;}clearHideTimer();result.textContent="";result.classList.remove("error");const s=dirty[dirty.length-1];show(s.id);msg.textContent=dirty.length>1?"Alterações feitas em vários sistemas":"Alterações feitas";}
-  async function save(){const dirty=[...systems.values()].filter(s=>s.isDirty());if(!dirty.length)return;clearHideTimer();result.textContent="Salvando…";result.classList.remove("error");const saveButton=bar.querySelector("#yukina-pending-save");saveButton.disabled=true;try{for(const s of dirty)await s.save();result.textContent="Configurações salvas";result.classList.remove("error");msg.textContent="Tudo certo!";hideTimer=setTimeout(()=>{hide();result.textContent="";},2800);}catch(e){result.textContent=e?.message||"Erro ao salvar as configurações.";result.classList.add("error");msg.textContent="Não foi possível salvar";show(activeId||dirty[dirty.length-1]?.id);}finally{saveButton.disabled=false;}}
-  function reset(){clearHideTimer();const dirty=[...systems.values()].filter(s=>s.isDirty());for(const s of dirty){try{s.reset();}catch(_){}}result.textContent="Alterações descartadas";result.classList.remove("error");hideTimer=setTimeout(()=>{hide();result.textContent="";},1800);}
+  async function save(){const dirty=[...systems.values()].filter(s=>s.isDirty());if(!dirty.length)return;clearHideTimer();result.textContent="Salvando…";result.classList.remove("error");const saveButton=bar.querySelector("#yukina-pending-save");saveButton.disabled=true;try{for(const s of dirty)await s.save();result.textContent="Configurações salvas";result.classList.remove("error");playFeedbackSound("success");msg.textContent="Tudo certo!";hideTimer=setTimeout(()=>{hide();result.textContent="";},2800);}catch(e){result.textContent=e?.message||"Erro ao salvar as configurações.";playFeedbackSound("error");result.classList.add("error");msg.textContent="Não foi possível salvar";show(activeId||dirty[dirty.length-1]?.id);}finally{saveButton.disabled=false;}}
+  function reset(){clearHideTimer();const dirty=[...systems.values()].filter(s=>s.isDirty());for(const s of dirty){try{s.reset();}catch(_){}}result.textContent="Alterações descartadas";playFeedbackSound("discard");result.classList.remove("error");hideTimer=setTimeout(()=>{hide();result.textContent="";},1800);}
   bar.querySelector("#yukina-pending-save").addEventListener("click",save);
   bar.querySelector("#yukina-pending-reset").addEventListener("click",reset);
   window.YukinaPendingChanges={
