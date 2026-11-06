@@ -146,7 +146,7 @@ async function handleApi(req, res, url, context) {
     const embed = new EmbedBuilder()
       .setColor(0xc4b5fd)
       .setTitle("🌸 Escolha seus cargos")
-      .setDescription(items.map(item => item.emoji + "  **" + item.roleName.replace(/[*_~`|]/g, "") + "**").join("\n"))
+      .setDescription([messageText, "", ...items.map(item => item.emoji + "  **" + item.roleName.replace(/[*_~`|]/g, "") + "**")].join("\n"))
       .setFooter({ text: "Yukina • Reaja para receber ou remover o cargo." });
 
     let message = null;
@@ -154,10 +154,10 @@ async function handleApi(req, res, url, context) {
       message = await channel.messages.fetch(String(previous.messageId)).catch(() => null);
     }
     if (message) {
-      await message.edit({ content: messageText, embeds: [embed] });
+      await message.edit({ content: null, embeds: [embed] });
       await message.reactions.removeAll();
     } else {
-      message = await channel.send({ content: messageText, embeds: [embed] });
+      message = await channel.send({ embeds: [embed] });
     }
     for (const item of items) await message.react(item.emoji);
 
