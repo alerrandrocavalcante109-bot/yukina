@@ -1269,7 +1269,7 @@
       finally{button.disabled=false;}
     });
     let nickColorsPalette=[],nickColorsLoadedGuild="";
-    const nickColorEmojis=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"];
+    const nickColorEmojis=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"];
     function makeNickColorRow(color,configColor){
       const row=document.createElement("div");
       row.dataset.colorKey=color.key;
@@ -1303,11 +1303,11 @@
         const input=row.querySelector('input[type="color"]');input.dataset.colorHex=key;
         input.setAttribute("aria-label","Cor personalizada "+(index+1));
       });
-      $("nickColorsAdd").disabled=rows.length>=10;
+      $("nickColorsAdd").disabled=rows.length>=20;
     }
     function addNickColor(hex="#c4b5fd"){
       const options=$("nickColorsOptions"),index=options.children.length;
-      if(index>=10)return;
+      if(index>=20)return;
       const color={key:"color"+(index+1),name:"Cor "+(index+1),emoji:nickColorEmojis[index]};
       options.appendChild(makeNickColorRow(color,{hex}));
       refreshNickColorLabels();
@@ -1339,7 +1339,7 @@
         options.replaceChildren();
         const savedColors=Array.isArray(config.colors)?config.colors:[];
         if(savedColors.length){
-          savedColors.slice(0,10).forEach((item,index)=>addNickColor(item.hex||"#c4b5fd"));
+          savedColors.slice(0,20).forEach((item,index)=>addNickColor(item.hex||"#c4b5fd"));
         }else addNickColor();
         nickColorsLoadedGuild=guild.id;options.dataset.ready="true";
         status.textContent=config.messageId?"Configuração carregada. Edite as tonalidades e salve para atualizar a mensagem.":"Adicione cores e escolha suas tonalidades para publicar a primeira mensagem.";
