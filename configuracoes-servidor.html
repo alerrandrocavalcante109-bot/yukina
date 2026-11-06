@@ -46,6 +46,9 @@
     .prefix-edit{display:flex;gap:8px;margin:10px 0}
     .prefix-edit[hidden]{display:none}
     .prefix-input{width:100%;min-width:0;padding:9px 10px;border:1px solid #c4b5fd88;border-radius:9px;background:#140d24;color:#fff;font:inherit}
+    .reaction-select-menu{display:block;width:100%;min-height:46px;padding:11px 42px 11px 13px;border:1px solid #c4b5fd99;border-radius:12px;background-color:#1b1230;color:#fff;font:inherit;font-weight:650;appearance:none;-webkit-appearance:none;cursor:pointer;background-image:linear-gradient(45deg,transparent 50%,#e8d9ff 50%),linear-gradient(135deg,#e8d9ff 50%,transparent 50%);background-position:calc(100% - 19px) 19px,calc(100% - 13px) 19px;background-size:6px 6px,6px 6px;background-repeat:no-repeat;box-shadow:0 5px 16px #09051125;transition:border-color .15s,background-color .15s}
+    .reaction-select-menu:focus{outline:none;border-color:#d8b4fe;background-color:#24163d;box-shadow:0 0 0 3px #c4b5fd25}
+    .reaction-select-menu option{background:#1b1230;color:#fff;padding:10px}
     .prefix-save{padding:9px 12px;border:1px solid #c4b5fd88;border-radius:9px;background:#c4b5fd20;color:#fff;font-weight:750}
     .prefix-status{min-height:1.2em;margin:6px 0;color:#e7d9ff;font-size:.8rem}
     .drawer-category{margin:22px 18px 10px;padding:0 0 9px;border-bottom:1px solid #c4b5fd88;color:#e7d9ff;font-size:.82rem;font-weight:850;letter-spacing:.12em;text-transform:uppercase}
@@ -255,7 +258,7 @@
         <h2>1. Mensagem para os membros</h2><label for="reactionRolesMessage">Texto acima do embed</label>
         <textarea id="reactionRolesMessage" class="prefix-input" rows="3" maxlength="1800">Reaja abaixo para receber o cargo correspondente. Você pode remover a reação para retirar o cargo. 🌸</textarea>
         <h2 style="margin-top:22px">2. Canal de publicação</h2><label for="reactionRolesChannel">Canal onde o painel ficará</label>
-        <select id="reactionRolesChannel" class="prefix-input"><option value="">Carregando canais…</option></select>
+        <select id="reactionRolesChannel" class="reaction-select-menu"><option value="">Carregando canais…</option></select>
         <h2 style="margin-top:22px">3. Cargos e reações</h2><p class="prefix-system-help">A Yukina atribui um emoji diferente para cada cargo. Não é permitido repetir o mesmo cargo.</p>
         <div id="reactionRolesOptions" style="display:grid;gap:9px;margin-top:12px"></div>
         <button type="button" class="prefix-save" id="reactionRolesAdd" style="margin-top:12px">＋ Adicionar cargo</button>
@@ -1391,7 +1394,7 @@
       items.slice(0,20).forEach((item,index)=>{
         const row=document.createElement("div");row.style.cssText="display:grid;grid-template-columns:42px minmax(0,1fr) 34px;gap:9px;align-items:center;padding:10px;border:1px solid #ffffff24;border-radius:12px;background:#ffffff08";
         const emoji=document.createElement("strong");emoji.textContent=reactionRolesEmojis[index]||"🎭";emoji.style.cssText="font-size:22px;text-align:center";
-        const select=document.createElement("select");select.className="prefix-input";select.dataset.reactionRoleSelect="true";select.style.margin="0";select.add(new Option("Selecione um cargo existente…",""));
+        const select=document.createElement("select");select.className="reaction-select-menu";select.dataset.reactionRoleSelect="true";select.style.margin="0";select.add(new Option("Selecione um cargo existente…",""));
         reactionRolesAvailable.filter(r=>!r.managed).forEach(role=>select.add(new Option("@"+role.name,String(role.id))));select.value=String(item.roleId||"");
         const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Remover opção";remove.style.cssText="width:32px;height:32px;border:1px solid #ffffff35;border-radius:9px;background:#ffffff10;color:#fff;font-size:20px";
         remove.addEventListener("click",()=>{const next=getReactionRoleItems();next.splice(index,1);renderReactionRoleRows(next);window.YukinaPendingChanges?.refresh();});
