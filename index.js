@@ -27,6 +27,7 @@ const { getVipCollection, activateSubscription } = require("./vip-store");
 const { applyDailyInactivityFee } = require("./systems/bank-inactivity-fee");
 const { invalidateGuildSettings } = require("./guild-settings-store");
 const nickColorsSystem = require("./systems/nick-colors");
+const reactionRolesSystem = require("./systems/reaction-roles");
 
 const TOKEN = (process.env.TOKEN || "").trim();
 
@@ -90,6 +91,7 @@ function loadYukinaSystems() {
   require("./staff-promotion-announcements")(client);
   require("./interaction")(client);
   nickColorsSystem.install(client, getSettingsCollection);
+  reactionRolesSystem.install(client, getSettingsCollection);
 }
 
 
@@ -694,6 +696,7 @@ async function panelApi(req, res, url) {
   if (req.method === "OPTIONS") { res.writeHead(204); return res.end(); }
 
   if (await nickColorsSystem.handleApi(req, res, url, { sendJson, readBody, authorizePanel, getSettingsCollection })) return;
+  if (await reactionRolesSystem.handleApi(req, res, url, { sendJson, readBody, authorizePanel, getSettingsCollection })) return;
 
 
   if (url.pathname === "/api/tickets/manage") {
