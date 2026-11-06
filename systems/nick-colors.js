@@ -1,48 +1,52 @@
 "use strict";
 
-const { EmbedBuilder, PermissionsBitField } = require("discord.js");
+const { AttachmentBuilder, ContainerBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, MessageFlags, PermissionsBitField, TextDisplayBuilder } = require("discord.js");
+const { createCanvas } = require("@napi-rs/canvas");
 
 const activeGuildSaves = new Set();
 
-function getColorName(hex) {
-  const value = String(hex || "").replace("#", "");
-  if (!/^[0-9A-Fa-f]{6}$/.test(value)) return "Cor personalizada";
-  const r = parseInt(value.slice(0, 2), 16) / 255;
-  const g = parseInt(value.slice(2, 4), 16) / 255;
-  const b = parseInt(value.slice(4, 6), 16) / 255;
-  const max = Math.max(r, g, b);
-  const min = Math.min(r, g, b);
-  const delta = max - min;
-  const lightness = (max + min) / 2;
-  const saturation = delta === 0 ? 0 : delta / (1 - Math.abs(2 * lightness - 1));
+function createColorGrid(colors) {
+  const columns = 2;
+  const rows = Math.ceil(colors.length / columns);
+  const width = 1000;
+  const cellWidth = 480;
+  const cellHeight = 92;
+  const gap = 16;
+  const padding = 18;
+  const height = padding * 2 + rows * cellHeight + Math.max(0, rows - 1) * gap;
+  const canvas = createCanvas(width, height);
+  const ctx = canvas.getContext("2d");
 
-  if (saturation < 0.12) {
-    if (lightness < 0.12) return "Preto";
-    if (lightness > 0.90) return "Branco";
-    return lightness < 0.38 ? "Cinza-escuro" : lightness > 0.72 ? "Cinza-claro" : "Cinza";
-  }
+  ctx.fillStyle = "#23202b";
+  ctx.fillRect(0, 0, width, height);
 
-  let hue;
-  if (delta === 0) hue = 0;
-  else if (max === r) hue = 60 * (((g - b) / delta) % 6);
-  else if (max === g) hue = 60 * ((b - r) / delta + 2);
-  else hue = 60 * ((r - g) / delta + 4);
-  if (hue < 0) hue += 360;
+  colors.forEach((color, index) => {
+    const column = index % columns;
+    const row = Math.floor(index / columns);
+    const x = padding + column * (cellWidth + gap);
+    const y = padding + row * (cellHeight + gap);
 
-  let name;
-  if (hue < 12 || hue >= 345) name = "Vermelho";
-  else if (hue < 38) name = "Laranja";
-  else if (hue < 68) name = "Amarelo";
-  else if (hue < 165) name = "Verde";
-  else if (hue < 195) name = "Ciano";
-  else if (hue < 255) name = "Azul";
-  else if (hue < 290) name = "Roxo";
-  else if (hue < 325) name = "Rosa";
-  else name = "Magenta";
+    ctx.fillStyle = "#302b3a";
+    ctx.beginPath();
+    ctx.roundRect(x, y, cellWidth, cellHeight, 18);
+    ctx.fill();
 
-  if (lightness < 0.22) return name + "-escuro";
-  if (lightness > 0.82) return name + "-claro";
-  return name;
+    ctx.fillStyle = "#f4efff";
+    ctx.font = "bold 30px sans-serif";
+    ctx.textBaseline = "middle";
+    ctx.fillText(color.emoji, x + 24, y + cellHeight / 2);
+
+    ctx.fillStyle = /^#[0-9A-Fa-f]{6}$/.test(color.hex) ? color.hex : "#c4b5fd";
+    ctx.beginPath();
+    ctx.arc(x + cellWidth - 48, y + cellHeight / 2, 27, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.strokeStyle = "rgba(255,255,255,0.28)";
+    ctx.lineWidth = 3;
+    ctx.stroke();
+  });
+
+  return canvas.toBuffer("image/png");
 }
 
 const COLORS = Array.from({ length: 20 }, (_, index) => ({
@@ -247,22 +251,31 @@ async function handleApi(req, res, url, context) {
       }
     }
 
-    const embed = new EmbedBuilder()
-      .setColor(0xc4b5fd)
-      .setTitle("🎨 Escolha a cor do seu nick")
-      .setDescription(messageText + "\n\n" + roles.map(color => color.emoji + "・**" + getColorName(color.hex) + "**").join("\n"))
-      .setFooter({ text: "Yukina • Reaja com o número ou letra da cor desejada. Uma cor por membro." });
+    const colorImage = new AttachmentBuilder(createColorGrid(roles), { name: "nick-colors.png" });
+    const container = new ContainerBuilder()
+      .setAccentColor(0xc4b5fd)
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent("## 🎨 Escolha a cor do seu nick\\n" + messageText)
+      )
+      .addMediaGalleryComponents(
+        new MediaGalleryBuilder().addItems(
+          new MediaGalleryItemBuilder().setURL("attachment://nick-colors.png")
+        )
+      )
+      .addTextDisplayComponents(
+        new TextDisplayBuilder().setContent("*Yukina • Reaja com o número ou letra da cor desejada. Uma cor por membro.*")
+      );
 
-    // Mantém uma única mensagem: edita a publicação anterior e sincroniza suas reações.
+    // Mantém uma única mensagem V2: um contêiner com as cores reais em duas colunas.
     let targetMessage = null;
     if (previousConfig.messageId && String(previousConfig.channelId) === channel.id) {
       targetMessage = await channel.messages.fetch(String(previousConfig.messageId)).catch(() => null);
     }
     if (targetMessage) {
-      await targetMessage.edit({ content: null, embeds: [embed], files: [], attachments: [] });
+      await targetMessage.edit({ content: null, embeds: [], components: [container], files: [colorImage], attachments: [], flags: MessageFlags.IsComponentsV2 });
       await targetMessage.reactions.removeAll().catch(() => {});
     } else {
-      targetMessage = await channel.send({ embeds: [embed] });
+      targetMessage = await channel.send({ components: [container], files: [colorImage], flags: MessageFlags.IsComponentsV2 });
     }
     try {
       for (const color of roles) await targetMessage.react(color.emoji);
