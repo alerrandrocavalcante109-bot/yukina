@@ -7,40 +7,59 @@ const EMOJIS = ["🎮","🎨","🎵","🎬","📚","⚽","🌸","🌙","⭐","�
 function install(client, getSettingsCollection) {
   async function resolve(reaction) {
     if (reaction.partial) await reaction.fetch();
-    const message = reaction.message;
-    if (!message.guild || message.author?.id !== client.user.id) return null;
+    let message = reaction.message;
+    if (message.partial) message = await message.fetch();
+    if (!message.guild) return null;
     const collection = await getSettingsCollection();
     const doc = await collection.findOne({ guildId: message.guild.id }, { projection: { "settings.reactionRoles": 1 } });
     const config = doc?.settings?.reactionRoles;
-    if (!config?.enabled || String(config.messageId) !== message.id) return null;
+    if (!config?.enabled || String(config.messageId) !== String(message.id)) return null;
     const item = (config.items || []).find(entry => entry.emoji === reaction.emoji.name);
-    return item ? { guild: message.guild, item } : null;
+    return item ? { guild: message.guild, item, messageId: message.id } : null;
   }
 
   async function updateRole(reaction, user, add) {
-    if (user.bot) return;
+    if (!user || user.bot) return;
     try {
       const found = await resolve(reaction);
       if (!found) return;
-      const member = await found.guild.members.fetch(user.id).catch(() => null);
-      if (!member || !member.manageable) {
-        console.warn("[Cargos por reação] Não foi possível gerenciar o membro: o cargo mais alto dele está acima ou no mesmo nível da Yukina.");
+      const [member, botMember, role] = await Promise.all([
+        found.guild.members.fetch({ user: user.id, force: true }).catch(() => null),
+        found.guild.members.fetchMe().catch(() => null),
+        found.guild.roles.fetch(String(found.item.roleId)).catch(() => null)
+      ]);
+      if (!member) {
+        console.warn("[Cargos por reação] Membro não encontrado:", user.id);
         return;
       }
-      const botMember = found.guild.members.me || await found.guild.members.fetchMe().catch(() => null);
       if (!botMember?.permissions.has(PermissionsBitField.Flags.ManageRoles)) {
         console.error("[Cargos por reação] A Yukina está sem a permissão Gerenciar cargos.");
         return;
       }
-      const role = await found.guild.roles.fetch(String(found.item.roleId)).catch(() => null);
-      if (!role || role.managed || role.id === found.guild.id || role.position >= botMember.roles.highest.position) {
-        console.warn("[Cargos por reação] Cargo inválido ou acima do cargo mais alto da Yukina.");
+      if (!role || role.managed || role.id === found.guild.id) {
+        console.warn("[Cargos por reação] Cargo configurado não existe ou não pode ser atribuído:", found.item.roleId);
         return;
       }
-      if (add && !member.roles.cache.has(role.id)) await member.roles.add(role, "Cargo obtido por reação configurada no painel da Yukina");
-      if (!add && member.roles.cache.has(role.id)) await member.roles.remove(role, "Reação de cargo removida");
+      if (role.comparePositionTo(botMember.roles.highest) >= 0) {
+        console.warn("[Cargos por reação] Cargo acima ou no mesmo nível do cargo mais alto da Yukina:", role.name, role.id);
+        return;
+      }
+      if (member.id === botMember.id) return;
+      if (member.roles.highest.comparePositionTo(botMember.roles.highest) >= 0) {
+        console.warn("[Cargos por reação] Membro está acima ou no mesmo nível da Yukina:", member.user.tag, member.id);
+        return;
+      }
+      if (add && !member.roles.cache.has(role.id)) {
+        await member.roles.add(role, "Cargo obtido por reação configurada no painel da Yukina");
+        console.log("[Cargos por reação] Cargo atribuído:", role.name, "->", member.user.tag);
+      } else if (!add && member.roles.cache.has(role.id)) {
+        await member.roles.remove(role, "Reação de cargo removida");
+        console.log("[Cargos por reação] Cargo removido:", role.name, "->", member.user.tag);
+      }
     } catch (error) {
-      console.error("[Cargos por reação] Falha ao atualizar cargo:", error.message || error);
+      console.error("[Cargos por reação] Falha ao " + (add ? "atribuir" : "remover") + " cargo:", {
+        code: error.code, message: error.message, userId: user.id, stack: error.stack
+      });
     }
   }
 
