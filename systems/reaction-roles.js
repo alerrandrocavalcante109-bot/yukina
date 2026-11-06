@@ -13,9 +13,13 @@ function install(client, getSettingsCollection) {
     const collection = await getSettingsCollection();
     const doc = await collection.findOne({ guildId: message.guild.id }, { projection: { "settings.reactionRoles": 1 } });
     const config = doc?.settings?.reactionRoles;
-    if (!config?.enabled || String(config.messageId) !== String(message.id)) return null;
-    const item = (config.items || []).find(entry => entry.emoji === reaction.emoji.name);
-    return item ? { guild: message.guild, item, messageId: message.id } : null;
+    const panels = Array.isArray(config?.panels) ? config.panels : (config?.messageId ? [config] : []);
+    for (const panel of panels) {
+      if (!panel?.enabled || String(panel.messageId) !== String(message.id)) continue;
+      const item = (panel.items || []).find(entry => entry.emoji === reaction.emoji.name);
+      if (item) return { guild: message.guild, item, messageId: message.id };
+    }
+    return null;
   }
 
   async function updateRole(reaction, user, add) {
@@ -90,10 +94,12 @@ async function handleApi(req, res, url, context) {
     const collection = await getSettingsCollection();
     const previous = (await collection.findOne({ guildId }, { projection: { "settings.reactionRoles": 1 } }))?.settings?.reactionRoles || null;
     if (req.method === "GET") {
-      sendJson(res, 200, { ok: true, config: previous, emojis: EMOJIS });
+      const panels = Array.isArray(previous?.panels) ? previous.panels : (previous?.messageId ? [previous] : []);
+      sendJson(res, 200, { ok: true, config: panels[0] || null, panels, emojis: EMOJIS });
       return true;
     }
 
+    const panelId = String(body.panelId || "").trim().slice(0, 80) || "default";
     const channelId = String(body.channelId || "").trim();
     const messageText = String(body.message || "").trim().slice(0, 1800);
     const submitted = Array.isArray(body.items) ? body.items : [];
@@ -149,9 +155,11 @@ async function handleApi(req, res, url, context) {
       .setDescription([messageText, "", ...items.map(item => item.emoji + "  **" + item.roleName.replace(/[*_~`|]/g, "") + "**")].join("\n"))
       .setFooter({ text: "Yukina • Reaja para receber ou remover o cargo." });
 
+    const previousPanels = Array.isArray(previous?.panels) ? previous.panels : (previous?.messageId ? [{ ...previous, panelId: "default" }] : []);
+    const previousPanel = previousPanels.find(panel => String(panel.panelId || "default") === panelId) || null;
     let message = null;
-    if (previous?.messageId && String(previous.channelId) === channel.id) {
-      message = await channel.messages.fetch(String(previous.messageId)).catch(() => null);
+    if (previousPanel?.messageId && String(previousPanel.channelId) === channel.id) {
+      message = await channel.messages.fetch(String(previousPanel.messageId)).catch(() => null);
     }
     if (message) {
       await message.edit({ content: null, embeds: [embed] });
@@ -162,21 +170,24 @@ async function handleApi(req, res, url, context) {
     for (const item of items) await message.react(item.emoji);
 
     const saved = {
-      enabled: true, channelId: channel.id, channelName: channel.name, messageId: message.id,
+      panelId, enabled: true, channelId: channel.id, channelName: channel.name, messageId: message.id,
       message: messageText, items, updatedAt: new Date().toISOString()
     };
+    const panels = previousPanels.filter(panel => String(panel.panelId || "default") !== panelId);
+    panels.push(saved);
+    const stored = { enabled: true, panels, updatedAt: new Date().toISOString() };
     await collection.updateOne(
       { guildId },
-      { $set: { guildId, guildName: guild.name, "settings.reactionRoles": saved, updatedAt: new Date() } },
+      { $set: { guildId, guildName: guild.name, "settings.reactionRoles": stored, updatedAt: new Date() } },
       { upsert: true }
     );
 
-    if (previous?.messageId && String(previous.messageId) !== message.id) {
-      const oldChannel = await guild.channels.fetch(String(previous.channelId)).catch(() => null);
-      const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(previous.messageId)).catch(() => null) : null;
+    if (previousPanel?.messageId && String(previousPanel.messageId) !== message.id) {
+      const oldChannel = await guild.channels.fetch(String(previousPanel.channelId)).catch(() => null);
+      const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(previousPanel.messageId)).catch(() => null) : null;
       if (oldMessage) await oldMessage.delete().catch(() => {});
     }
-    sendJson(res, 200, { ok: true, config: saved, detail: "Painel de cargos por reação atualizado na mesma mensagem." });
+    sendJson(res, 200, { ok: true, config: saved, panels, detail: "Painel de cargos por reação salvo." });
     return true;
   } catch (error) {
     console.error("[Cargos por reação] Falha ao salvar:", { code: error.code, message: error.message, stack: error.stack });
