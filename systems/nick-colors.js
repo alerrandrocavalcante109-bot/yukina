@@ -128,7 +128,7 @@ async function handleApi(req, res, url, context) {
       return true;
     }
 
-    // Confere todos os cargos antes de alterar qualquer um: somente cargos existentes, únicos e abaixo da Yukina.
+    // Confere todos os cargos antes de alterar qualquer um: somente cargos existentes, decorativos e abaixo da Yukina.
     const roles = [];
     for (const color of selected) {
       const role = await guild.roles.fetch(color.roleId).catch(() => null);
@@ -136,7 +136,6 @@ async function handleApi(req, res, url, context) {
         sendJson(res, 400, { detail: "Selecione somente cargos existentes e não gerenciados deste servidor." });
         return true;
       }
-      // Cargos com permissões não podem ser distribuídos por reação: isso evitará conceder acesso administrativo ou moderação.
       if (role.permissions.bitfield !== 0n) {
         sendJson(res, 400, { detail: "O cargo @" + role.name + " possui permissões. Por segurança, use somente cargos decorativos sem permissões." });
         return true;
@@ -145,13 +144,26 @@ async function handleApi(req, res, url, context) {
         sendJson(res, 403, { detail: "O cargo @" + role.name + " está acima ou na mesma posição do cargo da Yukina. Mova o cargo da Yukina acima dele e tente novamente." });
         return true;
       }
-      roles.push({ ...color, name: role.name, previousHex: role.hexColor, role });
+      roles.push({ ...color, name: role.name, role });
     }
 
-    // A cor visual é atualizada no cargo escolhido pelo administrador; nenhum cargo é criado ou excluído.
+    // Posiciona os cargos de cor no topo dos cargos comuns, logo abaixo do cargo mais alto da Yukina.
+    // A Yukina nunca tenta mover um cargo acima do próprio cargo mais alto.
+    const previousConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors || {};
+    const orderedPositions = roles.map((item, index) => ({
+      role: item.role.id,
+      position: Math.max(1, botMember.roles.highest.position - 1 - index)
+    }));
+    if (orderedPositions.some(item => item.position >= botMember.roles.highest.position)) {
+      sendJson(res, 403, { detail: "Não há posições disponíveis abaixo do cargo mais alto da Yukina para organizar os cargos de cor." });
+      return true;
+    }
+    if (orderedPositions.length) await guild.roles.setPositions(orderedPositions, { reason: "Organização automática dos cargos de cor da Yukina" });
+
     for (const item of roles) {
-      if (item.role.hexColor.toUpperCase() !== item.hex) {
-        await item.role.edit({ color: item.hex }, "Cor definida pelo administrador no painel da Yukina");
+      const currentRole = await guild.roles.fetch(item.role.id);
+      if (currentRole.hexColor.toUpperCase() !== item.hex) {
+        await currentRole.edit({ color: item.hex }, "Cor definida pelo administrador no painel da Yukina");
       }
     }
 
@@ -160,18 +172,27 @@ async function handleApi(req, res, url, context) {
       .setTitle("🎨 Escolha a cor do seu nick")
       .setDescription(roles.map(color => color.emoji + "  **" + color.name + "**").join("\n"))
       .setFooter({ text: "Yukina • Reaja para escolher. Uma cor por membro." });
-    const sent = await channel.send({ content: messageText, embeds: [embed] });
+
+    // Mantém uma única mensagem: edita a publicação anterior e sincroniza suas reações.
+    let targetMessage = null;
+    if (previousConfig.messageId && String(previousConfig.channelId) === channel.id) {
+      targetMessage = await channel.messages.fetch(String(previousConfig.messageId)).catch(() => null);
+    }
+    if (targetMessage) {
+      await targetMessage.edit({ content: messageText, embeds: [embed] });
+      await targetMessage.reactions.removeAll().catch(() => {});
+    } else {
+      targetMessage = await channel.send({ content: messageText, embeds: [embed] });
+    }
     try {
-      for (const color of roles) await sent.react(color.emoji);
+      for (const color of roles) await targetMessage.react(color.emoji);
     } catch (error) {
-      await sent.delete().catch(() => {});
-      throw new Error("Não consegui adicionar todas as reações. Confira a permissão Adicionar reações.");
+      throw new Error("Não consegui sincronizar todas as reações. Confira a permissão Adicionar reações.");
     }
 
-    const previousConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors || {};
     const saved = {
-      enabled: true, channelId, channelName: channel.name, messageId: sent.id,
-      message: messageText, colors: roles.map(({ role, previousHex, ...item }) => item),
+      enabled: true, channelId, channelName: channel.name, messageId: targetMessage.id,
+      message: messageText, colors: roles.map(({ role, ...item }) => ({ ...item, roleId: role.id })),
       updatedAt: new Date().toISOString()
     };
     await collection.updateOne(
@@ -180,13 +201,13 @@ async function handleApi(req, res, url, context) {
       { upsert: true }
     );
 
-    // A mensagem antiga é removida; cargos não selecionados permanecem intactos no servidor.
-    if (previousConfig.messageId && previousConfig.messageId !== sent.id) {
+    // Se o administrador mudou o canal, a mensagem antiga é removida após a nova publicação ficar pronta.
+    if (previousConfig.messageId && previousConfig.messageId !== targetMessage.id) {
       const oldChannel = await guild.channels.fetch(String(previousConfig.channelId)).catch(() => null);
       const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(previousConfig.messageId)).catch(() => null) : null;
       if (oldMessage) await oldMessage.delete().catch(() => {});
     }
-    sendJson(res, 200, { ok: true, config: saved, detail: "Cores salvas e mensagem publicada. A Yukina utilizou apenas cargos existentes; nenhum cargo foi criado ou excluído." });
+    sendJson(res, 200, { ok: true, config: saved, detail: "Configuração atualizada na mensagem existente. Cargos existentes organizados no topo; nenhum cargo foi criado ou excluído." });
     return true;
   } catch (error) {
     console.error("[Cores de Nick] Falha ao salvar:", error.stack || error.message || error);
