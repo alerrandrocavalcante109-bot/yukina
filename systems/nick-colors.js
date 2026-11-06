@@ -4,18 +4,9 @@ const { EmbedBuilder, PermissionsBitField } = require("discord.js");
 
 const activeGuildSaves = new Set();
 
-const COLORS = [
-  { key: "red", name: "Vermelho", emoji: "🔴" },
-  { key: "orange", name: "Laranja", emoji: "🟠" },
-  { key: "yellow", name: "Amarelo", emoji: "🟡" },
-  { key: "green", name: "Verde", emoji: "🟢" },
-  { key: "blue", name: "Azul", emoji: "🔵" },
-  { key: "cyan", name: "Ciano", emoji: "🩵" },
-  { key: "purple", name: "Roxo", emoji: "🟣" },
-  { key: "pink", name: "Rosa", emoji: "🌸" },
-  { key: "white", name: "Branco", emoji: "⚪" },
-  { key: "black", name: "Preto", emoji: "⚫" }
-];
+const COLORS = Array.from({ length: 10 }, (_, index) => ({
+  key: "color" + (index + 1), name: "Cor " + (index + 1), emoji: ["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟"][index]
+}));
 
 function install(client, getSettingsCollection) {
   async function resolveReaction(reaction) {
@@ -113,12 +104,13 @@ async function handleApi(req, res, url, context) {
       const roleId = String(entry?.roleId || "").trim();
       const hex = String(entry?.hex || "").toUpperCase();
       const palette = COLORS.find(item => item.key === key);
-      if (!palette || keys.has(key) || !/^\d{17,20}$/.test(roleId) || roleIds.has(roleId) || !/^#[0-9A-F]{6}$/.test(hex)) {
+      if (!palette || keys.has(key) || (roleId && !/^\d{17,20}$/.test(roleId)) || (roleId && roleIds.has(roleId)) || !/^#[0-9A-F]{6}$/.test(hex)) {
         sendJson(res, 400, { detail: "Uma das cores ou cargos selecionados é inválida. Confira a seleção e tente novamente." });
         return true;
       }
       keys.add(key);
-      roleIds.add(roleId);
+      if (roleId) roleIds.add(roleId);
+      if (selected.some(item => item.hex === hex)) { sendJson(res, 400, { detail: "Cada opção precisa ter uma tonalidade diferente." }); return true; }
       selected.push({ ...palette, roleId, hex });
     }
 
@@ -139,35 +131,27 @@ async function handleApi(req, res, url, context) {
       return true;
     }
 
-    // Confere todos os cargos antes de alterar qualquer um: somente cargos existentes, decorativos e abaixo da Yukina.
+    // A Yukina cria e reutiliza os cargos de cor. O nome determinístico + ID salvo impedem duplicatas ao salvar novamente.
+    const previousConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors || {};
     const roles = [];
-    const normalizedRoleNames = new Set();
+    const usedRoleIds = new Set();
     for (const color of selected) {
-      const role = await guild.roles.fetch(color.roleId).catch(() => null);
-      if (!role || role.guild.id !== guild.id || role.id === guild.id || role.managed) {
-        sendJson(res, 400, { detail: "Selecione somente cargos existentes e não gerenciados deste servidor." });
+      const oldColor = (previousConfig.colors || []).find(item => item.key === color.key);
+      let role = oldColor?.roleId ? await guild.roles.fetch(String(oldColor.roleId)).catch(() => null) : null;
+      const roleName = "Yukina • " + color.key;
+      if (!role) role = guild.roles.cache.find(item => item.name === roleName && !item.managed) || null;
+      if (!role) {
+        role = await guild.roles.create({ name: roleName, color: color.hex, permissions: [], mentionable: false, hoist: false, reason: "Cargo de cor de nick criado pelo painel da Yukina" });
+      }
+      if (role.guild.id !== guild.id || role.id === guild.id || role.managed || usedRoleIds.has(role.id)) {
+        sendJson(res, 400, { detail: "Não foi possível validar um cargo de cor exclusivo. Nenhuma opção duplicada foi aplicada." });
         return true;
       }
-      const normalizedRoleName = role.name.trim().normalize("NFKC").toLocaleLowerCase("pt-BR");
-      if (normalizedRoleNames.has(normalizedRoleName)) {
-        sendJson(res, 400, { detail: "Dois cargos selecionados possuem o mesmo nome. Escolha cargos diferentes para evitar opções de cor duplicadas." });
-        return true;
-      }
-      normalizedRoleNames.add(normalizedRoleName);
-      if (role.permissions.bitfield !== 0n) {
-        sendJson(res, 400, { detail: "O cargo @" + role.name + " possui permissões. Por segurança, use somente cargos decorativos sem permissões." });
-        return true;
-      }
-      if (role.position >= botMember.roles.highest.position) {
-        sendJson(res, 403, { detail: "O cargo @" + role.name + " está acima ou na mesma posição do cargo da Yukina. Mova o cargo da Yukina acima dele e tente novamente." });
-        return true;
-      }
-      roles.push({ ...color, name: role.name, role });
+      usedRoleIds.add(role.id);
+      roles.push({ ...color, name: color.name, role });
     }
 
-    // Posiciona os cargos de cor no topo dos cargos comuns, logo abaixo do cargo mais alto da Yukina.
-    // A Yukina nunca tenta mover um cargo acima do próprio cargo mais alto.
-    const previousConfig = (await collection.findOne({ guildId: targetGuildId }, { projection: { "settings.nickColors": 1 } }))?.settings?.nickColors || {};
+    // Mantém os cargos criados pela Yukina agrupados logo abaixo do cargo mais alto do bot.
     const orderedPositions = roles.map((item, index) => ({
       role: item.role.id,
       position: Math.max(1, botMember.roles.highest.position - 1 - index)
@@ -225,7 +209,7 @@ async function handleApi(req, res, url, context) {
       const oldMessage = oldChannel?.messages ? await oldChannel.messages.fetch(String(previousConfig.messageId)).catch(() => null) : null;
       if (oldMessage) await oldMessage.delete().catch(() => {});
     }
-    sendJson(res, 200, { ok: true, config: saved, detail: "Configuração atualizada na mensagem existente. Cargos existentes organizados no topo; nenhum cargo foi criado ou excluído." });
+    sendJson(res, 200, { ok: true, config: saved, detail: "Configuração atualizada. Cargos de cor criados uma única vez e reutilizados nas próximas edições." });
     return true;
   } catch (error) {
     console.error("[Cores de Nick] Falha ao salvar:", error.stack || error.message || error);
