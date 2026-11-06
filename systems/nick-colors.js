@@ -126,8 +126,9 @@ async function handleApi(req, res, url, context) {
       return true;
     }
     const channelPermissions = channel.permissionsFor(botMember);
-    if (!channelPermissions || ![PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.AddReactions].every(flag => channelPermissions.has(flag))) {
-      sendJson(res, 403, { detail: "A Yukina não tem todas as permissões necessárias no canal escolhido." });
+    const channelRequired = [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.ReadMessageHistory, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.EmbedLinks, PermissionsBitField.Flags.AddReactions, PermissionsBitField.Flags.ManageMessages];
+    if (!channelPermissions || !channelRequired.every(flag => channelPermissions.has(flag))) {
+      sendJson(res, 403, { detail: "No canal escolhido, dê à Yukina: Ver canal, Ler histórico de mensagens, Enviar mensagens, Incorporar links, Adicionar reações e Gerenciar mensagens. Gerenciar mensagens é necessário para limpar as reações antigas e atualizar o painel existente." });
       return true;
     }
 
@@ -212,8 +213,9 @@ async function handleApi(req, res, url, context) {
     sendJson(res, 200, { ok: true, config: saved, detail: "Configuração atualizada. Cargos de cor criados uma única vez e reutilizados nas próximas edições." });
     return true;
   } catch (error) {
-    console.error("[Cores de Nick] Falha ao salvar:", error.stack || error.message || error);
-    sendJson(res, error.status || 500, { detail: error.message || "Não foi possível salvar o sistema de cores." });
+    console.error("[Cores de Nick] Falha ao salvar:", { code: error.code, message: error.message, stack: error.stack });
+    const missingPermissions = Number(error.code) === 50013;
+    sendJson(res, missingPermissions ? 403 : (error.status || 500), { detail: missingPermissions ? "O Discord bloqueou uma ação da Yukina (Missing Permissions). Confira se ela tem Gerenciar cargos no servidor e, no canal escolhido, Ver canal, Ler histórico, Enviar mensagens, Incorporar links, Adicionar reações e Gerenciar mensagens. O cargo mais alto da Yukina também precisa ficar acima dos cargos de cor." : (error.message || "Não foi possível salvar o sistema de cores.") });
     return true;
   } finally {
     if (saveLockGuildId) activeGuildSaves.delete(saveLockGuildId);
