@@ -1350,10 +1350,10 @@ async function panelApi(req, res, url) {
         const existingRoles = new Set(guild.roles.cache.filter(role => !role.managed).map(role => role.id));
         const channelId = String(config.channelId || "");
         if (enabled) {
-          if (!roleIds.length || roleIds.some(id => !/^\\d{17,20}$/.test(id) || !existingRoles.has(id))) {
+          if (!roleIds.length || roleIds.some(id => !/^\d{17,20}$/.test(id) || !existingRoles.has(id))) {
             return sendJson(res, 400, { detail: "Selecione ao menos um cargo existente para os avisos temporais." });
           }
-          if (!/^\\d{17,20}$/.test(channelId)) {
+          if (!/^\d{17,20}$/.test(channelId)) {
             return sendJson(res, 400, { detail: "Selecione um canal válido para os avisos temporais." });
           }
           const channel = await guild.channels.fetch(channelId).catch(() => null);
