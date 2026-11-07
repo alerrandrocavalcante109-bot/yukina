@@ -12,204 +12,164 @@ const DEDUPE_WINDOW_MS = 30_000;
 const promotionPhrasePools = new Map();
 const PROMOTION_PHRASES = [
   [
-    "❄️ Uma nova etapa começa!",
-    "Hoje celebramos {member} pela promoção para {role}! Que essa nova jornada seja repleta de aprendizado, confiança e conquistas."
+    "🌸 Um novo capítulo floresce",
+    "Hoje, os caminhos da nossa equipe se abrem para {member}. A partir de agora, essa nova jornada será vivida no cargo de {role}. Que cada passo floresça em boas conquistas!"
   ],
   [
-    "🌸 Florescendo em uma nova missão",
-    "Com alegria, anunciamos {member} em {role}. Que essa responsabilidade floresça com dedicação e respeito."
+    "🏮 Comunicado oficial da equipe",
+    "Temos a satisfação de anunciar a promoção de {member} para **{role}**. Esta nova posição representa confiança, reconhecimento e responsabilidade. Parabéns por esta conquista."
   ],
   [
-    "🌙 Um novo brilho na equipe",
-    "{member} alcançou uma nova etapa e agora ocupa {role}. Que sua presença continue fazendo a diferença."
+    "✨ O mérito encontrou seu brilho",
+    "Algumas conquistas merecem os holofotes. Hoje, eles são de {member}, que alcançou o cargo de {role}. Que esse brilho continue inspirando toda a comunidade!"
   ],
   [
-    "✨ Reconhecimento merecido",
-    "Toda dedicação merece ser reconhecida. Parabéns, {member}, pela promoção para {role}!"
+    "🎐 Uma notícia que merece ser celebrada",
+    "Parem um instante para comemorar: {member} acaba de chegar a **{role}**! Uma nova etapa começa, e estamos felizes em tê-lo(a) conosco nessa caminhada."
   ],
   [
-    "⛩️ Uma nova responsabilidade",
-    "As portas de uma nova jornada se abrem para {member}, promovido(a) a {role}. Conte com a equipe!"
+    "🌙 Sob a luz de uma nova fase",
+    "A lua testemunha mais uma mudança em nossa história. {member} assume agora o cargo de **{role}**. Que haja sabedoria nas decisões e serenidade nos desafios."
   ],
   [
-    "🌷 Um passo adiante",
-    "Damos as boas-vindas a {member} em sua nova função: {role}. Que venham experiências incríveis!"
+    "📜 Registro de uma conquista",
+    "Fica registrado neste momento: **{member}** foi promovido(a) e passa a ocupar **{role}**. Que esta conquista seja o início de muitas outras."
   ],
   [
-    "💜 Conquista celebrada",
-    "Temos uma novidade especial: {member} agora faz parte de {role}. Parabéns!"
+    "💜 Confiança que cresce",
+    "Nossa confiança em {member} ganha um novo capítulo. A partir de hoje, sua função será **{role}**. Obrigado(a) por aceitar esse novo desafio!"
   ],
   [
-    "🌨️ Uma nova missão sob a lua",
-    "A equipe celebra a promoção de {member} para {role}. Que sua jornada seja guiada por equilíbrio e dedicação."
+    "🎊 Pode comemorar!",
+    "Tem promoção chegando! 🎉 {member} agora é **{role}**! Deixe seu carinho e suas felicitações para essa conquista especial."
   ],
   [
-    "🎐 Novos ventos, novos caminhos",
-    "{member} inicia uma nova etapa como {role}. Que essa mudança traga crescimento!"
+    "⛩️ Uma nova honra no santuário",
+    "As portas de uma nova responsabilidade se abrem. {member} recebe a honra de integrar **{role}**. Que sua jornada seja guiada pelo respeito e pela dedicação."
   ],
   [
-    "🌟 Destaque da vez",
-    "Hoje o reconhecimento vai para {member}, promovido(a) a {role}. Parabéns!"
+    "🪷 Dedicação em cada detalhe",
+    "O cuidado, a presença e o esforço de {member} não passaram despercebidos. Hoje celebramos sua promoção para **{role}**. Nosso reconhecimento por essa caminhada!"
   ],
   [
-    "🌸 Mais um capítulo",
-    "Um novo capítulo começa para {member}, agora no cargo de {role}. Que seja uma história de união."
+    "🚀 Próxima etapa desbloqueada",
+    "**Nova etapa desbloqueada!**\n\nJogador(a): {member}\nNova função: **{role}**\n\nQue venham novos desafios, aprendizados e vitórias!"
   ],
   [
-    "❄️ A equipe cresce",
-    "Nossa equipe ganha uma nova etapa com {member} assumindo {role}. Desejamos uma jornada excelente!"
+    "🌷 Uma mudança cheia de significado",
+    "Há mudanças que representam muito mais do que um novo título. Para {member}, hoje começa a experiência de atuar como **{role}**. Estamos torcendo por você!"
   ],
   [
-    "🪷 Dedicação que inspira",
-    "A dedicação de {member} ganha um novo reconhecimento: a promoção para {role}."
+    "🔔 Atenção, comunidade!",
+    "Uma novidade importante acaba de chegar: {member} foi promovido(a) para **{role}**. Recebam essa nova etapa com entusiasmo!"
   ],
   [
-    "🌙 Sob uma nova luz",
-    "É hora de celebrar {member}, que agora assume {role}. Que essa responsabilidade venha com grandes momentos."
+    "🌌 Uma estrela muda de lugar",
+    "No céu da nossa equipe, {member} passa a ocupar um novo espaço: **{role}**. Que continue iluminando o caminho de todos ao seu redor."
   ],
   [
-    "🎎 Uma conquista especial",
-    "Anunciamos {member} no cargo de {role}. Que essa nova fase seja leve e memorável!"
+    "🤝 Uma conquista de toda a equipe",
+    "Quando alguém cresce, toda a equipe cresce junto. Parabéns, {member}, pela promoção para **{role}**. Conte com o nosso apoio nessa nova fase!"
   ],
   [
-    "✨ Um novo horizonte",
-    "{member} alcançou um novo horizonte em nossa equipe e agora ocupa {role}. Parabéns!"
+    "❄️ Novos passos, novas responsabilidades",
+    "A jornada continua e os desafios também evoluem. {member} agora assume **{role}**. Que não faltem equilíbrio, coragem e boas escolhas."
   ],
   [
-    "🌺 Reconhecimento e confiança",
-    "A confiança da equipe acompanha {member} nesta nova etapa como {role}. Sucesso!"
+    "🎎 Celebração especial",
+    "Hoje é dia de reconhecimento! Com alegria, anunciamos {member} como novo(a) integrante de **{role}**. Que esta etapa seja memorável."
   ],
   [
-    "🌨️ Mais uma estrela no caminho",
-    "Hoje celebramos a promoção de {member} para {role}. Que sua contribuição continue iluminando a comunidade."
+    "🧭 Um novo caminho começa aqui",
+    "Uma nova direção se apresenta para {member}, que agora assume o cargo de **{role}**. Siga com confiança: sua próxima jornada começa agora."
   ],
   [
-    "🍡 Uma doce conquista",
-    "Uma notícia para comemorar: {member} foi promovido(a) a {role}!"
+    "💎 Uma joia reconhecida",
+    "Talento e dedicação merecem ser valorizados. {member} recebe hoje uma nova posição: **{role}**. Parabéns por conquistar esse espaço!"
   ],
   [
-    "🏮 Uma nova posição",
-    "As lanternas se acendem para uma nova etapa: {member} agora ocupa {role}. Parabéns!"
+    "🌺 A equipe tem um novo motivo para sorrir",
+    "Nossa comunidade ganha mais uma boa notícia: {member} foi promovido(a) para **{role}**. Que essa novidade traga ainda mais união!"
   ],
   [
-    "💫 Crescimento reconhecido",
-    "É muito bom ver nossa equipe crescer. Parabéns a {member} pela promoção para {role}!"
+    "⚔️ Chamado para uma nova missão",
+    "Uma nova missão foi confiada a {member}!\n\n**Missão:** assumir o cargo {role}\n**Objetivo:** crescer, colaborar e fortalecer a equipe.\n\nBoa sorte nessa jornada!"
   ],
   [
-    "🌸 Um momento para celebrar",
-    "Celebramos {member}, que agora assume o cargo de {role}. Sucesso nessa nova fase!"
+    "📣 É oficial: temos promoção!",
+    "Depois de uma caminhada de dedicação, {member} chega a **{role}**. A promoção está anunciada — agora é hora de escrever o próximo capítulo!"
   ],
   [
-    "❄️ Novos passos na neve",
-    "{member} dá mais um passo em sua trajetória e chega ao cargo de {role}."
+    "🍡 Uma conquista para adoçar o dia",
+    "Tem notícia boa no ar! {member} acaba de conquistar o cargo de **{role}**. Que essa nova fase seja tão especial quanto este momento!"
   ],
   [
-    "🌙 Uma missão de confiança",
-    "Com confiança e alegria, anunciamos {member} como novo(a) integrante de {role}."
+    "🏆 Reconhecimento conquistado",
+    "**Conquista confirmada.** {member} foi promovido(a) para **{role}**. Nosso respeito por todo o empenho demonstrado até aqui."
   ],
   [
-    "🎐 A jornada continua",
-    "A caminhada de {member} ganha um novo capítulo com a promoção para {role}."
+    "🌿 Crescer também é florescer",
+    "Cada experiência prepara o próximo passo. Hoje, {member} floresce em uma nova função: **{role}**. Que continue aprendendo e fazendo a diferença."
   ],
   [
-    "🪻 Uma evolução especial",
-    "Celebramos a evolução de {member}, agora promovido(a) a {role}."
+    "🎏 Os ventos trouxeram novidades",
+    "Novos ventos sopram na equipe! {member} inicia sua jornada como **{role}**. Que essa mudança traga energia e grandes realizações."
   ],
   [
-    "⭐ Uma conquista que merece destaque",
-    "Parabéns, {member}! Sua nova posição é {role}. Que sua trajetória seja brilhante."
+    "🕊️ Uma etapa de confiança",
+    "Com respeito e confiança, celebramos a promoção de {member} para **{role}**. Que suas atitudes continuem fortalecendo nossa comunidade."
   ],
   [
-    "🌸 Sakura de celebração",
-    "Como as sakuras anunciam uma nova estação, celebramos a nova etapa de {member} em {role}."
+    "🌠 O próximo capítulo já começou",
+    "A história de {member} na equipe acaba de ganhar uma nova página: agora, o cargo é **{role}**. Que venham capítulos incríveis!"
   ],
   [
-    "🧭 Um novo caminho na equipe",
-    "{member} começa agora uma nova caminhada como {role}. Desejamos sabedoria!"
+    "🎨 Uma nova cor na nossa equipe",
+    "Nossa equipe ganha uma nova tonalidade com a chegada de {member} ao cargo **{role}**. Que sua presença torne este espaço ainda melhor!"
   ],
   [
-    "💜 Um reconhecimento especial",
-    "Anunciamos a promoção de {member} para {role}. Que essa confiança traga grandes feitos!"
+    "🪭 Com honra e alegria",
+    "É com grande alegria que reconhecemos {member} em sua nova posição: **{role}**. Receba nossos parabéns e votos de uma excelente jornada."
   ],
   [
-    "🌨️ A neve traz novidades",
-    "Temos uma novidade: {member} agora ocupa {role}. Que essa nova etapa seja cheia de realizações!"
+    "⏳ O esforço trouxe novos frutos",
+    "Toda caminhada é feita de pequenos passos. Hoje, eles levam {member} ao cargo de **{role}**. Que este reconhecimento motive novas conquistas."
   ],
   [
-    "🏯 Uma nova honra",
-    "Anunciamos {member} no cargo de {role}. Parabéns pela conquista e pela nova responsabilidade!"
+    "🌸 Sakura em festa!",
+    "As sakuras estão em festa: {member} foi promovido(a) para **{role}**! Que esta nova estação seja repleta de crescimento e boas lembranças."
   ],
   [
-    "✨ Mais uma vitória",
-    "Uma nova vitória para celebrar: {member} foi promovido(a) a {role}!"
+    "🛡️ Uma nova responsabilidade confiada",
+    "A equipe confia a {member} uma nova responsabilidade: **{role}**. Que sua atuação seja marcada por equilíbrio, compromisso e respeito."
   ],
   [
-    "🌷 Um ciclo se renova",
-    "Um novo ciclo começa para {member}, agora em {role}. Que não faltem motivação e união!"
+    "💫 Hoje a Yukina tem um anúncio especial",
+    "Com um sorriso, a Yukina anuncia: {member} agora ocupa **{role}**! Parabéns por essa conquista. Estamos felizes em acompanhar sua evolução."
   ],
   [
-    "🌙 A lua testemunha uma conquista",
-    "Sob a luz da lua, celebramos a promoção de {member} para {role}."
+    "📖 Capítulo concluído, jornada renovada",
+    "Uma etapa foi concluída e outra começa. {member} passa a fazer parte de **{role}**. Que cada experiência daqui em diante valha a pena!"
   ],
   [
-    "🎏 Boas notícias para a equipe",
-    "Nossa equipe tem mais um motivo para comemorar: {member} agora faz parte de {role}."
+    "🌈 Um futuro cheio de possibilidades",
+    "A promoção de {member} para **{role}** abre espaço para novas ideias, experiências e oportunidades. Que seja uma fase extraordinária!"
   ],
   [
-    "❄️ Um passo de confiança",
-    "{member} recebe uma nova demonstração de confiança e assume {role}."
+    "🥁 Atenção para os aplausos!",
+    "Um aplauso para {member}! 👏 A partir de hoje, assume o cargo de **{role}**. Essa conquista merece ser celebrada por todos!"
   ],
   [
-    "🌼 Uma nova oportunidade",
-    "Uma nova oportunidade se apresenta para {member}, promovido(a) a {role}. Aproveite cada aprendizado!"
+    "🏯 Uma nova posição na história",
+    "Mais um marco na história da nossa comunidade: {member} assume **{role}**. Que essa posição seja ocupada com honra e dedicação!"
   ],
   [
-    "💎 Talento reconhecido",
-    "Hoje reconhecemos o crescimento de {member}, que passa a ocupar {role}. Parabéns!"
+    "🌻 Que venham novos aprendizados",
+    "Parabéns, {member}! Sua promoção para **{role}** é o começo de uma fase cheia de oportunidades. Aprenda, compartilhe e continue crescendo."
   ],
   [
-    "🌸 A primavera da equipe",
-    "Nossa comunidade celebra mais uma conquista: {member} agora assume {role}."
-  ],
-  [
-    "🕊️ Uma etapa de crescimento",
-    "Com respeito e alegria, celebramos {member} em sua nova função: {role}."
-  ],
-  [
-    "🌌 Um novo lugar entre as estrelas",
-    "{member} alcançou uma nova posição em nossa equipe: {role}. Continue brilhando!"
-  ],
-  [
-    "🎐 Uma conquista compartilhada",
-    "Essa conquista também é motivo de alegria para toda a equipe. Parabéns, {member}, pela promoção para {role}!"
-  ],
-  [
-    "🪷 Novas responsabilidades, novas conquistas",
-    "{member} inicia sua jornada em {role}. Que cada responsabilidade seja uma oportunidade!"
-  ],
-  [
-    "🌙 Um anúncio especial da Yukina",
-    "Com muita alegria, a Yukina anuncia: {member} agora ocupa {role}. Parabéns!"
-  ],
-  [
-    "🏵️ Mérito celebrado",
-    "A promoção de {member} para {role} merece ser celebrada. Desejamos sucesso!"
-  ],
-  [
-    "❄️ Uma nova fase começa agora",
-    "Chegou a hora de uma nova etapa para {member}, promovido(a) a {role}."
-  ],
-  [
-    "🌸 A equipe recebe uma novidade",
-    "Com alegria, recebemos {member} em sua nova posição como {role}."
-  ],
-  [
-    "✨ Confiança que se transforma em conquista",
-    "{member} assume agora o cargo de {role}. Que essa confiança marque uma trajetória ainda melhor!"
-  ],
-  [
-    "🌠 Um futuro cheio de possibilidades",
-    "Parabéns a {member} pela promoção para {role}! Que os próximos passos tragam aprendizado e união!"
+    "🔮 Um novo destino se revela",
+    "O próximo destino de {member} dentro da equipe é **{role}**. Que o caminho seja iluminado por boas escolhas e grandes conquistas!"
   ]
 ];
 function nextPromotionPhrase(guildId) {
