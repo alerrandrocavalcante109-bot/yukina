@@ -403,6 +403,7 @@
           <input class="prefix-input" id="staffPromotionRoleSearch" type="search" placeholder="Pesquisar cargo..." autocomplete="off">
           <div id="staffPromotionRoleOptions" style="display:grid;gap:7px;max-height:210px;overflow-y:auto;margin-top:10px"><p>Carregando cargos…</p></div>
         </div>
+        <div id="staffPromotionSelectedRoles" style="display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px" aria-live="polite"></div>
         <p class="prefix-status" id="staffPromotionRoleSummary" role="status" aria-live="polite">Nenhum cargo selecionado.</p>
         <label for="staffPromotionChannelPickerButton">Canal dos anúncios</label>
         <select class="prefix-input" id="staffPromotionChannel" hidden><option value="">Carregando canais…</option></select>
@@ -1108,23 +1109,39 @@
     function renderStaffPromotionRoles(){
       if(!staffPromotionRoleOptions)return;
       const query=(staffPromotionRoleSearch.value||"").trim().toLocaleLowerCase("pt-BR");
-      const filtered=staffPromotionRoles.filter(role=>!role.managed&&String(role.name||"").toLocaleLowerCase("pt-BR").includes(query));
+      const available=staffPromotionRoles.filter(role=>!role.managed);
+      const filtered=available.filter(role=>String(role.name||"").toLocaleLowerCase("pt-BR").includes(query));
       staffPromotionRoleOptions.replaceChildren();
       if(!filtered.length){const empty=document.createElement("p");empty.textContent="Nenhum cargo encontrado.";staffPromotionRoleOptions.appendChild(empty);}
       filtered.forEach(role=>{
         const id=String(role.id),selected=staffPromotionSelectedIds.has(id),button=document.createElement("button");
         button.type="button";button.setAttribute("aria-pressed",String(selected));button.textContent=(selected?"✓  ":"＋  ")+"@"+role.name;
         const raw=Number(role.color)||0,hex=raw?"#"+raw.toString(16).padStart(6,"0").slice(-6):(role.hexColor||"#e9ddff");
-        button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?"#c4b5fd":"#ffffff20")+";border-radius:9px;background:"+(selected?"rgba(196,181,253,.2)":"rgba(255,255,255,.04)")+";color:"+hex;
-        button.addEventListener("click",()=>{if(staffPromotionSelectedIds.has(id))staffPromotionSelectedIds.delete(id);else staffPromotionSelectedIds.add(id);renderStaffPromotionRoles();updateStaffPromotionSummary();});
+        button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?hex:"#ffffff20")+";border-radius:9px;background:"+(selected?"color-mix(in srgb, "+hex+" 18%, transparent)":"rgba(255,255,255,.04)")+";color:"+hex;
+        button.addEventListener("click",()=>{if(staffPromotionSelectedIds.has(id))staffPromotionSelectedIds.delete(id);else staffPromotionSelectedIds.add(id);renderStaffPromotionRoles();});
         staffPromotionRoleOptions.appendChild(button);
       });
       staffPromotionRolePickerButton.textContent=staffPromotionSelectedIds.size?staffPromotionSelectedIds.size+" cargo(s) selecionado(s)":"Selecionar cargos…";
       updateStaffPromotionSummary();
     }
     function updateStaffPromotionSummary(){
-      const names=staffPromotionRoles.filter(role=>staffPromotionSelectedIds.has(String(role.id))).map(role=>"@"+role.name);
-      staffPromotionRoleSummary.textContent=names.length?"Cargos selecionados: "+names.join(", "):"Nenhum cargo selecionado.";
+      const container=$("staffPromotionSelectedRoles");
+      if(container){
+        container.replaceChildren();
+        const selected=staffPromotionRoles.filter(role=>staffPromotionSelectedIds.has(String(role.id)));
+        selected.forEach(role=>{
+          const raw=Number(role.color)||0,hex=raw?"#"+raw.toString(16).padStart(6,"0").slice(-6):(role.hexColor||"#e9ddff");
+          const chip=document.createElement("span");
+          chip.style.cssText="display:inline-flex;align-items:center;gap:9px;max-width:100%;padding:6px 8px 6px 11px;border:1px solid "+hex+"66;border-left:4px solid "+hex+";border-radius:999px;background:color-mix(in srgb, "+hex+" 15%, transparent);color:"+hex+";font-size:13px;font-weight:600";
+          const name=document.createElement("span");name.textContent="@"+role.name;name.style.cssText="overflow:hidden;text-overflow:ellipsis;white-space:nowrap";
+          const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.title="Remover @"+role.name;remove.setAttribute("aria-label","Remover cargo "+role.name);
+          remove.style.cssText="width:22px;height:22px;flex:0 0 22px;border:0;border-radius:50%;background:rgba(0,0,0,.18);color:inherit;font-size:18px;line-height:1;cursor:pointer;padding:0";
+          remove.addEventListener("click",()=>{staffPromotionSelectedIds.delete(String(role.id));renderStaffPromotionRoles();});
+          chip.append(name,remove);container.appendChild(chip);
+        });
+      }
+      const count=staffPromotionSelectedIds.size;
+      staffPromotionRoleSummary.textContent=count?count+" cargo(s) selecionado(s). Toque no × para remover.":"Nenhum cargo selecionado.";
     }
     function renderStaffPromotionSinglePicker(select,card,button,entries,placeholder,prefix){
       const chosen=[...select.options].find(option=>option.value===select.value);
