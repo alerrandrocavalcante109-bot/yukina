@@ -1256,6 +1256,7 @@ async function panelApi(req, res, url) {
         if (!storedManaged.length && legacyManaged.length) temporalConfig.timeManagedRoleIds = legacyManaged;
         if (Array.isArray(temporalConfig.timeRules)) settings.timeRules = temporalConfig.timeRules;
         if (Array.isArray(temporalConfig.timeManagedRoleIds)) settings.timeManagedRoleIds = temporalConfig.timeManagedRoleIds;
+        if (temporalConfig.timeAnnouncement && typeof temporalConfig.timeAnnouncement === "object") settings.timeAnnouncement = temporalConfig.timeAnnouncement;
         if ((!storedRules.length && legacyRules.length) || (!storedManaged.length && legacyManaged.length)) {
           await temporalStorage.set(guildId, "config", temporalConfig);
         }
@@ -1339,6 +1340,29 @@ async function panelApi(req, res, url) {
           return sendJson(res, 400, { detail: "A hierarquia temporal aceita somente IDs de cargos existentes. Nenhum cargo foi criado." });
         }
       }
+      if (Object.prototype.hasOwnProperty.call(clean, "timeAnnouncement")) {
+        const config = clean.timeAnnouncement;
+        if (!config || typeof config !== "object" || Array.isArray(config)) {
+          return sendJson(res, 400, { detail: "A configuração de avisos temporais é inválida." });
+        }
+        const enabled = config.enabled === true;
+        const roleIds = Array.isArray(config.roleIds) ? [...new Set(config.roleIds.map(String))] : [];
+        const existingRoles = new Set(guild.roles.cache.filter(role => !role.managed).map(role => role.id));
+        const channelId = String(config.channelId || "");
+        if (enabled) {
+          if (!roleIds.length || roleIds.some(id => !/^\\d{17,20}$/.test(id) || !existingRoles.has(id))) {
+            return sendJson(res, 400, { detail: "Selecione ao menos um cargo existente para os avisos temporais." });
+          }
+          if (!/^\\d{17,20}$/.test(channelId)) {
+            return sendJson(res, 400, { detail: "Selecione um canal válido para os avisos temporais." });
+          }
+          const channel = await guild.channels.fetch(channelId).catch(() => null);
+          if (!channel || !channel.isTextBased() || !channel.send) {
+            return sendJson(res, 400, { detail: "O canal escolhido não aceita mensagens." });
+          }
+        }
+        clean.timeAnnouncement = { enabled, channelId: enabled ? channelId : "", roleIds: enabled ? roleIds : [] };
+      }
       if (Object.prototype.hasOwnProperty.call(clean, "staffPromotion")) {
         const config = clean.staffPromotion;
         if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -1374,6 +1398,7 @@ async function panelApi(req, res, url) {
           ...(existingTemporal && typeof existingTemporal === "object" ? existingTemporal : {}),
           ...(Array.isArray(clean.timeRules) ? { timeRules: clean.timeRules } : {}),
           ...(Array.isArray(clean.timeManagedRoleIds) ? { timeManagedRoleIds: clean.timeManagedRoleIds } : {}),
+          ...(clean.timeAnnouncement && typeof clean.timeAnnouncement === "object" ? { timeAnnouncement: clean.timeAnnouncement } : {}),
         });
       }
       if (Object.prototype.hasOwnProperty.call(clean, "xpRules") ||
