@@ -1098,6 +1098,7 @@
     const initialGuild = selectedGuild(); drawerServerName.textContent = initialGuild.name || "Nenhum servidor selecionado"; if(initialGuild.id&&localStorage.getItem("yukina_selected_guild_icon"))drawerCurrentServerAvatar.src="https://cdn.discordapp.com/icons/"+encodeURIComponent(initialGuild.id)+"/"+encodeURIComponent(localStorage.getItem("yukina_selected_guild_icon"))+".png?size=128";
     const staffPromotionRoleSearch=$("staffPromotionRoleSearch");
     const staffPromotionRoleOptions=$("staffPromotionRoleOptions");
+    const staffPromotionRolePickerButton=$("staffPromotionRolePickerButton");
     const staffPromotionRoleSummary=$("staffPromotionRoleSummary");
     const staffPromotionChannel=$("staffPromotionChannel");
     const staffPromotionNotifyRole=$("staffPromotionNotifyRole");
