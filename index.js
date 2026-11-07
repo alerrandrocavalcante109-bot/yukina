@@ -1348,9 +1348,10 @@ async function panelApi(req, res, url) {
         const enabled = config.enabled === true;
         const roleIds = Array.isArray(config.roleIds) ? [...new Set(config.roleIds.map(String))] : [];
         const existingRoles = new Set(guild.roles.cache.filter(role => !role.managed).map(role => role.id));
+        const temporalRuleIds = new Set((Array.isArray(clean.timeRules) ? clean.timeRules : []).map(rule => String(rule?.roleId || rule?.role_id || rule?.role || "")));
         const channelId = String(config.channelId || "");
         if (enabled) {
-          if (!roleIds.length || roleIds.some(id => !/^\d{17,20}$/.test(id) || !existingRoles.has(id))) {
+          if (!roleIds.length || roleIds.some(id => !/^\d{17,20}$/.test(id) || !existingRoles.has(id) || !temporalRuleIds.has(id))) {
             return sendJson(res, 400, { detail: "Selecione ao menos um cargo existente para os avisos temporais." });
           }
           if (!/^\d{17,20}$/.test(channelId)) {
