@@ -128,6 +128,18 @@
     .ticket-wizard-actions button{min-width:100px}
     @media(max-width:600px){.workspace{width:calc(100% - 24px);padding-top:100px}.system-screen h1{font-size:1.8rem}.screen-description{font-size:.94rem}}
     @media(prefers-reduced-motion:reduce){.drawer,.shade{transition:none}.system-screen{animation:none}}
+  
+    /* Espaçamento e leitura do sistema de promoções da staff */
+    .staff-promotion-panel{display:flex;flex-direction:column;align-items:stretch;gap:15px}
+    .staff-promotion-panel h2{margin:0 0 3px;line-height:1.4}
+    .staff-promotion-panel label{display:block;margin:5px 0 -7px;font-weight:600;line-height:1.5}
+    .staff-promotion-panel .reaction-select-menu{width:100%;min-height:46px;margin:0;text-align:left}
+    .staff-promotion-panel .reaction-picker-card{margin:0;padding:13px}
+    .staff-promotion-panel #staffPromotionRoleSearch{margin:0 0 8px}
+    .staff-promotion-panel #staffPromotionSelectedRoles{gap:9px!important;margin:0!important}
+    .staff-promotion-panel .prefix-status,
+    .staff-promotion-panel .prefix-system-help{margin:0;line-height:1.65}
+    .staff-promotion-panel .prefix-system-help{padding-top:2px}
   </style>
 </head>
 <body>
@@ -394,7 +406,7 @@
       <p class="eyebrow">EQUIPE DA COMUNIDADE</p>
       <h1>📣 Aviso de promoções staff</h1>
       <p class="screen-description">Escolha quais cargos representam uma promoção, onde o anúncio será publicado e qual cargo receberá a notificação.</p>
-      <div class="welcome-panel">
+      <div class="welcome-panel staff-promotion-panel">
         <span class="welcome-icon">🌙</span>
         <h2>Configurar avisos de promoção</h2>
         <label for="staffPromotionRolePickerButton">Cargos que ativam a promoção</label>
