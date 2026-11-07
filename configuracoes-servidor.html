@@ -397,14 +397,21 @@
       <div class="welcome-panel">
         <span class="welcome-icon">🌙</span>
         <h2>Configurar avisos de promoção</h2>
-        <label for="staffPromotionRoleSearch">Cargos que ativam a promoção</label>
-        <input class="prefix-input" id="staffPromotionRoleSearch" type="search" placeholder="Pesquisar cargo..." autocomplete="off">
-        <div id="staffPromotionRoleOptions" style="display:grid;gap:7px;max-height:240px;overflow-y:auto;margin-top:10px"><p>Carregando cargos…</p></div>
+        <label for="staffPromotionRolePickerButton">Cargos que ativam a promoção</label>
+        <button type="button" class="reaction-select-menu" id="staffPromotionRolePickerButton" aria-expanded="false">Selecionar cargos…</button>
+        <div id="staffPromotionRolePickerCard" class="reaction-picker-card" hidden>
+          <input class="prefix-input" id="staffPromotionRoleSearch" type="search" placeholder="Pesquisar cargo..." autocomplete="off">
+          <div id="staffPromotionRoleOptions" style="display:grid;gap:7px;max-height:210px;overflow-y:auto;margin-top:10px"><p>Carregando cargos…</p></div>
+        </div>
         <p class="prefix-status" id="staffPromotionRoleSummary" role="status" aria-live="polite">Nenhum cargo selecionado.</p>
-        <label for="staffPromotionChannel">Canal dos anúncios</label>
-        <select class="prefix-input" id="staffPromotionChannel"><option value="">Carregando canais…</option></select>
-        <label for="staffPromotionNotifyRole">Cargo de notificação</label>
-        <select class="prefix-input" id="staffPromotionNotifyRole"><option value="">Carregando cargos…</option></select>
+        <label for="staffPromotionChannelPickerButton">Canal dos anúncios</label>
+        <select class="prefix-input" id="staffPromotionChannel" hidden><option value="">Carregando canais…</option></select>
+        <button type="button" class="reaction-select-menu" id="staffPromotionChannelPickerButton" aria-expanded="false">Selecione um canal…</button>
+        <div id="staffPromotionChannelPickerCard" class="reaction-picker-card" hidden></div>
+        <label for="staffPromotionNotifyRolePickerButton">Cargo de notificação</label>
+        <select class="prefix-input" id="staffPromotionNotifyRole" hidden><option value="">Carregando cargos…</option></select>
+        <button type="button" class="reaction-select-menu" id="staffPromotionNotifyRolePickerButton" aria-expanded="false">Selecione um cargo…</button>
+        <div id="staffPromotionNotifyRolePickerCard" class="reaction-picker-card" hidden></div>
         <p class="prefix-system-help">Quando um membro receber qualquer um dos cargos selecionados, a Yukina publicará o aviso e mencionará o cargo de notificação.</p>
         <button type="button" class="primary-action" id="staffPromotionSave">Salvar</button>
         <p class="prefix-status" id="staffPromotionStatus" role="status" aria-live="polite"></p>
@@ -1111,11 +1118,27 @@
         button.addEventListener("click",()=>{if(staffPromotionSelectedIds.has(id))staffPromotionSelectedIds.delete(id);else staffPromotionSelectedIds.add(id);renderStaffPromotionRoles();updateStaffPromotionSummary();});
         staffPromotionRoleOptions.appendChild(button);
       });
+      staffPromotionRolePickerButton.textContent=staffPromotionSelectedIds.size?staffPromotionSelectedIds.size+" cargo(s) selecionado(s)":"Selecionar cargos…";
       updateStaffPromotionSummary();
     }
     function updateStaffPromotionSummary(){
       const names=staffPromotionRoles.filter(role=>staffPromotionSelectedIds.has(String(role.id))).map(role=>"@"+role.name);
       staffPromotionRoleSummary.textContent=names.length?"Cargos selecionados: "+names.join(", "):"Nenhum cargo selecionado.";
+    }
+    function renderStaffPromotionSinglePicker(select,card,button,entries,placeholder,prefix){
+      const chosen=[...select.options].find(option=>option.value===select.value);
+      button.textContent=chosen&&chosen.value?chosen.textContent:placeholder;
+      card.replaceChildren();
+      entries.forEach(entry=>{
+        const option=document.createElement("button");option.type="button";option.className="reaction-picker-option";
+        option.setAttribute("aria-pressed",String(String(entry.id)===String(select.value)));option.textContent=prefix+entry.name;
+        option.addEventListener("click",()=>{select.value=String(entry.id);renderStaffPromotionSinglePicker(select,card,button,entries,placeholder,prefix);toggleReactionPicker(card,button,false);});
+        card.append(option);
+      });
+    }
+    function refreshStaffPromotionPickers(){
+      renderStaffPromotionSinglePicker(staffPromotionChannel,$("staffPromotionChannelPickerCard"),$("staffPromotionChannelPickerButton"),staffPromotionChannels,"Selecione um canal…","# ");
+      renderStaffPromotionSinglePicker(staffPromotionNotifyRole,$("staffPromotionNotifyRolePickerCard"),$("staffPromotionNotifyRolePickerButton"),staffPromotionRoles.filter(role=>!role.managed),"Selecione um cargo…","@");
     }
     async function loadStaffPromotion(){
       if(!staffPromotionRoleOptions)return;
@@ -1146,10 +1169,13 @@
         staffPromotionNotifyRole.replaceChildren();staffPromotionNotifyRole.add(new Option("Selecione um cargo…",""));
         staffPromotionRoles.filter(role=>!role.managed).forEach(role=>staffPromotionNotifyRole.add(new Option("@"+role.name,role.id)));
         staffPromotionNotifyRole.value=staffPromotionOriginal.notificationRoleId;
-        renderStaffPromotionRoles();
+        refreshStaffPromotionPickers();renderStaffPromotionRoles();
       }catch(error){staffPromotionRoleOptions.replaceChildren();const p=document.createElement("p");p.textContent=error.message||"Não foi possível carregar o sistema.";staffPromotionRoleOptions.appendChild(p);}
     }
     staffPromotionRoleSearch.addEventListener("input",renderStaffPromotionRoles);
+    $("staffPromotionRolePickerButton").addEventListener("click",()=>{const card=$("staffPromotionRolePickerCard"),button=$("staffPromotionRolePickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("staffPromotionChannelPickerCard"),$("staffPromotionChannelPickerButton"),false);toggleReactionPicker($("staffPromotionNotifyRolePickerCard"),$("staffPromotionNotifyRolePickerButton"),false);staffPromotionRoleSearch.focus();}});
+    $("staffPromotionChannelPickerButton").addEventListener("click",()=>{const card=$("staffPromotionChannelPickerCard"),button=$("staffPromotionChannelPickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("staffPromotionRolePickerCard"),$("staffPromotionRolePickerButton"),false);toggleReactionPicker($("staffPromotionNotifyRolePickerCard"),$("staffPromotionNotifyRolePickerButton"),false);}});
+    $("staffPromotionNotifyRolePickerButton").addEventListener("click",()=>{const card=$("staffPromotionNotifyRolePickerCard"),button=$("staffPromotionNotifyRolePickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("staffPromotionRolePickerCard"),$("staffPromotionRolePickerButton"),false);toggleReactionPicker($("staffPromotionChannelPickerCard"),$("staffPromotionChannelPickerButton"),false);}});
     staffPromotionSave.addEventListener("click",async()=>{
       const guild=selectedGuild(),roleIds=[...staffPromotionSelectedIds],channelId=staffPromotionChannel.value,notificationRoleId=staffPromotionNotifyRole.value;
       if(!guild.id){staffPromotionStatus.textContent="Selecione um servidor primeiro.";return;}
