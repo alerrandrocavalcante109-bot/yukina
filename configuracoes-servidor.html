@@ -414,7 +414,7 @@
         <button type="button" class="reaction-select-menu" id="staffPromotionNotifyRolePickerButton" aria-expanded="false">Selecione um cargo…</button>
         <div id="staffPromotionNotifyRolePickerCard" class="reaction-picker-card" hidden></div>
         <p class="prefix-system-help">Quando um membro receber qualquer um dos cargos selecionados, a Yukina publicará o aviso e mencionará o cargo de notificação.</p>
-        <button type="button" class="primary-action" id="staffPromotionSave">Salvar</button>
+        <p class="prefix-system-help">As alterações serão aplicadas pelo botão Salvar na barra inferior. Você também pode descartá-las antes de confirmar.</p>
         <p class="prefix-status" id="staffPromotionStatus" role="status" aria-live="polite"></p>
       </div>
     </section>
@@ -1103,7 +1103,6 @@
     const staffPromotionRoleSummary=$("staffPromotionRoleSummary");
     const staffPromotionChannel=$("staffPromotionChannel");
     const staffPromotionNotifyRole=$("staffPromotionNotifyRole");
-    const staffPromotionSave=$("staffPromotionSave");
     const staffPromotionStatus=$("staffPromotionStatus");
     let staffPromotionRoles=[],staffPromotionChannels=[],staffPromotionSelectedIds=new Set(),staffPromotionGuildId="",staffPromotionOriginal={roleIds:[],channelId:"",notificationRoleId:""};
     function renderStaffPromotionRoles(){
@@ -1118,7 +1117,7 @@
         button.type="button";button.setAttribute("aria-pressed",String(selected));button.textContent=(selected?"✓  ":"＋  ")+"@"+role.name;
         const raw=Number(role.color)||0,hex=raw?"#"+raw.toString(16).padStart(6,"0").slice(-6):(role.hexColor||"#e9ddff");
         button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?hex:"#ffffff20")+";border-radius:9px;background:"+(selected?"color-mix(in srgb, "+hex+" 18%, transparent)":"rgba(255,255,255,.04)")+";color:"+hex;
-        button.addEventListener("click",()=>{if(staffPromotionSelectedIds.has(id))staffPromotionSelectedIds.delete(id);else staffPromotionSelectedIds.add(id);renderStaffPromotionRoles();});
+        button.addEventListener("click",()=>{if(staffPromotionSelectedIds.has(id))staffPromotionSelectedIds.delete(id);else staffPromotionSelectedIds.add(id);renderStaffPromotionRoles();window.YukinaPendingChanges?.refresh();});
         staffPromotionRoleOptions.appendChild(button);
       });
       staffPromotionRolePickerButton.textContent=staffPromotionSelectedIds.size?staffPromotionSelectedIds.size+" cargo(s) selecionado(s)":"Selecionar cargos…";
@@ -1194,21 +1193,38 @@
     $("staffPromotionRolePickerButton").addEventListener("click",()=>{const card=$("staffPromotionRolePickerCard"),button=$("staffPromotionRolePickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("staffPromotionChannelPickerCard"),$("staffPromotionChannelPickerButton"),false);toggleReactionPicker($("staffPromotionNotifyRolePickerCard"),$("staffPromotionNotifyRolePickerButton"),false);staffPromotionRoleSearch.focus();}});
     $("staffPromotionChannelPickerButton").addEventListener("click",()=>{const card=$("staffPromotionChannelPickerCard"),button=$("staffPromotionChannelPickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("staffPromotionRolePickerCard"),$("staffPromotionRolePickerButton"),false);toggleReactionPicker($("staffPromotionNotifyRolePickerCard"),$("staffPromotionNotifyRolePickerButton"),false);}});
     $("staffPromotionNotifyRolePickerButton").addEventListener("click",()=>{const card=$("staffPromotionNotifyRolePickerCard"),button=$("staffPromotionNotifyRolePickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("staffPromotionRolePickerCard"),$("staffPromotionRolePickerButton"),false);toggleReactionPicker($("staffPromotionChannelPickerCard"),$("staffPromotionChannelPickerButton"),false);}});
-    staffPromotionSave.addEventListener("click",async()=>{
-      const guild=selectedGuild(),roleIds=[...staffPromotionSelectedIds],channelId=staffPromotionChannel.value,notificationRoleId=staffPromotionNotifyRole.value;
-      if(!guild.id){staffPromotionStatus.textContent="Selecione um servidor primeiro.";return;}
-      if(!roleIds.length){staffPromotionStatus.textContent="Selecione ao menos um cargo que ativa a promoção.";return;}
-      if(!channelId){staffPromotionStatus.textContent="Selecione o canal dos anúncios.";return;}
-      if(!notificationRoleId){staffPromotionStatus.textContent="Selecione o cargo de notificação.";return;}
-      staffPromotionSave.disabled=true;staffPromotionSave.textContent="Salvando…";staffPromotionStatus.textContent="A Yukina está salvando as configurações…";
-      try{
+    function getStaffPromotionConfig(){
+      return {roleIds:[...staffPromotionSelectedIds].sort(),channelId:String(staffPromotionChannel.value||""),notificationRoleId:String(staffPromotionNotifyRole.value||"")};
+    }
+    function staffPromotionIsDirty(){
+      const current=getStaffPromotionConfig(),original={roleIds:[...(staffPromotionOriginal.roleIds||[])].map(String).sort(),channelId:String(staffPromotionOriginal.channelId||""),notificationRoleId:String(staffPromotionOriginal.notificationRoleId||"")};
+      return JSON.stringify(current)!==JSON.stringify(original);
+    }
+    staffPromotionChannel.addEventListener("change",()=>{refreshStaffPromotionPickers();window.YukinaPendingChanges?.refresh();});
+    staffPromotionNotifyRole.addEventListener("change",()=>{refreshStaffPromotionPickers();window.YukinaPendingChanges?.refresh();});
+    window.YukinaPendingChanges?.register({
+      id:"staff-promotion",
+      isDirty:staffPromotionIsDirty,
+      reset:()=>{
+        staffPromotionSelectedIds=new Set(staffPromotionOriginal.roleIds||[]);
+        staffPromotionChannel.value=staffPromotionOriginal.channelId||"";
+        staffPromotionNotifyRole.value=staffPromotionOriginal.notificationRoleId||"";
+        renderStaffPromotionRoles();refreshStaffPromotionPickers();
+        staffPromotionStatus.textContent="Alterações descartadas.";
+      },
+      save:async()=>{
+        const guild=selectedGuild(),config=getStaffPromotionConfig();
+        if(!guild.id)throw new Error("Selecione um servidor primeiro.");
+        if(!config.roleIds.length)throw new Error("Selecione ao menos um cargo que ativa a promoção.");
+        if(!config.channelId)throw new Error("Selecione o canal dos anúncios.");
+        if(!config.notificationRoleId)throw new Error("Selecione o cargo de notificação.");
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
         if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
-        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{staffPromotion:{enabled:true,roleIds,channelId,notificationRoleId}}}),cache:"no-store"});
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{staffPromotion:{enabled:true,roleIds:config.roleIds,channelId:config.channelId,notificationRoleId:config.notificationRoleId}}}),cache:"no-store"});
         const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações.");
-        staffPromotionOriginal={roleIds,channelId,notificationRoleId};staffPromotionStatus.textContent="❄️ Configurações salvas com sucesso!";
-      }catch(error){staffPromotionStatus.textContent=error.message||"Falha ao salvar as configurações.";}
-      finally{staffPromotionSave.disabled=false;staffPromotionSave.textContent="Salvar";}
+        staffPromotionOriginal={roleIds:config.roleIds,channelId:config.channelId,notificationRoleId:config.notificationRoleId};
+        staffPromotionStatus.textContent="❄️ Configurações salvas com sucesso!";
+      }
     });
     const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary"),dropExtraEntriesInput=$("dropExtraEntriesInput"),dropAddButton=$("dropAddButton"),dropAddStatus=$("dropAddStatus"),dropAddedRoles=$("dropAddedRoles");
     let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="",dropConfiguredRoles=[];
