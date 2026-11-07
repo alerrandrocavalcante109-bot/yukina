@@ -51,6 +51,10 @@
     .reaction-picker-card.is-open{opacity:1;transform:translateY(0) scale(1);max-height:260px}
     .reaction-picker-card[hidden]{display:none!important}
     @media(prefers-reduced-motion:reduce){.reaction-picker-card{transition:none}}
+    .nick-color-enter{opacity:0;transform:translateY(-7px) scale(.985);transition:opacity .19s ease,transform .19s ease}
+    .nick-color-enter.is-visible{opacity:1;transform:translateY(0) scale(1)}
+    .nick-color-leave{opacity:0!important;transform:translateY(-5px) scale(.98)!important;transition:opacity .18s ease,transform .18s ease}
+    @media(prefers-reduced-motion:reduce){.nick-color-enter,.nick-color-leave{transition:none}}
     .reaction-picker-option{display:flex;align-items:center;gap:10px;width:100%;padding:10px;border:1px solid #ffffff20;border-radius:10px;background:#ffffff08;color:#fff;text-align:left;cursor:pointer}
     .reaction-picker-option:hover,.reaction-picker-option[aria-pressed="true"]{border-color:#c4b5fd;background:#c4b5fd20}
     .reaction-picker-option input{accent-color:#c4b5fd;width:17px;height:17px}
@@ -252,7 +256,9 @@
         <textarea id="nickColorsMessage" class="prefix-input" rows="3" maxlength="1800">Escolha a cor do seu nick reagindo ao emoji correspondente abaixo. Você poderá trocar de cor quando quiser. 🌸</textarea>
         <h2 style="margin-top:22px">2. Canal de publicação</h2>
         <label for="nickColorsChannel">Canal onde a mensagem será enviada</label>
-        <select id="nickColorsChannel" class="prefix-input"><option value="">Carregando canais…</option></select>
+        <select id="nickColorsChannel" class="prefix-input" hidden><option value="">Carregando canais…</option></select>
+        <button type="button" id="nickColorsChannelPickerButton" class="reaction-select-menu" aria-expanded="false">Selecione um canal…</button>
+        <div id="nickColorsChannelPickerCard" class="reaction-picker-card" hidden></div>
         <h2 style="margin-top:22px">3. Cores disponíveis</h2>
         <p class="prefix-system-help">Adicione quantas opções precisar (até 20) e escolha qualquer tonalidade no seletor circular com pincel. A Yukina cria e organiza os cargos automaticamente.</p>
         <div id="nickColorsOptions" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:9px;margin-top:12px"></div><button type="button" class="prefix-save" id="nickColorsAdd" style="margin-top:12px">＋ Adicionar cor</button>
@@ -1298,6 +1304,18 @@
     });
     let nickColorsPalette=[],nickColorsLoadedGuild="",originalNickColorsConfig="";
     const nickColorEmojis=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"];
+    function setNickColorsChannelPicker(){
+      const select=$("nickColorsChannel"),button=$("nickColorsChannelPickerButton"),card=$("nickColorsChannelPickerCard");
+      const chosen=[...select.options].find(option=>option.value===select.value);
+      button.textContent=chosen&&chosen.value?chosen.textContent:"Selecione um canal…";
+      card.replaceChildren();
+      [...select.options].filter(option=>option.value).forEach(option=>{
+        const item=document.createElement("button");item.type="button";item.className="reaction-picker-option";
+        item.setAttribute("aria-pressed",String(option.value===select.value));item.textContent=option.textContent;
+        item.addEventListener("click",()=>{select.value=option.value;setNickColorsChannelPicker();toggleReactionPicker(card,button,false);select.dispatchEvent(new Event("change",{bubbles:true}));});
+        card.append(item);
+      });
+    }
     function makeNickColorRow(color,configColor){
       const row=document.createElement("div");
       row.dataset.colorKey=color.key;
@@ -1319,7 +1337,7 @@
       const remove=document.createElement("button");
       remove.type="button";remove.textContent="×";remove.title="Remover esta cor";
       remove.style.cssText="width:28px;height:28px;border:1px solid #ffffff40;border-radius:8px;background:#ffffff12;color:#fff;font-size:20px";
-      remove.addEventListener("click",()=>{row.remove();refreshNickColorLabels();window.YukinaPendingChanges?.refresh();});
+      remove.addEventListener("click",()=>{row.classList.remove("is-visible");row.classList.add("nick-color-leave");setTimeout(()=>{row.remove();refreshNickColorLabels();window.YukinaPendingChanges?.refresh();},190);});
       row.append(label,pickerWrap,remove);
       return row;
     }
@@ -1337,7 +1355,8 @@
       const options=$("nickColorsOptions"),index=options.children.length;
       if(index>=20)return;
       const color={key:"color"+(index+1),name:"Cor "+(index+1),emoji:nickColorEmojis[index]};
-      options.appendChild(makeNickColorRow(color,{hex}));
+      const row=makeNickColorRow(color,{hex});row.classList.add("nick-color-enter");options.appendChild(row);
+      requestAnimationFrame(()=>row.classList.add("is-visible"));
       refreshNickColorLabels();
     }
     $("nickColorsAdd").addEventListener("click",()=>{addNickColor();window.YukinaPendingChanges?.refresh();});
@@ -1360,9 +1379,10 @@
         const channels=(Array.isArray(resources.channels)?resources.channels:[]).filter(ch=>Number(ch.type)===0);
         channelSelect.replaceChildren();channelSelect.add(new Option("Selecione um canal…",""));
         channels.forEach(ch=>channelSelect.add(new Option("# "+ch.name,String(ch.id))));
+        setNickColorsChannelPicker();
         nickColorsPalette=Array.isArray(saved.palette)?saved.palette:[];
         const config=saved.config||{};
-        channelSelect.value=String(config.channelId||"");
+        channelSelect.value=String(config.channelId||"");setNickColorsChannelPicker();
         $("nickColorsMessage").value=config.message||"Escolha a cor do seu nick reagindo ao número correspondente abaixo. Você poderá trocar de cor quando quiser. 🌸";
         options.replaceChildren();
         const savedColors=Array.isArray(config.colors)?config.colors:[];
@@ -1378,7 +1398,8 @@
       return {channelId:$("nickColorsChannel").value,message:$("nickColorsMessage").value.trim(),colors:[...$("nickColorsOptions").children].map(row=>row.querySelector('input[type="color"]')?.value||"#c4b5fd")};
     }
     function nickColorsIsDirty(){return JSON.stringify(getNickColorsConfig())!==originalNickColorsConfig;}
-    $("nickColorsChannel").addEventListener("change",()=>{ $("nickColorsStatus").textContent="Alteração pendente. Use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    $("nickColorsChannelPickerButton").addEventListener("click",()=>{const card=$("nickColorsChannelPickerCard"),button=$("nickColorsChannelPickerButton"),open=card.hidden;toggleReactionPicker(card,button,open);if(open){toggleReactionPicker($("reactionChannelPickerCard"),$("reactionChannelPickerButton"),false);toggleReactionPicker($("reactionRolePickerCard"),$("reactionRolePickerButton"),false);}});
+    $("nickColorsChannel").addEventListener("change",()=>{setNickColorsChannelPicker();$("nickColorsStatus").textContent="Alteração pendente. Use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
     $("nickColorsMessage").addEventListener("input",()=>{ $("nickColorsStatus").textContent="Alteração pendente. Use Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
     window.YukinaPendingChanges?.register({id:"nick-colors",isDirty:nickColorsIsDirty,reset:async()=>{nickColorsLoadedGuild="";$("nickColorsOptions").dataset.ready="false";await loadNickColors();$("nickColorsStatus").textContent="Alterações descartadas.";},save:async()=>{
       const guild=selectedGuild();if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
