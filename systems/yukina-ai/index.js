@@ -37,6 +37,7 @@ function install(client, getSettingsCollection) {
       const result = await activeEngine.answer({
         userId: message.author.id,
         channelId: message.channel.id,
+        guildId: message.guild.id,
         prompt,
         displayName: message.member?.displayName || message.author.globalName || message.author.username
       });
