@@ -3,8 +3,8 @@
 const { SlashCommandBuilder } = require("discord.js");
 const { getEngine } = require("../systems/yukina-ai");
 
-async function run(userId, channelId, prompt, displayName) {
-  return getEngine().answer({ userId, channelId, prompt, displayName });
+async function run(userId, channelId, guildId, prompt, displayName) {
+  return getEngine().answer({ userId, channelId, guildId, prompt, displayName });
 }
 
 module.exports = {
@@ -28,6 +28,7 @@ module.exports = {
     const result = await run(
       interaction.user.id,
       interaction.channelId,
+      interaction.guildId,
       prompt,
       interaction.member?.displayName || interaction.user.globalName || interaction.user.username
     );
@@ -43,6 +44,7 @@ module.exports = {
     const result = await run(
       message.author.id,
       message.channel.id,
+      message.guild.id,
       prompt,
       message.member?.displayName || message.author.globalName || message.author.username
     );
