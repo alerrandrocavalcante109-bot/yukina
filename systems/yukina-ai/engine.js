@@ -63,7 +63,7 @@ function checkCooldown(userId) {
 }
 
 function buildSystemPrompt(memories, userId) {
-  const creatorId = String(process.env.YUKINA_AI_CREATOR_ID || "").trim();
+  const creatorId = String(process.env.YUKINA_AI_CREATOR_ID || "1533034328928555141").trim();
   const motherId = String(process.env.YUKINA_AI_MOTHER_ID || "353909640381333504").trim();
   let relationship = "";
   if (creatorId && String(userId) === creatorId) {
