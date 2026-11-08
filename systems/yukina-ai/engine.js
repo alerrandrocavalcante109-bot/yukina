@@ -3,6 +3,7 @@
 const memory = require("./memory");
 const { buildSystemPrompt } = require("./personality");
 const relationships = require("./relationships");
+const journal = require("./journal");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -100,14 +101,14 @@ function createEngine(getSettingsCollection) {
   async function getBaseCollection() {
     const collection = await getSettingsCollection();
     if (!indexesReady) {
-      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection)]);
+      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection)]);
       await indexPromise;
       indexesReady = true;
     }
     return collection;
   }
 
-  async function answer({ userId, channelId, prompt, displayName = "membro" }) {
+  async function answer({ userId, channelId, guildId, prompt, displayName = "membro" }) {
     const safePrompt = sanitizeInput(prompt);
     if (!String(userId || "").trim() || !String(channelId || "").trim()) {
       return { ok: false, text: "🌸 Não consegui identificar esta conversa. Tente novamente em um canal do servidor." };
@@ -145,6 +146,7 @@ function createEngine(getSettingsCollection) {
       ];
       const reply = await requestOpenRouter(messages);
 
+      await journal.recordConversation(collection, { guildId, userId, displayName });
       await memory.appendThread(collection, userId, channelId, [
         { role: "user", content: safePrompt, displayName: String(displayName).slice(0, 80), createdAt: new Date() },
         { role: "assistant", content: reply, createdAt: new Date() }
