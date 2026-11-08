@@ -2,6 +2,7 @@
 
 const memory = require("./memory");
 const { buildSystemPrompt } = require("./personality");
+const relationships = require("./relationships");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -99,7 +100,7 @@ function createEngine(getSettingsCollection) {
   async function getBaseCollection() {
     const collection = await getSettingsCollection();
     if (!indexesReady) {
-      if (!indexPromise) indexPromise = memory.ensureIndexes(collection);
+      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection)]);
       await indexPromise;
       indexesReady = true;
     }
@@ -131,13 +132,14 @@ function createEngine(getSettingsCollection) {
       }
 
       await memory.captureSafeMemory(collection, userId, safePrompt);
-      const [memories, history] = await Promise.all([
+      const [memories, history, relationship] = await Promise.all([
         memory.getMemories(collection, userId),
-        memory.getThread(collection, userId, channelId)
+        memory.getThread(collection, userId, channelId),
+        relationships.registerInteraction(collection, userId, safePrompt)
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\\n\\n" + relationships.buildRelationshipContext(relationship) },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
