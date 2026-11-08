@@ -149,7 +149,9 @@ function createEngine(getSettingsCollection) {
       ];
       const reply = await requestOpenRouter(messages);
 
-      await journal.recordConversation(collection, { guildId, userId, displayName }).catch(error => {\n        console.error("[Yukina IA] Não foi possível registrar o diário:", error.message || error);\n      });
+      await journal.recordConversation(collection, { guildId, userId, displayName }).catch(error => {
+        console.error("[Yukina IA] Não foi possível registrar o diário:", error.message || error);
+      });
       await memory.appendThread(collection, userId, channelId, [
         { role: "user", content: safePrompt, displayName: String(displayName).slice(0, 80), createdAt: new Date() },
         { role: "assistant", content: reply, createdAt: new Date() }
