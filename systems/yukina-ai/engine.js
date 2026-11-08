@@ -4,6 +4,7 @@ const memory = require("./memory");
 const { buildSystemPrompt } = require("./personality");
 const relationships = require("./relationships");
 const journal = require("./journal");
+const autobiography = require("./autobiography");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -101,8 +102,9 @@ function createEngine(getSettingsCollection) {
   async function getBaseCollection() {
     const collection = await getSettingsCollection();
     if (!indexesReady) {
-      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection)]);
+      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection)]);
       await indexPromise;
+      await autobiography.ensureOriginChapter(collection);
       indexesReady = true;
     }
     return collection;
@@ -133,14 +135,15 @@ function createEngine(getSettingsCollection) {
       }
 
       await memory.captureSafeMemory(collection, userId, safePrompt);
-      const [memories, history, relationship] = await Promise.all([
+      const [memories, history, relationship, chapters] = await Promise.all([
         memory.getMemories(collection, userId),
         memory.getThread(collection, userId, channelId),
-        relationships.registerInteraction(collection, userId, safePrompt)
+        relationships.registerInteraction(collection, userId, safePrompt),
+        autobiography.getChapters(collection)
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
