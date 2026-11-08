@@ -23,7 +23,7 @@ Configure no Render (Environment):
 | --- | --- | --- |
 | `OPENROUTER_API_KEY` | Sim | Sua chave privada do OpenRouter |
 | `YUKINA_OPENROUTER_MODEL` | Não | `openrouter/free` |
-| `YUKINA_AI_CREATOR_ID` | Sim para reconhecer o Criador | ID numérico da conta Discord do Criador |
+| `YUKINA_AI_CREATOR_ID` | Não | Padrão já configurado: `1533034328928555141` |
 | `YUKINA_AI_MOTHER_ID` | Não | `353909640381333504` |
 | `YUKINA_SITE_URL` | Não | `https://yukina.onrender.com` |
 
@@ -41,7 +41,7 @@ O histórico de conversa não é compartilhado entre canais. As memórias pessoa
 ## Ativação
 
 1. Faça o merge da branch `feature/yukina-ia-foundation` na `main`.
-2. Configure `OPENROUTER_API_KEY` e `YUKINA_AI_CREATOR_ID` no Render.
+2. Configure `OPENROUTER_API_KEY` no Render. O ID do Criador já está definido como padrão; pode ser sobrescrito por `YUKINA_AI_CREATOR_ID`.
 3. Faça o deploy e aguarde a sincronização dos comandos slash.
 4. Teste `/ia`, `Yia olá` e uma menção direta à Yukina.
 
