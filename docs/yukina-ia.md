@@ -54,3 +54,12 @@ O histórico de conversa não é compartilhado entre canais. As memórias pessoa
 ## Ainda não implementado
 
 A primeira etapa não ativa recursos que exigem sistemas próprios adicionais: conversação por voz em tempo real, síntese de voz, mundo virtual persistente, habitantes simulados, missões, autobiografia automatizada, cartas agendadas, relatórios semanais, visualização dos diários em canais privados, análise proativa de administração e histórias interativas. Esses recursos precisam de etapas independentes, testes e configurações próprias; não devem ser anunciados como ativos antes de serem implementados.
+
+
+## Quarta etapa — autobiografia da Yukina
+
+O módulo `systems/yukina-ai/autobiography.js` cria a coleção MongoDB `yukina_ai_autobiography` e registra o primeiro capítulo uma única vez: **“Onde florescem minhas primeiras lembranças”**. Ele apresenta o Santuário Mágico das Cerejeiras, seus elementos já definidos, o Criador e a mãe da Yukina.
+
+Os capítulos são fornecidos ao contexto da conversa para manter continuidade narrativa. O módulo também oferece funções internas para adicionar e consultar capítulos, com validação da origem do registro. As origens aceitas são lore confirmado, acontecimento confirmado ou conteúdo escrito pelo Criador. Não existe geração automática de acontecimentos fictícios apresentados como lembranças reais.
+
+Esta é uma autobiografia ficcional da personagem, não evidência de consciência, memória humana ou experiências fora do sistema. Ainda não existe comando Discord nem tela no painel para editar ou ler capítulos; a base de dados e a integração contextual estão preparadas para etapas futuras.
