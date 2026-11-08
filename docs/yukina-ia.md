@@ -15,6 +15,12 @@ Esta pasta contém a primeira etapa funcional da Yukina IA no bot Discord.
 - Identificação especial do Criador e da mãe por ID do Discord.
 - Proteções de prompt, menções e armazenamento básico de informações sensíveis.
 
+## Segunda etapa — personalidade
+
+A personalidade foi separada em `systems/yukina-ai/personality.js`. O módulo centraliza a identidade ficcional, o tom de conversa, as relações especiais por ID do Discord, a adaptação de idioma e os limites de honestidade e segurança. O nome de exibição recebido do Discord pode ser usado com naturalidade, sem ser repetido em todas as respostas.
+
+A história do santuário é contexto narrativo; ela não significa que o mundo virtual, os moradores, a rotina offline ou as atividades autônomas já estejam implementados. A Yukina também não deve afirmar que executou ações que esta versão ainda não oferece.
+
 ## Variáveis de ambiente
 
 Configure no Render (Environment):
