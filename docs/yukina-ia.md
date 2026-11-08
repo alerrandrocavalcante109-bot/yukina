@@ -15,7 +15,7 @@ Esta pasta contém a primeira etapa funcional da Yukina IA no bot Discord.
 - Identificação especial do Criador e da mãe por ID do Discord.
 - Proteções de prompt, menções e armazenamento básico de informações sensíveis.
 
-## Segunda etapa — personalidade
+## Segunda etapa — personalidade e vínculos\n\nAlém da personalidade, foi adicionado `systems/yukina-ai/relationships.js`. O módulo registra interações significativas por usuário global do Discord e aproxima gradualmente o tratamento: pessoa nova, conhecido, amigo, amizade próxima e pessoa especial. Para evitar que spam acelere a relação, conta no máximo uma interação com mensagem de pelo menos 20 caracteres a cada 30 minutos. O Criador e a mãe são reconhecidos separadamente por seus IDs. O vínculo é contexto interno: Yukina não deve exibir pontuações nem declarar níveis espontaneamente.\n\nOs vínculos são armazenados em `yukina_ai_relationships`, separados das memórias e do histórico.\n\n## Segunda etapa — personalidade
 
 A personalidade foi separada em `systems/yukina-ai/personality.js`. O módulo centraliza a identidade ficcional, o tom de conversa, as relações especiais por ID do Discord, a adaptação de idioma e os limites de honestidade e segurança. O nome de exibição recebido do Discord pode ser usado com naturalidade, sem ser repetido em todas as respostas.
 
@@ -40,7 +40,7 @@ Não coloque a chave da API no GitHub, em mensagens públicas ou no código-font
 A implementação usa a conexão MongoDB já aberta pelo bot e cria índices para:
 
 - `yukina_ai_profiles`: memórias pessoais por `userId`.
-- `yukina_ai_threads`: histórico por combinação de `userId` e `channelId`.
+- `yukina_ai_threads`: histórico por combinação de `userId` e `channelId`.\n- `yukina_ai_relationships`: progresso de vínculo por `userId`.
 
 O histórico de conversa não é compartilhado entre canais. As memórias pessoais são globais por ID do Discord. A captura automática atual é conservadora e reconhece algumas declarações explícitas de gostos, preferências e projetos; não é ainda uma extração semântica completa.
 
