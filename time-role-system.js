@@ -72,26 +72,7 @@ async function updateTimedRoles(member) {
     if (removeIds.length) await member.roles.remove(removeIds, "Atualização de cargo por tempo de permanência da Yukina");
     if (selectedRole && !hasSelected) {
       await member.roles.add(selectedRole, "Cargo temporal configurado no painel da Yukina");
-      const announcement = settings.timeAnnouncement;
-      if (announcement?.enabled === true &&
-          Array.isArray(announcement.roleIds) &&
-          announcement.roleIds.map(String).includes(selectedRole.id) &&
-          announcement.channelId) {
-        const channel = await member.guild.channels.fetch(String(announcement.channelId)).catch(() => null);
-        if (channel?.isTextBased?.() && typeof channel.send === "function") {
-          const { EmbedBuilder } = require("discord.js");
-          const color = selectedRole.color || 0xC4B5FD;
-          const embed = new EmbedBuilder()
-            .setColor(color)
-            .setAuthor({ name: "Yukina • Conquista temporal", iconURL: member.client.user.displayAvatarURL() })
-            .setDescription("🌸 **Uma nova etapa foi alcançada!**\n\n" + member.toString() + " recebeu o cargo **" + selectedRole.name + "** por seu tempo de permanência no servidor.")
-            .setThumbnail(member.user.displayAvatarURL({ size: 256 }))
-            .addFields({ name: "Tempo de permanência", value: Math.floor(days) + " dia(s)", inline: true })
-            .setTimestamp();
-          await channel.send({ embeds: [embed], allowedMentions: { users: [member.id], parse: [] } })
-            .catch(error => console.warn("[Cargos temporais] Não foi possível enviar o aviso em #" + (channel.name || channel.id) + ":", error.message));
-        }
-      }
+
     }
   } catch (error) {
     console.error("[Cargos temporais] Falha ao atualizar " + member.user?.tag + ":", error.message);
