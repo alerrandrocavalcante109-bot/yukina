@@ -139,7 +139,7 @@ function createEngine(getSettingsCollection) {
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\\n\\n" + relationships.buildRelationshipContext(relationship) },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
