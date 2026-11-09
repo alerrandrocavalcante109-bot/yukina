@@ -27,7 +27,6 @@ function install(client, getSettingsCollection) {
         const referenced = await message.channel.messages.fetch(message.reference.messageId).catch(() => null);
         isDirectReply = Boolean(referenced && referenced.author?.id === client.user.id);
       }
-
       if (!wasMentioned && !isDirectReply) return;
 
       const prompt = content.replace(mentionToken, "").trim();
@@ -39,13 +38,17 @@ function install(client, getSettingsCollection) {
         channelId: message.channel.id,
         guildId: message.guild.id,
         prompt,
-        displayName: message.member?.displayName || message.author.globalName || message.author.username
+        displayName: message.member?.displayName || message.author.globalName || message.author.username,
+        discordContext: {
+          guild: message.guild,
+          channel: message.channel,
+          actorId: message.author.id,
+          actorTag: message.author.tag,
+          source: "mention"
+        }
       });
 
-      await message.reply({
-        content: result.text,
-        allowedMentions: { parse: [], repliedUser: false }
-      });
+      await message.reply({ content: result.text, allowedMentions: { parse: [], repliedUser: false } });
     } catch (error) {
       console.error("[Yukina IA] Erro ao processar mensagem:", error.message || error);
     }
