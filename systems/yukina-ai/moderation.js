@@ -167,43 +167,40 @@ async function changeRole({ guild, actor, prompt, add }) {
 async function handleRequest({ prompt, context } = {}) {
   const original = String(prompt || "").trim();
   if (!original || !context?.guild || !context?.actorId) return { handled: false };
-  const normalized = original.toLocaleLowerCase("pt-BR").replace(/^yukina[,!\s]+/, "").trim();
+  const normalized = original.toLocaleLowerCase("pt-BR").replace(/^yukina[,!\\s]+/, "").trim();
   const guild = context.guild;
+
+  const grantVerb = /^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de)\\b/.test(normalized);
+  const removeVerb = /^(retire|retirar|remova|remover|tire|tirar)\\b/.test(normalized);
+  const hasRoleTarget = Boolean(getRoleId(original)) || /\\bcargo\\b/.test(normalized);
+  const grant = grantVerb && hasRoleTarget;
+  const remove = removeVerb && hasRoleTarget;
+  const lock = /^(bloqueie|bloquear|lock|trancar|feche)\\b/.test(normalized) && (/\\b(canal|chat)\\b|<#\\d{17,20}>/.test(normalized));
+  const unlock = /^(desbloqueie|desbloquear|unlock|destrancar|abra)\\b/.test(normalized) && (/\\b(canal|chat)\\b|<#\\d{17,20}>/.test(normalized));
+  const slow = /^(ative|ativar|ligue|ligar|desative|desativar|desligue|desligar)\\b/.test(normalized) && /\\b(modo lento|slowmode)\\b/.test(normalized);
+  const amountMatch = normalized.match(/^(?:limpe|limpar|apague|apagar|clear)\\s+(\\d+)\\s+(?:mensagens?|msgs?)\\b/);
+  const clearAll = /^(limpe|limpar|apague|apagar|clear)\\b/.test(normalized) && /\\b(chat|canal)\\b/.test(normalized);
+
+  if (!grant && !remove && !lock && !unlock && !slow && !amountMatch && !clearAll) return { handled: false };
+
   const actor = await getActor(guild, context);
   if (!actor) return reply("🫧 Não consegui confirmar sua conta no servidor.");
 
-  const grant = /^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de)\b/.test(normalized) && /\b(cargo|cargo de)\b/.test(normalized);
-  const remove = /^(retire|retirar|remova|remover|tire|tirar)\b/.test(normalized) && /\b(cargo|cargo de)\b/.test(normalized);
   if (grant || remove) return changeRole({ guild, actor, prompt: original, add: grant });
-
-  if (/^(bloqueie|bloquear|lock|trancar|feche)\b/.test(normalized) && /\b(canal|chat)\b|<#\d{17,20}>/.test(normalized)) {
+  if (lock || unlock) {
     const channel = await getChannel(guild, context, original);
-    return changeLock({ guild, channel, actor, lock: true });
+    return changeLock({ guild, channel, actor, lock });
   }
-  if (/^(desbloqueie|desbloquear|unlock|destrancar|abra)\b/.test(normalized) && /\b(canal|chat)\b|<#\d{17,20}>/.test(normalized)) {
-    const channel = await getChannel(guild, context, original);
-    return changeLock({ guild, channel, actor, lock: false });
-  }
-
-  if (/^(ative|ativar|ligue|ligar|desative|desativar|desligue|desligar)\b/.test(normalized) && /\b(modo lento|slowmode)\b/.test(normalized)) {
-    const enable = !/^(desative|desativar|desligue|desligar)\b/.test(normalized);
+  if (slow) {
+    const enable = !/^(desative|desativar|desligue|desligar)\\b/.test(normalized);
     const channel = await getChannel(guild, context, original);
     return changeSlowmode({ guild, channel, actor, prompt: normalized, enable });
   }
-
-  if (/^(limpe|limpar|apague|apagar|clear)\b/.test(normalized) && /\b(chat|canal)\b/.test(normalized)) {
+  if (amountMatch) {
     const channel = await getChannel(guild, context, original);
-    return clearChat({ guild, channel, actor });
+    return clearMessages({ guild, channel, actor, amount: Number(amountMatch[1]) });
   }
-  const amountMatch = normalized.match(/^(?:limpe|limpar|apague|apagar|clear)\s+(\d+)\s+(?:mensagens?|msgs?)\b/);
-  if (amountMatch) return clearMessages({
-    guild,
-    channel: context.channel,
-    actor,
-    amount: Number(amountMatch[1])
-  });
-
-  return { handled: false };
+  const channel = await getChannel(guild, context, original);
+  return clearChat({ guild, channel, actor });
 }
-
 module.exports = { handleRequest };
