@@ -204,6 +204,9 @@ async function respond(target, expression, isInteraction = false) {
 }
 
 module.exports = {
+  // Exportações usadas pelos testes automatizados; não alteram a interface do comando.
+  calculate,
+  formatResult,
   data: new SlashCommandBuilder()
     .setName("calcular")
     .setDescription("Calcula uma expressão matemática.")
