@@ -71,6 +71,8 @@ async function seedResidents(baseCollection, { now = new Date() } = {}) {
           ...resident,
           status: "introduced",
           memoryCount: 0,
+          needs: { energy: 80, hunger: 15, wellbeing: 75, health: 100 },
+          lastNeedsWorldMinute: 0,
           createdAt: now,
           updatedAt: now,
           version: 1
@@ -148,7 +150,7 @@ function buildResidentsContext(residentList, memoriesByResident = {}) {
       "; lar: " + resident.homeLocationId + ". Personalidade: " + resident.personality.join(", ") +
       ". Interesses: " + resident.interests.join(", ") + ". Rotina planejada: " + resident.routine.join("; ") +
       ". Relações registradas: " + resident.relationships.map(item => item.residentId + " — " + item.relation).join("; ") +
-      ". " + resident.description
+      ". Necessidades simuladas (0–100): energia " + (resident.needs?.energy ?? 80) + ", fome " + (resident.needs?.hunger ?? 15) + ", bem-estar " + (resident.needs?.wellbeing ?? 75) + ", saúde " + (resident.needs?.health ?? 100) + ". " + resident.description
     );
     const memories = memoriesByResident[resident.residentId] || [];
     for (const memory of memories.slice(0, 3)) lines.push("  Lembrança registrada de " + resident.name + ": " + memory.summary);
@@ -212,6 +214,74 @@ const SHARED_INTERACTIONS = Object.freeze({
     summary: "Aoi compartilha uma lenda antiga com Hikari, que acrescenta uma lembrança sobre as cerejeiras do santuário."
   }
 });
+
+
+const MEAL_SLOTS = Object.freeze({
+  amanhecer: { label: "café da manhã", hunger: -18, energy: 5 },
+  tarde: { label: "refeição da tarde", hunger: -22, energy: 5 },
+  noite: { label: "jantar", hunger: -18, energy: 4 }
+});
+
+function clampNeed(value) {
+  return Math.max(0, Math.min(100, Math.round(value)));
+}
+
+async function simulateResidentNeeds(baseCollection, snapshot) {
+  if (!snapshot || !Number.isFinite(snapshot.totalMinutes)) return [];
+  const db = getDatabase(baseCollection);
+  const collection = db.collection(RESIDENTS_COLLECTION);
+  const residents = await collection.find({ status: { $ne: "archived" } }).toArray();
+  const changed = [];
+  for (const resident of residents) {
+    const previousMinute = Number.isFinite(resident.lastNeedsWorldMinute)
+      ? resident.lastNeedsWorldMinute : snapshot.totalMinutes;
+    const elapsed = Math.max(0, Math.min(1440, snapshot.totalMinutes - previousMinute));
+    const current = resident.needs || { energy: 80, hunger: 15, wellbeing: 75, health: 100 };
+    const resting = snapshot.timeOfDay === "madrugada";
+    const energy = clampNeed((current.energy ?? 80) + (resting ? elapsed * 0.18 : -elapsed * 0.055));
+    const hunger = clampNeed((current.hunger ?? 15) + elapsed * 0.045);
+    const wellbeing = clampNeed(current.wellbeing ?? 75);
+    const health = clampNeed(current.health ?? 100);
+    const result = await collection.updateOne(
+      { _id: resident._id, lastNeedsWorldMinute: resident.lastNeedsWorldMinute },
+      { $set: {
+        needs: { energy, hunger, wellbeing, health },
+        lastNeedsWorldMinute: snapshot.totalMinutes,
+        updatedAt: new Date()
+      } }
+    );
+    if (result.modifiedCount) changed.push({ residentId: resident.residentId, needs: { energy, hunger, wellbeing, health } });
+  }
+
+  const meal = MEAL_SLOTS[String(snapshot.timeOfDay)];
+  if (meal) {
+    const events = db.collection(EVENTS_COLLECTION);
+    for (const resident of residents) {
+      const eventId = "meal:" + snapshot.worldDay + ":" + snapshot.timeOfDay + ":" + resident.residentId;
+      const event = {
+        eventId, kind: "meal", worldDay: snapshot.worldDay,
+        dayNumber: snapshot.dayNumber, timeSlot: snapshot.timeOfDay,
+        residentIds: [resident.residentId],
+        summary: resident.name + " faz " + meal.label + " e recupera um pouco de energia.",
+        createdAt: new Date()
+      };
+      const inserted = await events.updateOne({ eventId }, { $setOnInsert: event }, { upsert: true });
+      if (inserted.upsertedCount) {
+        await collection.updateOne(
+          { residentId: resident.residentId },
+          { $set: { "needs.hunger": clampNeed((resident.needs?.hunger ?? 15) + Math.max(0, snapshot.totalMinutes - (resident.lastNeedsWorldMinute ?? snapshot.totalMinutes)) * 0.045 + meal.hunger), updatedAt: new Date() },
+            $inc: { "needs.energy": meal.energy } }
+        );
+        await collection.updateOne(
+          { residentId: resident.residentId },
+          [{ $set: { "needs.energy": { $min: [100, "$needs.energy"] } } }]
+        );
+        changed.push({ residentId: resident.residentId, meal: meal.label });
+      }
+    }
+  }
+  return changed;
+}
 
 async function simulateCurrentSlot(baseCollection, snapshot) {
   if (!snapshot || !Number.isInteger(snapshot.worldDay) || !snapshot.timeOfDay) return [];
@@ -291,6 +361,7 @@ module.exports = {
   buildResidentsContext,
   getResidentsContext,
   simulateCurrentSlot,
+  simulateResidentNeeds,
   getRecentResidentEvents,
   buildResidentEventsContext
 };
