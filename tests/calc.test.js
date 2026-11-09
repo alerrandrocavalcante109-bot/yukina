@@ -18,8 +18,8 @@ test("preserves existing mathematical functions and constants", () => {
   assert.equal(calculator.calculate("round(2.6)"), 3);
   assert.equal(calculator.calculate("floor(2.9)"), 2);
   assert.equal(calculator.calculate("ceil(2.1)"), 3);
-  assert.equal(calculator.calculate("sin(30)"), 0.49999999999999994);
-  assert.equal(calculator.calculate("cos(60)"), 0.5000000000000001);
+  assert.ok(Math.abs(calculator.calculate("sin(30)") - 0.5) < 1e-12);
+  assert.ok(Math.abs(calculator.calculate("cos(60)") - 0.5) < 1e-12);
   assert.equal(calculator.calculate("log(100)"), 2);
   assert.ok(Math.abs(calculator.calculate("pi") - Math.PI) < 1e-12);
 });
@@ -74,7 +74,7 @@ test("keeps each simultaneous prefix response isolated", async () => {
 
   for (let index = 0; index < requests.length; index++) {
     assert.equal(requests[index].replies.length, 1);
-    assert.match(requests[index].replies[0], new RegExp("Resultado: \\*\\*\\x60" + ((index + 1) * 2)));
+    assert.ok(requests[index].replies[0].includes("Resultado: **`" + ((index + 1) * 2) + "`**"));
   }
 });
 
@@ -83,4 +83,32 @@ test("uses the requested slash command name and prefix aliases", () => {
   assert.ok(["calc", "calcular", "calculadora"].every(alias =>
     calculator.aliases.includes(alias)
   ));
+});
+
+test("keeps 50 simultaneous slash replies isolated", async () => {
+  const interactions = Array.from({ length: 50 }, (_, index) => {
+    const expression = (index + 1) + "+100";
+    const replies = [];
+    return {
+      expression,
+      replies,
+      interaction: {
+        options: { getString: () => expression },
+        deferReply: async () => true,
+        editReply: async payload => {
+          replies.push(payload.content);
+          return true;
+        }
+      }
+    };
+  });
+
+  await Promise.all(interactions.map(item => calculator.execute(item.interaction)));
+
+  for (let index = 0; index < interactions.length; index++) {
+    assert.equal(interactions[index].replies.length, 1);
+    assert.ok(interactions[index].replies[0].includes(
+      "Resultado: **`" + (index + 101) + "`**"
+    ));
+  }
 });
