@@ -193,6 +193,7 @@ function createEngine(getSettingsCollection) {
         { role: "user", content: safePrompt }
       ];
       const reply = await requestOpenRouter(messages);
+      for (const letter of dueLetters) await letters.markFutureLetterOpened(collection, letter.letterId);
 
       await journal.recordConversation(collection, { guildId, userId, displayName }).catch(error => {
         console.error("[Yukina IA] Não foi possível registrar o diário:", error.message || error);
@@ -261,7 +262,6 @@ function createEngine(getSettingsCollection) {
       await residents.simulateCurrentSlot(collection, snapshot);
       await life.updateAges(collection, snapshot);
       const due = await letters.getDueFutureLetters(collection, { limit: 20 });
-      for (const letter of due) await letters.markFutureLetterOpened(collection, letter.letterId);
       if (due.length) {
         const events = collection.db.collection("yukina_ai_life_events");
         for (const letter of due) {
