@@ -92,6 +92,7 @@ function loadYukinaSystems() {
   require("./interaction")(client);
   nickColorsSystem.install(client, getSettingsCollection);
   reactionRolesSystem.install(client, getSettingsCollection);
+  require("./systems/yukina-ai").install(client, getSettingsCollection);
 }
 
 
