@@ -37,7 +37,7 @@ module.exports = {
         source: "slash"
       }
     );
-    return interaction.editReply({ content: result.text, allowedMentions: { parse: [] } });
+    return interaction.editReply({ content: `<@${interaction.user.id}> ${result.text}`, allowedMentions: { parse: [], users: [interaction.user.id] } });
   },
 
   async prefixExecute(message) {
@@ -58,6 +58,6 @@ module.exports = {
         source: "prefix"
       }
     );
-    return message.reply({ content: result.text, allowedMentions: { parse: [], repliedUser: false } });
+    return message.reply({ content: result.text, allowedMentions: { parse: [], users: [message.author.id], repliedUser: true } });
   }
 };
