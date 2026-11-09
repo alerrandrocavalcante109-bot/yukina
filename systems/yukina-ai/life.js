@@ -84,6 +84,8 @@ async function initialize(base, worldSnapshot, residents = []) {
     await buildings.updateOne({ buildingId: building.buildingId }, { $setOnInsert: { ...building, status: "ativo", createdAt: now, updatedAt: now } }, { upsert: true });
   }
   const accounts = db.collection(C.accounts);
+  await accounts.updateOne({ residentId: "community_treasury" }, { $setOnInsert: { residentId: "community_treasury", balance: 10000, lifetimeEarned: 10000, createdAt: now, updatedAt: now } }, { upsert: true });
+  await accounts.updateOne({ residentId: "system_construction" }, { $setOnInsert: { residentId: "system_construction", balance: 0, lifetimeEarned: 0, createdAt: now, updatedAt: now } }, { upsert: true });
   for (const resident of residents) {
     const residentId = safeText(resident.residentId, 100);
     if (!residentId) continue;
