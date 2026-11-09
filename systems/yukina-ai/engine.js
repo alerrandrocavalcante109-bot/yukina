@@ -142,6 +142,7 @@ function createEngine(getSettingsCollection) {
 
       await memory.captureSafeMemory(collection, userId, safePrompt);
       const worldSnapshot = await world.getWorldSnapshot(collection);
+      await residents.simulateResidentNeeds(collection, worldSnapshot);
       await residents.simulateCurrentSlot(collection, worldSnapshot);
       const [memories, history, relationship, chapters, dueLetters, worldEvents, residentsContext, residentEvents] = await Promise.all([
         memory.getMemories(collection, userId),
