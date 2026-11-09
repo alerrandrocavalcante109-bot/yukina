@@ -212,7 +212,76 @@ function createEngine(getSettingsCollection) {
     }
   }
 
-  return { answer };
+  const features = {
+    async createFutureLetter(data) { return letters.createFutureLetter(await getBaseCollection(), data); },
+    async createPrivateLetter(data) { return letters.createPrivateLetter(await getBaseCollection(), data); },
+    async getPrivateLetters(userId, options) { return letters.getPrivateLettersForRecipient(await getBaseCollection(), userId, options); },
+    async listStories(options) { return stories.listStories(await getBaseCollection(), options); },
+    async getStory(storyId) { return stories.getStory(await getBaseCollection(), storyId); },
+    async createStory(data) { return stories.createStory(await getBaseCollection(), data); },
+    async publishStory(storyId, channelId) { return stories.setStoryStatus(await getBaseCollection(), storyId, "published", { channelId }); },
+    async castStoryVote(data) { return stories.castVote(await getBaseCollection(), data); },
+    async getStoryResults(storyId) { return stories.getVoteResults(await getBaseCollection(), storyId); },
+    async getChapters(options) { return autobiography.getChapters(await getBaseCollection(), options); },
+    async getDiary(scope, ownerId, limit = 14) {
+      const collection = await getBaseCollection();
+      return collection.db.collection("yukina_ai_diary").find(
+        { scope, ownerId: String(ownerId) }, { projection: { _id: 0 } }
+      ).sort({ day: -1 }).limit(Math.max(1, Math.min(Number(limit) || 14, 60))).toArray();
+    },
+    async getWorld() {
+      const collection = await getBaseCollection();
+      const snapshot = await world.getWorldSnapshot(collection);
+      const residentsList = await residents.listResidents(collection, { limit: 20 });
+      const events = await residents.getRecentResidentEvents(collection, { limit: 12 });
+      const buildings = await collection.db.collection("yukina_ai_buildings").find({}, { projection: { _id: 0 } }).toArray();
+      return { snapshot, residents: residentsList, events, buildings };
+    },
+    async getWeeklyReport(guildId) {
+      const collection = await getBaseCollection();
+      const since = new Date(Date.now() - 7 * 86400000);
+      const diary = await collection.db.collection("yukina_ai_diary").findOne(
+        { scope: "server", ownerId: String(guildId), day: { $gte: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(since) } }
+      );
+      const entries = await collection.db.collection("yukina_ai_diary").find(
+        { scope: "server", ownerId: String(guildId), createdAt: { $gte: since } },
+        { projection: { _id: 0, day: 1, conversations: 1, participants: 1 } }
+      ).sort({ day: -1 }).limit(7).toArray();
+      return {
+        days: entries.length,
+        conversations: entries.reduce((sum, item) => sum + (Number(item.conversations) || 0), 0),
+        participants: new Set(entries.flatMap(item => item.participants || [])).size,
+        since
+      };
+    },
+    async processWorldCycle() {
+      const collection = await getBaseCollection();
+      const snapshot = await world.advanceWorld(collection);
+      await residents.simulateResidentNeeds(collection, snapshot);
+      await residents.simulateCurrentSlot(collection, snapshot);
+      await life.updateAges(collection, snapshot);
+      const due = await letters.getDueFutureLetters(collection, { limit: 20 });
+      for (const letter of due) await letters.markFutureLetterOpened(collection, letter.letterId);
+      if (due.length) {
+        const events = collection.db.collection("yukina_ai_life_events");
+        for (const letter of due) {
+          await events.updateOne(
+            { eventId: "future-letter-opened:" + letter.letterId },
+            { $setOnInsert: {
+              eventId: "future-letter-opened:" + letter.letterId,
+              kind: "letter",
+              summary: "Uma carta para o eu do futuro chegou à data de releitura: " + letter.letterId + ".",
+              createdAt: new Date()
+            } },
+            { upsert: true }
+          );
+        }
+      }
+      return { snapshot, dueLetters: due.length };
+    }
+  };
+
+  return { answer, features };
 }
 
 module.exports = { createEngine, isGreetingOnly, sanitizeInput };
