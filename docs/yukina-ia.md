@@ -197,3 +197,38 @@ A integração de áudio foi adicionada em uma etapa separada:
 Não publique as chaves no GitHub ou no Discord. Configure-as em Render → Environment. Para áudio anexado, basta a chave Groq; para conversa em canal de voz, são necessárias as três variáveis Groq/ElevenLabs.
 
 O bot precisa da permissão **Conectar** e **Falar** no canal e do intent de gateway **GuildVoiceStates**, incluído no cliente. O comando /voz entrar exige que o membro que chamou esteja conectado ao canal de voz.
+
+
+## Etapa de integração — recursos narrativos acessíveis no Discord
+
+A integração complementar está disponível pelo comando `/yukina` e pelo prefixo `Yyukina`:
+
+- `/yukina status` — estado do santuário, dia, horário, estação, clima, local, moradores, construções, missões, festivais e registros mágicos.
+- `/yukina mundo` — mesma visão do mundo persistente.
+- `/yukina autobiografia` — capítulos confirmados da personagem.
+- `/yukina carta-futuro` — cria uma carta para releitura futura, usando a data local de Brasília. Restrito ao Criador e à mãe.
+- `/yukina carta-privada` e `/yukina cartas-inbox` — cartas privadas entre os dois IDs autorizados. A consulta verifica o ID do destinatário e responde de forma efêmera.
+- `/yukina historia-criar` — cria rascunho interativo com 2 a 5 escolhas. Restrito ao Criador e à mãe.
+- `/yukina historias` — lista histórias publicadas.
+- `/yukina historia-publicar` — publica a história no canal atual com botões de votação. Cada usuário pode votar uma única vez por história.
+- `/yukina historia-resultados` — mostra a contagem de votos.
+- `/yukina diario` — consulta os registros agregados, restrito ao Criador e à mãe.
+- `/yukina relatorio` — relatório agregado dos últimos sete dias, para a família da Yukina ou membros com Gerenciar Servidor.
+
+## Ciclo automático do mundo
+
+Depois que o núcleo da IA é carregado, um ciclo é executado imediatamente e depois a cada 15 minutos enquanto o processo do bot estiver ativo. Ele avança o relógio persistente, atualiza necessidades simuladas, registra rotinas e encontros programados, atualiza idades e registra cartas futuras que chegaram à data de releitura. O ciclo não executa ações reais fora do Discord e não representa consciência ou atividade enquanto o processo está desligado; o relógio recupera o tempo decorrido quando o bot retorna.
+
+Cartas futuras só são marcadas como abertas depois que uma resposta da Yukina efetivamente usa o conteúdo. As cartas privadas não entram no contexto geral da IA.
+
+## Segurança e limites
+
+- Cartas privadas e diários pessoais são consultados apenas pelos IDs autorizados.
+- Histórias oficiais só podem ser criadas pelo Criador ou pela mãe; a publicação também permite membros com Gerenciar Servidor.
+- Botões de votação validam se a história está publicada e se a escolha pertence à história. Índice único no MongoDB impede votos duplicados.
+- Relatórios usam somente contagens agregadas, sem copiar mensagens, prompts ou respostas.
+- As rotinas, moradores, economia, missões, festivais e magia são sistemas narrativos persistidos no MongoDB. Não são agentes conscientes nem atividade real fora do processo do bot.
+
+## Configuração e ativação
+
+Não foram adicionadas novas chaves de API para estas etapas. Elas usam a conexão MongoDB já existente e o núcleo OpenRouter já configurado. O comando slash `/yukina` será sincronizado pelo registro automático de comandos na inicialização.
