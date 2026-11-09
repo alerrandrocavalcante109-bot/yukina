@@ -135,3 +135,22 @@ O módulo de moradores agora mantém indicadores narrativos persistentes de ener
 As necessidades são atualizadas usando o relógio persistente do mundo e incluídas nas fichas que a Yukina recebe como contexto. O cálculo limita cada atualização a 24 horas simuladas, mantém os valores dentro de 0–100 e só roda quando ocorre uma conversa com a Yukina.
 
 **Limites desta etapa:** bem-estar e saúde permanecem estáveis por padrão; não há doença, ferimentos, higiene, inventário de comida, produção agrícola ou sistema de cuidados. As refeições são eventos narrativos programados, não consumo físico de itens. A simulação não roda em segundo plano e não representa consciência ou atividade autônoma real.
+
+
+## Mundo vivo integrado — comunidade, progresso e acontecimentos
+
+O modulo `systems/yukina-ai/life.js` adiciona uma camada persistente de vida comunitaria ao Santuario:
+
+- **Construcoes:** biblioteca, oficina de lanternas, casas dos tres moradores e observatorio lunar, com catalogo e funcao interna para registrar novas estruturas.
+- **Economia:** contas em KZ para moradores, tesouraria comunitaria, transferencias com verificacao de saldo e livro-razão com identificadores unicos.
+- **Inventarios e habilidades:** itens por proprietario, controle de quantidade e experiencia/nível de habilidades.
+- **Profissoes:** guardiao, bibliotecario, artesao, agricultor, curandeiro e explorador.
+- **Familias:** registro explicito de lacos confirmados, sem inventar parentescos.
+- **Envelhecimento:** suporte a idade e estagios de vida usando o calendario ficcional (360 dias por ano); so moradores com idade inicial registrada envelhecem.
+- **Magia:** catalogo de tipos magicos e registro de desbloqueios. A Essencia da Origem de Yukina e protegida contra concessao, copia ou transferencia.
+- **Missoes e festivais:** primeira missao da Vila Sakura e Festival das Mil Cerejeiras registrados, com funcoes internas para progresso e mudanca de estado.
+- **Acontecimentos:** registros persistentes usados como contexto narrativo.
+
+O motor inicializa os registros e injeta o estado comunitario nas conversas. As operacoes de alteracao ficam disponiveis como funcoes internas para futuras interacoes controladas; ainda nao existe uma interface publica de comandos/botoes para construir, transferir KZ, editar familias ou conceder magia. Nenhum membro pode realizar essas operacoes apenas por escrever uma frase: o modelo recebe o estado como contexto, mas nao possui acesso direto ao banco nem ferramentas de escrita.
+
+A economia e inteiramente ficcional. O envelhecimento so e ativado quando uma idade inicial e registrada para o morador. A missao e o festival iniciais sao registros planejados, nao eventos ja realizados. O relogio e as rotinas continuam sendo simulacoes persistidas, nao pensamento independente enquanto o bot esta offline.
