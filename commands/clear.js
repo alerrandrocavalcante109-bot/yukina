@@ -31,7 +31,7 @@ async function sendTemporaryReply(reply, content) {
 
 async function clearMessages({ guild, channel, member, amount, invocationMessageId = null, reply }) {
   if (!isAdministrator(member)) {
-    return sendTemporaryReply(reply, "🌙 Apenas membros da administração podem utilizar este comando.");
+    return sendTemporaryReply(reply, "🌙 Você precisa da permissão **Administrador** para utilizar este comando.");
   }
 
   if (!Number.isInteger(amount) || amount < MIN_MESSAGES || amount > MAX_MESSAGES) {
