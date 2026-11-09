@@ -64,41 +64,62 @@ async function requestOpenRouter(messages) {
     throw error;
   }
 
-  const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      Authorization: "Bearer " + apiKey,
-      "Content-Type": "application/json",
-      "HTTP-Referer": process.env.YUKINA_SITE_URL || "https://yukina.onrender.com",
-      "X-Title": "Yukina IA"
-    },
-    body: JSON.stringify({
-      model: process.env.YUKINA_OPENROUTER_MODEL || "openrouter/free",
-      messages,
-      temperature: 0.85,
-      max_tokens: 700
-    }),
-    signal: AbortSignal.timeout(30000)
-  });
+  const model = String(process.env.YUKINA_OPENROUTER_MODEL || "openrouter/free").trim();
+  let lastEmptyResponse = null;
 
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    const error = new Error("OpenRouter retornou HTTP " + response.status + ".");
-    error.code = "OPENROUTER_ERROR";
-    error.status = response.status;
-    throw error;
+  // Alguns modelos gratuitos podem aceitar a requisição e, ocasionalmente,
+  // devolver uma escolha sem conteúdo. Fazemos uma única nova tentativa.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: "Bearer " + apiKey,
+        "Content-Type": "application/json",
+        "HTTP-Referer": process.env.YUKINA_SITE_URL || "https://yukina.onrender.com",
+        "X-Title": "Yukina IA"
+      },
+      body: JSON.stringify({
+        model,
+        messages,
+        temperature: attempt === 1 ? 0.85 : 0.7,
+        max_tokens: 900
+      }),
+      signal: AbortSignal.timeout(45000)
+    });
+
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const detail = String(data.error?.message || data.message || "").slice(0, 300);
+      const error = new Error("OpenRouter HTTP " + response.status + (detail ? ": " + detail : ""));
+      error.code = "OPENROUTER_ERROR";
+      error.status = response.status;
+      error.requestId = response.headers.get("x-request-id") || data.id || null;
+      throw error;
+    }
+
+    const choice = data.choices?.[0];
+    const message = choice?.message || {};
+    const result = message.content;
+    const text = Array.isArray(result)
+      ? result.map(part => typeof part === "string" ? part : part?.text || "").join("")
+      : typeof result === "string" ? result : "";
+
+    const cleaned = sanitizeOutput(text);
+    if (cleaned) return cleaned;
+
+    lastEmptyResponse = {
+      requestId: response.headers.get("x-request-id") || data.id || null,
+      finishReason: choice?.finish_reason || "unknown",
+      model: data.model || model,
+      hasRefusal: Boolean(message.refusal)
+    };
+    console.warn("[Yukina IA] OpenRouter retornou conteúdo vazio (tentativa " + attempt + "/2):", JSON.stringify(lastEmptyResponse));
   }
 
-  const result = data.choices?.[0]?.message?.content;
-  const text = Array.isArray(result)
-    ? result.map(part => typeof part === "string" ? part : part?.text || "").join("")
-    : result;
-  if (typeof text !== "string" || !text.trim()) {
-    const error = new Error("O modelo não retornou uma resposta.");
-    error.code = "EMPTY_RESPONSE";
-    throw error;
-  }
-  return sanitizeOutput(text);
+  const error = new Error("OpenRouter retornou resposta vazia após duas tentativas.");
+  error.code = "EMPTY_RESPONSE";
+  error.details = lastEmptyResponse;
+  throw error;
 }
 
 function createEngine(getSettingsCollection) {
@@ -183,7 +204,7 @@ function createEngine(getSettingsCollection) {
 
       return { ok: true, text: reply };
     } catch (error) {
-      console.error("[Yukina IA] Falha ao responder:", error.code || error.message);
+      console.error("[Yukina IA] Falha ao responder:", error.code || error.message, error.details ? JSON.stringify(error.details) : "");
       if (error.code === "MISSING_API_KEY") {
         return { ok: false, text: "🌙 Ainda estou sendo preparada. A chave OPENROUTER_API_KEY precisa ser configurada no ambiente do bot." };
       }
