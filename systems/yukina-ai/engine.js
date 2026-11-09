@@ -7,6 +7,7 @@ const journal = require("./journal");
 const autobiography = require("./autobiography");
 const letters = require("./letters");
 const stories = require("./stories");
+const world = require("./world");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -104,9 +105,10 @@ function createEngine(getSettingsCollection) {
   async function getBaseCollection() {
     const collection = await getSettingsCollection();
     if (!indexesReady) {
-      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection), letters.ensureIndexes(collection), stories.ensureIndexes(collection)]);
+      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection), letters.ensureIndexes(collection), stories.ensureIndexes(collection), world.ensureIndexes(collection)]);
       await indexPromise;
       await autobiography.ensureOriginChapter(collection);
+      await world.ensureWorld(collection);
       indexesReady = true;
     }
     return collection;
@@ -137,16 +139,18 @@ function createEngine(getSettingsCollection) {
       }
 
       await memory.captureSafeMemory(collection, userId, safePrompt);
-      const [memories, history, relationship, chapters, dueLetters] = await Promise.all([
+      const [memories, history, relationship, chapters, dueLetters, worldSnapshot, worldEvents] = await Promise.all([
         memory.getMemories(collection, userId),
         memory.getThread(collection, userId, channelId),
         relationships.registerInteraction(collection, userId, safePrompt),
         autobiography.getChapters(collection),
-        letters.getDueFutureLetters(collection)
+        letters.getDueFutureLetters(collection),
+        world.getWorldSnapshot(collection),
+        world.listWorldEvents(collection, { limit: 5 })
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) + "\n\n" + world.buildWorldContext(worldSnapshot, worldEvents) },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
