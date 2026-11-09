@@ -8,6 +8,31 @@ const CHAT_CLEAR_BATCHES = 10;
 function getRoleId(text) {
   return String(text || "").match(/<@&(\d{17,20})>/)?.[1] || null;
 }
+function normalizeRoleName(value) {
+  return String(value || "").normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toLocaleLowerCase("pt-BR").replace(/\\s+/g, " ").trim();
+}
+async function resolveRole(guild, prompt) {
+  const mentionedId = getRoleId(prompt);
+  if (mentionedId) return guild.roles.fetch(mentionedId).catch(() => null);
+
+  const cleaned = String(prompt || "")
+    .replace(/<@!?\\d{17,20}>/g, " ")
+    .replace(/<@&\\d{17,20}>/g, " ")
+    .replace(/^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de|retire|retirar|remova|remover|tire|tirar)\\b/i, " ")
+    .replace(/\\b(o|a|um|uma|cargo|chamado|chamada|para|pra|ao|à|aos|às|de)\\b/gi, " ");
+  const normalizedPrompt = normalizeRoleName(cleaned);
+  if (!normalizedPrompt) return null;
+
+  const roles = await guild.roles.fetch().catch(() => guild.roles.cache);
+  const matches = [...roles.values()]
+    .filter(role => role.id !== guild.id && normalizeRoleName(role.name).length > 0 && normalizedPrompt.includes(normalizeRoleName(role.name)))
+    .sort((a, b) => normalizeRoleName(b.name).length - normalizeRoleName(a.name).length);
+  if (!matches.length) return null;
+  const longest = normalizeRoleName(matches[0].name).length;
+  const best = matches.filter(role => normalizeRoleName(role.name).length === longest);
+  if (best.length > 1) return { ambiguous: true, names: best.slice(0, 5).map(role => role.name) };
+  return best[0];
+}
 function getMemberId(text) {
   return String(text || "").match(/<@!?(\d{17,20})>/)?.[1] || null;
 }
@@ -141,12 +166,12 @@ async function clearChat({ guild, channel, actor }) {
 async function changeRole({ guild, actor, prompt, add }) {
   if (!hasPermission(actor, PermissionFlagsBits.ManageRoles)) return reply("🔒 Você precisa da permissão **Gerenciar cargos** para conceder ou retirar cargos.");
   const userId = getMemberId(prompt);
-  const roleId = getRoleId(prompt);
-  if (!userId || !roleId) return reply("🌸 Mencione o membro e o cargo. Exemplo: 'conceda @Cargo para @Membro' ou 'retire @Cargo de @Membro'.");
+  if (!userId) return reply("🌸 Mencione o membro que receberá ou perderá o cargo. Exemplo: 'conceda Moderador para @Membro'.");
   const target = await guild.members.fetch(userId).catch(() => null);
-  const role = await guild.roles.fetch(roleId).catch(() => null);
+  const role = await resolveRole(guild, prompt);
   const bot = guild.members.me || await guild.members.fetchMe().catch(() => null);
-  if (!target || !role) return reply("🫧 Não encontrei esse membro ou cargo neste servidor.");
+  if (role?.ambiguous) return reply("🌸 Encontrei mais de um cargo possível (" + role.names.join(", ") + "). Diga o nome completo ou mencione o cargo para eu não escolher errado.");
+  if (!target || !role) return reply("🫧 Não encontrei esse membro ou cargo. Diga o nome do cargo exatamente como aparece no servidor.");
   if (!bot?.permissions.has(PermissionFlagsBits.ManageRoles)) return reply("🫧 Preciso da permissão **Gerenciar cargos**.");
   if (role.id === guild.id || role.managed) return reply("🌙 Esse cargo não pode ser alterado manualmente.");
   if (role.position >= bot.roles.highest.position) return reply("🌙 Meu cargo está abaixo ou no mesmo nível do cargo que você selecionou.");
@@ -177,9 +202,15 @@ async function handleRequest({ prompt, context } = {}) {
 
   const grantVerb = /^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de)\b/.test(normalized);
   const removeVerb = /^(retire|retirar|remova|remover|tire|tirar)\b/.test(normalized);
-  const hasRoleTarget = Boolean(getRoleId(original)) || /\bcargo\b/.test(normalized);
-  const grant = grantVerb && hasRoleTarget;
-  const remove = removeVerb && hasRoleTarget;
+  const hasMemberTarget = Boolean(getMemberId(original));
+  const roleDescription = original
+    .replace(/<@!?\\d{17,20}>/g, " ")
+    .replace(/^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de|retire|retirar|remova|remover|tire|tirar)\\b/i, " ")
+    .replace(/\\b(o|a|um|uma|cargo|chamado|chamada|para|pra|ao|à|aos|às|de)\\b/gi, " ")
+    .trim();
+  const hasRoleTarget = Boolean(getRoleId(original)) || Boolean(roleDescription);
+  const grant = grantVerb && hasMemberTarget && hasRoleTarget;
+  const remove = removeVerb && hasMemberTarget && hasRoleTarget;
   const lock = /^(bloqueie|bloquear|lock|trancar|feche)\b/.test(normalized) && (/\b(canal|chat)\b|<#\d{17,20}>/.test(normalized));
   const unlock = /^(desbloqueie|desbloquear|unlock|destrancar|abra)\b/.test(normalized) && (/\b(canal|chat)\b|<#\d{17,20}>/.test(normalized));
   const slow = /^(ative|ativar|ligue|ligar|desative|desativar|desligue|desligar)\b/.test(normalized) && /\b(modo lento|slowmode)\b/.test(normalized);
