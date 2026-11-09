@@ -36,7 +36,7 @@ async function enter(source, member, guild, textChannel) {
     return send(source, "🌙 Preciso das permissões Conectar e Falar nesse canal.");
   }
 
-  if (isSlash(source)) await source.deferReply({ ephemeral: true });
+  if (isSlash(source) && !source.deferred && !source.replied) await source.deferReply({ ephemeral: true });
   try {
     const result = await voice.enter(guild, voiceChannel, textChannel, getEngine, requesterId);
     const message = result.alreadyConnected
@@ -85,7 +85,10 @@ module.exports = {
     const action = interaction.options.getSubcommand();
     if (action === "sair") return leave(interaction, interaction.guildId, interaction.user.id, interaction.memberPermissions);
     if (action === "status") return status(interaction, interaction.guildId);
-    return enter(interaction, interaction.member, interaction.guild, interaction.channel);
+    if (!interaction.deferred && !interaction.replied) await interaction.deferReply({ ephemeral: true });
+    const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    if (!member) return interaction.editReply({ content: "🌙 Não consegui localizar seu perfil no servidor. Tente novamente." });
+    return enter(interaction, member, interaction.guild, interaction.channel);
   },
   async prefixExecute(message, args) {
     const action = String(args?.[0] || "").toLowerCase();
