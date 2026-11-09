@@ -172,3 +172,28 @@ A limpeza preserva mensagens fixadas e respeita a limitação do Discord: mensag
 ### Cargos pelo nome
 
 Para conceder ou retirar um cargo pela Yukina IA ou pelo comando de prefixo, basta mencionar o membro e escrever o nome exato do cargo. Não é necessário marcar o cargo. Exemplos: `Yia conceda Moderador para @Membro`, `Yia retire VIP de @Membro`, `Ycargo @Membro Moderador conceder`. Se houver mais de um cargo possível com o mesmo nome ou correspondência, a Yukina pede esclarecimento em vez de escolher aleatoriamente. A menção ao cargo continua sendo aceita como alternativa.
+
+
+## Suporte a áudio e voz — Groq + ElevenLabs
+
+A integração de áudio foi adicionada em uma etapa separada:
+
+- **Áudios anexados:** quando um membro envia mensagem de voz ou arquivo de áudio no servidor, Yukina transcreve em português com Groq Whisper, envia a transcrição ao mesmo motor de conversa e responde marcando o autor.
+- **Conversa em canal de voz:** use /voz entrar ou Yvoz entrar enquanto estiver conectado a um canal de voz. Yukina recebe os trechos de fala, transcreve com Groq, conversa usando o contexto e responde por texto no canal de texto em que o comando foi usado e por áudio no canal de voz.
+- **Sair:** use /voz sair ou Yvoz sair.
+- **Privacidade:** ao entrar, Yukina anuncia que está ouvindo. O áudio é processado em memória e enviado ao serviço Groq para transcrição; não é salvo como gravação no MongoDB. A recepção de áudio do Discord é uma API não documentada oficialmente e pode ter limitações.
+- **Limites:** cada fala recebida é limitada a aproximadamente 15 segundos; anexos de áudio são limitados a 24 MB. A franquia gratuita dos provedores pode ter limites, mudar ou acabar; o sistema não garante uso ilimitado gratuito.
+
+### Variáveis adicionais no Render
+
+| Variável | Obrigatória | Uso |
+| --- | --- | --- |
+| `GROQ_API_KEY` | Sim para transcrição | Chave do Groq |
+| `ELEVENLABS_API_KEY` | Sim para resposta falada | Chave do ElevenLabs |
+| `ELEVENLABS_VOICE_ID` | Sim para resposta falada | ID da voz escolhida no ElevenLabs |
+| `GROQ_STT_MODEL` | Não | Padrão: `whisper-large-v3-turbo` |
+| `ELEVENLABS_MODEL_ID` | Não | Padrão: `eleven_multilingual_v2` |
+
+Não publique as chaves no GitHub ou no Discord. Configure-as em Render → Environment. Para áudio anexado, basta a chave Groq; para conversa em canal de voz, são necessárias as três variáveis Groq/ElevenLabs.
+
+O bot precisa da permissão **Conectar** e **Falar** no canal e do intent de gateway **GuildVoiceStates**, incluído no cliente. O comando /voz entrar exige que o membro que chamou esteja conectado ao canal de voz.
