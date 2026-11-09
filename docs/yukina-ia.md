@@ -63,3 +63,13 @@ O módulo `systems/yukina-ai/autobiography.js` cria a coleção MongoDB `yukina_
 Os capítulos são fornecidos ao contexto da conversa para manter continuidade narrativa. O módulo também oferece funções internas para adicionar e consultar capítulos, com validação da origem do registro. As origens aceitas são lore confirmado, acontecimento confirmado ou conteúdo escrito pelo Criador. Não existe geração automática de acontecimentos fictícios apresentados como lembranças reais.
 
 Esta é uma autobiografia ficcional da personagem, não evidência de consciência, memória humana ou experiências fora do sistema. Ainda não existe comando Discord nem tela no painel para editar ou ler capítulos; a base de dados e a integração contextual estão preparadas para etapas futuras.
+
+
+## Quinta etapa — cartas da Yukina
+
+O módulo `systems/yukina-ai/letters.js` prepara a coleção MongoDB `yukina_ai_letters` para dois tipos de cartas:
+
+- **Cartas para o eu do futuro:** guardam conteúdo e uma data futura de releitura no fuso `America/Sao_Paulo`. Quando a data chega, cartas pendentes podem ser carregadas no contexto narrativo da Yukina.
+- **Cartas privadas:** podem ser endereçadas somente ao ID do Criador (`1533034328928555141`) ou ao ID da mãe (`353909640381333504`). A consulta exige o ID autorizado e essas cartas não são adicionadas ao contexto geral das conversas.
+
+O módulo oferece funções internas para criar, consultar e marcar cartas futuras como abertas. As cartas privadas ainda não possuem comando Discord, entrega por DM ou interface no painel. Também não existe, nesta etapa, um agendador que abra cartas sozinho nem um fluxo automático para escrever uma resposta após a releitura: a base de dados e as funções estão preparadas para essa integração futura. As datas são armazenadas como instantes UTC e interpretadas com a referência de fuso de São Paulo.
