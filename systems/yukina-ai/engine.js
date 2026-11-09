@@ -10,6 +10,7 @@ const stories = require("./stories");
 const world = require("./world");
 const residents = require("./residents");
 const life = require("./life");
+const moderation = require("./moderation");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -120,8 +121,9 @@ function createEngine(getSettingsCollection) {
     return collection;
   }
 
-  async function answer({ userId, channelId, guildId, prompt, displayName = "membro" }) {
-    const safePrompt = sanitizeInput(prompt);
+  async function answer({ userId, channelId, guildId, prompt, displayName = "membro", discordContext = null }) {
+    const rawPrompt = String(prompt || "").trim();
+    const safePrompt = sanitizeInput(rawPrompt);
     if (!String(userId || "").trim() || !String(channelId || "").trim()) {
       return { ok: false, text: "🌸 Não consegui identificar esta conversa. Tente novamente em um canal do servidor." };
     }
@@ -131,6 +133,9 @@ function createEngine(getSettingsCollection) {
     if (wait) return { ok: false, cooldown: true, text: "🌸 Só um instantinho! Tente novamente em " + wait + " segundo(s)." };
 
     try {
+      const moderationResult = await moderation.handleRequest({ prompt: rawPrompt, context: discordContext });
+      if (moderationResult.handled) return { ok: true, text: moderationResult.text };
+
       const collection = await getBaseCollection();
 
       if (isForgetRequest(safePrompt)) {
