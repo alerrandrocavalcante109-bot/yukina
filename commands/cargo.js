@@ -64,11 +64,18 @@ module.exports = {
 
   async prefixExecute(message, args = []) {
     const target = message.mentions.members.first();
-    const role = message.mentions.roles.first();
     const actionText = String(args[args.length - 1] || "").toLowerCase();
     const action = ["add", "adicionar", "conceder", "dar"].includes(actionText) ? "add"
       : ["remove", "remover", "retirar", "tirar"].includes(actionText) ? "remove" : null;
-    if (!target || !role || !action) return message.reply("🌸 Use Ycargo @membro @cargo conceder ou Ycargo @membro @cargo retirar.");
+    const roleMention = message.mentions.roles.first();
+    const roleName = args
+      .filter(arg => !/^<@!?\\d{17,20}>$/.test(String(arg)) && !/^<@&\\d{17,20}>$/.test(String(arg)))
+      .slice(0, -1)
+      .join(" ")
+      .trim();
+    const role = roleMention || (await message.guild.roles.fetch().catch(() => message.guild.roles.cache))
+      .find(candidate => candidate.name.toLocaleLowerCase("pt-BR") === roleName.toLocaleLowerCase("pt-BR"));
+    if (!target || !role || !action) return message.reply("🌸 Use Ycargo @membro Nome do Cargo conceder ou Ycargo @membro Nome do Cargo retirar. Não precisa mencionar o cargo.");
     const result = await applyRoleChange({ guild: message.guild, moderator: message.member, target, role, action, actor: message.author.tag });
     return message.reply({ content: result.text, allowedMentions: { parse: [] } });
   }
