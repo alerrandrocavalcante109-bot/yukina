@@ -236,7 +236,10 @@ function createEngine(getSettingsCollection) {
       const residentsList = await residents.listResidents(collection, { limit: 20 });
       const events = await residents.getRecentResidentEvents(collection, { limit: 12 });
       const buildings = await collection.db.collection("yukina_ai_buildings").find({}, { projection: { _id: 0 } }).toArray();
-      return { snapshot, residents: residentsList, events, buildings };
+      const quests = await collection.db.collection("yukina_ai_quests").find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(10).toArray();
+      const festivals = await collection.db.collection("yukina_ai_festivals").find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(5).toArray();
+      const magic = await collection.db.collection("yukina_ai_magic").find({}, { projection: { _id: 0 } }).limit(10).toArray();
+      return { snapshot, residents: residentsList, events, buildings, quests, festivals, magic };
     },
     async getWeeklyReport(guildId) {
       const collection = await getBaseCollection();
