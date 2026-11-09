@@ -25,8 +25,9 @@ async function enter(source, member, guild, textChannel) {
   const voiceChannel = member?.voice?.channel;
   if (!voiceChannel) return send(source, "🌸 Entre em um canal de voz primeiro. Depois use este comando novamente.");
 
+  const requesterId = isSlash(source) ? source.user.id : source.author.id;
   const existing = voice.getSession(guild.id);
-  if (existing && existing.startedBy !== source.user.id && !canManage(member.permissions)) {
+  if (existing && existing.startedBy !== requesterId && !canManage(member.permissions)) {
     return send(source, "🌙 Já estou em uma conversa de voz iniciada por outra pessoa. Peça a ela para encerrar ou solicite à equipe.");
   }
 
@@ -37,7 +38,7 @@ async function enter(source, member, guild, textChannel) {
 
   if (isSlash(source)) await source.deferReply({ ephemeral: true });
   try {
-    const result = await voice.enter(guild, voiceChannel, textChannel, getEngine, source.user.id);
+    const result = await voice.enter(guild, voiceChannel, textChannel, getEngine, requesterId);
     const message = result.alreadyConnected
       ? "🌸 Já estou em **" + voiceChannel.name + "**! Continuo ouvindo e respondendo por voz. As respostas em texto serão enviadas aqui."
       : "🌸 Entrei em **" + voiceChannel.name + "** e a conexão está pronta! Pode conversar comigo. Vou responder por voz e também por texto aqui. Use /voz sair para encerrar.";
