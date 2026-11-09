@@ -162,7 +162,7 @@ function createEngine(getSettingsCollection) {
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) + "\n\n" + world.buildWorldContext(worldSnapshot, worldEvents) + "\n\n" + residentsContext + "\n\n" + residents.buildResidentEventsContext(residentEvents) + "\\n\\n" + lifeContext },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) + "\n\n" + world.buildWorldContext(worldSnapshot, worldEvents) + "\n\n" + residentsContext + "\n\n" + residents.buildResidentEventsContext(residentEvents) + "\n\n" + lifeContext },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
