@@ -141,15 +141,17 @@ function createEngine(getSettingsCollection) {
       }
 
       await memory.captureSafeMemory(collection, userId, safePrompt);
-      const worldSnapshot = await world.getWorldSnapshot(collection);\n      await residents.simulateCurrentSlot(collection, worldSnapshot);\n      const [memories, history, relationship, chapters, dueLetters, worldEvents, residentsContext, residentEvents] = await Promise.all([
+      const worldSnapshot = await world.getWorldSnapshot(collection);
+      await residents.simulateCurrentSlot(collection, worldSnapshot);
+      const [memories, history, relationship, chapters, dueLetters, worldEvents, residentsContext, residentEvents] = await Promise.all([
         memory.getMemories(collection, userId),
         memory.getThread(collection, userId, channelId),
         relationships.registerInteraction(collection, userId, safePrompt),
         autobiography.getChapters(collection),
         letters.getDueFutureLetters(collection),
-        world.getWorldSnapshot(collection),
         world.listWorldEvents(collection, { limit: 5 }),
-        residents.getResidentsContext(collection)
+        residents.getResidentsContext(collection),
+        residents.getRecentResidentEvents(collection, { limit: 8 })
       ]);
 
       const messages = [
