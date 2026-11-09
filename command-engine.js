@@ -5,6 +5,40 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const prefixCache = new Map();
+const { AsyncLocalStorage } = require("node:async_hooks");
+const prefixReplyContext = new AsyncLocalStorage();
+const patchedChannels = new WeakSet();
+
+// Instala um wrapper único por canal; o contexto assíncrono identifica a mensagem
+// correta sem trocar channel.send globalmente a cada comando concorrente.
+function installReplyAwareChannel(channel) {
+  if (patchedChannels.has(channel)) return;
+  const originalSend = channel.send.bind(channel);
+  channel.send = (options) => {
+    const context = prefixReplyContext.getStore();
+    if (!context || !context.active) return originalSend(options);
+
+    let payload = options;
+    if (typeof options === "string") {
+      payload = { content: options };
+    } else if (options && typeof options === "object" && !Array.isArray(options)) {
+      const source = options.options && typeof options.options === "object"
+        ? options.options
+        : options;
+      payload = { ...source };
+    }
+
+    if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+      payload.reply = { messageReference: context.message.id, failIfNotExists: false };
+      payload.allowedMentions = {
+        ...(payload.allowedMentions || {}),
+        repliedUser: true
+      };
+    }
+    return originalSend(payload);
+  };
+  patchedChannels.add(channel);
+}
 function findFiles(dir) {
   if (!fs.existsSync(dir)) return [];
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -119,36 +153,17 @@ function startPrefixEngine(client, getSettingsCollection) {
     const typingInterval = setInterval(() => {
       message.channel.sendTyping().catch(() => {});
     }, 8000);
-    // Vincula envios feitos com texto/opções simples à mensagem do comando.
-    // Não converte objetos internos MessagePayload do discord.js, pois isso os esvazia.
-    const originalChannelSend = message.channel.send.bind(message.channel);
-    message.channel.send = (options) => {
-      let payload = options;
-      if (typeof options === "string") {
-        payload = { content: options };
-      } else if (options && typeof options === "object" && !Array.isArray(options)) {
-        // MessagePayload possui a configuração real em .options; preserva embeds/anexos.
-        const source = options.options && typeof options.options === "object"
-          ? options.options
-          : options;
-        payload = { ...source };
-      }
-      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-        payload.reply = { messageReference: message.id, failIfNotExists: false };
-        payload.allowedMentions = {
-          ...(payload.allowedMentions || {}),
-          repliedUser: true
-        };
-      }
-      return originalChannelSend(payload);
-    };
+    // O contexto por mensagem evita que dois comandos simultâneos no mesmo canal
+    // sobrescrevam/restaurem channel.send um do outro.
+    installReplyAwareChannel(message.channel);
+    const context = { message, active: true };
     try {
-      await executePrefix(message, args, client);
+      await prefixReplyContext.run(context, () => executePrefix(message, args, client));
     } catch (error) {
       console.error(`❄️ [Motor] Erro em ${prefix}${commandName}:`, error);
       await message.reply("🫧 Não consegui executar esse comando. Confira as permissões e tente novamente.").catch(() => {});
     } finally {
-      message.channel.send = originalChannelSend;
+      context.active = false;
       clearInterval(typingInterval);
     }
   });
