@@ -154,3 +154,16 @@ O modulo `systems/yukina-ai/life.js` adiciona uma camada persistente de vida com
 O motor inicializa os registros e injeta o estado comunitario nas conversas. As operacoes de alteracao ficam disponiveis como funcoes internas para futuras interacoes controladas; ainda nao existe uma interface publica de comandos/botoes para construir, transferir KZ, editar familias ou conceder magia. Nenhum membro pode realizar essas operacoes apenas por escrever uma frase: o modelo recebe o estado como contexto, mas nao possui acesso direto ao banco nem ferramentas de escrita.
 
 A economia e inteiramente ficcional. O envelhecimento so e ativado quando uma idade inicial e registrada para o morador. A missao e o festival iniciais sao registros planejados, nao eventos ja realizados. O relogio e as rotinas continuam sendo simulacoes persistidas, nao pensamento independente enquanto o bot esta offline.
+
+
+## Moderação de canais e cargos
+
+A camada de comandos de moderação oferece operações explícitas por Slash e por prefixo, com verificação de permissões do executor, permissões da Yukina e hierarquia de cargos:
+
+- `/cargo`: escolher **Conceder** ou **Retirar** um cargo de um membro. Por prefixo: `Ycargo @membro @cargo conceder` ou `Ycargo @membro @cargo retirar`.
+- `/bloquear` e `/desbloquear`: bloquear ou liberar o canal atual (ou um canal selecionado). Prefixos: `Ylock` / `Yunlock`, também disponíveis como `Ybloquear` / `Ydesbloquear`.
+- `/slow modo-lento`: definir o intervalo em segundos, incluindo `0` para desativar. Por prefixo: `Yslow 30s`, `Yslow 5m` ou `Yslow #canal off`.
+- `/clear quantidade`: apagar de 2 a 100 mensagens recentes. Por prefixo: `Yclear 25`.
+- `/clear chat` ou `Yclear chat`: limpar até 1.000 mensagens recentes do canal por execução.
+
+A limpeza preserva mensagens fixadas e respeita a limitação do Discord: mensagens com mais de 14 dias não podem ser apagadas em massa. Para todas as ações, a Yukina precisa receber as permissões correspondentes no servidor; o executor também precisa ter a permissão de moderação exigida. A hierarquia do Discord continua sendo respeitada para cargos. A Yukina IA também reconhece pedidos administrativos diretos em linguagem natural, como 'bloqueie este canal', 'ative o modo lento por 30 segundos', 'limpe 20 mensagens', 'limpe o chat', 'conceda @Cargo para @Membro' e 'retire @Cargo de @Membro'. Para evitar interpretações ambíguas, cargos e membros precisam ser mencionados; os demais comandos atuam no canal atual ou no canal mencionado. A execução é determinística e sempre verifica as permissões de quem pediu, as permissões do bot e a hierarquia de cargos. O modelo de linguagem não recebe acesso direto ao banco nem autoridade para ignorar essas verificações.
