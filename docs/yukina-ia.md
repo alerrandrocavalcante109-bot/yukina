@@ -115,3 +115,14 @@ Cada ficha possui espécie, função, lar, personalidade, interesses, rotina pla
 O módulo oferece funções internas para listar e consultar moradores, registrar lembranças com origem permitida e recuperar as lembranças de cada personagem. As memórias são vinculadas ao personagem, não misturadas com as memórias pessoais dos membros do Discord.
 
 **Limites desta etapa:** as rotinas ainda são descrições narrativas, não tarefas executadas por agentes autônomos. Os moradores ainda não conversam entre si, não se deslocam, não envelhecem, não possuem necessidades, inventário, profissão dinâmica ou economia. Não há comandos Discord, canal ou painel para administrar os moradores. Novas lembranças devem ser registradas por eventos confirmados ou interações implementadas, não inventadas como fatos ocorridos.
+
+
+## Nona etapa — rotinas e encontros simulados
+
+O módulo de moradores agora possui uma agenda narrativa por período do dia. Quando alguém conversa com a Yukina, o motor consulta o horário atual do mundo e registra as atividades previstas para aquele período, uma única vez por morador, dia e período. Os registros são persistidos em `yukina_ai_resident_events` com índice único para evitar duplicação em chamadas simultâneas.
+
+Foram definidos momentos de descanso, cuidados com o jardim, abertura e organização da biblioteca, pesquisa de lendas, trabalho na oficina e acendimento das lanternas. Também existem encontros compartilhados programados: Hikari acompanha Ren no acendimento das lanternas ao entardecer; Aoi compartilha histórias com Hikari à noite. Os encontros são registrados como acontecimentos com os dois participantes.
+
+Os últimos acontecimentos registrados são incluídos no contexto da IA, permitindo que Yukina fale sobre atividades que realmente constam no histórico da simulação.
+
+**Limites desta etapa:** a simulação é acionada quando há uma conversa com a Yukina; não há processo em segundo plano nem execução contínua enquanto o bot está offline. Se nenhum membro conversar em determinado período, aquela faixa não é reproduzida retroativamente. As atividades são narrativas e determinísticas, não agentes independentes com consciência ou decisões próprias.
