@@ -99,3 +99,19 @@ O relógio ficcional avança na proporção inicial de um minuto do mundo por mi
 O estado do mundo, a estação, o horário, o clima, o local atual e os acontecimentos confirmados recentes são adicionados ao contexto da IA. Existem funções internas para trocar o local atual e registrar/listar acontecimentos com origem validada.
 
 **Limites desta etapa:** não há ainda habitantes simulados, construções evolutivas, necessidades, economia, rotinas autônomas, exploração automática, missões, interface visual ou comandos para administrar o mapa. O avanço do relógio é calculado a partir do último marco persistido; não representa pensamento ou atividade real da IA enquanto o bot está offline.
+
+
+## Oitava etapa — primeiros moradores do santuário
+
+O módulo `systems/yukina-ai/residents.js` cria a coleção `yukina_ai_residents` e o repositório de lembranças `yukina_ai_resident_memories`. A inicialização é idempotente: os três personagens iniciais são inseridos somente se ainda não existirem, sem sobrescrever alterações futuras em seus registros.
+
+Moradores iniciais:
+- **Hikari** — espírito guardião das cerejeiras, responsável pelos jardins; serena, protetora e atenciosa.
+- **Aoi** — kitsune bibliotecária e pesquisadora de lendas; curiosa, inteligente e bem-humorada.
+- **Ren** — artesão humano da Vila Sakura, especializado em lanternas; criativo, paciente e prestativo.
+
+Cada ficha possui espécie, função, lar, personalidade, interesses, rotina planejada, relações com outros moradores e descrição. As fichas são incluídas no contexto da Yukina, junto de até três lembranças recentes por morador.
+
+O módulo oferece funções internas para listar e consultar moradores, registrar lembranças com origem permitida e recuperar as lembranças de cada personagem. As memórias são vinculadas ao personagem, não misturadas com as memórias pessoais dos membros do Discord.
+
+**Limites desta etapa:** as rotinas ainda são descrições narrativas, não tarefas executadas por agentes autônomos. Os moradores ainda não conversam entre si, não se deslocam, não envelhecem, não possuem necessidades, inventário, profissão dinâmica ou economia. Não há comandos Discord, canal ou painel para administrar os moradores. Novas lembranças devem ser registradas por eventos confirmados ou interações implementadas, não inventadas como fatos ocorridos.
