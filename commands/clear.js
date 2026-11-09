@@ -43,9 +43,17 @@ async function clearMessages({ guild, channel, member, amount, invocationMessage
   }
 
   try {
-    // Busca uma mensagem extra para compensar o comando de prefixo,
-    // que nunca deve entrar na contagem das mensagens anteriores.
-    const fetched = await channel.messages.fetch({ limit: Math.min(MAX_MESSAGES + 1, amount + (invocationMessageId ? 1 : 0)) });
+    // A API do Discord aceita no máximo 100 mensagens por busca.
+    // Se a mensagem do comando estiver entre elas, buscamos uma anterior extra.
+    let fetched = await channel.messages.fetch({ limit: amount });
+    if (invocationMessageId && fetched.has(invocationMessageId)) {
+      const oldest = fetched.last();
+      if (oldest) {
+        const extra = await channel.messages.fetch({ limit: 1, before: oldest.id });
+        fetched = fetched.concat(extra);
+      }
+    }
+
     const cutoff = Date.now() - MAX_AGE_MS;
     const eligible = fetched.filter(message =>
       message.id !== invocationMessageId &&
