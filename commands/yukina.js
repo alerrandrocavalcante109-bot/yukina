@@ -30,7 +30,10 @@ async function run(action, ctx) {
     if (!s) return reply("🌙 O mundo ainda está sendo inicializado.");
     const residents = data.residents.map(r => "• " + r.name + " — " + r.role).join("\n");
     const buildings = data.buildings.map(b => "• " + b.name + " (nível " + b.level + ")").join("\n") || "Nenhuma construção registrada.";
-    return reply("🌸 **Santuário Mágico das Cerejeiras**\nDia " + s.dayNumber + " • " + s.timeOfDay + "\n" + s.season.name + " • " + s.weather.name + "\nLocal: " + s.currentLocation.name + "\n\n**Moradores**\n" + residents + "\n\n**Construções**\n" + buildings);
+    const quests = data.quests.map(q => "• " + (q.title || q.name || q.questId) + " — " + (q.status || "disponível")).join("\n") || "Nenhuma missão registrada.";
+    const festivals = data.festivals.map(x => "• " + (x.name || x.title || x.festivalId) + " — " + (x.status || "planejado")).join("\n") || "Nenhum festival registrado.";
+    const magic = data.magic.map(x => "• " + (x.name || x.magicId || x.type) + " — " + (x.status || "registrado")).join("\n") || "Nenhum registro mágico.";
+    return reply("🌸 **Santuário Mágico das Cerejeiras**\nDia " + s.dayNumber + " • " + s.timeOfDay + "\n" + s.season.name + " • " + s.weather.name + "\nLocal: " + s.currentLocation.name + "\n\n**Moradores**\n" + residents + "\n\n**Construções**\n" + buildings + "\n\n**Missões**\n" + quests + "\n\n**Festivais**\n" + festivals + "\n\n**Magia**\n" + magic);
   }
   if (action === "autobiografia") {
     const chapters = await f.getChapters({ limit: 10 });
