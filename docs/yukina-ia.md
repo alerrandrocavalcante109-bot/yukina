@@ -86,3 +86,16 @@ O módulo `systems/yukina-ai/stories.js` prepara duas coleções MongoDB: `yukin
 - Resultados podem ser consultados para orientar a continuação da narrativa.
 
 O armazenamento é inicializado junto ao motor da Yukina IA. Ainda não há comando Discord, publicação automática em canal, botões de votação ou mecanismo que escreva sozinho os finais com base no resultado. A função de estado publicado apenas registra os metadados; o envio real ao Discord será uma etapa separada.
+
+
+## Sétima etapa — mundo persistente: Santuário Mágico
+
+O módulo `systems/yukina-ai/world.js` cria a base do mundo narrativo na coleção `yukina_ai_world_state` e registra acontecimentos confirmados em `yukina_ai_world_events`.
+
+O mapa inicial contém seis locais definidos no universo da Yukina: Santuário Mágico das Cerejeiras, Jardim das Mil Cerejeiras, Lago Cristalino, Floresta Encantada, Vila Sakura e Observatório Lunar.
+
+O relógio ficcional avança na proporção inicial de um minuto do mundo por minuto real. O estado de origem é salvo no MongoDB; ao consultar, a data e a hora do mundo são calculadas considerando também o tempo em que o bot ficou offline. O ciclo de estações usa quatro períodos de 90 dias: Primavera das Cerejeiras, Verão das Lanternas, Outono das Folhas Douradas e Inverno da Lua Prateada. O clima diário é selecionado de forma determinística, para não mudar a cada mensagem.
+
+O estado do mundo, a estação, o horário, o clima, o local atual e os acontecimentos confirmados recentes são adicionados ao contexto da IA. Existem funções internas para trocar o local atual e registrar/listar acontecimentos com origem validada.
+
+**Limites desta etapa:** não há ainda habitantes simulados, construções evolutivas, necessidades, economia, rotinas autônomas, exploração automática, missões, interface visual ou comandos para administrar o mapa. O avanço do relógio é calculado a partir do último marco persistido; não representa pensamento ou atividade real da IA enquanto o bot está offline.
