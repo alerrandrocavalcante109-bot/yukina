@@ -212,6 +212,17 @@ async function unlockMagic(base, { residentId, magicId, name, description } = {}
   await dbOf(base).collection(C.magic).updateOne({ residentId: id, magicId: power }, { $setOnInsert: doc }, { upsert: true });
   return doc;
 }
+async function setResidentAge(base, { residentId, ageYears, worldDay = 0 } = {}) {
+  const id = safeText(residentId, 100), age = Math.floor(Number(ageYears));
+  if (!id || !Number.isSafeInteger(age) || age < 0 || age > 500 || !Number.isFinite(worldDay)) throw new Error("Idade inicial invalida.");
+  const result = await dbOf(base).collection("yukina_ai_residents").updateOne(
+    { residentId: id, status: { $ne: "archived" } },
+    { $set: { ageYears: age, ageDays: age * 360, ageDaysAtStart: age * 360, ageBaseWorldDay: Math.max(0, Math.floor(worldDay)), lifeStage: ageStage(age), updatedAt: new Date() } }
+  );
+  if (!result.matchedCount) throw new Error("Morador nao encontrado.");
+  return { residentId: id, ageYears: age, lifeStage: ageStage(age) };
+}
+
 async function updateAges(base, snapshot) {
   if (!snapshot || !Number.isFinite(snapshot.worldDay)) return [];
   const col = dbOf(base).collection("yukina_ai_residents");
@@ -262,5 +273,5 @@ module.exports = {
   PROFESSIONS, MAGIC_TYPES, AGE_STAGES, ensureIndexes, initialize, getBuildings,
   buildStructure, setProfession, transferCurrency, changeInventory,
   addSkillExperience, addFamilyRelation, progressQuest, registerFestival,
-  unlockMagic, updateAges, recordLifeEvent, buildLifeContext
+  unlockMagic, setResidentAge, updateAges, recordLifeEvent, buildLifeContext
 };
