@@ -1,8 +1,10 @@
 const { MongoClient } = require("mongodb");
+const { MessageFlags, ContainerBuilder, TextDisplayBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
 const DAILY_URL = (process.env.DAILY_PANEL_URL || "https://yukina-6uo.pages.dev/daily.html").trim();
+const DAILY_IMAGE_URL = "https://cdn.discordapp.com/attachments/1561408732318138509/1569489628262834186/file_000000006dfc820ea46fa09063fe4d0a.png?ex=6af3a49f&is=6af2531f&hm=66459d95ef6834b7a25a65d3504b53429c5f99af7e9f22ad45be8de3b75fc312";
 const TIME_ZONE = "America/Sao_Paulo";
 
 function getLocalDateTime(date = new Date()) {
@@ -15,6 +17,24 @@ function getLocalDateTime(date = new Date()) {
 
 function localDayKey(parts) {
   return String(parts.year).padStart(4, "0") + "-" + String(parts.month).padStart(2, "0") + "-" + String(parts.day).padStart(2, "0");
+}
+
+function previousDayKey(dayKey) {
+  const [year, month, day] = dayKey.split("-").map(Number);
+  const previous = new Date(Date.UTC(year, month - 1, day - 1));
+  return localDayKey({ year: previous.getUTCFullYear(), month: previous.getUTCMonth() + 1, day: previous.getUTCDate() });
+}
+
+async function getDailyStreak(claims, guildId, userId, todayKey) {
+  const records = await claims.find({ guildId, userId }).sort({ day: -1 }).limit(370).toArray();
+  const claimedDays = new Set(records.map(record => String(record.day)));
+  let expected = previousDayKey(todayKey);
+  let streak = 0;
+  while (claimedDays.has(expected)) {
+    streak++;
+    expected = previousDayKey(expected);
+  }
+  return streak;
 }
 
 function saoPauloMidnightUtc(year, month, day) {
@@ -31,16 +51,6 @@ function saoPauloMidnightUtc(year, month, day) {
 }
 
 let lastCycleDay = null;
-
-const SEQUENCE = [
-  { title: "❄️ Sua recompensa diária está esperando!", phrase: "Até a neve mais delicada volta a brilhar a cada novo amanhecer. Passe no Daily e resgate suas Kizunas de hoje." },
-  { title: "🌙 Um novo dia, uma nova chance!", phrase: "Cada pequeno passo deixa sua jornada mais especial. A Yukina guardou uma nova recompensa diária para você." },
-  { title: "✨ Sua próxima recompensa te chama!", phrase: "A sorte gosta de quem volta para tentar de novo. Venha buscar suas Kizunas e continue sua aventura." },
-  { title: "🌸 Não deixe sua jornada esfriar!", phrase: "Mesmo nas noites mais frias, sempre existe uma nova luz. Seu Daily de hoje já pode ser coletado." },
-  { title: "💜 Um carinho da Yukina para você", phrase: "Sua presença deixa nossa comunidade mais especial. Passe no painel e pegue a recompensa de hoje!" },
-  { title: "⭐ Hora de visitar o Yukina Daily!", phrase: "Um novo dia traz novas possibilidades — e sua recompensa diária também. Te espero por lá!" },
-  { title: "🩵 A neve trouxe uma nova recompensa", phrase: "Que seu dia seja leve como a neve e brilhante como as estrelas. Suas Kizunas diárias estão esperando." }
-];
 
 let mongoClient;
 let running = false;
@@ -72,75 +82,103 @@ async function runDailyReminders(client, scheduled = false) {
       const claimedToday = await claims.findOne({ guildId, userId: userKey, day });
       const state = await reminders.findOne({ guildId, userId: userKey });
 
-      // A taxa começa depois de 3 dias completos sem Daily. Avise uma única vez
-      // durante a janela entre 2 e 3 dias, usando o mesmo timestamp do último claim
-      // como identificador do ciclo para que reinicializações não dupliquem a DM.
+      // O aviso do Banco Central continua enquanto houver Kizunas na conta bancária.
+      // Ele é independente dos lembretes comuns, que param após mais de 4 dias sem Daily.
       const lastClaim = await claims.find({ guildId, userId: userKey })
         .sort({ claimedAt: -1, day: -1 }).limit(1).next();
       const lastClaimAt = lastClaim?.claimedAt ? new Date(lastClaim.claimedAt) : null;
       if (lastClaimAt && !Number.isNaN(lastClaimAt.getTime())) {
         const elapsedDays = (now.getTime() - lastClaimAt.getTime()) / (24 * 60 * 60 * 1000);
-        const warningCycle = lastClaimAt.toISOString();
-        const warningAlreadySent = state?.inactivityWarningForClaimAt === warningCycle;
-        if (!claimedToday && elapsedDays >= 2 && elapsedDays < 3 && !warningAlreadySent) {
+        const bankAccount = await db.collection("yukina_bank_accounts").findOne({ guildId, userId: userKey });
+        const bankBalance = Math.max(0, Number(bankAccount?.balance) || 0);
+        const warningDay = localDayKey(getLocalDateTime(now));
+        if (!claimedToday && elapsedDays >= 2 && bankBalance > 0 && state?.lastBankWarningDay !== warningDay) {
           try {
             const user = await client.users.fetch(userKey);
             await user.send({
               embeds: [{
                 color: 0xA7D8F0,
                 title: "❄️ Nee~ um aviso importante da Yukina",
-                description: "Oii~! 💙 Faz quase 3 dias que você não coleta seu Daily. Se passar de **3 dias completos sem coletar**, o Banco Central começará a cobrar uma taxa de **3% ao dia** sobre suas Kizunas guardadas no banco.\n\nAinda dá tempo de evitar a taxa: venha coletar seu Daily antes do prazo!",
+                description: elapsedDays < 3
+                  ? "Oii~! 💙 Faz quase 3 dias que você não coleta seu Daily. Se passar de **3 dias completos sem coletar**, o Banco Central começará a cobrar uma taxa de **3% ao dia** sobre suas Kizunas guardadas no banco.\\n\\nAinda dá tempo de evitar a taxa: venha coletar seu Daily antes do prazo!"
+                  : "Oii~! 💙 Você continua sem coletar seu Daily e a taxa de inatividade do Banco Central já pode estar sendo aplicada. Enquanto houver Kizunas guardadas no banco, continuarei avisando você. Volte ao Daily para interromper esse ciclo! 🌸",
                 fields: [{ name: "🌙 Seu Daily", value: "[Abrir o painel e coletar agora](" + DAILY_URL + ")" }],
-                footer: { text: "Yukina • Aviso preventivo de inatividade" },
+                footer: { text: "Yukina • Aviso do Banco Central" },
                 timestamp: now.toISOString()
               }],
               allowedMentions: { parse: [] }
             });
             await reminders.updateOne(
               { guildId, userId: userKey },
-              { $set: { inactivityWarningForClaimAt: warningCycle, inactivityWarningSentAt: now }, $setOnInsert: { createdAt: now } },
+              { $set: { lastBankWarningDay: warningDay, lastBankWarningAt: now }, $setOnInsert: { createdAt: now } },
               { upsert: true }
             );
-            console.log("[Daily Reminder] Aviso preventivo de taxa enviado para " + userKey + ".");
+            console.log("[Daily Reminder] Aviso do Banco Central enviado para " + userKey + ".");
             await new Promise(resolve => setTimeout(resolve, 900));
           } catch (error) {
             if (error?.code === 50007) {
-              console.log("[Daily Reminder] DM fechada para aviso de taxa: " + userKey + ".");
+              console.log("[Daily Reminder] DM fechada para aviso do Banco Central: " + userKey + ".");
             } else {
-              console.warn("[Daily Reminder] Falha no aviso preventivo para " + userKey + ":", error?.message || error);
+              console.warn("[Daily Reminder] Falha no aviso do Banco Central para " + userKey + ":", error?.message || error);
             }
           }
         }
       }
 
-      // O lembrete comum só é enviado a quem ainda não coletou hoje.
+      // O lembrete comum é único e para após mais de 4 dias completos sem coleta.
       if (claimedToday || state?.lastReminderDay === day) continue;
-      const sequenceIndex = Number(state?.sequenceIndex || 0) % SEQUENCE.length;
-      const item = SEQUENCE[sequenceIndex];
+      if (lastClaim?.claimedAt) {
+        const elapsedDays = (now.getTime() - new Date(lastClaim.claimedAt).getTime()) / (24 * 60 * 60 * 1000);
+        if (elapsedDays > 4) continue;
+      }
+      const streak = await getDailyStreak(claims, guildId, userKey, day);
       try {
-        const user = await client.users.fetch(String(userId));
+        const user = await client.users.fetch(userKey);
+        const message = new ContainerBuilder()
+          .setAccentColor(0xe85cba)
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              "## ❄️ Seu Daily está esperando!\\n" +
+              "🔥 **Sequência: " + streak + " dias**\\n\\n" +
+              "Oii~! 💙 Um novo dia chegou e sua recompensa diária já está disponível!\\n\\n" +
+              "Continue sua jornada, acumule Kizunas e não deixe sua sequência acabar. Estou esperando por você! 🌸"
+            )
+          )
+          .addMediaGalleryComponents(
+            new MediaGalleryBuilder().addItems(
+              new MediaGalleryItemBuilder()
+                .setURL(DAILY_IMAGE_URL)
+                .setDescription("Yukina convidando você para coletar suas Kizunas diárias")
+            )
+          )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent("-# Yukina • Lembrete diário de Kizunas")
+          )
+          .addActionRowComponents(
+            new ActionRowBuilder().addComponents(
+              new ButtonBuilder()
+                .setLabel("Coletar Kizunas")
+                .setEmoji("🌸")
+                .setStyle(ButtonStyle.Link)
+                .setURL(DAILY_URL)
+            )
+          );
         await user.send({
-          embeds: [{
-            color: 0xe85cba,
-            title: item.title,
-            description: item.phrase,
-            fields: [{ name: "❄️ Seu Daily", value: "[Abrir o painel e coletar](" + DAILY_URL + ")" }],
-            footer: { text: "Yukina • Lembrete diário de Kizunas" },
-            timestamp: now.toISOString()
-          }],
+          components: [message],
+          flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
         });
         await reminders.updateOne(
-          { guildId, userId: String(userId) },
-          { $set: { lastReminderDay: day, sequenceIndex: (sequenceIndex + 1) % SEQUENCE.length, lastSentAt: now }, $setOnInsert: { createdAt: now } },
+          { guildId, userId: userKey },
+          { $set: { lastReminderDay: day, lastSentAt: now }, $setOnInsert: { createdAt: now } },
           { upsert: true }
         );
         await new Promise(resolve => setTimeout(resolve, 900));
       } catch (error) {
         if (error?.code === 50007) {
-          console.log("[Daily Reminder] DM fechada para usuário " + userId + "; pulando.");
+          console.log("[Daily Reminder] DM fechada para usuário " + userKey + "; pulando.");
         } else {
-          console.warn("[Daily Reminder] Falha ao enviar DM para " + userId + ":", error?.message || error);
+          console.warn("[Daily Reminder] Falha ao enviar DM para " + userKey + ":", error?.message || error);
         }
       }
     }
