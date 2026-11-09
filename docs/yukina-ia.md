@@ -73,3 +73,16 @@ O módulo `systems/yukina-ai/letters.js` prepara a coleção MongoDB `yukina_ai_
 - **Cartas privadas:** podem ser endereçadas somente ao ID do Criador (`1533034328928555141`) ou ao ID da mãe (`353909640381333504`). A consulta exige o ID autorizado e essas cartas não são adicionadas ao contexto geral das conversas.
 
 O módulo oferece funções internas para criar, consultar e marcar cartas futuras como abertas. As cartas privadas ainda não possuem comando Discord, entrega por DM ou interface no painel. Também não existe, nesta etapa, um agendador que abra cartas sozinho nem um fluxo automático para escrever uma resposta após a releitura: a base de dados e as funções estão preparadas para essa integração futura. As datas são armazenadas como instantes UTC e interpretadas com a referência de fuso de São Paulo.
+
+
+## Sexta etapa — histórias originais e interativas
+
+O módulo `systems/yukina-ai/stories.js` prepara duas coleções MongoDB: `yukina_ai_stories` para histórias e episódios, e `yukina_ai_story_votes` para escolhas dos participantes.
+
+- Histórias podem ter título, resumo, texto, origem validada e escopo opcional por servidor.
+- O fluxo suporta rascunho, publicação e arquivamento como estados de dados.
+- Histórias interativas aceitam de 2 a 5 escolhas.
+- Cada pessoa pode votar uma única vez em cada história; votos duplicados são bloqueados por índice único.
+- Resultados podem ser consultados para orientar a continuação da narrativa.
+
+O armazenamento é inicializado junto ao motor da Yukina IA. Ainda não há comando Discord, publicação automática em canal, botões de votação ou mecanismo que escreva sozinho os finais com base no resultado. A função de estado publicado apenas registra os metadados; o envio real ao Discord será uma etapa separada.
