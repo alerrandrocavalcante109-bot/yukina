@@ -2,7 +2,6 @@
 
 const { createEngine, isGreetingOnly } = require("./engine");
 const { transcribeAudio } = require("./audio");
-const voiceSystem = require("./voice");
 
 let activeEngine = null;
 let installedClient = null;
@@ -60,8 +59,6 @@ function install(client, getSettingsCollection) {
   if (installedClient === client) return;
   installedClient = client;
   activeEngine = createEngine(getSettingsCollection);
-
-  voiceSystem.install?.(client, getEngine);
 
   client.on("messageCreate", async message => {
     try {
