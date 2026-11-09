@@ -3,8 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "main": "index.js",
-  "scripts": { "start": "node index.js", "deploy:commands": "node deploy-commands.js" },
-  "engines": { "node": ">=24.17.0" },
+  "scripts": {
+    "start": "node index.js",
+    "deploy:commands": "node deploy-commands.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=24.17.0"
+  },
   "dependencies": {
     "@discordjs/voice": "^0.19.2",
     "@napi-rs/canvas": "^0.1.80",
