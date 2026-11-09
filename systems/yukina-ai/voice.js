@@ -1,4 +1,5 @@
 "use strict";
+try { process.env.FFMPEG_PATH = process.env.FFMPEG_PATH || require("ffmpeg-static"); } catch {}
 const { Readable } = require("node:stream");
 const prism = require("prism-media");
 const { joinVoiceChannel, createAudioPlayer, createAudioResource, AudioPlayerStatus, VoiceConnectionStatus, EndBehaviorType, StreamType } = require("@discordjs/voice");
@@ -23,7 +24,7 @@ function installReceiver(session, getEngine) {
     const opusStream = receiver.subscribe(userId, { end: { behavior: EndBehaviorType.AfterSilence, duration: 1100 } });
     const decoder = buildDecoder();
     const chunks = []; let total = 0; let finished = false;
-    const timeout = setTimeout(() => { if (!finished) opusStream.destroy(); }, MAX_UTTERANCE_MS);
+    const timeout = setTimeout(() => { if (!finished) { opusStream.unpipe(decoder); decoder.end(); opusStream.destroy(); } }, MAX_UTTERANCE_MS);
     const cleanup = () => { finished = true; clearTimeout(timeout); session.busy = false; };
     decoder.on("data", chunk => {
       if (total >= MAX_PCM_BYTES) return;
