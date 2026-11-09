@@ -3,6 +3,11 @@ const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const { getEngine } = require("../systems/yukina-ai");
 const voice = require("../systems/yukina-ai/voice");
 async function enter(source, member, guild, textChannel) {
+  if (!process.env.GROQ_API_KEY || !process.env.ELEVENLABS_API_KEY || !process.env.ELEVENLABS_VOICE_ID) {
+    const missing = [!process.env.GROQ_API_KEY && "GROQ_API_KEY", !process.env.ELEVENLABS_API_KEY && "ELEVENLABS_API_KEY", !process.env.ELEVENLABS_VOICE_ID && "ELEVENLABS_VOICE_ID"].filter(Boolean).join(", ");
+    const message = "🌙 Para conversar por voz, configure estas variáveis no Render: " + missing + ".";
+    return source.isChatInputCommand?.() ? source.reply({ content: message, ephemeral: true }) : source.reply(message);
+  }
   const voiceChannel = member?.voice?.channel;
   if (!voiceChannel) {
     const message = "🌸 Entre em um canal de voz primeiro. Depois use este comando novamente.";
