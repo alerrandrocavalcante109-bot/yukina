@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { PermissionFlagsBits } = require("discord.js");
+const { PermissionFlagsBits, Collection } = require("discord.js");
 const command = require("../commands/clear");
 
 const admin = { permissions: { has: permission => permission === PermissionFlagsBits.Administrator } };
@@ -73,7 +73,7 @@ test("does not count the prefix command message and deletes the confirmation aft
     messages: {
       fetch: async ({ limit }) => {
         fetchedLimit = limit;
-        return new Map([[invocation.id, invocation], ...previous.map(m => [m.id, m])]);
+        return new Collection([[invocation.id, invocation], ...previous.slice(0, limit - 1).map(m => [m.id, m])]);
       }
     },
     bulkDelete: async (messages, filterOld) => {
