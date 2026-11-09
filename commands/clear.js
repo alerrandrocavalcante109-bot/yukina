@@ -55,6 +55,10 @@ async function clearMessages({ guild, channel, member, amount, invocationMessage
     }
 
     const cutoff = Date.now() - MAX_AGE_MS;
+    const expired = fetched.filter(message =>
+      message.id !== invocationMessageId &&
+      message.createdTimestamp < cutoff
+    );
     const eligible = fetched.filter(message =>
       message.id !== invocationMessageId &&
       message.createdTimestamp >= cutoff
@@ -67,6 +71,10 @@ async function clearMessages({ guild, channel, member, amount, invocationMessage
     const deleted = await channel.bulkDelete(eligible, true);
     if (deleted.size < MIN_MESSAGES) {
       return sendTemporaryReply(reply, "🫧 Encontrei menos de 2 mensagens anteriores recentes que podem ser apagadas. Mensagens com mais de 14 dias são preservadas.");
+    }
+
+    if (expired.length > 0) {
+      return sendTemporaryReply(reply, "❄️ Algumas mensagens que você selecionou ultrapassaram o limite de **14 dias** e não podem mais ser excluídas pelo Discord.\n\n🌸 Por segurança, essas mensagens foram preservadas. Apenas mensagens dentro do prazo permitido foram removidas.");
     }
 
     return sendTemporaryReply(reply, "🌸 Foram apagadas **" + deleted.size + "** mensagens com sucesso!");
