@@ -179,8 +179,10 @@ Para conceder ou retirar um cargo pela Yukina IA ou pelo comando de prefixo, bas
 A integração de áudio foi adicionada em uma etapa separada:
 
 - **Áudios anexados:** quando um membro envia mensagem de voz ou arquivo de áudio no servidor, Yukina transcreve em português com Groq Whisper, envia a transcrição ao mesmo motor de conversa e responde marcando o autor.
-- **Conversa em canal de voz:** use /voz entrar ou Yvoz entrar enquanto estiver conectado a um canal de voz. Yukina recebe os trechos de fala, transcreve com Groq, conversa usando o contexto e responde por texto no canal de texto em que o comando foi usado e por áudio no canal de voz.
-- **Sair:** use /voz sair ou Yvoz sair.
+- **Conversa em canal de voz:** use /voz entrar ou Yvoz entrar enquanto estiver conectado a um canal de voz. A Yukina aguarda a conexão ficar pronta antes de confirmar, recebe os trechos de fala, transcreve com Groq, conversa usando o contexto e responde por texto no canal de texto em que o comando foi usado e por áudio no canal de voz.
+- **Status:** use /voz status ou Yvoz status para ver o canal, o estado da conexão, se está processando uma fala e há quanto tempo está conectada.
+- **Sair:** use /voz sair ou Yvoz sair. Apenas quem iniciou a sessão ou alguém com Gerenciar Servidor pode encerrá-la.
+- **Estabilidade:** a captura mantém uma fila para até cinco falas aguardando processamento, atende uma fala por vez para evitar sobreposição de respostas, descarta áudio interrompido pelo limite de 15 segundos, aguarda a conexão ficar pronta e tenta recuperar desconexões breves. Se a conexão não se recuperar, a sessão é encerrada e o canal de texto recebe um aviso.
 - **Privacidade:** ao entrar, Yukina anuncia que está ouvindo. O áudio é processado em memória e enviado ao serviço Groq para transcrição; não é salvo como gravação no MongoDB. A recepção de áudio do Discord é uma API não documentada oficialmente e pode ter limitações.
 - **Limites:** cada fala recebida é limitada a aproximadamente 15 segundos; anexos de áudio são limitados a 24 MB. A franquia gratuita dos provedores pode ter limites, mudar ou acabar; o sistema não garante uso ilimitado gratuito.
 
