@@ -124,9 +124,11 @@ async function buildStructure(base, { buildingId, name, kind, locationId, descri
   const id = safeText(buildingId, 80), title = safeText(name, 100);
   if (!id || !title || !safeText(kind, 40) || !safeText(locationId, 60)) throw new Error("Construcao exige identificador, nome, tipo e local.");
   const db = dbOf(base), now = new Date();
+  const collection = db.collection(C.buildings);
+  if (await collection.findOne({ buildingId: id })) throw new Error("Ja existe uma construcao com esse identificador.");
   const doc = { buildingId: id, name: title, kind: safeText(kind, 40), locationId: safeText(locationId, 60), description: safeText(description, 500), level: 1, status: "ativo", createdAt: now, updatedAt: now };
   if (Number(cost) > 0) await transferCurrency(base, { transactionId: eventId("build", id), fromId: "community_treasury", toId: "system_construction", amount: cost, reason: "Construcao: " + title });
-  await db.collection(C.buildings).insertOne(doc);
+  await collection.insertOne(doc);
   return doc;
 }
 async function setProfession(base, residentId, professionId) {
@@ -246,19 +248,25 @@ async function recordLifeEvent(base, { eventId: id, kind, summary, worldDay = 0 
 }
 async function buildLifeContext(base, snapshot) {
   const db = dbOf(base);
-  const [buildings, accounts, quests, festivals, events, families, magic] = await Promise.all([
+  const [buildings, accounts, quests, festivals, events, families, magic, residents, inventory, skills] = await Promise.all([
     getBuildings(base),
-    db.collection(C.accounts).find({}, { projection: { _id: 0 } }).sort({ balance: -1 }).limit(10).toArray(),
+    db.collection(C.accounts).find({ residentId: { $nin: ["community_treasury", "system_construction"] } }, { projection: { _id: 0 } }).sort({ balance: -1 }).limit(10).toArray(),
     db.collection(C.quests).find({}, { projection: { _id: 0 } }).limit(8).toArray(),
     db.collection(C.festivals).find({}, { projection: { _id: 0 } }).limit(6).toArray(),
     db.collection(C.events).find({}, { projection: { _id: 0 } }).sort({ createdAt: -1 }).limit(6).toArray(),
     db.collection(C.families).find({}, { projection: { _id: 0 } }).limit(10).toArray(),
-    db.collection(C.magic).find({ status: "unlocked" }, { projection: { _id: 0 } }).limit(12).toArray()
+    db.collection(C.magic).find({ status: "unlocked" }, { projection: { _id: 0 } }).limit(12).toArray(),
+    db.collection("yukina_ai_residents").find({ status: { $ne: "archived" } }, { projection: { _id: 0, residentId: 1, name: 1, profession: 1, ageYears: 1, lifeStage: 1 } }).toArray(),
+    db.collection(C.inventory).find({ quantity: { $gt: 0 } }, { projection: { _id: 0 } }).limit(20).toArray(),
+    db.collection(C.skills).find({}, { projection: { _id: 0 } }).sort({ level: -1 }).limit(20).toArray()
   ]);
   return [
     "VIDA COMUNITARIA PERSISTENTE:",
     "Construcoes: " + (buildings.map(b => b.name + " (nivel " + b.level + ")").join(", ") || "nenhuma registrada"),
-    "Economia: contas individuais dos moradores usam Kizunas ficcionais (KZ); saldos internos nao sao dinheiro real. Contas registradas: " + accounts.length + ".",
+    "Economia: KZ e moeda ficcional. Saldos: " + (accounts.map(a => (residents.find(r => r.residentId === a.residentId)?.name || a.residentId) + "=" + a.balance + " KZ").join(", ") || "sem contas de moradores") + ".",
+    "Moradores e profissoes: " + (residents.map(r => r.name + (r.profession ? " — " + r.profession : " — sem profissao definida") + (Number.isFinite(r.ageYears) ? ", " + r.ageYears + " anos (" + r.lifeStage + ")" : "")).join("; ") || "nenhum") + ".",
+    "Inventarios: " + (inventory.map(i => i.ownerId + ": " + i.quantity + "x " + i.name).join("; ") || "vazios") + ".",
+    "Habilidades: " + (skills.map(s => s.residentId + " — " + s.skillId + " nivel " + s.level + " (" + s.experience + " XP)").join("; ") || "ainda sem progresso registrado") + ".",
     "Missoes: " + (quests.map(q => q.title + " [" + q.status + "]").join("; ") || "nenhuma"),
     "Festivais: " + (festivals.map(f => f.name + " [" + f.status + "]").join("; ") || "nenhum"),
     "Lacos familiares confirmados: " + (families.map(f => f.relation + " entre " + f.memberIds.join(", ")).join("; ") || "nenhum registrado"),
