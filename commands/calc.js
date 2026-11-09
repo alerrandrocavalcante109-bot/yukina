@@ -209,7 +209,7 @@ module.exports = {
   formatResult,
   data: new SlashCommandBuilder()
     .setName("calcular")
-    .setDescription("[categoria] calcular um valor matemático.")
+    .setDescription("[Membros] calcular um valor matemático.")
     .setDMPermission(false)
     .addStringOption(option => option
       .setName("expressao")
