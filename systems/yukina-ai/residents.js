@@ -289,5 +289,8 @@ module.exports = {
   addResidentMemory,
   getResidentMemories,
   buildResidentsContext,
-  getResidentsContext
+  getResidentsContext,
+  simulateCurrentSlot,
+  getRecentResidentEvents,
+  buildResidentEventsContext
 };
