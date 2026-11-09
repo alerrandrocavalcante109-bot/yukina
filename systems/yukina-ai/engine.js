@@ -5,6 +5,7 @@ const { buildSystemPrompt } = require("./personality");
 const relationships = require("./relationships");
 const journal = require("./journal");
 const autobiography = require("./autobiography");
+const letters = require("./letters");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -102,7 +103,7 @@ function createEngine(getSettingsCollection) {
   async function getBaseCollection() {
     const collection = await getSettingsCollection();
     if (!indexesReady) {
-      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection)]);
+      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection), letters.ensureIndexes(collection)]);
       await indexPromise;
       await autobiography.ensureOriginChapter(collection);
       indexesReady = true;
@@ -135,15 +136,16 @@ function createEngine(getSettingsCollection) {
       }
 
       await memory.captureSafeMemory(collection, userId, safePrompt);
-      const [memories, history, relationship, chapters] = await Promise.all([
+      const [memories, history, relationship, chapters, dueLetters] = await Promise.all([
         memory.getMemories(collection, userId),
         memory.getThread(collection, userId, channelId),
         relationships.registerInteraction(collection, userId, safePrompt),
-        autobiography.getChapters(collection)
+        autobiography.getChapters(collection),
+        letters.getDueFutureLetters(collection)
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
