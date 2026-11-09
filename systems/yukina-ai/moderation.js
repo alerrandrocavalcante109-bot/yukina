@@ -167,19 +167,19 @@ async function changeRole({ guild, actor, prompt, add }) {
 async function handleRequest({ prompt, context } = {}) {
   const original = String(prompt || "").trim();
   if (!original || !context?.guild || !context?.actorId) return { handled: false };
-  const normalized = original.toLocaleLowerCase("pt-BR").replace(/^yukina[,!\\s]+/, "").trim();
+  const normalized = original.toLocaleLowerCase("pt-BR").replace(/^yukina[,!\s]+/, "").trim();
   const guild = context.guild;
 
-  const grantVerb = /^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de)\\b/.test(normalized);
-  const removeVerb = /^(retire|retirar|remova|remover|tire|tirar)\\b/.test(normalized);
-  const hasRoleTarget = Boolean(getRoleId(original)) || /\\bcargo\\b/.test(normalized);
+  const grantVerb = /^(conceda|conceder|atribua|atribuir|adicione|adicionar|dê|de)\b/.test(normalized);
+  const removeVerb = /^(retire|retirar|remova|remover|tire|tirar)\b/.test(normalized);
+  const hasRoleTarget = Boolean(getRoleId(original)) || /\bcargo\b/.test(normalized);
   const grant = grantVerb && hasRoleTarget;
   const remove = removeVerb && hasRoleTarget;
-  const lock = /^(bloqueie|bloquear|lock|trancar|feche)\\b/.test(normalized) && (/\\b(canal|chat)\\b|<#\\d{17,20}>/.test(normalized));
-  const unlock = /^(desbloqueie|desbloquear|unlock|destrancar|abra)\\b/.test(normalized) && (/\\b(canal|chat)\\b|<#\\d{17,20}>/.test(normalized));
-  const slow = /^(ative|ativar|ligue|ligar|desative|desativar|desligue|desligar)\\b/.test(normalized) && /\\b(modo lento|slowmode)\\b/.test(normalized);
-  const amountMatch = normalized.match(/^(?:limpe|limpar|apague|apagar|clear)\\s+(\\d+)\\s+(?:mensagens?|msgs?)\\b/);
-  const clearAll = /^(limpe|limpar|apague|apagar|clear)\\b/.test(normalized) && /\\b(chat|canal)\\b/.test(normalized);
+  const lock = /^(bloqueie|bloquear|lock|trancar|feche)\b/.test(normalized) && (/\b(canal|chat)\b|<#\d{17,20}>/.test(normalized));
+  const unlock = /^(desbloqueie|desbloquear|unlock|destrancar|abra)\b/.test(normalized) && (/\b(canal|chat)\b|<#\d{17,20}>/.test(normalized));
+  const slow = /^(ative|ativar|ligue|ligar|desative|desativar|desligue|desligar)\b/.test(normalized) && /\b(modo lento|slowmode)\b/.test(normalized);
+  const amountMatch = normalized.match(/^(?:limpe|limpar|apague|apagar|clear)\s+(\d+)\s+(?:mensagens?|msgs?)\b/);
+  const clearAll = /^(limpe|limpar|apague|apagar|clear)\b/.test(normalized) && /\b(chat|canal)\b/.test(normalized);
 
   if (!grant && !remove && !lock && !unlock && !slow && !amountMatch && !clearAll) return { handled: false };
 
@@ -192,7 +192,7 @@ async function handleRequest({ prompt, context } = {}) {
     return changeLock({ guild, channel, actor, lock });
   }
   if (slow) {
-    const enable = !/^(desative|desativar|desligue|desligar)\\b/.test(normalized);
+    const enable = !/^(desative|desativar|desligue|desligar)\b/.test(normalized);
     const channel = await getChannel(guild, context, original);
     return changeSlowmode({ guild, channel, actor, prompt: normalized, enable });
   }
