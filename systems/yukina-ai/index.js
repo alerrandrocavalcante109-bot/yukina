@@ -5,10 +5,17 @@ const { transcribeAudio } = require("./audio");
 
 let activeEngine = null;
 let installedClient = null;
+let worldCycleTimer = null;
 
 function getEngine() {
   if (!activeEngine) throw new Error("O núcleo da Yukina IA ainda não foi inicializado.");
   return activeEngine;
+}
+
+function getFeatures() {
+  const engine = getEngine();
+  if (!engine.features) throw new Error("Os recursos complementares da Yukina ainda não foram inicializados.");
+  return engine.features;
 }
 
 function isAudioAttachment(attachment) {
@@ -59,6 +66,19 @@ function install(client, getSettingsCollection) {
   if (installedClient === client) return;
   installedClient = client;
   activeEngine = createEngine(getSettingsCollection);
+  if (!worldCycleTimer) {
+    const runWorldCycle = async () => {
+      try {
+        const result = await getFeatures().processWorldCycle();
+        console.log("[Yukina Mundo] Ciclo concluído: dia " + result.snapshot.dayNumber + ", " + result.snapshot.timeOfDay + "; cartas vencidas: " + result.dueLetters + ".");
+      } catch (error) {
+        console.warn("[Yukina Mundo] Ciclo automático não concluído:", error.message || error);
+      }
+    };
+    runWorldCycle();
+    worldCycleTimer = setInterval(runWorldCycle, 15 * 60 * 1000);
+    worldCycleTimer.unref?.();
+  }
 
   client.on("messageCreate", async message => {
     try {
@@ -104,4 +124,4 @@ function install(client, getSettingsCollection) {
     "; fala: " + (process.env.ELEVENLABS_API_KEY && process.env.ELEVENLABS_VOICE_ID ? "ElevenLabs configurado" : "aguardando credenciais ElevenLabs") + ".");
 }
 
-module.exports = { install, getEngine };
+module.exports = { install, getEngine, getFeatures };
