@@ -9,6 +9,7 @@ const {
 const MIN_MESSAGES = 2;
 const MAX_MESSAGES = 100;
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
+const CONFIRMATION_DELETE_MS = 6000;
 
 function isAdministrator(member) {
   return Boolean(member?.permissions?.has(PermissionFlagsBits.Administrator));
@@ -19,31 +20,51 @@ async function canBotManageMessages(guild, channel) {
   return Boolean(botMember?.permissionsIn(channel).has(PermissionFlagsBits.ManageMessages));
 }
 
-async function clearMessages({ guild, channel, member, amount, reply }) {
+async function sendTemporaryReply(reply, content) {
+  const sent = await reply(content);
+  if (sent && typeof sent.delete === "function") {
+    const timer = setTimeout(() => sent.delete().catch(() => {}), CONFIRMATION_DELETE_MS);
+    timer.unref?.();
+  }
+  return sent;
+}
+
+async function clearMessages({ guild, channel, member, amount, invocationMessageId = null, reply }) {
   if (!isAdministrator(member)) {
-    return reply("🌙 Apenas membros da administração podem utilizar este comando.");
+    return sendTemporaryReply(reply, "🌙 Apenas membros da administração podem utilizar este comando.");
   }
 
   if (!Number.isInteger(amount) || amount < MIN_MESSAGES || amount > MAX_MESSAGES) {
-    return reply("❄️ Informe uma quantidade entre **2 e 100 mensagens**.");
+    return sendTemporaryReply(reply, "❄️ Informe uma quantidade entre **2 e 100 mensagens**.");
   }
 
   if (!await canBotManageMessages(guild, channel)) {
-    return reply("🫧 Preciso da permissão **Gerenciar mensagens** neste canal.");
+    return sendTemporaryReply(reply, "🫧 Preciso da permissão **Gerenciar mensagens** neste canal.");
   }
 
   try {
-    // O Discord não permite exclusão em massa de mensagens com mais de 14 dias.
-    // filterOld=true faz a API ignorar mensagens fora desse limite.
-    const deleted = await channel.bulkDelete(amount, true);
-    if (deleted.size < MIN_MESSAGES) {
-      return reply("🫧 Encontrei menos de 2 mensagens recentes que podem ser apagadas. Mensagens com mais de 14 dias são preservadas.");
+    // Busca uma mensagem extra para compensar o comando de prefixo,
+    // que nunca deve entrar na contagem das mensagens anteriores.
+    const fetched = await channel.messages.fetch({ limit: Math.min(MAX_MESSAGES + 1, amount + (invocationMessageId ? 1 : 0)) });
+    const cutoff = Date.now() - MAX_AGE_MS;
+    const eligible = fetched.filter(message =>
+      message.id !== invocationMessageId &&
+      message.createdTimestamp >= cutoff
+    ).first(amount);
+
+    if (eligible.length < MIN_MESSAGES) {
+      return sendTemporaryReply(reply, "🫧 Encontrei menos de 2 mensagens anteriores, recentes e que podem ser apagadas. Mensagens com mais de 14 dias são preservadas.");
     }
 
-    return reply("🌸 Foram apagadas **" + deleted.size + "** mensagens com sucesso!");
+    const deleted = await channel.bulkDelete(eligible, true);
+    if (deleted.size < MIN_MESSAGES) {
+      return sendTemporaryReply(reply, "🫧 Encontrei menos de 2 mensagens anteriores recentes que podem ser apagadas. Mensagens com mais de 14 dias são preservadas.");
+    }
+
+    return sendTemporaryReply(reply, "🌸 Foram apagadas **" + deleted.size + "** mensagens com sucesso!");
   } catch (error) {
     console.error("[Yukina limpar] Falha ao apagar mensagens:", error);
-    return reply("🫧 Não consegui limpar o chat. Verifique minhas permissões e tente novamente.");
+    return sendTemporaryReply(reply, "🫧 Não consegui limpar o chat. Verifique minhas permissões e tente novamente.");
   }
 }
 
@@ -78,10 +99,12 @@ module.exports = {
       channel: interaction.channel,
       member: interaction.member,
       amount: interaction.options.getInteger("quantidade", true),
-      reply: content => interaction.reply({
-        content,
-        flags: MessageFlags.Ephemeral
-      })
+      reply: async content => {
+        await interaction.reply({ content, flags: MessageFlags.Ephemeral });
+        const timer = setTimeout(() => interaction.deleteReply().catch(() => {}), CONFIRMATION_DELETE_MS);
+        timer.unref?.();
+        return null;
+      }
     });
   },
 
@@ -98,6 +121,7 @@ module.exports = {
       channel: message.channel,
       member: message.member,
       amount,
+      invocationMessageId: message.id,
       reply: content => message.reply(content)
     });
   }
