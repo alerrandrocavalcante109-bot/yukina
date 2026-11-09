@@ -17,6 +17,9 @@ function getChannelId(text) {
 function isTextChannel(channel) {
   return Boolean(channel && [ChannelType.GuildText, ChannelType.GuildAnnouncement].includes(channel.type));
 }
+function isMessageChannel(channel) {
+  return Boolean(channel && typeof channel.bulkDelete === "function" && typeof channel.messages?.fetch === "function");
+}
 function reply(text) {
   return { handled: true, text };
 }
@@ -94,6 +97,7 @@ async function changeSlowmode({ guild, channel, actor, prompt, enable }) {
 }
 
 async function clearMessages({ guild, channel, actor, amount }) {
+  if (!isMessageChannel(channel) || channel.guildId !== guild.id) return reply("🌸 Não encontrei um canal de mensagens válido neste servidor.");
   if (!hasPermission(actor, PermissionFlagsBits.ManageMessages)) return reply("🔒 Você precisa da permissão **Gerenciar mensagens** para limpar o canal.");
   if (!await checkBotPermission(guild, channel, PermissionFlagsBits.ManageMessages)) return reply("🫧 Preciso da permissão **Gerenciar mensagens** neste canal.");
   if (!Number.isInteger(amount) || amount < 2 || amount > 100) return reply("🌸 Posso apagar de **2 a 100 mensagens** por comando. Diga, por exemplo, 'limpe 20 mensagens'.");
@@ -107,6 +111,7 @@ async function clearMessages({ guild, channel, actor, amount }) {
 }
 
 async function clearChat({ guild, channel, actor }) {
+  if (!isMessageChannel(channel) || channel.guildId !== guild.id) return reply("🌸 Não encontrei um canal de mensagens válido neste servidor.");
   if (!hasPermission(actor, PermissionFlagsBits.ManageMessages)) return reply("🔒 Você precisa da permissão **Gerenciar mensagens** para limpar o chat.");
   if (!await checkBotPermission(guild, channel, PermissionFlagsBits.ManageMessages)) return reply("🫧 Preciso da permissão **Gerenciar mensagens** neste canal.");
   const cutoff = Date.now() - BULK_DELETE_MAX_AGE;
