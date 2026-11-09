@@ -126,3 +126,12 @@ Foram definidos momentos de descanso, cuidados com o jardim, abertura e organiza
 Os últimos acontecimentos registrados são incluídos no contexto da IA, permitindo que Yukina fale sobre atividades que realmente constam no histórico da simulação.
 
 **Limites desta etapa:** a simulação é acionada quando há uma conversa com a Yukina; não há processo em segundo plano nem execução contínua enquanto o bot está offline. Se nenhum membro conversar em determinado período, aquela faixa não é reproduzida retroativamente. As atividades são narrativas e determinísticas, não agentes independentes com consciência ou decisões próprias.
+
+
+## Décima etapa — necessidades e bem-estar dos moradores
+
+O módulo de moradores agora mantém indicadores narrativos persistentes de energia, fome, bem-estar e saúde (escala de 0 a 100). A energia diminui durante períodos ativos e se recupera na madrugada; a fome aumenta gradualmente com o tempo simulado. Há refeições registradas no amanhecer, à tarde e à noite, que reduzem a fome e recuperam um pouco de energia. Os registros de refeição usam identificadores únicos por morador, dia e período para evitar duplicação.
+
+As necessidades são atualizadas usando o relógio persistente do mundo e incluídas nas fichas que a Yukina recebe como contexto. O cálculo limita cada atualização a 24 horas simuladas, mantém os valores dentro de 0–100 e só roda quando ocorre uma conversa com a Yukina.
+
+**Limites desta etapa:** bem-estar e saúde permanecem estáveis por padrão; não há doença, ferimentos, higiene, inventário de comida, produção agrícola ou sistema de cuidados. As refeições são eventos narrativos programados, não consumo físico de itens. A simulação não roda em segundo plano e não representa consciência ou atividade autônoma real.
