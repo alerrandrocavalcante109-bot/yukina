@@ -267,14 +267,15 @@ async function simulateResidentNeeds(baseCollection, snapshot) {
       };
       const inserted = await events.updateOne({ eventId }, { $setOnInsert: event }, { upsert: true });
       if (inserted.upsertedCount) {
+        const latest = await collection.findOne({ residentId: resident.residentId });
+        const latestNeeds = latest?.needs || { energy: 80, hunger: 15, wellbeing: 75, health: 100 };
         await collection.updateOne(
           { residentId: resident.residentId },
-          { $set: { "needs.hunger": clampNeed((resident.needs?.hunger ?? 15) + Math.max(0, snapshot.totalMinutes - (resident.lastNeedsWorldMinute ?? snapshot.totalMinutes)) * 0.045 + meal.hunger), updatedAt: new Date() },
-            $inc: { "needs.energy": meal.energy } }
-        );
-        await collection.updateOne(
-          { residentId: resident.residentId },
-          [{ $set: { "needs.energy": { $min: [100, "$needs.energy"] } } }]
+          { $set: {
+            "needs.hunger": clampNeed((latestNeeds.hunger ?? 15) + meal.hunger),
+            "needs.energy": clampNeed((latestNeeds.energy ?? 80) + meal.energy),
+            updatedAt: new Date()
+          } }
         );
         changed.push({ residentId: resident.residentId, meal: meal.label });
       }
