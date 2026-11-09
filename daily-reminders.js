@@ -100,7 +100,7 @@ async function runDailyReminders(client, scheduled = false) {
                 color: 0xA7D8F0,
                 title: "❄️ Nee~ um aviso importante da Yukina",
                 description: elapsedDays < 3
-                  ? "Oii~! 💙 Faz quase 3 dias que você não coleta seu Daily. Se passar de **3 dias completos sem coletar**, o Banco Central começará a cobrar uma taxa de **3% ao dia** sobre suas Kizunas guardadas no banco.\\n\\nAinda dá tempo de evitar a taxa: venha coletar seu Daily antes do prazo!"
+                  ? "Oii~! 💙 Faz quase 3 dias que você não coleta seu Daily. Se passar de **3 dias completos sem coletar**, o Banco Central começará a cobrar uma taxa de **3% ao dia** sobre suas Kizunas guardadas no banco.\n\nAinda dá tempo de evitar a taxa: venha coletar seu Daily antes do prazo!"
                   : "Oii~! 💙 Você continua sem coletar seu Daily e a taxa de inatividade do Banco Central já pode estar sendo aplicada. Enquanto houver Kizunas guardadas no banco, continuarei avisando você. Volte ao Daily para interromper esse ciclo! 🌸",
                 fields: [{ name: "🌙 Seu Daily", value: "[Abrir o painel e coletar agora](" + DAILY_URL + ")" }],
                 footer: { text: "Yukina • Aviso do Banco Central" },
@@ -140,8 +140,8 @@ async function runDailyReminders(client, scheduled = false) {
             new SectionBuilder()
               .addTextDisplayComponents(
                 new TextDisplayBuilder().setContent(
-                  "## ❄️ Seu Daily está esperando!\\n" +
-                  "Oii~! 💙 Um novo dia chegou e sua recompensa diária já está disponível!\\n\\n" +
+                  "## ❄️ Seu Daily está esperando!\n" +
+                  "Oii~! 💙 Um novo dia chegou e sua recompensa diária já está disponível!\n\n" +
                   "Continue sua jornada, acumule Kizunas e não deixe sua sequência acabar. Estou esperando por você! 🌸"
                 )
               )
