@@ -71,7 +71,12 @@ test("does not count the prefix command message and deletes the confirmation aft
 
   const channel = {
     messages: {
-      fetch: async ({ limit }) => {
+      fetch: async ({ limit, before }) => {
+        if (before) {
+          const nextOlder = previous.findIndex(message => message.id === before);
+          const extra = previous[nextOlder + 1];
+          return new Collection(extra ? [[extra.id, extra]] : []);
+        }
         fetchedLimit = limit;
         return new Collection([[invocation.id, invocation], ...previous.slice(0, limit - 1).map(m => [m.id, m])]);
       }
@@ -109,7 +114,7 @@ test("preserves messages older than fourteen days", async () => {
   const recent = [makeMessage("r1"), makeMessage("r2")];
   let deletedCollection;
   const channel = {
-    messages: { fetch: async () => new Map([[old.id, old], ...recent.map(m => [m.id, m])]) },
+    messages: { fetch: async () => new Collection([[old.id, old], ...recent.map(m => [m.id, m])]) },
     bulkDelete: async messages => { deletedCollection = messages; return { size: messages.length }; }
   };
 
