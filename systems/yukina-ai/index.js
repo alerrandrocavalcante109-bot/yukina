@@ -48,7 +48,7 @@ function install(client, getSettingsCollection) {
         }
       });
 
-      await message.reply({ content: result.text, allowedMentions: { parse: [], repliedUser: false } });
+      await message.reply({ content: result.text, allowedMentions: { parse: [], users: [message.author.id], repliedUser: true } });
     } catch (error) {
       console.error("[Yukina IA] Erro ao processar mensagem:", error.message || error);
     }
