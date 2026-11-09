@@ -1,5 +1,5 @@
 const { MongoClient } = require("mongodb");
-const { MessageFlags, ContainerBuilder, TextDisplayBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const { MessageFlags, ContainerBuilder, SectionBuilder, TextDisplayBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
@@ -136,13 +136,22 @@ async function runDailyReminders(client, scheduled = false) {
         const user = await client.users.fetch(userKey);
         const message = new ContainerBuilder()
           .setAccentColor(0xe85cba)
-          .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent(
-              "## ❄️ Seu Daily está esperando!\\n" +
-              "🔥 **Sequência: " + streak + " dias**\\n\\n" +
-              "Oii~! 💙 Um novo dia chegou e sua recompensa diária já está disponível!\\n\\n" +
-              "Continue sua jornada, acumule Kizunas e não deixe sua sequência acabar. Estou esperando por você! 🌸"
-            )
+          .addSectionComponents(
+            new SectionBuilder()
+              .addTextDisplayComponents(
+                new TextDisplayBuilder().setContent(
+                  "## ❄️ Seu Daily está esperando!\\n" +
+                  "Oii~! 💙 Um novo dia chegou e sua recompensa diária já está disponível!\\n\\n" +
+                  "Continue sua jornada, acumule Kizunas e não deixe sua sequência acabar. Estou esperando por você! 🌸"
+                )
+              )
+              .setButtonAccessory(
+                new ButtonBuilder()
+                  .setLabel(streak + " dias")
+                  .setEmoji("🔥")
+                  .setStyle(ButtonStyle.Link)
+                  .setURL(DAILY_URL)
+              )
           )
           .addMediaGalleryComponents(
             new MediaGalleryBuilder().addItems(
