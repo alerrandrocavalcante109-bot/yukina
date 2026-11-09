@@ -9,6 +9,7 @@ const letters = require("./letters");
 const stories = require("./stories");
 const world = require("./world");
 const residents = require("./residents");
+const life = require("./life");
 
 const COOLDOWN_MS = 5000;
 const MAX_INPUT_LENGTH = 2500;
@@ -106,11 +107,14 @@ function createEngine(getSettingsCollection) {
   async function getBaseCollection() {
     const collection = await getSettingsCollection();
     if (!indexesReady) {
-      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection), letters.ensureIndexes(collection), stories.ensureIndexes(collection), world.ensureIndexes(collection), residents.ensureIndexes(collection)]);
+      if (!indexPromise) indexPromise = Promise.all([memory.ensureIndexes(collection), relationships.ensureRelationshipIndexes(collection), journal.ensureIndexes(collection), autobiography.ensureIndexes(collection), letters.ensureIndexes(collection), stories.ensureIndexes(collection), world.ensureIndexes(collection), residents.ensureIndexes(collection), life.ensureIndexes(collection)]);
       await indexPromise;
       await autobiography.ensureOriginChapter(collection);
       await world.ensureWorld(collection);
       await residents.seedResidents(collection);
+      const initialResidents = await collection.db.collection("yukina_ai_residents").find({ status: { $ne: "archived" } }).toArray();
+      const initialWorld = await world.getWorldSnapshot(collection);
+      await life.initialize(collection, initialWorld, initialResidents);
       indexesReady = true;
     }
     return collection;
@@ -144,7 +148,8 @@ function createEngine(getSettingsCollection) {
       const worldSnapshot = await world.getWorldSnapshot(collection);
       await residents.simulateResidentNeeds(collection, worldSnapshot);
       await residents.simulateCurrentSlot(collection, worldSnapshot);
-      const [memories, history, relationship, chapters, dueLetters, worldEvents, residentsContext, residentEvents] = await Promise.all([
+      await life.updateAges(collection, worldSnapshot);
+      const [memories, history, relationship, chapters, dueLetters, worldEvents, residentsContext, residentEvents, lifeContext] = await Promise.all([
         memory.getMemories(collection, userId),
         memory.getThread(collection, userId, channelId),
         relationships.registerInteraction(collection, userId, safePrompt),
@@ -152,11 +157,12 @@ function createEngine(getSettingsCollection) {
         letters.getDueFutureLetters(collection),
         world.listWorldEvents(collection, { limit: 5 }),
         residents.getResidentsContext(collection),
-        residents.getRecentResidentEvents(collection, { limit: 8 })
+        residents.getRecentResidentEvents(collection, { limit: 8 }),
+        life.buildLifeContext(collection, worldSnapshot)
       ]);
 
       const messages = [
-        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) + "\n\n" + world.buildWorldContext(worldSnapshot, worldEvents) + "\n\n" + residentsContext + "\n\n" + residents.buildResidentEventsContext(residentEvents) },
+        { role: "system", content: buildSystemPrompt({ memories, userId, displayName }) + "\n\n" + relationships.buildRelationshipContext(relationship) + "\n\n" + autobiography.buildAutobiographyContext(chapters) + "\n\n" + letters.buildFutureLettersContext(dueLetters) + "\n\n" + world.buildWorldContext(worldSnapshot, worldEvents) + "\n\n" + residentsContext + "\n\n" + residents.buildResidentEventsContext(residentEvents) + "\\n\\n" + lifeContext },
         ...history.map(item => ({ role: item.role, content: item.content })),
         { role: "user", content: safePrompt }
       ];
