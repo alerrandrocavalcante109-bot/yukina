@@ -244,11 +244,9 @@ function createEngine(getSettingsCollection) {
     async getWeeklyReport(guildId) {
       const collection = await getBaseCollection();
       const since = new Date(Date.now() - 7 * 86400000);
-      const diary = await collection.db.collection("yukina_ai_diary").findOne(
-        { scope: "server", ownerId: String(guildId), day: { $gte: new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(since) } }
-      );
+      const startDay = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(since);
       const entries = await collection.db.collection("yukina_ai_diary").find(
-        { scope: "server", ownerId: String(guildId), createdAt: { $gte: since } },
+        { scope: "server", ownerId: String(guildId), day: { $gte: startDay } },
         { projection: { _id: 0, day: 1, conversations: 1, participants: 1 } }
       ).sort({ day: -1 }).limit(7).toArray();
       return {
