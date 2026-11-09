@@ -277,7 +277,7 @@ function buildResidentEventsContext(events = []) {
     "ATIVIDADES E ENCONTROS RECENTEMENTE REGISTRADOS NO SANTUÁRIO:",
     ...events.map(event => "- Dia " + (event.dayNumber || (event.worldDay + 1)) + ", " + event.timeSlot + ": " + event.summary),
     "Esses acontecimentos são registros da simulação narrativa do mundo; não acrescente detalhes como fatos registrados se não estiverem aqui."
-  ].join("\\n");
+  ].join("\n");
 }
 
 module.exports = {
