@@ -167,3 +167,8 @@ A camada de comandos de moderação oferece operações explícitas por Slash e 
 - `/clear chat` ou `Yclear chat`: limpar até 1.000 mensagens recentes do canal por execução.
 
 A limpeza preserva mensagens fixadas e respeita a limitação do Discord: mensagens com mais de 14 dias não podem ser apagadas em massa. Para todas as ações, a Yukina precisa receber as permissões correspondentes no servidor; o executor também precisa ter a permissão de moderação exigida. A hierarquia do Discord continua sendo respeitada para cargos. A Yukina IA também reconhece pedidos administrativos diretos em linguagem natural, como 'bloqueie este canal', 'ative o modo lento por 30 segundos', 'limpe 20 mensagens', 'limpe o chat', 'conceda @Cargo para @Membro' e 'retire @Cargo de @Membro'. Para evitar interpretações ambíguas, cargos e membros precisam ser mencionados; os demais comandos atuam no canal atual ou no canal mencionado. A execução é determinística e sempre verifica as permissões de quem pediu, as permissões do bot e a hierarquia de cargos. O modelo de linguagem não recebe acesso direto ao banco nem autoridade para ignorar essas verificações.
+
+
+### Cargos pelo nome
+
+Para conceder ou retirar um cargo pela Yukina IA ou pelo comando de prefixo, basta mencionar o membro e escrever o nome exato do cargo. Não é necessário marcar o cargo. Exemplos: `Yia conceda Moderador para @Membro`, `Yia retire VIP de @Membro`, `Ycargo @Membro Moderador conceder`. Se houver mais de um cargo possível com o mesmo nome ou correspondência, a Yukina pede esclarecimento em vez de escolher aleatoriamente. A menção ao cargo continua sendo aceita como alternativa.
