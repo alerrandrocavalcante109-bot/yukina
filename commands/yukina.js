@@ -130,9 +130,31 @@ module.exports = {
   async execute(interaction) { return run(interaction.options.getSubcommand(), interaction); },
   async prefixExecute(message, args) {
     const action = String(args[0] || "status").toLowerCase();
-    if (!["status", "mundo", "autobiografia", "diario", "relatorio", "cartas-inbox", "historias"].includes(action))
-      return message.reply("Use Yyukina status, mundo, autobiografia, diario, relatorio, historias ou os subcomandos de /yukina.");
-    return run(action, { user: message.author, guildId: message.guild.id, channelId: message.channel.id, memberPermissions: message.member.permissions, options: { getString: () => null }, reply: payload => message.reply(payload) });
+    const rest = args.slice(1);
+    const values = {};
+    if (action === "carta-futuro") {
+      values.data = rest.shift();
+      values.conteudo = rest.join(" ");
+    } else if (action === "carta-privada") {
+      values.destinatario = rest.shift();
+      values.conteudo = rest.join(" ");
+    } else if (action === "historia-criar") {
+      const raw = rest.join(" ").split("|");
+      values.titulo = raw[0];
+      values.texto = raw[1];
+      values.escolhas = raw.slice(2).join("|");
+    } else if (["historia-publicar", "historia-resultados"].includes(action)) {
+      values.id = rest[0];
+    }
+    const supported = new Set(["status", "mundo", "autobiografia", "diario", "relatorio", "cartas-inbox", "historias", "carta-futuro", "carta-privada", "historia-criar", "historia-publicar", "historia-resultados"]);
+    if (!supported.has(action)) return message.reply("Use Yyukina status, mundo, autobiografia, diario, relatorio, carta-futuro, carta-privada, cartas-inbox, historia-criar, historias, historia-publicar ou historia-resultados.");
+    const ctx = {
+      user: message.author, guildId: message.guild.id, channelId: message.channel.id,
+      memberPermissions: message.member.permissions,
+      options: { getString: name => values[name] || null },
+      reply: payload => message.reply(payload)
+    };
+    return run(action, ctx);
   },
   async handleInteraction(interaction) {
     if (!interaction.isButton() || !interaction.customId.startsWith("ykstory:vote:")) return;
