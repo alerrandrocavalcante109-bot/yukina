@@ -308,7 +308,7 @@ module.exports = {
     .setDescription("Mostra seu nível, XP e posição no servidor.")
     .setDMPermission(false)
     .addUserOption(option => option.setName("membro").setDescription("Membro cujo perfil deseja consultar.").setRequired(false)),
-  aliases: ["se", "xp ver"],
+  aliases: ["xp ver"],
   async execute(interaction) {
     if (!interaction.inGuild() || !interaction.guild) {
       return interaction.reply({ content: "❄️ Este comando só funciona dentro de um servidor.", ephemeral: true });
