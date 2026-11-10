@@ -115,7 +115,7 @@ function levelForXp(xp) {
     name: level < 5 ? "Iniciante" : level < 15 ? "Aprendiz" : level < 30 ? "Explorador" : level < 50 ? "Veterano" : level < 100 ? "Lendário" : "Mítico",
     currentLevelXp,
     nextLevelXp,
-    progress: Math.max(0, Math.min(100, Math.floor(((total - currentLevelXp) / 1000) * 100))),
+    progress: Math.max(0, Math.min(100, Math.floor((total % 1000) / 10))),
   };
 }
 
@@ -308,7 +308,7 @@ module.exports = {
     .setDescription("Mostra seu nível, XP e posição no servidor.")
     .setDMPermission(false)
     .addUserOption(option => option.setName("membro").setDescription("Membro cujo perfil deseja consultar.").setRequired(false)),
-  aliases: ["rank", "ranking", "nivel", "nível"],
+  aliases: ["se", "xp ver"],
   async execute(interaction) {
     if (!interaction.inGuild() || !interaction.guild) {
       return interaction.reply({ content: "❄️ Este comando só funciona dentro de um servidor.", ephemeral: true });
