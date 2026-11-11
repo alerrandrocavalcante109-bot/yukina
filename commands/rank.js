@@ -5,6 +5,7 @@ const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const memberData = require("../member-data");
 const xpRoleStorage = require("../system-storage").forSystem("xp-level-roles");
 const { getVipCollection } = require("../vip-store");
+const rankKz = require("./rank-kz");
 
 const WIDTH = 1000;
 const HEIGHT = 430;
@@ -304,33 +305,65 @@ async function respond(interaction, target) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("xp")
-    .setDescription("Mostra seu nível, XP e posição no servidor.")
+    .setName("rank")
+    .setDescription("Consulte seu ranking de XP ou de Kizunas.")
     .setDMPermission(false)
-    .addUserOption(option => option.setName("membro").setDescription("Membro cujo perfil deseja consultar.").setRequired(false)),
-  aliases: ["xp ver"],
+    .addSubcommand(subcommand => subcommand
+      .setName("xp")
+      .setDescription("Mostra seu nível, XP e posição neste servidor.")
+      .addUserOption(option => option.setName("membro").setDescription("Membro cujo perfil deseja consultar.").setRequired(false)))
+    .addSubcommand(subcommand => subcommand
+      .setName("kz")
+      .setDescription("Mostra o ranking global de Kizunas.")
+      .addBooleanOption(option => option.setName("local").setDescription("Limitar aos membros deste servidor.").setRequired(false))),
+  aliases: ["xp"],
   async execute(interaction) {
     if (!interaction.inGuild() || !interaction.guild) {
       return interaction.reply({ content: "❄️ Este comando só funciona dentro de um servidor.", ephemeral: true });
     }
-    const target = interaction.options.getUser("membro") || interaction.user;
+    const action = interaction.options.getSubcommand();
     try {
+      if (action === "kz") {
+        await interaction.deferReply();
+        return rankKz.showRank(
+          interaction.guild,
+          interaction.user,
+          payload => interaction.editReply(payload),
+          0,
+          true,
+          interaction.options.getBoolean("local") || false
+        );
+      }
+      const target = interaction.options.getUser("membro") || interaction.user;
       return await respond(interaction, target);
     } catch (error) {
-      console.error("[Yukina /xp]", error);
+      console.error("[Yukina /rank]", error);
       if (interaction.deferred || interaction.replied) {
-        return interaction.followUp({ content: "💧 Não consegui gerar seu cartão de rank agora.", ephemeral: true }).catch(() => {});
+        return interaction.followUp({ content: "💧 Não consegui gerar seu ranking agora.", ephemeral: true }).catch(() => {});
       }
-      return interaction.reply({ content: "💧 Não consegui gerar seu cartão de rank agora.", ephemeral: true }).catch(() => {});
+      return interaction.reply({ content: "💧 Não consegui gerar seu ranking agora.", ephemeral: true }).catch(() => {});
     }
   },
   async prefixExecute(message, args = []) {
     if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
+    const action = String(args[0] || "xp").toLowerCase();
+    if (action === "kz") {
+      const local = args.slice(1).some(value => String(value).toLowerCase() === "local");
+      return rankKz.showRank(
+        message.guild,
+        message.author,
+        payload => message.reply(payload),
+        0,
+        false,
+        local
+      );
+    }
+    const xpArgs = action === "xp" ? args.slice(1) : args;
     let target = message.author;
     const mention = message.mentions.users.first();
     if (mention) target = mention;
-    else if (args[0] && /^\d{17,20}$/.test(args[0])) {
-      target = await message.client.users.fetch(args[0]).catch(() => null) || message.author;
+    else if (xpArgs[0] && /^\\d{17,20}$/.test(xpArgs[0])) {
+      target = await message.client.users.fetch(xpArgs[0]).catch(() => null) || message.author;
     }
     const interactionLike = {
       guild: message.guild,
@@ -340,8 +373,11 @@ module.exports = {
     try {
       return await respond(interactionLike, target);
     } catch (error) {
-      console.error("[Yukina Yxp]", error);
+      console.error("[Yukina Yrank xp]", error);
       return message.reply("💧 Não consegui gerar seu cartão de rank agora.").catch(() => {});
     }
+  },
+  async handleInteraction(interaction) {
+    return rankKz.handleInteraction(interaction);
   },
 };
