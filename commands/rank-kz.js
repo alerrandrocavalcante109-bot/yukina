@@ -68,7 +68,7 @@ async function resolveRankingUser(guild, userId) {
   return { member, user, displayName };
 }
 
-async function renderRankingCard(guild, ranking, requesterId, page = 0) {
+async function renderRankingCard(guild, ranking, requesterId, page = 0, local = false) {
   const width = 1400;
   const height = 1280;
   const canvas = createCanvas(width, height);
@@ -106,10 +106,10 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
   ctx.fillText("YUKINA  •  ARQUIVO DA ECONOMIA", 70, 70);
   ctx.fillStyle = "#ffffff";
   ctx.font = "bold 68px sans-serif";
-  ctx.fillText("Top 5 — Kizunas", 70, 145);
+  ctx.fillText(local ? "Top 5 — KZ do servidor" : "Top 5 — Kizunas globais", 70, 145);
   ctx.fillStyle = "#d9c8f0";
   ctx.font = "29px sans-serif";
-  ctx.fillText("Os membros com os maiores saldos da comunidade", 73, 192);
+  ctx.fillText(local ? "Maiores carteiras globais entre os membros deste servidor" : "Os maiores saldos de Kizunas entre todos os usuários", 73, 192);
 
   roundedRect(ctx, 50, 220, 1300, 900, 30);
   ctx.fillStyle = "rgba(15, 12, 31, 0.72)";
@@ -209,23 +209,28 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0) {
   return new AttachmentBuilder(await canvas.encode("png"), { name: "rank-kz-yukina.png" });
 }
 
-async function buildRanking(guild, requesterId, page = 0) {
-  const ranking = await getEconomyRanking(guild.id);
+async function buildRanking(guild, requesterId, page = 0, local = false) {
+  let localUserIds = null;
+  if (local) {
+    const members = await guild.members.fetch();
+    localUserIds = [...members.keys()];
+  }
+  const ranking = await getEconomyRanking(localUserIds);
   const maxPage = Math.max(0, Math.ceil(ranking.length / 5) - 1);
   const safePage = Math.max(0, Math.min(Number(page) || 0, maxPage));
-  const attachment = await renderRankingCard(guild, ranking, requesterId, safePage);
+  const attachment = await renderRankingCard(guild, ranking, requesterId, safePage, local);
   return { attachment, ranking, page: safePage, maxPage };
 }
 
-function pageButtons(userId, page, maxPage) {
+function pageButtons(userId, page, maxPage, local = false) {
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
-      .setCustomId("rankkz:" + userId + ":" + (page - 1))
+      .setCustomId("rankkz:" + userId + ":" + (local ? "local" : "global") + ":" + (page - 1))
       .setLabel("◀ Voltar")
       .setStyle(ButtonStyle.Secondary)
       .setDisabled(page <= 0),
     new ButtonBuilder()
-      .setCustomId("rankkz:" + userId + ":" + (page + 1))
+      .setCustomId("rankkz:" + userId + ":" + (local ? "local" : "global") + ":" + (page + 1))
       .setLabel("Próximo ▶")
       .setStyle(ButtonStyle.Primary)
       .setDisabled(page >= maxPage)
@@ -233,7 +238,7 @@ function pageButtons(userId, page, maxPage) {
 }
 
 
-async function showRank(guild, user, sendOrEdit, page = 0, interaction = false) {
+async function showRank(guild, user, sendOrEdit, page = 0, interaction = false, local = false) {
   if (!guild) return sendOrEdit({ content: "❄️ O ranking de KZ só pode ser consultado dentro de um servidor." });
   let loading;
   try {
@@ -241,11 +246,11 @@ async function showRank(guild, user, sendOrEdit, page = 0, interaction = false) 
       content: "❄️ **Estou atualizando o ranking, aguarde...**",
       allowedMentions: { parse: [] }
     });
-    const { attachment, page: currentPage, maxPage } = await buildRanking(guild, user.id, page);
+    const { attachment, page: currentPage, maxPage } = await buildRanking(guild, user.id, page, local);
     const payload = {
-      content: "🌙 **Ranking de KZ atualizado!** Use **Voltar** e **Próximo** para navegar.",
+      content: "🌙 **Ranking " + (local ? "local de KZ" : "global de KZ") + " atualizado!** Use **Voltar** e **Próximo** para navegar.",
       files: [attachment],
-      components: [pageButtons(user.id, currentPage, maxPage)],
+      components: [pageButtons(user.id, currentPage, maxPage, local)],
       allowedMentions: { parse: [] }
     };
     if (interaction) return await sendOrEdit(payload);
@@ -262,30 +267,33 @@ async function showRank(guild, user, sendOrEdit, page = 0, interaction = false) 
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("rank-kz")
-    .setDescription("Veja o ranking em card dos maiores saldos de Kizunas."),
+    .setDescription("Veja o ranking global de Kizunas ou apenas os membros deste servidor.")
+    .addBooleanOption(option => option.setName("local").setDescription("Mostrar apenas membros deste servidor.")),
   aliases: ["rankkz", "kzrank", "topkz", "rankkizunas"],
   async execute(interaction) {
     await interaction.deferReply();
-    return showRank(interaction.guild, interaction.user, payload => interaction.editReply(payload), 0, true);
+    return showRank(interaction.guild, interaction.user, payload => interaction.editReply(payload), 0, true, interaction.options.getBoolean("local") || false);
   },
-  async prefixExecute(message) {
-    return showRank(message.guild, message.author, payload => message.reply(payload), 0, false);
+  async prefixExecute(message, args = []) {
+    const local = String(args[0] || "").toLowerCase() === "local";
+    return showRank(message.guild, message.author, payload => message.reply(payload), 0, false, local);
   },
   async handleInteraction(interaction) {
     if (!interaction.isButton() || !interaction.customId.startsWith("rankkz:")) return;
-    const [, ownerId, rawPage] = interaction.customId.split(":");
+    const [, ownerId, scope, rawPage] = interaction.customId.split(":");
+    const local = scope === "local";
     if (interaction.user.id !== ownerId) {
       return interaction.reply({ content: "❄️ Só quem abriu este ranking pode usar esses botões.", ephemeral: true });
     }
     const page = Number(rawPage);
     await interaction.deferUpdate();
     try {
-      const { attachment, page: currentPage, maxPage } = await buildRanking(interaction.guild, interaction.user.id, page);
+      const { attachment, page: currentPage, maxPage } = await buildRanking(interaction.guild, interaction.user.id, page, local);
       await interaction.editReply({
-        content: "🌙 **Ranking de KZ atualizado!** Use **Voltar** e **Próximo** para navegar.",
+        content: "🌙 **Ranking " + (local ? "local de KZ" : "global de KZ") + " atualizado!** Use **Voltar** e **Próximo** para navegar.",
         files: [attachment],
         attachments: [],
-        components: [pageButtons(interaction.user.id, currentPage, maxPage)],
+        components: [pageButtons(interaction.user.id, currentPage, maxPage, local)],
         allowedMentions: { parse: [] }
       });
     } catch (error) {
