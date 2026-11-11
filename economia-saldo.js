@@ -52,7 +52,7 @@ async function getEconomyRanking(localUserIds = null) {
         return docs.map(doc => ({
           userId: String(doc.userId),
           balance: Math.max(0, Number(doc.balance) || 0)
-        })).filter(doc => /^\\d{15,22}$/.test(doc.userId) && doc.balance > 0 && (!allowed || allowed.has(doc.userId)))
+        })).filter(doc => /^\d{15,22}$/.test(doc.userId) && doc.balance > 0 && (!allowed || allowed.has(doc.userId)))
           .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
       }
     } catch (error) {
@@ -64,13 +64,13 @@ async function getEconomyRanking(localUserIds = null) {
   const data = await readData();
   const flattened = new Map();
   for (const [key, value] of Object.entries(data)) {
-    if (/^\\d{15,22}$/.test(key)) {
+    if (/^\d{15,22}$/.test(key)) {
       flattened.set(key, Math.max(flattened.get(key) || 0, readRecordBalance(value)));
       continue;
     }
     if (value && typeof value === "object" && !Array.isArray(value)) {
       for (const [userId, record] of Object.entries(value)) {
-        if (!/^\\d{15,22}$/.test(userId)) continue;
+        if (!/^\d{15,22}$/.test(userId)) continue;
         flattened.set(userId, Math.max(flattened.get(userId) || 0, readRecordBalance(record)));
       }
     }
