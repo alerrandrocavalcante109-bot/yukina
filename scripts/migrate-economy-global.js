@@ -27,7 +27,7 @@ async function main() {
       return;
     }
 
-    const invalid = docs.filter(doc => !/^\\d{15,22}$/.test(String(doc.userId || "")));
+    const invalid = docs.filter(doc => !/^\d{15,22}$/.test(String(doc.userId || "")));
     if (invalid.length) {
       throw new Error("Existem registros sem userId Discord válido. Nenhum dado foi alterado.");
     }
