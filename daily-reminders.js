@@ -26,7 +26,7 @@ function previousDayKey(dayKey) {
 }
 
 async function getDailyStreak(claims, guildId, userId, todayKey) {
-  const records = await claims.find({ guildId, userId }).sort({ day: -1 }).limit(370).toArray();
+  const records = await claims.find({ userId }).sort({ day: -1 }).limit(370).toArray();
   const claimedDays = new Set(records.map(record => String(record.day)));
   let expected = previousDayKey(todayKey);
   let streak = 0;
@@ -76,15 +76,15 @@ async function runDailyReminders(client, scheduled = false) {
       console.warn("[Daily Reminder] VIP_GUILD_ID não configurado; lembretes ignorados.");
       return;
     }
-    const eligible = await claims.distinct("userId", { guildId });
+    const eligible = await claims.distinct("userId", {});
     for (const userId of eligible) {
       const userKey = String(userId);
-      const claimedToday = await claims.findOne({ guildId, userId: userKey, day });
+      const claimedToday = await claims.findOne({ userId: userKey, day });
       const state = await reminders.findOne({ guildId, userId: userKey });
 
       // O aviso do Banco Central continua enquanto houver Kizunas na conta bancária.
       // Ele é independente dos lembretes comuns, que param após mais de 4 dias sem Daily.
-      const lastClaim = await claims.find({ guildId, userId: userKey })
+      const lastClaim = await claims.find({ userId: userKey })
         .sort({ claimedAt: -1, day: -1 }).limit(1).next();
       const lastClaimAt = lastClaim?.claimedAt ? new Date(lastClaim.claimedAt) : null;
       if (lastClaimAt && !Number.isNaN(lastClaimAt.getTime())) {
