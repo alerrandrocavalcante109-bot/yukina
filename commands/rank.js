@@ -5,7 +5,7 @@ const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const memberData = require("../member-data");
 const xpRoleStorage = require("../system-storage").forSystem("xp-level-roles");
 const { getVipCollection } = require("../vip-store");
-const rankKz = require("./rank-kz");
+const rankKz = require("../systems/rank-kz");
 
 const WIDTH = 1000;
 const HEIGHT = 430;
