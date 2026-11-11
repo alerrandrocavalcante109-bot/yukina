@@ -90,7 +90,13 @@ async function run({ guild, target, requesterId, reply }) {
   } catch (error) {
     console.error("[Yukina Economia] Falha ao consultar ranking no MongoDB:", error.message);
   }
-  if (!stats) stats = getLocalStats(await readData(), guild.id, target.id);
+  if (!stats) {
+    const ranking = await getEconomyRanking();
+    const existing = ranking.find(entry => entry.userId === String(target.id));
+    const balance = existing?.balance || 0;
+    const rank = existing ? ranking.findIndex(entry => entry.userId === String(target.id)) + 1 : ranking.length + 1;
+    stats = { balance, rank, total: ranking.length + (existing ? 0 : 1) };
+  }
 
   const isSelf = target.id === requesterId;
   const balanceLine = isSelf
