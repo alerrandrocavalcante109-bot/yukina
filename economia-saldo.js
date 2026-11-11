@@ -12,15 +12,14 @@ const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 let mongoClient;
 let cache;
 
-async function getMongoStats(guildId, userId) {
+async function getMongoStats(userId) {
   if (!MONGODB_URI) return null;
   if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Economia", serverSelectionTimeoutMS: 10000 });
   await mongoClient.connect();
   const collection = mongoClient.db(MONGODB_DB).collection("economy_balances");
-  const docs = await collection.find({ guildId: String(guildId) }, { projection: { userId: 1, balance: 1, _id: 0 } }).toArray();
-  if (!docs.length) return null;
+  const docs = await collection.find({}, { projection: { userId: 1, balance: 1, _id: 0 } }).toArray();
   const balances = new Map(docs.map(doc => [String(doc.userId), Math.max(0, Number(doc.balance) || 0)]));
-  const balance = balances.has(String(userId)) ? balances.get(String(userId)) : 0;
+  const balance = balances.get(String(userId)) || 0;
   balances.set(String(userId), balance);
   const sorted = [...balances.values()].sort((a, b) => b - a);
   return { balance, rank: sorted.findIndex(value => value <= balance) + 1, total: sorted.length };
@@ -41,53 +40,43 @@ function readRecordBalance(record) {
   const balance = Number(value);
   return Number.isFinite(balance) && balance > 0 ? balance : 0;
 }
-function getLocalStats(data, guildId, userId) {
-  const guild = data[String(guildId)] || {};
-  const balances = new Map(Object.entries(guild).map(([id, record]) => [String(id), readRecordBalance(record)]));
-  if (!balances.size) {
-    for (const [id, record] of Object.entries(data)) {
-      if (id === String(guildId) || !/^\d{15,22}$/.test(id)) continue;
-      balances.set(id, readRecordBalance(record));
-    }
-  }
-  const balance = balances.get(String(userId)) ?? readRecordBalance(data[String(userId)]);
-  balances.set(String(userId), balance);
-  const sorted = [...balances.values()].sort((a, b) => b - a);
-  return { balance, rank: sorted.findIndex(value => value <= balance) + 1, total: sorted.length };
-}
-async function getEconomyRanking(guildId) {
-  // Mesma fonte de dados usada pelo comando /saldo: MongoDB e, como alternativa,
-  // o arquivo data/economia.json no formato servidor -> usuário -> saldo.
+async function getEconomyRanking(localUserIds = null) {
+  const allowed = Array.isArray(localUserIds) ? new Set(localUserIds.map(String)) : null;
   if (MONGODB_URI) {
     try {
       if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Economia", serverSelectionTimeoutMS: 10000 });
       await mongoClient.connect();
       const docs = await mongoClient.db(MONGODB_DB).collection("economy_balances")
-        .find({ guildId: String(guildId) }, { projection: { userId: 1, balance: 1, _id: 0 } }).toArray();
+        .find({}, { projection: { userId: 1, balance: 1, _id: 0 } }).toArray();
       if (docs.length) {
         return docs.map(doc => ({
           userId: String(doc.userId),
           balance: Math.max(0, Number(doc.balance) || 0)
-        })).filter(doc => /^\d{15,22}$/.test(doc.userId) && doc.balance > 0)
+        })).filter(doc => /^\\d{15,22}$/.test(doc.userId) && doc.balance > 0 && (!allowed || allowed.has(doc.userId)))
           .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
       }
     } catch (error) {
-      console.error("[Yukina Economia] Falha ao carregar ranking completo:", error.message || error);
+      console.error("[Yukina Economia] Falha ao carregar ranking global:", error.message || error);
     }
   }
 
+  // Compatibilidade temporária com o JSON antigo: servidor -> usuário -> saldo.
   const data = await readData();
-  const guild = data[String(guildId)];
-  let entries;
-  if (guild && typeof guild === "object" && !Array.isArray(guild)) {
-    entries = Object.entries(guild);
-  } else {
-    entries = Object.entries(data).filter(([id]) => /^\d{15,22}$/.test(id));
+  const flattened = new Map();
+  for (const [key, value] of Object.entries(data)) {
+    if (/^\\d{15,22}$/.test(key)) {
+      flattened.set(key, Math.max(flattened.get(key) || 0, readRecordBalance(value)));
+      continue;
+    }
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      for (const [userId, record] of Object.entries(value)) {
+        if (!/^\\d{15,22}$/.test(userId)) continue;
+        flattened.set(userId, Math.max(flattened.get(userId) || 0, readRecordBalance(record)));
+      }
+    }
   }
-  return entries.map(([userId, record]) => ({
-    userId: String(userId),
-    balance: readRecordBalance(record)
-  })).filter(doc => /^\d{15,22}$/.test(doc.userId) && doc.balance > 0)
+  return [...flattened.entries()].map(([userId, balance]) => ({ userId, balance }))
+    .filter(doc => doc.balance > 0 && (!allowed || allowed.has(doc.userId)))
     .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
 }
 function format(value) {
@@ -97,19 +86,18 @@ async function run({ guild, target, requesterId, reply }) {
   if (!guild) return reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor." });
   let stats;
   try {
-    stats = await getMongoStats(guild.id, target.id);
+    stats = await getMongoStats(target.id);
   } catch (error) {
     console.error("[Yukina Economia] Falha ao consultar ranking no MongoDB:", error.message);
   }
   if (!stats) stats = getLocalStats(await readData(), guild.id, target.id);
 
   const isSelf = target.id === requesterId;
-  const subject = isSelf ? "Você" : `**${target.globalName || target.username}**`;
   const balanceLine = isSelf
     ? `💰 Você tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`
     : `💰 **${target.globalName || target.username}** tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`;
   const rankLine = stats.balance > 0
-    ? `\n🏆 **Rank no servidor:** #${stats.rank} de ${stats.total} membro(s) no ranking.`
+    ? `\n🏆 **Rank global de KZ:** #${stats.rank} de ${stats.total} usuário(s) no ranking.`
     : "";
   return reply({ content: `${balanceLine}${rankLine}` });
 }
