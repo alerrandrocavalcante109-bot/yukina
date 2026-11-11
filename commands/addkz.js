@@ -14,7 +14,6 @@ async function getBalancesCollection() {
   if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-AddKZ", serverSelectionTimeoutMS: 10000 });
   await mongoClient.connect();
   balancesCollection = mongoClient.db(MONGODB_DB).collection("economy_balances");
-  await balancesCollection.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_balance" });
   return balancesCollection;
 }
 
@@ -40,17 +39,17 @@ function isAllowed(member) {
     member?.permissions?.has(PermissionFlagsBits.ManageGuild));
 }
 
-async function addKz(guildId, users, amount) {
+async function addKz(users, amount) {
   const balances = await getBalancesCollection();
   const now = new Date();
   const results = [];
   for (const user of users) {
     const doc = await balances.findOneAndUpdate(
-      { guildId: String(guildId), userId: String(user.id) },
+      { userId: String(user.id) },
       {
         $inc: { balance: amount },
         $set: { updatedAt: now },
-        $setOnInsert: { guildId: String(guildId), userId: String(user.id), createdAt: now }
+        $setOnInsert: { userId: String(user.id), createdAt: now }
       },
       { upsert: true, returnDocument: "after" }
     );
@@ -78,7 +77,7 @@ module.exports = {
     }
 
     try {
-      const results = await addKz(message.guildId, mentions, amount);
+      const results = await addKz(mentions, amount);
       const lines = results.map(({ user, balance }) => "• " + user + " — novo saldo: **" + format(balance) + " KZ**");
       return message.reply({
         content: "🌸 **" + format(amount) + " KZ adicionadas para " + results.length + " membro(s)!**\n" + lines.join("\n"),
