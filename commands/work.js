@@ -22,7 +22,6 @@ async function getBalancesCollection() {
   if (!mongoClient) mongoClient = new MongoClient(MONGODB_URI, { appName: "Yukina-Work", serverSelectionTimeoutMS: 10000 });
   await mongoClient.connect();
   balancesCollection = mongoClient.db(MONGODB_DB).collection("economy_balances");
-  await balancesCollection.createIndex({ guildId: 1, userId: 1 }, { unique: true, name: "unique_guild_user_balance" });
   return balancesCollection;
 }
 
@@ -79,7 +78,7 @@ function buildEmbed(user, job, reward, record, nextWorkAt) {
 async function runWork({ guildId, user, reply, client }) {
   if (!guildId) return reply({ content: "⛩️ O comando **work** só pode ser usado dentro de um servidor.", ephemeral: true });
 
-  const lockKey = guildId + ":" + user.id;
+  const lockKey = String(user.id);
   if (locks.has(lockKey)) {
     return reply({ content: "🌙 A Yukina já está registrando seu trabalho. Aguarde um instante e tente novamente.", ephemeral: true });
   }
@@ -87,12 +86,11 @@ async function runWork({ guildId, user, reply, client }) {
   locks.add(lockKey);
   try {
     const balances = await getBalancesCollection();
-    const balanceDoc = await balances.findOne({ guildId: String(guildId), userId: String(user.id) });
-    const record = await storage.get(guildId, "profile", {
-      lastWorkAt: 0,
-      totalEarned: 0,
-      jobsCompleted: 0,
-    }, user.id);
+    const balanceDoc = await balances.findOne({ userId: String(user.id) });
+    const defaults = { lastWorkAt: 0, totalEarned: 0, jobsCompleted: 0 };
+    const record = await storage.get("global", "profile", null, user.id)
+      || await storage.get(guildId, "profile", defaults, user.id)
+      || defaults;
 
     const balance = Math.max(0, Number(balanceDoc?.balance) || 0);
     const lastWorkAt = Math.max(0, Number(record?.lastWorkAt) || 0);
@@ -117,13 +115,13 @@ async function runWork({ guildId, user, reply, client }) {
 
     // O saldo é gravado na mesma coleção usada pelo /saldo e pelo Daily.
     await balances.updateOne(
-      { guildId: String(guildId), userId: String(user.id) },
-      { $inc: { balance: reward }, $set: { updatedAt: new Date(now) }, $setOnInsert: { guildId: String(guildId), userId: String(user.id), createdAt: new Date(now) } },
+      { userId: String(user.id) },
+      { $inc: { balance: reward }, $set: { updatedAt: new Date(now) }, $setOnInsert: { userId: String(user.id), createdAt: new Date(now) } },
       { upsert: true }
     );
-    const balanceAfter = await balances.findOne({ guildId: String(guildId), userId: String(user.id) });
+    const balanceAfter = await balances.findOne({ userId: String(user.id) });
     updated.balance = Math.max(0, Number(balanceAfter?.balance) || balance + reward);
-    await storage.set(guildId, "profile", updated, user.id);
+    await storage.set("global", "profile", updated, user.id);
     const embed = buildEmbed(user, job, reward, updated, now + COOLDOWN_MS);
     if (updated.notificationEnabled) workNotifications.schedule(client, guildId, user.id, now);
     const notifyRow = new ActionRowBuilder().addComponents(
