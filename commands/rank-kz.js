@@ -264,41 +264,26 @@ async function showRank(guild, user, sendOrEdit, page = 0, interaction = false, 
   }
 }
 
-module.exports = {
-  data: new SlashCommandBuilder()
-    .setName("rank-kz")
-    .setDescription("Veja o ranking global de Kizunas ou apenas os membros deste servidor.")
-    .addBooleanOption(option => option.setName("local").setDescription("Mostrar apenas membros deste servidor.")),
-  aliases: ["rankkz", "kzrank", "topkz", "rankkizunas"],
-  async execute(interaction) {
-    await interaction.deferReply();
-    return showRank(interaction.guild, interaction.user, payload => interaction.editReply(payload), 0, true, interaction.options.getBoolean("local") || false);
-  },
-  async prefixExecute(message, args = []) {
-    const local = String(args[0] || "").toLowerCase() === "local";
-    return showRank(message.guild, message.author, payload => message.reply(payload), 0, false, local);
-  },
-  async handleInteraction(interaction) {
-    if (!interaction.isButton() || !interaction.customId.startsWith("rankkz:")) return;
-    const [, ownerId, scope, rawPage] = interaction.customId.split(":");
-    const local = scope === "local";
-    if (interaction.user.id !== ownerId) {
-      return interaction.reply({ content: "❄️ Só quem abriu este ranking pode usar esses botões.", ephemeral: true });
-    }
-    const page = Number(rawPage);
-    await interaction.deferUpdate();
-    try {
-      const { attachment, page: currentPage, maxPage } = await buildRanking(interaction.guild, interaction.user.id, page, local);
-      await interaction.editReply({
-        content: "🌙 **Ranking " + (local ? "local de KZ" : "global de KZ") + " atualizado!** Use **Voltar** e **Próximo** para navegar.",
-        files: [attachment],
-        attachments: [],
-        components: [pageButtons(interaction.user.id, currentPage, maxPage, local)],
-        allowedMentions: { parse: [] }
-      });
-    } catch (error) {
-      console.error("[Yukina Rank KZ] Falha ao trocar página:", error);
-      await interaction.followUp({ content: "🫧 Não consegui carregar essa página do ranking.", ephemeral: true });
-    }
+module.exports = { showRank, handleInteraction: async function handleInteraction(interaction) {
+  if (!interaction.isButton() || !interaction.customId.startsWith("rankkz:")) return;
+  const [, ownerId, scope, rawPage] = interaction.customId.split(":");
+  const local = scope === "local";
+  if (interaction.user.id !== ownerId) {
+    return interaction.reply({ content: "❄️ Só quem abriu este ranking pode usar esses botões.", ephemeral: true });
   }
-};
+  const page = Number(rawPage);
+  await interaction.deferUpdate();
+  try {
+    const { attachment, page: currentPage, maxPage } = await buildRanking(interaction.guild, interaction.user.id, page, local);
+    await interaction.editReply({
+      content: "🌙 **Ranking " + (local ? "local de KZ" : "global de KZ") + " atualizado!** Use **Voltar** e **Próximo** para navegar.",
+      files: [attachment],
+      attachments: [],
+      components: [pageButtons(interaction.user.id, currentPage, maxPage, local)],
+      allowedMentions: { parse: [] }
+    });
+  } catch (error) {
+    console.error("[Yukina Rank KZ] Falha ao trocar página:", error);
+    await interaction.followUp({ content: "🫧 Não consegui carregar essa página do ranking.", ephemeral: true });
+  }
+} };
