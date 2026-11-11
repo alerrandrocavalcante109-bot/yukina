@@ -23,14 +23,15 @@ async function execute(interaction, client) {
     return interaction.reply({ content: "🌙 Use esta opção dentro do servidor onde trabalhou.", flags: MessageFlags.Ephemeral });
   }
   await interaction.deferUpdate();
-  const record = await storage.get(interaction.guildId, "profile", {
-    lastWorkAt: 0, totalEarned: 0, jobsCompleted: 0,
-  }, ownerId);
+  const defaults = { lastWorkAt: 0, totalEarned: 0, jobsCompleted: 0 };
+  const record = await storage.get("global", "profile", null, ownerId)
+    || await storage.get(interaction.guildId, "profile", defaults, ownerId)
+    || defaults;
   const enabled = !Boolean(record.notificationEnabled);
   const lastWorkAt = Number(record.lastWorkAt) || 0;
   const updated = { ...record, notificationEnabled: enabled };
   if (enabled && lastWorkAt <= 0) updated.lastWorkAt = Date.now();
-  await storage.set(interaction.guildId, "profile", updated, ownerId);
+  await storage.set("global", "profile", updated, ownerId);
   if (enabled) notifications.schedule(client, interaction.guildId, ownerId, Number(updated.lastWorkAt) || Date.now());
   else notifications.cancel(interaction.guildId, ownerId);
   await interaction.message.edit({ components: [buildRow(ownerId, enabled)] }).catch(() => {});
