@@ -212,8 +212,13 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0, local = 
 async function buildRanking(guild, requesterId, page = 0, local = false) {
   let localUserIds = null;
   if (local) {
-    const members = await guild.members.fetch();
-    localUserIds = [...members.keys()];
+    try {
+      const members = await guild.members.fetch();
+      localUserIds = [...members.keys()];
+    } catch {
+      localUserIds = [...guild.members.cache.keys()];
+      if (!localUserIds.includes(String(requesterId))) localUserIds.push(String(requesterId));
+    }
   }
   const ranking = await getEconomyRanking(localUserIds);
   const maxPage = Math.max(0, Math.ceil(ranking.length / 5) - 1);
