@@ -62,6 +62,26 @@ const PLAN_BENEFITS = {
 };
 const DEFAULT_DRAWS = 10;
 
+const WAIFU_GLOBAL_SCOPE = "global";
+
+async function getWaifuState(guildId, field, fallback, userId) {
+  const globalValue = await storage.get(WAIFU_GLOBAL_SCOPE, field, null, String(userId));
+  if (globalValue !== null && globalValue !== undefined) return globalValue;
+  const legacyGuild = String(guildId || "");
+  if (legacyGuild && legacyGuild !== WAIFU_GLOBAL_SCOPE) {
+    const legacyValue = await storage.get(legacyGuild, field, null, String(userId));
+    if (legacyValue !== null && legacyValue !== undefined) {
+      await storage.set(WAIFU_GLOBAL_SCOPE, field, legacyValue, String(userId));
+      return legacyValue;
+    }
+  }
+  return fallback;
+}
+
+async function setWaifuState(field, value, userId) {
+  return storage.set(WAIFU_GLOBAL_SCOPE, field, value, String(userId));
+}
+
 async function getWaifuBenefits(userId) {
   try {
     const { getVipCollection } = require("../vip-store");
@@ -109,13 +129,13 @@ function normalizeItem(item) {
 
 const WAIFU_COOLDOWN_MS = 2 * 60 * 60 * 1000;
 async function getWaifuCooldownUntil(guildId, userId) {
-  const value = await storage.get(String(guildId), "cooldownUntil", 0, String(userId));
+  const value = await getWaifuState(guildId, "cooldownUntil", 0, userId);
   const timestamp = Number(value);
   return Number.isFinite(timestamp) ? timestamp : 0;
 }
 
 async function getDrawCount(guildId, userId) {
-  const value = await storage.get(String(guildId), "drawCount", 0, String(userId));
+  const value = await getWaifuState(guildId, "drawCount", 0, userId);
   const count = Number(value);
   return Number.isFinite(count) ? Math.max(0, Math.floor(count)) : 0;
 }
@@ -125,8 +145,8 @@ async function getCooldownMessage(guildId, userId, maxDraws = DEFAULT_DRAWS) {
   const remaining = until - Date.now();
   if (remaining <= 0) {
     if (until > 0) {
-      await storage.set(String(guildId), "drawCount", 0, String(userId));
-      await storage.set(String(guildId), "cooldownUntil", 0, String(userId));
+      await setWaifuState("drawCount", 0, userId);
+      await setWaifuState("cooldownUntil", 0, userId);
     }
     return null;
   }
@@ -141,10 +161,10 @@ async function getCooldownMessage(guildId, userId, maxDraws = DEFAULT_DRAWS) {
 async function registerWaifuDraw(guildId, userId, maxDraws = DEFAULT_DRAWS) {
   const key = String(userId);
   const count = (await getDrawCount(guildId, userId)) + 1;
-  await storage.set(String(guildId), "drawCount", count, key);
+  await setWaifuState("drawCount", count, key);
   if (count >= maxDraws) {
     const until = Date.now() + WAIFU_COOLDOWN_MS;
-    await storage.set(String(guildId), "cooldownUntil", until, key);
+    await setWaifuState("cooldownUntil", until, key);
   }
   return count;
 }
@@ -152,7 +172,7 @@ async function registerWaifuDraw(guildId, userId, maxDraws = DEFAULT_DRAWS) {
 const notificationTimers = new Map();
 
 function notificationKey(guildId, userId) {
-  return String(guildId) + ":" + String(userId);
+  return String(userId);
 }
 
 function makeCooldownButtons(ownerId) {
@@ -173,11 +193,11 @@ async function scheduleAvailabilityNotification(client, guildId, userId, until) 
   const timer = setTimeout(async () => {
     notificationTimers.delete(key);
     try {
-      const subscribedUntil = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
+      const subscribedUntil = Number(await getWaifuState(guildId, "notifyAt", 0, userId)) || 0;
       if (!subscribedUntil || subscribedUntil !== Number(until)) return;
       const user = await client.users.fetch(String(userId));
       await user.send("🌸 **O arquivo lunar está aberto novamente!** Seu cooldown de waifus terminou. Você já pode usar **Yw** ou **/waifu** para sortear novas personagens.");
-      await storage.set(String(guildId), "notifyAt", 0, String(userId));
+      await setWaifuState("notifyAt", 0, userId);
     } catch (error) {
       console.error("[Yukina waifu DM]", error);
     }
@@ -191,7 +211,7 @@ async function getCooldownPayload(guildId, userId, client) {
   const remainingDraws = Math.max(0, benefits.draws - await getDrawCount(guildId, userId));
   const cooldownMessage = await getCooldownMessage(guildId, userId, benefits.draws);
   if (!cooldownMessage) return null;
-  const notifyAt = Number(await storage.get(String(guildId), "notifyAt", 0, String(userId))) || 0;
+  const notifyAt = Number(await getWaifuState(guildId, "notifyAt", 0, userId)) || 0;
   if (notifyAt > Date.now()) await scheduleAvailabilityNotification(client, guildId, userId, notifyAt);
   return {
     content: cooldownMessage + "\n\n🎲 **Sorteios restantes nesta rodada:** " + remainingDraws + "/" + benefits.draws,
@@ -284,7 +304,7 @@ function makeButtons(ownerId, imageUrl, collectionCount, albumCapacity = DEFAULT
 }
 
 async function getCollection(guildId, userId) {
-  const record = await storage.get(String(guildId), "collection", { items: [] }, String(userId));
+  const record = await getWaifuState(guildId, "collection", { items: [] }, userId);
   return Array.isArray(record?.items) ? record.items : [];
 }
 
@@ -366,7 +386,7 @@ async function saveWaifu(guildId, user, imageUrl, rank, albumCapacity = DEFAULT_
   if (items.some(item => normalizeItem(item)?.url === url)) return { saved: false, count: items.length, duplicate: true };
   if (items.length >= albumCapacity) return { saved: false, count: items.length, full: true, capacity: albumCapacity };
   items.push({ url, rank: rarity.rank, value: rarity.value });
-  await storage.set(String(guildId), "collection", { items }, String(user.id));
+  await setWaifuState("collection", { items }, user.id);
   return { saved: true, count: items.length, rarity };
 }
 
