@@ -1,0 +1,30 @@
+name: Check Yukina VIP bot
+
+on:
+  pull_request:
+    paths:
+      - "discord-bot/**"
+      - ".github/workflows/vip-bot-check.yml"
+  push:
+    branches: [main]
+    paths:
+      - "discord-bot/**"
+      - ".github/workflows/vip-bot-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: Validate package metadata
+        working-directory: discord-bot
+        run: npm pkg get name version scripts
+      - name: Check JavaScript syntax
+        working-directory: discord-bot
+        run: npm run check
