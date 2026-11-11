@@ -362,7 +362,7 @@ module.exports = {
     let target = message.author;
     const mention = message.mentions.users.first();
     if (mention) target = mention;
-    else if (xpArgs[0] && /^\\d{17,20}$/.test(xpArgs[0])) {
+    else if (xpArgs[0] && /^\d{17,20}$/.test(xpArgs[0])) {
       target = await message.client.users.fetch(xpArgs[0]).catch(() => null) || message.author;
     }
     const interactionLike = {
