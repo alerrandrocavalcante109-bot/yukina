@@ -941,10 +941,10 @@ async function panelApi(req, res, url) {
       if (!settingsMongoClient) settingsMongoClient = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
       await settingsMongoClient.connect();
       const daily = settingsMongoClient.db(MONGODB_DB).collection("daily_claims");
-      await daily.createIndex({ guildId: 1, userId: 1, day: 1 }, { unique: true });
+      await daily.createIndex({ userId: 1, day: 1 }, { unique: true, name: "unique_global_user_daily" });
       const now = new Date();
       const day = getDailyDayKey(now);
-      const previous = await daily.findOne({ guildId, userId: String(user.id), day });
+      const previous = await daily.findOne({ userId: String(user.id), day });
       if (!isClaim) return sendJson(res, 200, { ok: true, claimed: Boolean(previous), nextReset: getNextDailyReset(now) });
       if (previous) return sendJson(res, 409, { ok: false, claimed: true, detail: "Você já coletou seu Daily hoje! Volte amanhã para coletar novamente." });
       const body = await readBody(req);
@@ -983,8 +983,8 @@ async function panelApi(req, res, url) {
         await session.withTransaction(async () => {
           await daily.insertOne({ guildId, userId: String(user.id), day, plan: planKey || null, multiplier, slots, combination, baseReward, reward, claimedAt: now }, { session });
           await settingsMongoClient.db(MONGODB_DB).collection("economy_balances").updateOne(
-            { guildId, userId: String(user.id) },
-            { $inc: { balance: reward }, $set: { updatedAt: now }, $setOnInsert: { createdAt: now } },
+            { userId: String(user.id) },
+            { $inc: { balance: reward }, $set: { updatedAt: now }, $setOnInsert: { userId: String(user.id), createdAt: now } },
             { upsert: true, session }
           );
         });
