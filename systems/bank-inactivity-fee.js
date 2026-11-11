@@ -20,7 +20,7 @@ async function applyDailyInactivityFee({ db, guildId, userId, now = new Date() }
   const daily = db.collection("daily_claims");
   const ledger = db.collection("yukina_bank_transactions");
 
-  const lastClaim = await daily.find({ guildId: guild, userId: user })
+  const lastClaim = await daily.find({ userId: user })
     .sort({ claimedAt: -1, day: -1 }).limit(1).next();
 
   if (!lastClaim) return { fee: 0, overdueDays: 0, balance: null };
