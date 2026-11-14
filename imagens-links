@@ -1,1 +1,2 @@
-imagem-daily
+const nome = "Yukina";
+  console.log(nome);
