@@ -135,7 +135,7 @@ function buildGameContainer(game) {
   const nextPayout = nextMultiplier === null ? null : payoutFor(game.bet, nextMultiplier);
   const nextText = nextMultiplier === null
     ? "Próximo multiplicador: **não há mais casas seguras**"
-    : "Próximo multiplicador: **" + nextMultiplier.toFixed(2) + "x** (+" + format(Math.max(0, nextPayout - currentPayout)) + " KZ)";
+    : "Próximo multiplicador: **" + nextMultiplier.toFixed(2) + "x** (+" + format(Math.max(0, nextPayout - game.bet)) + " KZ de lucro)";
   const body = [
     "# 💎 MINAS",
     "💣 Bombas: **" + game.bombs + "** / **" + safeTotal + " casas seguras**",
