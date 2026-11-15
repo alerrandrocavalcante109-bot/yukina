@@ -44,7 +44,6 @@ async function getDb() {
       ),
       db.collection("mines_games").createIndex({ status: 1, expiresAt: 1 }, { name: "mines_active_expiration" }),
       db.collection("mines_games").createIndex({ gameNumber: 1 }, { unique: true, name: "mines_unique_game_number" }),
-      db.collection("mines_counters").createIndex({ _id: 1 }, { unique: true }),
       db.collection("mines_ledger").createIndex({ gameId: 1, type: 1 }, { unique: true, name: "mines_unique_game_transaction" }),
       db.collection("mines_ledger").createIndex({ userId: 1, createdAt: -1 }),
     ]);
