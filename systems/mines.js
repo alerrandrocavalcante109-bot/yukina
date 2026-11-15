@@ -116,7 +116,7 @@ function buildCellRows(game, disabled = false) {
       const button = new ButtonBuilder()
         .setCustomId("mines:cell:" + game._id + ":" + cell)
         .setLabel(String(cell + 1))
-        .setDisabled(disabled || isOpen || (game.status === "lost" && !isBomb && !isOpen))
+        .setDisabled(disabled || isOpen || ((game.openedCells || []).length >= BOARD_SIZE - game.bombs && !isOpen) || (game.status === "lost" && !isBomb && !isOpen))
         .setStyle(isOpen ? ButtonStyle.Success : (game.status === "lost" && isBomb ? ButtonStyle.Danger : ButtonStyle.Secondary))
         .setEmoji(isOpen ? "💎" : (game.status === "lost" && isBomb ? "💣" : "🔹"));
       row.addComponents(button);
@@ -194,9 +194,10 @@ function buildFinalContainer(game, kind) {
     const profit = Math.max(0, Number(game.currentPayout) - Number(game.bet));
     text = "## 🏆 Você venceu!\nVocê acaba de sair das cavernas de Kizunas sem encontrar uma bomba, que feito emocionante, e você sai com (**" + format(game.currentPayout) + " KZ** com um lucro de **" + format(profit) + " KZ**).";
   }
+  const numberLine = kind === "expired" ? "" : "\n\n**Partida #" + game.gameNumber + "**";
   return new ContainerBuilder()
     .setAccentColor(kind === "lost" ? 0xE8A0A0 : 0xA7D8F0)
-    .addTextDisplayComponents(new TextDisplayBuilder().setContent(text + "\n\n**Partida #" + game.gameNumber + "**"));
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
 }
 
 async function editGameMessage(client, game, container) {
@@ -318,7 +319,7 @@ async function finishGame(game, status, payout, ledgerType) {
             currentPayout: amount,
             profit: amount - Number(game.bet),
             endedAt: now,
-            displayPending: true,
+            displayPending: Boolean(game.messageId),
             updatedAt: now,
           },
         },
@@ -364,8 +365,16 @@ function scheduleExpiry(client, game) {
   if (!game?.expiresAt || game.status !== "active") return;
   clearExpiry(game._id);
   const remaining = Math.max(0, new Date(game.expiresAt).getTime() - Date.now());
-  const timer = setTimeout(() => {
-    expireGame(client, game._id).catch(error => console.error("[Mines] Falha no saque automático:", error));
+  const timer = setTimeout(async () => {
+    try {
+      const result = await expireGame(client, game._id);
+      if (result?.busy) {
+        scheduleExpiry(client, { ...game, expiresAt: new Date(Date.now() + 1500) });
+      }
+    } catch (error) {
+      console.error("[Mines] Falha no saque automático; nova tentativa em instantes:", error);
+      scheduleExpiry(client, { ...game, expiresAt: new Date(Date.now() + 15000) });
+    }
   }, Math.min(remaining, 2_147_000_000));
   if (typeof timer.unref === "function") timer.unref();
   expiryTimers.set(game._id, timer);
