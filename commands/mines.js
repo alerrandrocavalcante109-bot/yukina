@@ -60,7 +60,7 @@ module.exports = {
       channel: message.channel,
       user: message.author,
       betInput: args[0],
-      bombs: args.length > 1 ? Number(args[1]) : NaN,
+      bombs: args.length === 2 ? Number(args[1]) : NaN,
       send: payload => {
         if ((Number(payload.flags) & MessageFlags.Ephemeral) === MessageFlags.Ephemeral) {
           return message.reply(payload.content);
