@@ -45,6 +45,9 @@ module.exports = {
       betInput: interaction.options.getString("valor", true),
       bombs: interaction.options.getInteger("bombas", true),
       send: async payload => {
+        if (interaction.replied || interaction.deferred) {
+          return interaction.followUp(payload);
+        }
         await interaction.reply(payload);
         return interaction.fetchReply();
       },
@@ -58,7 +61,12 @@ module.exports = {
       user: message.author,
       betInput: args[0],
       bombs: args.length > 1 ? Number(args[1]) : NaN,
-      send: payload => message.channel.send(payload),
+      send: payload => {
+        if ((Number(payload.flags) & MessageFlags.Ephemeral) === MessageFlags.Ephemeral) {
+          return message.reply(payload.content);
+        }
+        return message.channel.send(payload);
+      },
     });
   },
 };
