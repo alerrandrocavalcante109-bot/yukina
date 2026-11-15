@@ -309,6 +309,7 @@ async function finishGame(game, status, payout, ledgerType) {
   let finished = false;
   try {
     await session.withTransaction(async () => {
+      finished = false;
       const update = await games.updateOne(
         { _id: game._id, status: "active" },
         {
@@ -334,15 +335,15 @@ async function finishGame(game, status, payout, ledgerType) {
           },
           { upsert: true, session }
         );
-        await ledger.insertOne({
-          gameId: game._id,
-          gameNumber: game.gameNumber,
-          userId: String(game.userId),
-          type: ledgerType,
-          amount,
-          createdAt: now,
-        }, { session });
       }
+      await ledger.insertOne({
+        gameId: game._id,
+        gameNumber: game.gameNumber,
+        userId: String(game.userId),
+        type: ledgerType,
+        amount,
+        createdAt: now,
+      }, { session });
       finished = true;
     });
   } finally {
@@ -369,26 +370,28 @@ function scheduleExpiry(client, game) {
   expiryTimers.set(game._id, timer);
 }
 
-async function expireGame(client, gameId) {
-  return withGameLock(gameId, async () => {
-    const db = await getDb();
-    const games = db.collection("mines_games");
-    const game = await games.findOne({ _id: gameId, status: "active" });
-    if (!game || !game.expiresAt || !(game.openedCells || []).length) {
-      clearExpiry(gameId);
-      return false;
-    }
-    const remaining = new Date(game.expiresAt).getTime() - Date.now();
-    if (remaining > 0) {
-      scheduleExpiry(client, game);
-      return false;
-    }
-    const result = await finishGame(game, "expired", game.currentPayout, "automatic_payout");
+async function expireGameLocked(client, gameId) {
+  const db = await getDb();
+  const games = db.collection("mines_games");
+  const game = await games.findOne({ _id: gameId, status: "active" });
+  if (!game || !game.expiresAt || !(game.openedCells || []).length) {
     clearExpiry(gameId);
-    if (!result.finished || !result.game) return false;
-    await editGameMessage(client, result.game, buildFinalContainer(result.game, "expired"));
-    return true;
-  });
+    return false;
+  }
+  const remaining = new Date(game.expiresAt).getTime() - Date.now();
+  if (remaining > 0) {
+    scheduleExpiry(client, game);
+    return false;
+  }
+  const result = await finishGame(game, "expired", game.currentPayout, "automatic_payout");
+  clearExpiry(gameId);
+  if (!result.finished || !result.game) return false;
+  await editGameMessage(client, result.game, buildFinalContainer(result.game, "expired"));
+  return true;
+}
+
+async function expireGame(client, gameId) {
+  return withGameLock(gameId, () => expireGameLocked(client, gameId));
 }
 
 async function initialize(client) {
@@ -406,7 +409,7 @@ async function initialize(client) {
 }
 
 async function openCell(client, interaction, gameId, cell) {
-  return withGameLock(gameId, async () => {
+  const result = await withGameLock(gameId, async () => {
     const db = await getDb();
     const games = db.collection("mines_games");
     let game = await games.findOne({ _id: gameId });
@@ -414,7 +417,7 @@ async function openCell(client, interaction, gameId, cell) {
       return sendEphemeral(interaction, "Esta partida já foi encerrada ou não existe mais.");
     }
     if (game.expiresAt && new Date(game.expiresAt).getTime() <= Date.now()) {
-      await expireGame(client, gameId);
+      await expireGameLocked(client, gameId);
       return sendEphemeral(interaction, "O tempo desta partida acabou. O saque automático foi realizado.");
     }
     if ((game.openedCells || []).includes(cell)) {
@@ -426,8 +429,8 @@ async function openCell(client, interaction, gameId, cell) {
       const result = await finishGame(game, "lost", 0, "loss");
       clearExpiry(gameId);
       if (result.finished && result.game) {
-        await editGameMessage(client, result.game, buildGameContainer(result.game));
         const finalBoard = buildFinalContainer(result.game, "lost");
+        for (const row of buildCellRows(result.game, true)) finalBoard.addActionRowComponents(row);
         await editGameMessage(client, result.game, finalBoard);
       }
       return;
@@ -460,6 +463,8 @@ async function openCell(client, interaction, gameId, cell) {
     await editGameMessage(client, game, buildGameContainer(game));
     return;
   });
+  if (result?.busy) return sendEphemeral(interaction, "A Yukina está atualizando esta jogada. Aguarde um instante e tente novamente.");
+  return result;
 }
 
 async function handleButton(interaction, client) {
@@ -509,7 +514,7 @@ async function handleButton(interaction, client) {
       const latest = await db.collection("mines_games").findOne({ _id: gameId, status: "active" });
       if (!latest) return sendEphemeral(interaction, "Esta partida já foi encerrada.");
       if (latest.expiresAt && new Date(latest.expiresAt).getTime() <= Date.now()) {
-        await expireGame(client, gameId);
+        await expireGameLocked(client, gameId);
         return;
       }
       try {
