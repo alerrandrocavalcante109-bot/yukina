@@ -532,7 +532,7 @@ async function handleButton(interaction, client) {
     if (!(game.openedCells || []).length) {
       return sendEphemeral(interaction, "Você precisa abrir pelo menos uma casa segura antes de sacar.");
     }
-    return withGameLock(gameId, async () => {
+    const cashoutResult = await withGameLock(gameId, async () => {
       const latest = await db.collection("mines_games").findOne({ _id: gameId, status: "active" });
       if (!latest) return sendEphemeral(interaction, "Esta partida já foi encerrada.");
       if (latest.expiresAt && new Date(latest.expiresAt).getTime() <= Date.now()) {
@@ -549,6 +549,10 @@ async function handleButton(interaction, client) {
         return sendEphemeral(interaction, "Não foi possível concluir seu saque. Tente sacar novamente.");
       }
     });
+    if (cashoutResult?.busy) {
+      return sendEphemeral(interaction, "A Yukina está atualizando esta partida. Aguarde um instante e tente sacar novamente.");
+    }
+    return cashoutResult;
   }
 }
 
