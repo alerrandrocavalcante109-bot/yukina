@@ -162,7 +162,7 @@ function buildGameContainer(game) {
       .setLabel("Aleatório")
       .setEmoji("🎲")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(game.status !== "active" || openedCount >= BOARD_SIZE),
+      .setDisabled(game.status !== "active" || openedCount >= safeTotal),
     new ButtonBuilder()
       .setCustomId("mines:refresh:" + game._id)
       .setLabel("Atualizar")
@@ -318,6 +318,7 @@ async function finishGame(game, status, payout, ledgerType) {
             currentPayout: amount,
             profit: amount - Number(game.bet),
             endedAt: now,
+            displayPending: true,
             updatedAt: now,
           },
         },
@@ -386,7 +387,7 @@ async function expireGameLocked(client, gameId) {
   const result = await finishGame(game, "expired", game.currentPayout, "automatic_payout");
   clearExpiry(gameId);
   if (!result.finished || !result.game) return false;
-  await editGameMessage(client, result.game, buildFinalContainer(result.game, "expired"));
+  await finalizeDisplay(client, result.game);
   return true;
 }
 
@@ -394,8 +395,31 @@ async function expireGame(client, gameId) {
   return withGameLock(gameId, () => expireGameLocked(client, gameId));
 }
 
+async function finalizeDisplay(client, game) {
+  const kind = game.status === "lost" ? "lost"
+    : game.status === "expired" ? "expired"
+    : game.status === "cancelled" ? "cancelled" : "won";
+  const container = buildFinalContainer(game, kind);
+  if (kind === "lost") {
+    for (const row of buildCellRows(game, true)) container.addActionRowComponents(row);
+  }
+  const updated = await editGameMessage(client, game, container);
+  if (updated) {
+    const db = await getDb();
+    await db.collection("mines_games").updateOne(
+      { _id: game._id, status: game.status },
+      { $set: { displayPending: false, displayedAt: new Date() } }
+    );
+  }
+  return updated;
+}
+
 async function initialize(client) {
   const db = await getDb();
+  const pendingDisplays = await db.collection("mines_games")
+    .find({ displayPending: true, status: { $in: ["lost", "expired", "cashed_out", "cancelled"] } }).toArray();
+  for (const game of pendingDisplays) await finalizeDisplay(client, game);
+
   const activeGames = await db.collection("mines_games")
     .find({ status: "active", expiresAt: { $ne: null } }).toArray();
   for (const game of activeGames) {
@@ -429,9 +453,7 @@ async function openCell(client, interaction, gameId, cell) {
       const result = await finishGame(game, "lost", 0, "loss");
       clearExpiry(gameId);
       if (result.finished && result.game) {
-        const finalBoard = buildFinalContainer(result.game, "lost");
-        for (const row of buildCellRows(result.game, true)) finalBoard.addActionRowComponents(row);
-        await editGameMessage(client, result.game, finalBoard);
+        await finalizeDisplay(client, result.game);
       }
       return;
     }
@@ -521,7 +543,7 @@ async function handleButton(interaction, client) {
         const result = await finishGame(latest, "cashed_out", latest.currentPayout, "manual_payout");
         clearExpiry(gameId);
         if (!result.finished || !result.game) return sendEphemeral(interaction, "Não foi possível concluir seu saque. Tente sacar novamente.");
-        await editGameMessage(client, result.game, buildFinalContainer(result.game, "won"));
+        await finalizeDisplay(client, result.game);
       } catch (error) {
         console.error("[Mines] Erro no saque manual:", error);
         return sendEphemeral(interaction, "Não foi possível concluir seu saque. Tente sacar novamente.");
