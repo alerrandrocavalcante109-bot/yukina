@@ -3,9 +3,9 @@
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
 const mines = require("../systems/mines");
 
-async function startFromCommand({ guild, channel, user, betInput, bombs, send }) {
+async function startFromCommand({ client, guild, channel, user, betInput, bombs, send }) {
   try {
-    const result = await mines.startGame({ guild, channel, user, betInput, bombs, send });
+    const result = await mines.startGame({ client, guild, channel, user, betInput, bombs, send });
     if (!result.ok) return send({ content: result.message, flags: MessageFlags.Ephemeral });
     return result.message;
   } catch (error) {
@@ -39,6 +39,7 @@ module.exports = {
 
   async execute(interaction) {
     return startFromCommand({
+      client: interaction.client,
       guild: interaction.guild,
       channel: interaction.channel,
       user: interaction.user,
@@ -56,6 +57,7 @@ module.exports = {
 
   async prefixExecute(message, args = []) {
     return startFromCommand({
+      client: message.client,
       guild: message.guild,
       channel: message.channel,
       user: message.author,
