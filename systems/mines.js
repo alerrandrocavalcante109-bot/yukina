@@ -294,9 +294,10 @@ async function createGame({ guildId, channelId, userId, bet, bombs }) {
 async function attachMessage(gameId, messageId) {
   const db = await getDb();
   await db.collection("mines_games").updateOne(
-    { _id: gameId, status: "active" },
+    { _id: gameId },
     { $set: { messageId: String(messageId), updatedAt: new Date() } }
   );
+  return db.collection("mines_games").findOne({ _id: gameId });
 }
 
 async function finishGame(game, status, payout, ledgerType) {
@@ -565,7 +566,7 @@ async function handleButton(interaction, client) {
   }
 }
 
-async function startGame({ guild, channel, user, betInput, bombs, send }) {
+async function startGame({ client, guild, channel, user, betInput, bombs, send }) {
   if (!guild || !channel) return { ok: false, message: "Este jogo só pode ser iniciado dentro de um servidor." };
   const bet = parseBet(betInput);
   if (!bet || !Number.isInteger(bombs) || bombs < MIN_BOMBS || bombs > MAX_BOMBS) {
@@ -604,8 +605,14 @@ async function startGame({ guild, channel, user, betInput, bombs, send }) {
       allowedMentions: { parse: [] },
     });
     if (!message?.id) throw new Error("A mensagem da partida não retornou um ID.");
-    await attachMessage(game._id, message.id);
-    return { ok: true, game, message };
+    const attachedGame = await attachMessage(game._id, message.id);
+    if (attachedGame?.status === "active") {
+      if (attachedGame.expiresAt) scheduleExpiry(client, attachedGame);
+      await editGameMessage(client, attachedGame, buildGameContainer(attachedGame));
+    } else if (attachedGame) {
+      await finalizeDisplay(client, attachedGame);
+    }
+    return { ok: true, game: attachedGame || game, message };
   } catch (error) {
     console.error("[Mines] Não foi possível publicar o tabuleiro; devolvendo a aposta:", error);
     const refund = await finishGame(game, "cancelled", bet, "refund");
