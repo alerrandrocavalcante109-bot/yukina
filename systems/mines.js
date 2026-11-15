@@ -598,24 +598,32 @@ async function startGame({ client, guild, channel, user, betInput, bombs, send }
     throw error;
   }
 
+  let postedMessage = null;
   try {
-    const message = await send({
+    postedMessage = await send({
       components: [buildGameContainer(game)],
       flags: MessageFlags.IsComponentsV2,
       allowedMentions: { parse: [] },
     });
-    if (!message?.id) throw new Error("A mensagem da partida não retornou um ID.");
-    const attachedGame = await attachMessage(game._id, message.id);
+    if (!postedMessage?.id) throw new Error("A mensagem da partida não retornou um ID.");
+    const attachedGame = await attachMessage(game._id, postedMessage.id);
     if (attachedGame?.status === "active") {
       if (attachedGame.expiresAt) scheduleExpiry(client, attachedGame);
       await editGameMessage(client, attachedGame, buildGameContainer(attachedGame));
     } else if (attachedGame) {
       await finalizeDisplay(client, attachedGame);
     }
-    return { ok: true, game: attachedGame || game, message };
+    return { ok: true, game: attachedGame || game, message: postedMessage };
   } catch (error) {
     console.error("[Mines] Não foi possível publicar o tabuleiro; devolvendo a aposta:", error);
     const refund = await finishGame(game, "cancelled", bet, "refund");
+    if (postedMessage?.edit && refund?.game) {
+      await postedMessage.edit({
+        components: [buildFinalContainer(refund.game, "cancelled")],
+        flags: MessageFlags.IsComponentsV2,
+        allowedMentions: { parse: [] },
+      }).catch(() => {});
+    }
     return { ok: false, message: "Não consegui abrir o tabuleiro agora. Sua aposta foi devolvida." };
   }
 }
