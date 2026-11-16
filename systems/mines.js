@@ -133,27 +133,42 @@ function buildGameContainer(game) {
   const nextMultiplier = openedCount < safeTotal ? multiplierFor(game.bombs, openedCount + 1) : null;
   const nextPayout = nextMultiplier === null ? null : payoutFor(game.bet, nextMultiplier);
   const nextText = nextMultiplier === null
-    ? "Próximo multiplicador: **não há mais casas seguras**"
-    : "Próximo multiplicador: **" + nextMultiplier.toFixed(2) + "x** (+" + format(Math.max(0, nextPayout - game.bet)) + " KZ de lucro)";
-  const body = [
-    "# 💎 MINAS",
-    "💣 Bombas: **" + game.bombs + "** / **" + safeTotal + " casas seguras**",
-    "",
-    "Multiplicador atual: **" + currentMultiplier.toFixed(2) + "x**",
-    nextText,
-    "Aposta: **" + format(game.bet) + " KZ**",
-    openedCount ? "Valor disponível para saque: **" + format(currentPayout) + " KZ**" : "",
-    "",
-    "Você está indo bem, continue para ganhar um valor mais alto. Mas lembre-se, não seja ganancioso, senão você vai perder tudo.",
-    "",
-    "**Partida #" + game.gameNumber + "**",
-  ].filter(Boolean).join("\n");
-
+    ? "**Próximo:** todas as casas seguras foram abertas"
+    : "**Próximo:** " + nextMultiplier.toFixed(2) + "x  (+" + format(Math.max(0, nextPayout - currentPayout)) + " KZ)";
+  
   const container = new ContainerBuilder()
     .setAccentColor(COLOR)
-    .addTextDisplayComponents(new TextDisplayBuilder().setContent(body));
+    .addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        "# 💎 MINAS\n" +
+        "<:blank:0> **Partida #" + game.gameNumber + "**  ·  Encontre as pedras preciosas sem acertar uma bomba."
+      ),
+      new TextDisplayBuilder().setContent(
+        "### 💰 Sua aposta\n" +
+        "**" + format(game.bet) + " KZ**\n\n" +
+        "### 💣 Perigo da exploração\n" +
+        "**" + game.bombs + " bombas**  ·  **" + safeTotal + " casas seguras**"
+      ),
+      new TextDisplayBuilder().setContent(
+        "### 📈 Multiplicadores\n" +
+        "**Atual:** " + currentMultiplier.toFixed(2) + "x\n" +
+        nextText +
+        (openedCount ? "\n\n**💵 Valor para saque:** " + format(currentPayout) + " KZ" : "")
+      ),
+      new TextDisplayBuilder().setContent(
+        "### 🗺️ Tabuleiro\n" +
+        "💎 Casas encontradas: **" + openedCount + "/" + safeTotal + "**\n" +
+        "Escolha uma casa para continuar sua exploração."
+      )
+    );
 
   for (const row of buildCellRows(game)) container.addActionRowComponents(row);
+
+  container.addTextDisplayComponents(
+    new TextDisplayBuilder().setContent(
+      "> 🌸 Você está indo bem! Cada casa segura aumenta seu prêmio. Mas cuidado: se encontrar uma bomba, perderá a aposta."
+    )
+  );
 
   const actions = new ActionRowBuilder().addComponents(
     new ButtonBuilder()
