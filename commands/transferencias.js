@@ -51,7 +51,7 @@ function formatDate(value) {
 
 async function showHistory({ guild, user, send }) {
   if (!guild) {
-    return send({ content: "❄️ O extrato de transferências só pode ser consultado dentro de um servidor.", ephemeral: true });
+    return send({ content: "❄️ O extrato de transações só pode ser consultado dentro de um servidor.", ephemeral: true });
   }
 
   try {
@@ -81,26 +81,28 @@ async function showHistory({ guild, user, send }) {
       })),
     ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, HISTORY_LIMIT);
 
-    const outgoingTotal = entries.reduce((sum, item) => sum + (item.kind === "sent" || item.kind === "deposit" ? item.amount : 0), 0);
-    const incomingTotal = entries.reduce((sum, item) => sum + (item.kind === "received" || item.kind === "withdraw" ? item.amount : 0), 0);
+    const outgoingTotal = entries.reduce((sum, item) => sum + (["sent", "deposit", "fee"].includes(item.kind) ? item.amount : 0), 0);
+    const incomingTotal = entries.reduce((sum, item) => sum + (["received", "withdraw"].includes(item.kind) ? item.amount : 0), 0);
 
     const details = entries.length
       ? entries.map(item => {
-          if (item.kind === "sent") return "📤 **Transferência enviada** · " + format(item.amount) + " KZ\nPara: <@" + item.otherId + "> · " + formatDate(item.date);
-          if (item.kind === "received") return "📥 **Transferência recebida** · " + format(item.amount) + " KZ\nDe: <@" + item.otherId + "> · " + formatDate(item.date);
-          if (item.kind === "deposit") return "🏦 **Depósito no banco** · −" + format(item.amount) + " KZ\nDa carteira para o Banco Central · " + formatDate(item.date);
-          return "👛 **Saque do banco** · +" + format(item.amount) + " KZ\nDo Banco Central para a carteira · " + formatDate(item.date);
-        }).join("\n\n")
-      : "Ainda não há movimentações concluídas registradas para sua carteira.";
+          if (item.kind === "sent") return "📤 **Transferência enviada** · " + format(item.amount) + " KZ\\nPara: <@" + item.otherId + "> · " + formatDate(item.date);
+          if (item.kind === "received") return "📥 **Transferência recebida** · " + format(item.amount) + " KZ\\nDe: <@" + item.otherId + "> · " + formatDate(item.date);
+          if (item.kind === "deposit") return "🏦 **Depósito no banco** · −" + format(item.amount) + " KZ\\nDa carteira para o Banco Central · " + formatDate(item.date);
+          if (item.kind === "fee") return "🧾 **Taxa de inatividade** · −" + format(item.amount) + " KZ\\nDescontada da carteira · " + formatDate(item.date);
+          return "👛 **Saque do banco** · +" + format(item.amount) + " KZ\\nDo Banco Central para a carteira · " + formatDate(item.date);
+        }).join("\\n\\n")
+      : "Ainda não há movimentações concluídas registradas para esta carteira.";
 
+    const isOtherUser = String(user.id) !== String(send.viewerId || user.id);
     const embed = new EmbedBuilder()
       .setColor(0xA7D8F0)
-      .setAuthor({ name: "Yukina · Extrato da carteira", iconURL: user.displayAvatarURL({ size: 128 }) })
+      .setAuthor({ name: "Yukina · Extrato de " + (user.username || "usuário"), iconURL: user.displayAvatarURL({ size: 128 }) })
       .setTitle("💴 Movimentações de Kizunas")
       .setDescription(
-        "Movimentações recentes da sua carteira neste servidor.\n" +
-        "🌸 **Entrou na carteira:** +" + format(incomingTotal) + " KZ\n" +
-        "🍃 **Saiu da carteira:** −" + format(outgoingTotal) + " KZ\n\n" + details
+        (isOtherUser ? "Extrato de <@" + userId + "> neste servidor.\\n" : "Movimentações recentes da sua carteira neste servidor.\\n") +
+        "🌸 **Entrou na carteira:** +" + format(incomingTotal) + " KZ\\n" +
+        "🍃 **Saiu da carteira:** −" + format(outgoingTotal) + " KZ\\n\\n" + details
       )
       .setFooter({ text: "Yukina · Exibindo até " + HISTORY_LIMIT + " movimentações recentes" })
       .setTimestamp();
@@ -109,7 +111,7 @@ async function showHistory({ guild, user, send }) {
   } catch (error) {
     console.error("[Yukina Transferências] Falha ao consultar extrato:", error);
     return send({
-      content: "🌙 Não consegui consultar seu extrato agora. Tente novamente em instantes.",
+      content: "🌙 Não consegui consultar o extrato agora. Tente novamente em instantes.",
       ephemeral: true,
     });
   }
@@ -118,15 +120,22 @@ async function showHistory({ guild, user, send }) {
 module.exports = {
   data: new SlashCommandBuilder()
     .setName("transferencias")
-    .setDescription("Mostra as Kizunas que entraram e saíram da sua carteira.")
+    .setDescription("Mostra as transações da sua carteira ou de outro usuário.")
+    .addUserOption(option =>
+      option
+        .setName("usuario")
+        .setDescription("Usuário cujo extrato você deseja consultar (opcional).")
+        .setRequired(false)
+    )
     .setDMPermission(false),
   name: "transferencias",
-  aliases: ["transferencia", "transferência", "transferências", "extrato", "historico", "histórico"],
+  aliases: ["transacoes", "transações", "transferencia", "transferência", "transferências", "extrato", "historico", "histórico"],
 
   async execute(interaction) {
+    const targetUser = interaction.options.getUser("usuario") || interaction.user;
     return showHistory({
       guild: interaction.guild,
-      user: interaction.user,
+      user: targetUser,
       send: async payload => {
         const { ephemeral, ...rest } = payload;
         if (interaction.replied || interaction.deferred) {
@@ -138,9 +147,19 @@ module.exports = {
   },
 
   async prefixExecute(message) {
+    let targetUser = message.mentions.users.first() || message.author;
+    const mentionedId = message.content.match(/(?:^|\\s)(\\d{17,20})(?:\\s|$)/);
+    if (!message.mentions.users.first() && mentionedId) {
+      try {
+        const member = await message.guild.members.fetch(mentionedId[1]);
+        targetUser = member.user;
+      } catch {
+        return message.channel.send("🌙 Não encontrei esse usuário neste servidor.");
+      }
+    }
     return showHistory({
       guild: message.guild,
-      user: message.author,
+      user: targetUser,
       send: payload => {
         const { ephemeral, ...rest } = payload;
         return message.channel.send(rest);
