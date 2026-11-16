@@ -182,17 +182,22 @@ function buildGameComponents(game) {
       .setLabel("Atualizar")
       .setEmoji("🔄")
       .setStyle(ButtonStyle.Secondary)
-      .setDisabled(game.status !== "active"),
-    ...(openedCount > 0 ? [
+      .setDisabled(game.status !== "active")
+  );
+
+  const components = [container, actions];
+  if (openedCount > 0) {
+    const cashout = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
         .setCustomId("mines:cashout:" + game._id)
         .setLabel("Sacar " + format(currentPayout) + " KZ")
         .setEmoji("💰")
         .setStyle(ButtonStyle.Success)
         .setDisabled(game.status !== "active")
-    ] : [])
-  );
-  return [container, actions];
+    );
+    components.push(cashout);
+  }
+  return components;
 }
 
 function buildFinalContainer(game, kind) {
@@ -548,7 +553,7 @@ async function handleButton(interaction, client) {
       await expireGame(client, gameId);
       return;
     }
-    return editGameMessage(client, game, buildGameContainer(game));
+    return editGameMessage(client, game, buildGameComponents(game));
   }
 
   if (action === "cashout") {
