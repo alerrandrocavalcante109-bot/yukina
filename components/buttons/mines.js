@@ -3,7 +3,7 @@
 const mines = require("../../systems/mines");
 
 module.exports = {
-  customId: /^mines:(?:cell|random|refresh|cashout|again):[0-9a-f-]{36}(?::\\d{1,2})?$/i,
+  customId: /^mines:(?:cell|random|refresh|cashout|again):[0-9a-f-]{36}(?::\d{1,2})?$/i,
 
   async initialize(client) {
     await mines.initialize(client);
