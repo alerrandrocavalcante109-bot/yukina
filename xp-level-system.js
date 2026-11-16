@@ -159,6 +159,19 @@ function startXpLevelSystem(client) {
     await updateLevel(member, true);
   });
 
+  // Após um reset, recalcula imediatamente os cargos dos membros afetados.
+  client.on("yukinaXpReset", async ({ guildId, userIds } = {}) => {
+    await memberData.initialize();
+    const guild = client.guilds.cache.get(String(guildId || ""));
+    if (!guild || !Array.isArray(userIds)) return;
+    for (const userId of userIds) {
+      const key = guild.id + ":" + String(userId);
+      lastAnnouncedMilestone.delete(key);
+      const member = await guild.members.fetch(String(userId)).catch(() => null);
+      if (member && !member.user.bot) await updateLevel(member, false);
+    }
+  });
+
   const initializeXpLevels = async () => {
     await memberData.initialize();
     for (const guild of client.guilds.cache.values()) {
