@@ -107,16 +107,21 @@ async function getHighestConfiguredXpRole(guild) {
 }
 
 function levelForXp(xp) {
-  const total = Math.max(0, Number(xp) || 0);
-  const level = Math.floor(total / 1000) + 1;
-  const currentLevelXp = level * 1000;
-  const nextLevelXp = (level + 1) * 1000;
+  // A progressão começa no nível 0 e avança a cada 1.000 XP acumulados.
+  // O progresso considera somente o XP dentro do nível atual, sem perder o total histórico.
+  const parsed = Number(xp);
+  const total = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
+  const level = Math.floor(total / 1000);
+  const xpIntoLevel = total - (level * 1000);
+  const xpForNextLevel = 1000;
   return {
     level,
     name: level < 5 ? "Iniciante" : level < 15 ? "Aprendiz" : level < 30 ? "Explorador" : level < 50 ? "Veterano" : level < 100 ? "Lendário" : "Mítico",
-    currentLevelXp,
-    nextLevelXp,
-    progress: Math.max(0, Math.min(100, Math.floor((total % 1000) / 10))),
+    totalXp: total,
+    xpIntoLevel,
+    xpForNextLevel,
+    nextLevelXp: (level + 1) * 1000,
+    progress: Math.max(0, Math.min(100, Math.floor((xpIntoLevel / xpForNextLevel) * 100))),
   };
 }
 
