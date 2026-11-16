@@ -149,7 +149,7 @@ module.exports = {
 
   async prefixExecute(message) {
     let targetUser = message.mentions.users.first() || message.author;
-    const mentionedId = message.content.match(/(?:^|\s)(\\d{17,20})(?:\s|$)/);
+    const mentionedId = message.content.match(/(?:^|\s)(\d{17,20})(?:\s|$)/);
     if (!message.mentions.users.first() && mentionedId) {
       try {
         const member = await message.guild.members.fetch(mentionedId[1]);
