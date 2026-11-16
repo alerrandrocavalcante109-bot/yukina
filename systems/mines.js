@@ -125,7 +125,7 @@ function buildCellRows(game, disabled = false) {
   return rows;
 }
 
-function buildGameContainer(game) {
+function buildGameComponents(game) {
   const safeTotal = BOARD_SIZE - game.bombs;
   const openedCount = (game.openedCells || []).length;
   const currentMultiplier = openedCount ? Number(game.currentMultiplier) : 1;
@@ -192,8 +192,7 @@ function buildGameContainer(game) {
         .setDisabled(game.status !== "active")
     ] : [])
   );
-  container.addActionRowComponents(actions);
-  return container;
+  return [container, actions];
 }
 
 function buildFinalContainer(game, kind) {
@@ -214,13 +213,13 @@ function buildFinalContainer(game, kind) {
     .addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
 }
 
-async function editGameMessage(client, game, container) {
+async function editGameMessage(client, game, components) {
   if (!game.channelId || !game.messageId) return false;
   try {
     const channel = await client.channels.fetch(game.channelId);
     if (!channel?.isTextBased()) return false;
     const message = await channel.messages.fetch(game.messageId);
-    await message.edit({ components: [container], flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
+    await message.edit({ components, flags: MessageFlags.IsComponentsV2, allowedMentions: { parse: [] } });
     return true;
   } catch (error) {
     console.warn("[Mines] Não foi possível atualizar a mensagem da partida #" + game.gameNumber + ":", error?.message || error);
@@ -506,7 +505,7 @@ async function openCell(client, interaction, gameId, cell) {
     }
     game = await games.findOne({ _id: gameId });
     if (game.expiresAt) scheduleExpiry(client, game);
-    await editGameMessage(client, game, buildGameContainer(game));
+    await editGameMessage(client, game, buildGameComponents(game));
     return;
   });
   if (result?.busy) return sendEphemeral(interaction, "A Yukina está atualizando esta jogada. Aguarde um instante e tente novamente.");
@@ -615,7 +614,7 @@ async function startGame({ client, guild, channel, user, betInput, bombs, send }
   let postedMessage = null;
   try {
     postedMessage = await send({
-      components: [buildGameContainer(game)],
+      components: buildGameComponents(game),
       flags: MessageFlags.IsComponentsV2,
       allowedMentions: { parse: [] },
     });
@@ -623,7 +622,7 @@ async function startGame({ client, guild, channel, user, betInput, bombs, send }
     const attachedGame = await attachMessage(game._id, postedMessage.id);
     if (attachedGame?.status === "active") {
       if (attachedGame.expiresAt) scheduleExpiry(client, attachedGame);
-      await editGameMessage(client, attachedGame, buildGameContainer(attachedGame));
+      await editGameMessage(client, attachedGame, buildGameComponents(attachedGame));
     } else if (attachedGame) {
       await finalizeDisplay(client, attachedGame);
     }
