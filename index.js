@@ -548,7 +548,7 @@ async function authorizePanel(req, guildId) {
   }
   const botGuild = client.guilds.cache.get(guildId);
   if (!botGuild) throw Object.assign(new Error("A Yukina ainda não está neste servidor. Adicione o bot e tente novamente."), { status: 409 });
-  return { user, guild: botGuild };
+  return { user, guild: botGuild, oauthGuild: guild };
 }
 client.on("interactionCreate", async interaction => {
   if (!interaction.isButton() || !String(interaction.customId || "").startsWith("ykticket:")) return;
@@ -1186,6 +1186,26 @@ async function panelApi(req, res, url) {
       await orders.updateOne({_id:orderId},{$set:{status:"awaiting_authorization",providerLinkId:pd.id||pd.link_id||null,checkoutUrl:checkout,availableMethods:methods,updatedAt:new Date()}});
       return sendJson(res,201,{ok:true,orderId,checkoutUrl:checkout,methods,plan:plans[planKey].name,period,amountCents:amount});
     }catch(error){console.error("[VIP Wyvi] Erro:",error.stack||error.message||error);return sendJson(res,500,{detail:"Não foi possível iniciar a assinatura. Tente novamente."});}
+  }
+
+  const xpResetMatch = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})\/xp\/reset$/);
+  if (xpResetMatch) {
+    if (req.method !== "POST") return sendJson(res, 405, { detail: "Método não permitido." });
+    const guildId = xpResetMatch[1];
+    try {
+      const { guild, oauthGuild } = await authorizePanel(req, guildId);
+      const oauthPermissions = BigInt(oauthGuild?.permissions || "0");
+      if ((oauthPermissions & 8n) === 0n && oauthGuild?.owner !== true) {
+        return sendJson(res, 403, { detail: "Somente administradores do servidor podem zerar o XP." });
+      }
+      const result = await memberData.resetGuildXp(guildId);
+      client.emit("yukinaXpReset", { guildId, userIds: result.userIds });
+      console.log("[XP] Reset global do servidor " + guildId + " executado pelo painel por " + guild.name + ": " + result.count + " membro(s).");
+      return sendJson(res, 200, { ok: true, guildId, resetCount: result.count });
+    } catch (error) {
+      console.error("[API painel] Falha no reset de XP:", error.message || error);
+      return sendJson(res, error.status || (String(error.message).includes("MONGODB_URI") ? 503 : 500), { detail: error.message || "Não foi possível zerar o XP." });
+    }
   }
 
   const match = url.pathname.match(/^\/api\/guilds\/([0-9]{17,20})(?:\/(resources|settings))?$/);
