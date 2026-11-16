@@ -32,6 +32,7 @@ const reactionRolesSystem = require("./systems/reaction-roles");
 const TOKEN = (process.env.TOKEN || "").trim();
 // Pausa temporariamente a IA conversacional, voz e recursos narrativos.
 const YUKINA_AI_ENABLED = false;
+process.env.YUKINA_AI_ENABLED = String(YUKINA_AI_ENABLED);
 
 const DAILY_TIME_ZONE = "America/Sao_Paulo";
 
