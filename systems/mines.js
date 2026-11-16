@@ -440,19 +440,17 @@ async function finalizeDisplay(client, game) {
   const kind = game.status === "lost" ? "lost"
     : game.status === "expired" ? "expired"
     : game.status === "cancelled" ? "cancelled" : "won";
-  const container = buildFinalContainer(game, kind);
+  const resultContainer = buildFinalContainer(game, kind);
+  let components;
   if (kind === "lost" || kind === "won") {
-    // Mantém tabuleiro e ações visíveis, todos desativados, na mesma ordem da partida.
-    for (const row of buildCellRows(game, true)) container.addActionRowComponents(row);
-    container.addActionRowComponents(buildGameActionRow(game, (game.openedCells || []).length, BOARD_SIZE - game.bombs));
-    container.addTextDisplayComponents(
-      new TextDisplayBuilder().setContent(
-        "> 🌸 Você está indo bem, continue para ganhar um valor mais alto. Mas lembre-se, não seja ganancioso, senão você vai perder tudo."
-      )
-    );
+    // O tabuleiro permanece em seu próprio container, com todas as ações desativadas.
+    const boardContainer = buildGameComponents(game)[0];
+    // Resultado e botão Novamente ficam juntos em um segundo container, separado do tabuleiro.
+    resultContainer.addActionRowComponents(buildRestartRow(game));
+    components = [boardContainer, resultContainer];
+  } else {
+    components = [resultContainer];
   }
-  const components = [container];
-  if (kind === "lost" || kind === "won") components.push(buildRestartRow(game));
   const updated = await editGameMessage(client, game, components);
   if (updated) {
     const db = await getDb();
