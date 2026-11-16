@@ -546,9 +546,10 @@ async function handleButton(interaction, client) {
     if (!["lost", "cashed_out"].includes(game.status)) {
       return sendEphemeral(interaction, "Não é possível iniciar outra partida por este botão.");
     }
+    await interaction.deferUpdate();
     const restartResult = await withGameLock(gameId, async () => {
       const latest = await db.collection("mines_games").findOne({ _id: gameId });
-      if (!latest || !["lost", "cashed_out"].includes(latest.status)) {
+      if (!latest || !["lost", "cashed_out"].includes(latest.status) || latest.restartedAt) {
         return { ok: false, message: "Esta partida já foi utilizada para iniciar outra." };
       }
       const result = await startGame({
@@ -560,6 +561,12 @@ async function handleButton(interaction, client) {
         bombs: latest.bombs,
         send: payload => interaction.message.edit(payload),
       });
+      if (result?.ok) {
+        await db.collection("mines_games").updateOne(
+          { _id: gameId, status: latest.status, restartedAt: { $exists: false } },
+          { $set: { restartedAt: new Date(), updatedAt: new Date() } }
+        );
+      }
       return result;
     });
     if (restartResult?.busy) {
