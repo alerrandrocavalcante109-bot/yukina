@@ -141,7 +141,7 @@ function buildGameContainer(game) {
     .addTextDisplayComponents(
       new TextDisplayBuilder().setContent(
         "# 💎 MINAS\n" +
-        "<:blank:0> **Partida #" + game.gameNumber + "**  ·  Encontre as pedras preciosas sem acertar uma bomba."
+        "**Partida #" + game.gameNumber + "**  ·  Encontre as pedras preciosas sem acertar uma bomba."
       ),
       new TextDisplayBuilder().setContent(
         "### 💰 Sua aposta\n" +
