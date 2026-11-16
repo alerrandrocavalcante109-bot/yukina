@@ -4,7 +4,7 @@ const { SlashCommandBuilder } = require("discord.js");
 const { getEngine } = require("../systems/yukina-ai");
 
 async function run(userId, channelId, guildId, prompt, displayName, discordContext) {
-  if (process.env.YUKINA_AI_ENABLED === "false" || !globalThis.__YUKINA_AI_ACTIVE__) {
+  if (process.env.YUKINA_AI_ENABLED === "false") {
     throw new Error("YUKINA_AI_PAUSED");
   }
   return getEngine().answer({ userId, channelId, guildId, prompt, displayName, discordContext });
