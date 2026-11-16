@@ -112,12 +112,14 @@ function buildCellRows(game, disabled = false) {
       const cell = rowIndex * 5 + column;
       const isOpen = opened.has(cell);
       const isBomb = bombs.has(cell);
+      const revealBombs = ["lost", "cashed_out"].includes(game.status);
+      const showBomb = revealBombs && isBomb;
       const button = new ButtonBuilder()
         .setCustomId("mines:cell:" + game._id + ":" + cell)
         .setLabel(String(cell + 1))
-        .setDisabled(disabled || isOpen || ((game.openedCells || []).length >= BOARD_SIZE - game.bombs && !isOpen) || (game.status === "lost" && !isBomb && !isOpen))
-        .setStyle(isOpen ? ButtonStyle.Success : (game.status === "lost" && isBomb ? ButtonStyle.Danger : ButtonStyle.Secondary))
-        .setEmoji(isOpen ? "💎" : (game.status === "lost" && isBomb ? "💣" : "🔹"));
+        .setDisabled(disabled || isOpen || showBomb || ((game.openedCells || []).length >= BOARD_SIZE - game.bombs && !isOpen))
+        .setStyle(showBomb ? ButtonStyle.Danger : (isOpen ? ButtonStyle.Success : ButtonStyle.Secondary))
+        .setEmoji(showBomb ? "💣" : (isOpen ? "💎" : "🔹"));
       row.addComponents(button);
     }
     rows.push(row);
