@@ -6,6 +6,8 @@ const {
   ButtonStyle,
   ContainerBuilder,
   TextDisplayBuilder,
+  MediaGalleryBuilder,
+  MediaGalleryItemBuilder,
   MessageFlags,
 } = require("discord.js");
 const { MongoClient } = require("mongodb");
@@ -20,6 +22,8 @@ const MIN_BOMBS = 1;
 const MAX_BOMBS = 16;
 const EXPIRATION_MS = 5 * 60 * 1000;
 const COLOR = 0xA7D8F0;
+const MINES_VICTORY_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318138509/1572020345190350939/file_000000000164820eaba9981ac5e788dd.png?ex=6afcd989&is=6afb8809&hm=487fe55ce6c7d73b3f070275d7e43d658dc466f79948a833e3c77c81364969d3";
+const MINES_DEFEAT_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318138509/1572020345664311516/file_00000000bf4c820eb93005cddd28f21f.png?ex=6afcd989&is=6afb8809&hm=22fccc0130aec04e0598fdb32f4f1fd11dc27540da581b8c00aaef15383a8f2f";
 
 let mongoClient;
 let dbPromise;
@@ -218,9 +222,20 @@ function buildFinalContainer(game, kind) {
     text = "## 🏆 Você venceu!\nVocê acaba de sair das cavernas de Kizunas sem encontrar uma bomba, que feito emocionante, e você sai com (**" + format(game.currentPayout) + " KZ** com um lucro de **" + format(profit) + " KZ**).";
   }
   const numberLine = kind === "expired" ? "" : "\n\n**Partida #" + game.gameNumber + "**";
-  return new ContainerBuilder()
-    .setAccentColor(kind === "lost" ? 0xE8A0A0 : 0xA7D8F0)
-    .addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
+  const container = new ContainerBuilder()
+    .setAccentColor(kind === "lost" ? 0xE8A0A0 : 0xA7D8F0);
+
+  if (kind === "lost" || kind === "won") {
+    const imageUrl = kind === "lost" ? MINES_DEFEAT_IMAGE : MINES_VICTORY_IMAGE;
+    container.addMediaGalleryComponents(
+      new MediaGalleryBuilder().addItems(
+        new MediaGalleryItemBuilder().setURL(imageUrl)
+      )
+    );
+  }
+
+  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
+  return container;
 }
 
 function buildRestartRow(game) {
