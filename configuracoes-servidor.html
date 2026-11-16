@@ -224,6 +224,20 @@
         <button type="button" class="primary-action" id="xpAddButton">Adicionar</button><p class="prefix-status" id="xpStatus" role="status" aria-live="polite"></p>
       </div>
       <div class="system-placeholder" style="margin-top:16px"><h2>Cargos &amp; XP configurados</h2><div id="xpRulesList"><p>Carregando…</p></div></div>
+      <div class="system-placeholder" style="margin-top:16px">
+        <h2>📢 Canal de mensagens de XP</h2>
+        <p class="prefix-system-description">Configure onde a Yukina anuncia a evolução dos membros. O aviso continua sendo enviado somente a cada 5 níveis.</p>
+        <label for="xpAnnouncementChannel">Canal de envio</label>
+        <select id="xpAnnouncementChannel" class="prefix-input"><option value="">Carregando canais…</option></select>
+        <label for="xpAnnouncementFormat">Formato da mensagem</label>
+        <select id="xpAnnouncementFormat" class="prefix-input"><option value="text">Texto simples</option><option value="embed">Embed</option></select>
+        <div id="xpAnnouncementColorWrap" hidden><label for="xpAnnouncementColor">Cor do embed</label><input id="xpAnnouncementColor" class="prefix-input" type="color" value="#c4b5fd" style="height:48px;padding:5px"></div>
+        <label for="xpAnnouncementMessage">Mensagem personalizada</label>
+        <textarea id="xpAnnouncementMessage" class="prefix-input" rows="5" maxlength="1800" placeholder="{@usar} você acaba de subir para o nível {nivel} com ({xp})!"></textarea>
+        <p class="prefix-system-help">Variáveis: {usar Nome}, {nivel}, {xp}, {@usar}, {id}, {rank}, {foto server}, {avatar}, {nome server}.</p>
+        <p class="prefix-system-help">Padrão: {@usar} você acaba de subir para o nível {nivel} com ({xp})!</p>
+        <p class="prefix-status" id="xpAnnouncementStatus" role="status" aria-live="polite"></p>
+      </div>
     </section>    <section class="system-screen" data-screen-panel="multiplier" hidden>
       <p class="eyebrow">PROGRESSÃO DA COMUNIDADE</p><h1>Multiplicador de XP</h1>
       <p class="screen-description">Dê mais XP aos membros que possuem determinados cargos, como VIP, apoiador ou colaborador. Se alguém tiver mais de um cargo com multiplicador, a Yukina aplica somente o maior valor, sem somá-los.</p>
@@ -731,6 +745,38 @@
       const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar a contagem.");
       originalCounting=nextConfig;updateCountingSelectedChannel();countingStatus.textContent=nextConfig.enabled?"Pronto! A contagem ficará ativa em #"+(availableTextChannels.find(ch=>ch.id===channelId)?.name||"canal escolhido")+".":"O jogo de contagem foi desativado."; 
     }});
+    const xpAnnouncementChannel=$("xpAnnouncementChannel"),xpAnnouncementFormat=$("xpAnnouncementFormat"),xpAnnouncementColor=$("xpAnnouncementColor"),xpAnnouncementColorWrap=$("xpAnnouncementColorWrap"),xpAnnouncementMessage=$("xpAnnouncementMessage"),xpAnnouncementStatus=$("xpAnnouncementStatus");
+    const XP_ANNOUNCEMENT_DEFAULT="{@usar} você acaba de subir para o nível {nivel} com ({xp})!";
+    let xpAnnouncementChannels=[],xpAnnouncementConfig={channelId:"",format:"text",color:"#c4b5fd",message:XP_ANNOUNCEMENT_DEFAULT},originalXpAnnouncementConfig="";
+    function getXpAnnouncementSnapshot(){return JSON.stringify({channelId:xpAnnouncementChannel.value,format:xpAnnouncementFormat.value,color:xpAnnouncementColor.value,message:xpAnnouncementMessage.value});}
+    function updateXpAnnouncementFormat(){xpAnnouncementColorWrap.hidden=xpAnnouncementFormat.value!=="embed";}
+    xpAnnouncementFormat.addEventListener("change",()=>{updateXpAnnouncementFormat();xpAnnouncementStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    [xpAnnouncementChannel,xpAnnouncementColor,xpAnnouncementMessage].forEach(el=>el.addEventListener("input",()=>{xpAnnouncementStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();}));
+    xpAnnouncementChannel.addEventListener("change",()=>{xpAnnouncementStatus.textContent="Alteração pendente. Clique em Salvar na barra inferior.";window.YukinaPendingChanges?.refresh();});
+    async function loadXpAnnouncement(){
+      const guild=selectedGuild();if(!guild.id){xpAnnouncementChannel.innerHTML='<option value="">Selecione um servidor primeiro</option>';return;}
+      try{
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Entre com o Discord para carregar os canais.");
+        const headers={Authorization:"Bearer "+t,Accept:"application/json"};
+        const [sr,rr]=await Promise.all([fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers,cache:"no-store"}),fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"})]);
+        const [s,r]=await Promise.all([sr.json().catch(()=>({})),rr.json().catch(()=>({}))]);if(!sr.ok)throw new Error(s.detail||"Não foi possível carregar as configurações.");if(!rr.ok)throw new Error(r.detail||"Não foi possível carregar os canais.");
+        xpAnnouncementConfig=s.settings?.xpAnnouncement||{};xpAnnouncementConfig={channelId:String(xpAnnouncementConfig.channelId||""),format:xpAnnouncementConfig.format==="embed"?"embed":"text",color:/^#[0-9a-f]{6}$/i.test(xpAnnouncementConfig.color||"")?xpAnnouncementConfig.color:"#c4b5fd",message:typeof xpAnnouncementConfig.message==="string"&&xpAnnouncementConfig.message?xpAnnouncementConfig.message:XP_ANNOUNCEMENT_DEFAULT};
+        xpAnnouncementChannels=(Array.isArray(r.channels)?r.channels:[]).filter(ch=>Number(ch.type)===0);
+        xpAnnouncementChannel.replaceChildren();const empty=document.createElement("option");empty.value="";empty.textContent="Usar o canal padrão do servidor";xpAnnouncementChannel.appendChild(empty);
+        xpAnnouncementChannels.forEach(ch=>{const o=document.createElement("option");o.value=String(ch.id);o.textContent="# "+ch.name;xpAnnouncementChannel.appendChild(o);});
+        xpAnnouncementChannel.value=xpAnnouncementConfig.channelId;
+        if(xpAnnouncementConfig.channelId&&!xpAnnouncementChannels.some(ch=>String(ch.id)===xpAnnouncementConfig.channelId)){const o=document.createElement("option");o.value=xpAnnouncementConfig.channelId;o.textContent="Canal salvo (não encontrado)";xpAnnouncementChannel.appendChild(o);xpAnnouncementChannel.value=xpAnnouncementConfig.channelId;}
+        xpAnnouncementFormat.value=xpAnnouncementConfig.format;xpAnnouncementColor.value=xpAnnouncementConfig.color;xpAnnouncementMessage.value=xpAnnouncementConfig.message;updateXpAnnouncementFormat();originalXpAnnouncementConfig=getXpAnnouncementSnapshot();xpAnnouncementStatus.textContent="Configuração carregada.";window.YukinaPendingChanges?.refresh();
+      }catch(e){xpAnnouncementStatus.textContent=e.message||"Não foi possível carregar a configuração de avisos.";}
+    }
+    window.YukinaPendingChanges?.register({id:"canal-xp",isDirty:()=>getXpAnnouncementSnapshot()!==originalXpAnnouncementConfig,reset:()=>loadXpAnnouncement(),save:async()=>{
+      const g=selectedGuild();if(!g.id)throw new Error("Selecione um servidor.");let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();if(!t)throw new Error("Sua sessão expirou. Entre novamente.");
+      const channelId=xpAnnouncementChannel.value;if(channelId&&!xpAnnouncementChannels.some(ch=>String(ch.id)===channelId))throw new Error("Escolha um canal de texto válido deste servidor.");
+      const next={channelId,format:xpAnnouncementFormat.value==="embed"?"embed":"text",color:xpAnnouncementColor.value,message:(xpAnnouncementMessage.value.trim()||XP_ANNOUNCEMENT_DEFAULT).slice(0,1800)};
+      const res=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(g.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+t,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{xpAnnouncement:next}}),cache:"no-store"});const d=await res.json().catch(()=>({}));if(!res.ok)throw new Error(d.detail||"Não foi possível salvar a configuração do Canal de XP.");
+      xpAnnouncementConfig=next;xpAnnouncementMessage.value=next.message;originalXpAnnouncementConfig=getXpAnnouncementSnapshot();xpAnnouncementStatus.textContent="Configuração do Canal de XP salva.";
+    }});
+    loadXpAnnouncement();
     const xpRoleSelect=$("xpRoleSelect"),xpLevelInput=$("xpLevelInput"),xpAddButton=$("xpAddButton"),xpStatus=$("xpStatus"),xpRulesList=$("xpRulesList"),xpFormTitle=$("xpFormTitle");
     const xpRolePickerButton=$("xpRolePickerButton"),xpRolePickerCard=$("xpRolePickerCard"),xpRolePickerLabel=$("xpRolePickerLabel"),xpRoleSearch=$("xpRoleSearch"),xpRoleOptions=$("xpRoleOptions");
     let xpRoles=[],xpRules=[],xpManagedRoleIds=[],originalXpConfig="[]";
