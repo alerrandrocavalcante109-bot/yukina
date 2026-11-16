@@ -94,16 +94,50 @@ async function updateLevel(member, announce = false) {
     // A mensagem de evolução é enviada somente nos níveis 5, 10, 15, 20...
     if (announce && currentLevel % 5 === 0 &&
         lastAnnouncedMilestone.get(announcementKey) !== currentLevel) {
-      const channel = member.guild.systemChannel;
-      if (channel && channel.viewable &&
-          channel.permissionsFor(member.guild.members.me)?.has(PermissionFlagsBits.SendMessages)) {
-        const roleLine = selectedRole && !hadSelected
-          ? "\\n**🎖️ Novo cargo: " + selectedRole.name + "**"
-          : "";
-        await channel.send({
-          content: "# 🌸 Um novo florescer!\\n## ❄️ Parabéns, " + member.toString() + "!\\n### Você alcançou o nível " + currentLevel + "!\\n\\n**🌙 XP TOTAL ACUMULADO: " + xp.toLocaleString("pt-BR") + " XP**" + roleLine + "\\n\\n*Cada mensagem é uma pequena estrela que ilumina sua jornada. Continue florescendo no universo da Yukina!* ✨",
-          allowedMentions: { users: [member.id] },
-        });
+      const guildSettings = await getGuildSettings(member.guild.id, { force: true });
+      const config = guildSettings.xpAnnouncement && typeof guildSettings.xpAnnouncement === "object" ? guildSettings.xpAnnouncement : {};
+      let channel = config.channelId ? member.guild.channels.cache.get(String(config.channelId)) : member.guild.systemChannel;
+      if (config.channelId && !channel) channel = await member.guild.channels.fetch(String(config.channelId)).catch(() => null);
+      const me = member.guild.members.me;
+      if (channel && channel.isTextBased?.() && channel.send &&
+          channel.permissionsFor(me)?.has(PermissionFlagsBits.ViewChannel) &&
+          channel.permissionsFor(me)?.has(PermissionFlagsBits.SendMessages)) {
+        const template = typeof config.message === "string" && config.message.trim()
+          ? config.message.slice(0, 1800)
+          : "{@usar} você acaba de subir para o nível {nivel} com ({xp})!";
+        const members = memberData.getMembers();
+        const ranking = Object.entries(members)
+          .filter(([key, value]) => key.startsWith(member.guild.id + ":") && value && typeof value === "object")
+          .sort((a, b) => (Number(b[1].xp) || 0) - (Number(a[1].xp) || 0));
+        const rank = Math.max(1, ranking.findIndex(([key]) => key === member.guild.id + ":" + member.id) + 1);
+        const avatar = member.displayAvatarURL({ extension: "png", size: 256 });
+        const serverIcon = member.guild.iconURL({ extension: "png", size: 256 }) || "";
+        const replacements = {
+          "{usar Nome}": member.displayName,
+          "{nivel}": String(currentLevel),
+          "{xp}": xp.toLocaleString("pt-BR"),
+          "{@usar}": member.toString(),
+          "{id}": member.id,
+          "{rank}": String(rank),
+          "{foto server}": serverIcon,
+          "{avatar}": avatar,
+          "{nome server}": member.guild.name,
+        };
+        const message = template.replace(/\\{usar Nome\\}|\\{nivel\\}|\\{xp\\}|\\{@usar\\}|\\{id\\}|\\{rank\\}|\\{foto server\\}|\\{avatar\\}|\\{nome server\\}/g, token => replacements[token] ?? token);
+        const format = config.format === "embed" ? "embed" : "text";
+        if (format === "embed") {
+          const color = /^#[0-9a-f]{6}$/i.test(String(config.color || "")) ? parseInt(String(config.color).slice(1), 16) : 0xc4b5fd;
+          const embed = {
+            color,
+            description: message,
+            author: { name: member.displayName, icon_url: avatar },
+            thumbnail: serverIcon ? { url: serverIcon } : undefined,
+            footer: { text: member.guild.name },
+          };
+          await channel.send({ embeds: [embed], allowedMentions: { users: [member.id] } });
+        } else {
+          await channel.send({ content: message, allowedMentions: { users: [member.id] } });
+        }
         lastAnnouncedMilestone.set(announcementKey, currentLevel);
       }
     }
