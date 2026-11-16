@@ -124,6 +124,11 @@ function isValidXpMessage(content) {
 }
 
 function startRankSystem(client) {
+  client.on("yukinaXpReset", ({ guildId, userIds } = {}) => {
+    if (!guildId || !Array.isArray(userIds)) return;
+    for (const userId of userIds) lastXpAt.delete(memberData.keyFor(guildId, userId));
+  });
+
   client.on("messageCreate", async (message) => {
     if (!message.guild || message.author.bot || !message.member) return;
     if (!isValidXpMessage(message.content)) return;
