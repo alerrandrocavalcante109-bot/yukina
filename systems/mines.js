@@ -438,10 +438,13 @@ async function finalizeDisplay(client, game) {
     : game.status === "expired" ? "expired"
     : game.status === "cancelled" ? "cancelled" : "won";
   const container = buildFinalContainer(game, kind);
-  if (kind === "lost") {
+  if (kind === "lost" || kind === "won") {
+    // Mantém o tabuleiro visível após o encerramento, mas bloqueia todas as casas.
     for (const row of buildCellRows(game, true)) container.addActionRowComponents(row);
   }
-  const components = [container];
+  // Preserva a linha de ações na mesma posição e troca o botão de saque por "Novamente".
+  const disabledActions = buildGameComponents(game)[1];
+  const components = [container, disabledActions];
   if (kind === "lost" || kind === "won") components.push(buildRestartRow(game));
   const updated = await editGameMessage(client, game, components);
   if (updated) {
