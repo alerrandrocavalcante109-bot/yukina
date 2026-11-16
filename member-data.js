@@ -193,6 +193,25 @@ function getMembers() {
   return store.members;
 }
 
+async function resetGuildXp(guildId) {
+  await initialize();
+  const prefix = String(guildId) + ":";
+  const entries = Object.entries(store.members).filter(([key]) => key.startsWith(prefix));
+  const userIds = entries.map(([key]) => key.slice(prefix.length)).filter(Boolean);
+  for (const [, record] of entries) {
+    if (record && typeof record === "object") record.xp = 0;
+  }
+
+  if (collection) {
+    await collection.updateMany(
+      { _id: { $regex: "^" + prefix } },
+      { $set: { xp: 0, xpResetVersion: 1, updatedAt: new Date() } }
+    );
+  }
+  saveLocal();
+  return { count: entries.length, userIds };
+}
+
 async function addWarning(guildId, userId, warning) {
   const key = keyFor(guildId, userId);
   const record = getRecord(guildId, userId);
@@ -205,4 +224,4 @@ function getWarnings(guildId, userId) {
   return [...(getRecord(guildId, userId).warnings || [])].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-module.exports = { initialize, getRecord, getMembers, persistRecord, keyFor, addWarning, getWarnings };
+module.exports = { initialize, getRecord, getMembers, persistRecord, keyFor, resetGuildXp, addWarning, getWarnings };
