@@ -30,6 +30,8 @@ const nickColorsSystem = require("./systems/nick-colors");
 const reactionRolesSystem = require("./systems/reaction-roles");
 
 const TOKEN = (process.env.TOKEN || "").trim();
+// Pausa temporariamente a IA conversacional, voz e recursos narrativos.
+const YUKINA_AI_ENABLED = false;
 
 const DAILY_TIME_ZONE = "America/Sao_Paulo";
 
@@ -92,7 +94,11 @@ function loadYukinaSystems() {
   require("./interaction")(client);
   nickColorsSystem.install(client, getSettingsCollection);
   reactionRolesSystem.install(client, getSettingsCollection);
-  require("./systems/yukina-ai").install(client, getSettingsCollection);
+  if (YUKINA_AI_ENABLED) {
+    require("./systems/yukina-ai").install(client, getSettingsCollection);
+  } else {
+    console.log("[Yukina IA] Recursos de IA pausados temporariamente.");
+  }
 }
 
 
