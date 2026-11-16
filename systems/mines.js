@@ -567,7 +567,13 @@ async function handleButton(interaction, client) {
         user: interaction.user,
         betInput: latest.bet,
         bombs: latest.bombs,
-        send: payload => interaction.message.edit(payload),
+        send: payload => interaction.channel.send({
+          ...payload,
+          reply: {
+            messageReference: interaction.message.id,
+            failIfNotExists: false,
+          },
+        }),
       });
       if (result?.ok) {
         await db.collection("mines_games").updateOne(
