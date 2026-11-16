@@ -1193,6 +1193,9 @@ async function panelApi(req, res, url) {
     if (req.method !== "POST") return sendJson(res, 405, { detail: "Método não permitido." });
     const guildId = xpResetMatch[1];
     try {
+      // A operação é destrutiva: não aceita permissões administrativas vindas de cache antigo.
+      const bearer = String(req.headers.authorization || "").replace(/^Bearer\\s+/i, "").trim();
+      if (bearer) oauthGuildCache.delete(bearer);
       const { guild, oauthGuild } = await authorizePanel(req, guildId);
       const oauthPermissions = BigInt(oauthGuild?.permissions || "0");
       if ((oauthPermissions & 8n) === 0n && oauthGuild?.owner !== true) {
