@@ -92,7 +92,7 @@ async function updateLevel(member, announce = false) {
     }
 
     // A mensagem de evolução é enviada somente nos níveis 5, 10, 15, 20...
-    if (announce && currentLevel % 5 === 0 &&
+    if (announce && currentLevel >= 5 && currentLevel % 5 === 0 &&
         lastAnnouncedMilestone.get(announcementKey) !== currentLevel) {
       const guildSettings = await getGuildSettings(member.guild.id, { force: true });
       const config = guildSettings.xpAnnouncement && typeof guildSettings.xpAnnouncement === "object" ? guildSettings.xpAnnouncement : {};
