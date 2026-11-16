@@ -123,7 +123,7 @@ async function updateLevel(member, announce = false) {
           "{avatar}": avatar,
           "{nome server}": member.guild.name,
         };
-        const message = template.replace(/\\{usar Nome\\}|\\{nivel\\}|\\{xp\\}|\\{@usar\\}|\\{id\\}|\\{rank\\}|\\{foto server\\}|\\{avatar\\}|\\{nome server\\}/g, token => replacements[token] ?? token);
+        const message = template.replace(/\{usar Nome\\}|\{nivel\\}|\{xp\\}|\{@usar\\}|\{id\\}|\{rank\\}|\{foto server\\}|\{avatar\\}|\{nome server\\}/g, token => replacements[token] ?? token);
         const format = config.format === "embed" ? "embed" : "text";
         if (format === "embed") {
           const color = /^#[0-9a-f]{6}$/i.test(String(config.color || "")) ? parseInt(String(config.color).slice(1), 16) : 0xc4b5fd;
