@@ -44,8 +44,13 @@ async function runResetConfirmation({ guild, member, sendPrompt, actorId }) {
   try {
     const choice = await prompt.awaitMessageComponent({
       time: 30000,
-      filter: interaction => interaction.user.id === String(actorId) &&
-        [confirmId, cancelId].includes(interaction.customId),
+      filter: interaction => {
+        if (interaction.user.id !== String(actorId)) {
+          interaction.reply({ content: "Somente quem iniciou o reset pode confirmar esta ação.", flags: MessageFlags.Ephemeral }).catch(() => {});
+          return false;
+        }
+        return [confirmId, cancelId].includes(interaction.customId);
+      },
     });
 
     if (choice.customId === cancelId) {
