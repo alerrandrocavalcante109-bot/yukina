@@ -4,6 +4,9 @@ const { SlashCommandBuilder } = require("discord.js");
 const { getEngine } = require("../systems/yukina-ai");
 
 async function run(userId, channelId, guildId, prompt, displayName, discordContext) {
+  if (process.env.YUKINA_AI_ENABLED === "false" || !globalThis.__YUKINA_AI_ACTIVE__) {
+    throw new Error("YUKINA_AI_PAUSED");
+  }
   return getEngine().answer({ userId, channelId, guildId, prompt, displayName, discordContext });
 }
 
@@ -21,6 +24,7 @@ module.exports = {
   aliases: ["yukinaia", "conversar"],
 
   async execute(interaction) {
+    if (process.env.YUKINA_AI_ENABLED === "false") return interaction.reply({ content: "🌙 A IA da Yukina está pausada temporariamente.", ephemeral: true });
     const prompt = interaction.options.getString("mensagem", true);
     await interaction.deferReply();
     const result = await run(
@@ -41,6 +45,7 @@ module.exports = {
   },
 
   async prefixExecute(message) {
+    if (process.env.YUKINA_AI_ENABLED === "false") return message.reply("🌙 A IA da Yukina está pausada temporariamente.");
     const prompt = String(message.content || "").replace(/^\S+\s*/, "").trim();
     if (!prompt) return message.reply("🌸 Use Yia sua mensagem ou /ia para conversar comigo.");
     await message.channel.sendTyping().catch(() => {});
