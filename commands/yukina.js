@@ -21,6 +21,7 @@ function storyPayload(story) {
 }
 
 async function run(action, ctx) {
+  if (process.env.YUKINA_AI_ENABLED === "false") return ctx.reply({ content: "🌙 Os recursos de IA e mundo da Yukina estão pausados temporariamente.", ephemeral: true });
   const f = getFeatures();
   const id = ctx.user.id;
   const reply = (content, ephemeral = true) => ctx.reply({ content, ephemeral });
@@ -157,6 +158,7 @@ module.exports = {
     return run(action, ctx);
   },
   async handleInteraction(interaction) {
+    if (process.env.YUKINA_AI_ENABLED === "false") return;
     if (!interaction.isButton() || !interaction.customId.startsWith("ykstory:vote:")) return;
     const [, , storyId, choiceId] = interaction.customId.split(":");
     const result = await getFeatures().castStoryVote({ storyId, choiceId, userId: interaction.user.id });

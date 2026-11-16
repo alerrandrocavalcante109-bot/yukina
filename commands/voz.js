@@ -82,6 +82,7 @@ module.exports = {
     .setDMPermission(false),
   aliases: ["voice", "conversarvoz"],
   async execute(interaction) {
+    if (process.env.YUKINA_AI_ENABLED === "false") return interaction.reply({ content: "🌙 A IA e a conversa por voz estão pausadas temporariamente.", ephemeral: true });
     const action = interaction.options.getSubcommand();
     if (action === "sair") return leave(interaction, interaction.guildId, interaction.user.id, interaction.memberPermissions);
     if (action === "status") return status(interaction, interaction.guildId);
@@ -91,6 +92,7 @@ module.exports = {
     return enter(interaction, member, interaction.guild, interaction.channel);
   },
   async prefixExecute(message, args) {
+    if (process.env.YUKINA_AI_ENABLED === "false") return message.reply("🌙 A IA e a conversa por voz estão pausadas temporariamente.");
     const action = String(args?.[0] || "").toLowerCase();
     if (["sair", "leave", "parar", "desconectar"].includes(action)) {
       return leave(message, message.guild.id, message.author.id, message.member.permissions);
