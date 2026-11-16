@@ -218,6 +218,16 @@ function buildFinalContainer(game, kind) {
     .addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
 }
 
+function buildRestartRow(game) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("mines:again:" + game._id)
+      .setLabel("Novamente")
+      .setEmoji("🔁")
+      .setStyle(ButtonStyle.Success)
+  );
+}
+
 async function editGameMessage(client, game, components) {
   if (!game.channelId || !game.messageId) return false;
   try {
@@ -431,7 +441,9 @@ async function finalizeDisplay(client, game) {
   if (kind === "lost") {
     for (const row of buildCellRows(game, true)) container.addActionRowComponents(row);
   }
-  const updated = await editGameMessage(client, game, container);
+  const components = [container];
+  if (kind === "lost" || kind === "won") components.push(buildRestartRow(game));
+  const updated = await editGameMessage(client, game, components);
   if (updated) {
     const db = await getDb();
     await db.collection("mines_games").updateOne(
@@ -529,8 +541,38 @@ async function handleButton(interaction, client) {
   if (String(interaction.user.id) !== String(game.userId)) {
     return sendEphemeral(interaction, "Esse jogo não é o seu. Tá tentando acabar com o coitado? Deixa ele(a) ser feliz, viu.");
   }
+
+  if (action === "again") {
+    if (!["lost", "cashed_out"].includes(game.status)) {
+      return sendEphemeral(interaction, "Não é possível iniciar outra partida por este botão.");
+    }
+    const restartResult = await withGameLock(gameId, async () => {
+      const latest = await db.collection("mines_games").findOne({ _id: gameId });
+      if (!latest || !["lost", "cashed_out"].includes(latest.status)) {
+        return { ok: false, message: "Esta partida já foi utilizada para iniciar outra." };
+      }
+      const result = await startGame({
+        client,
+        guild: interaction.guild,
+        channel: interaction.channel,
+        user: interaction.user,
+        betInput: latest.bet,
+        bombs: latest.bombs,
+        send: payload => interaction.message.edit(payload),
+      });
+      return result;
+    });
+    if (restartResult?.busy) {
+      return sendEphemeral(interaction, "A Yukina já está preparando sua próxima partida. Aguarde um instante.");
+    }
+    if (!restartResult?.ok) {
+      return sendEphemeral(interaction, restartResult?.message || "Não foi possível iniciar outra partida.");
+    }
+    return;
+  }
+
   if (game.status !== "active") {
-    return sendEphemeral(interaction, "Esta partida já foi encerrada.");
+    return sendEphemeral(interaction, "Esta partida já foi encerrada. Inicie outra pelo botão **Novamente** quando disponível.");
   }
 
   await interaction.deferUpdate();
