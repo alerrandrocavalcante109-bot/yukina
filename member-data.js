@@ -198,15 +198,15 @@ async function resetGuildXp(guildId) {
   const prefix = String(guildId) + ":";
   const entries = Object.entries(store.members).filter(([key]) => key.startsWith(prefix));
   const userIds = entries.map(([key]) => key.slice(prefix.length)).filter(Boolean);
-  for (const [, record] of entries) {
-    if (record && typeof record === "object") record.xp = 0;
-  }
-
+  // Primeiro confirma a gravação no Atlas; só depois altera o cache em memória.
   if (collection) {
     await collection.updateMany(
       { _id: { $regex: "^" + prefix } },
       { $set: { xp: 0, xpResetVersion: 1, updatedAt: new Date() } }
     );
+  }
+  for (const [, record] of entries) {
+    if (record && typeof record === "object") record.xp = 0;
   }
   saveLocal();
   return { count: entries.length, userIds };
