@@ -24,7 +24,7 @@ module.exports = {
     .setDMPermission(false)
     .addStringOption(option => option
       .setName("valor")
-      .setDescription("Aposta entre 100 e 10m KZ. Exemplos: 1k, 1,5k ou 2.5m.")
+      .setDescription("Aposta em KZ: valor, all (todo o saldo) ou half (metade).")
       .setRequired(true)
       .setMaxLength(24))
     .addIntegerOption(option => option
