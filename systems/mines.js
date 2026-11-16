@@ -125,6 +125,23 @@ function buildCellRows(game, disabled = false) {
   return rows;
 }
 
+function buildGameActionRow(game, openedCount, safeTotal) {
+  return new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId("mines:random:" + game._id)
+      .setLabel("Aleatório")
+      .setEmoji("🎲")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(game.status !== "active" || openedCount >= safeTotal),
+    new ButtonBuilder()
+      .setCustomId("mines:refresh:" + game._id)
+      .setLabel("Atualizar")
+      .setEmoji("🔄")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(game.status !== "active")
+  );
+}
+
 function buildGameComponents(game) {
   const safeTotal = BOARD_SIZE - game.bombs;
   const openedCount = (game.openedCells || []).length;
@@ -162,30 +179,16 @@ function buildGameComponents(game) {
       )
     );
 
-  for (const row of buildCellRows(game)) container.addActionRowComponents(row);
+  for (const row of buildCellRows(game, game.status !== "active")) container.addActionRowComponents(row);
 
+  container.addActionRowComponents(buildGameActionRow(game, openedCount, safeTotal));
   container.addTextDisplayComponents(
     new TextDisplayBuilder().setContent(
-      "> 🌸 Você está indo bem! Cada casa segura aumenta seu prêmio. Mas cuidado: se encontrar uma bomba, perderá a aposta."
+      "> 🌸 Você está indo bem, continue para ganhar um valor mais alto. Mas lembre-se, não seja ganancioso, senão você vai perder tudo."
     )
   );
 
-  const actions = new ActionRowBuilder().addComponents(
-    new ButtonBuilder()
-      .setCustomId("mines:random:" + game._id)
-      .setLabel("Aleatório")
-      .setEmoji("🎲")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(game.status !== "active" || openedCount >= safeTotal),
-    new ButtonBuilder()
-      .setCustomId("mines:refresh:" + game._id)
-      .setLabel("Atualizar")
-      .setEmoji("🔄")
-      .setStyle(ButtonStyle.Secondary)
-      .setDisabled(game.status !== "active")
-  );
-
-  const components = [container, actions];
+  const components = [container];
   if (openedCount > 0) {
     const cashout = new ActionRowBuilder().addComponents(
       new ButtonBuilder()
@@ -439,12 +442,16 @@ async function finalizeDisplay(client, game) {
     : game.status === "cancelled" ? "cancelled" : "won";
   const container = buildFinalContainer(game, kind);
   if (kind === "lost" || kind === "won") {
-    // Mantém o tabuleiro visível após o encerramento, mas bloqueia todas as casas.
+    // Mantém tabuleiro e ações visíveis, todos desativados, na mesma ordem da partida.
     for (const row of buildCellRows(game, true)) container.addActionRowComponents(row);
+    container.addActionRowComponents(buildGameActionRow(game, (game.openedCells || []).length, BOARD_SIZE - game.bombs));
+    container.addTextDisplayComponents(
+      new TextDisplayBuilder().setContent(
+        "> 🌸 Você está indo bem, continue para ganhar um valor mais alto. Mas lembre-se, não seja ganancioso, senão você vai perder tudo."
+      )
+    );
   }
-  // Preserva a linha de ações na mesma posição e troca o botão de saque por "Novamente".
-  const disabledActions = buildGameComponents(game)[1];
-  const components = [container, disabledActions];
+  const components = [container];
   if (kind === "lost" || kind === "won") components.push(buildRestartRow(game));
   const updated = await editGameMessage(client, game, components);
   if (updated) {
