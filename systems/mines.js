@@ -666,13 +666,28 @@ async function handleButton(interaction, client) {
 
 async function startGame({ client, guild, channel, user, betInput, bombs, send }) {
   if (!guild || !channel) return { ok: false, message: "Este jogo só pode ser iniciado dentro de um servidor." };
-  const bet = parseBet(betInput);
-  if (!bet || !Number.isInteger(bombs) || bombs < MIN_BOMBS || bombs > MAX_BOMBS) {
-    const prefix = await getGuildPrefix(guild.id).catch(() => "Y");
-    return { ok: false, message: "Valor e bomba inválido. Use " + prefix + "mines valor bomba" };
+  const db = await getDb();
+  const normalizedBet = String(betInput ?? "").trim().toLowerCase();
+  let bet;
+
+  if (normalizedBet === "all" || normalizedBet === "half") {
+    const balanceDoc = await db.collection("economy_balances").findOne(
+      { userId: String(user.id) },
+      { projection: { balance: 1 } }
+    );
+    const availableBalance = Math.max(0, Math.floor(Number(balanceDoc?.balance) || 0));
+    bet = normalizedBet === "all" ? availableBalance : Math.floor(availableBalance / 2);
+  } else {
+    bet = parseBet(betInput);
   }
 
-  const db = await getDb();
+  if (!bet || bet < MIN_BET || bet > MAX_BET || !Number.isInteger(bombs) || bombs < MIN_BOMBS || bombs > MAX_BOMBS) {
+    const prefix = await getGuildPrefix(guild.id).catch(() => "Y");
+    const reason = normalizedBet === "all" || normalizedBet === "half"
+      ? "O valor escolhido com **" + normalizedBet + "** precisa resultar em uma aposta entre **100 e 10.000.000 KZ**."
+      : "Valor ou quantidade de bombas inválida.";
+    return { ok: false, message: reason + " Use " + prefix + "mines valor bombas. Você também pode usar **all** (todo o saldo) ou **half** (metade do saldo)." };
+  }
   const active = await db.collection("mines_games").findOne({ userId: String(user.id), status: "active" });
   if (active) return { ok: false, message: "Você já está explorando uma caverna! Termine sua partida #" + active.gameNumber + " antes de iniciar outra." };
 
