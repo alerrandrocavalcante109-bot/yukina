@@ -11,7 +11,15 @@ const {
 const memberData = require("../member-data");
 
 function isAdministrator(member) {
-  return Boolean(member?.permissions?.has(PermissionFlagsBits.Administrator));
+  const permissions = member?.permissions ?? member?.memberPermissions;
+  if (permissions && typeof permissions.has === "function") {
+    return permissions.has(PermissionFlagsBits.Administrator);
+  }
+  try {
+    return (BigInt(permissions || "0") & BigInt(PermissionFlagsBits.Administrator)) !== 0n;
+  } catch {
+    return false;
+  }
 }
 
 async function runResetConfirmation({ guild, member, sendPrompt, actorId }) {
