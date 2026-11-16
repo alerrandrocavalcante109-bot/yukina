@@ -49,7 +49,7 @@ function formatDate(value) {
   }).format(date);
 }
 
-async function showHistory({ guild, user, send }) {
+async function showHistory({ guild, user, viewerId, send }) {
   if (!guild) {
     return send({ content: "❄️ O extrato de transações só pode ser consultado dentro de um servidor.", ephemeral: true });
   }
@@ -86,23 +86,23 @@ async function showHistory({ guild, user, send }) {
 
     const details = entries.length
       ? entries.map(item => {
-          if (item.kind === "sent") return "📤 **Transferência enviada** · " + format(item.amount) + " KZ\\nPara: <@" + item.otherId + "> · " + formatDate(item.date);
-          if (item.kind === "received") return "📥 **Transferência recebida** · " + format(item.amount) + " KZ\\nDe: <@" + item.otherId + "> · " + formatDate(item.date);
-          if (item.kind === "deposit") return "🏦 **Depósito no banco** · −" + format(item.amount) + " KZ\\nDa carteira para o Banco Central · " + formatDate(item.date);
-          if (item.kind === "fee") return "🧾 **Taxa de inatividade** · −" + format(item.amount) + " KZ\\nDescontada da carteira · " + formatDate(item.date);
-          return "👛 **Saque do banco** · +" + format(item.amount) + " KZ\\nDo Banco Central para a carteira · " + formatDate(item.date);
-        }).join("\\n\\n")
+          if (item.kind === "sent") return "📤 **Transferência enviada** · " + format(item.amount) + " KZ\nPara: <@" + item.otherId + "> · " + formatDate(item.date);
+          if (item.kind === "received") return "📥 **Transferência recebida** · " + format(item.amount) + " KZ\nDe: <@" + item.otherId + "> · " + formatDate(item.date);
+          if (item.kind === "deposit") return "🏦 **Depósito no banco** · −" + format(item.amount) + " KZ\nDa carteira para o Banco Central · " + formatDate(item.date);
+          if (item.kind === "fee") return "🧾 **Taxa de inatividade** · −" + format(item.amount) + " KZ\nDescontada da carteira · " + formatDate(item.date);
+          return "👛 **Saque do banco** · +" + format(item.amount) + " KZ\nDo Banco Central para a carteira · " + formatDate(item.date);
+        }).join("\n\n")
       : "Ainda não há movimentações concluídas registradas para esta carteira.";
 
-    const isOtherUser = String(user.id) !== String(send.viewerId || user.id);
+    const isOtherUser = String(user.id) !== String(viewerId || user.id);
     const embed = new EmbedBuilder()
       .setColor(0xA7D8F0)
       .setAuthor({ name: "Yukina · Extrato de " + (user.username || "usuário"), iconURL: user.displayAvatarURL({ size: 128 }) })
       .setTitle("💴 Movimentações de Kizunas")
       .setDescription(
-        (isOtherUser ? "Extrato de <@" + userId + "> neste servidor.\\n" : "Movimentações recentes da sua carteira neste servidor.\\n") +
-        "🌸 **Entrou na carteira:** +" + format(incomingTotal) + " KZ\\n" +
-        "🍃 **Saiu da carteira:** −" + format(outgoingTotal) + " KZ\\n\\n" + details
+        (isOtherUser ? "Extrato de <@" + userId + "> neste servidor.\n" : "Movimentações recentes da sua carteira neste servidor.\n") +
+        "🌸 **Entrou na carteira:** +" + format(incomingTotal) + " KZ\n" +
+        "🍃 **Saiu da carteira:** −" + format(outgoingTotal) + " KZ\n\n" + details
       )
       .setFooter({ text: "Yukina · Exibindo até " + HISTORY_LIMIT + " movimentações recentes" })
       .setTimestamp();
@@ -136,6 +136,7 @@ module.exports = {
     return showHistory({
       guild: interaction.guild,
       user: targetUser,
+      viewerId: interaction.user.id,
       send: async payload => {
         const { ephemeral, ...rest } = payload;
         if (interaction.replied || interaction.deferred) {
@@ -148,7 +149,7 @@ module.exports = {
 
   async prefixExecute(message) {
     let targetUser = message.mentions.users.first() || message.author;
-    const mentionedId = message.content.match(/(?:^|\\s)(\\d{17,20})(?:\\s|$)/);
+    const mentionedId = message.content.match(/(?:^|\s)(\\d{17,20})(?:\s|$)/);
     if (!message.mentions.users.first() && mentionedId) {
       try {
         const member = await message.guild.members.fetch(mentionedId[1]);
@@ -160,6 +161,7 @@ module.exports = {
     return showHistory({
       guild: message.guild,
       user: targetUser,
+      viewerId: message.author.id,
       send: payload => {
         const { ephemeral, ...rest } = payload;
         return message.channel.send(rest);
