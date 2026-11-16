@@ -1194,7 +1194,7 @@ async function panelApi(req, res, url) {
     const guildId = xpResetMatch[1];
     try {
       // A operação é destrutiva: não aceita permissões administrativas vindas de cache antigo.
-      const bearer = String(req.headers.authorization || "").replace(/^Bearer\\s+/i, "").trim();
+      const bearer = String(req.headers.authorization || "").replace(/^Bearer\s+/i, "").trim();
       if (bearer) oauthGuildCache.delete(bearer);
       const { guild, oauthGuild } = await authorizePanel(req, guildId);
       const oauthPermissions = BigInt(oauthGuild?.permissions || "0");
