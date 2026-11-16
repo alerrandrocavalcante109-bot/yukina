@@ -238,6 +238,14 @@
         <p class="prefix-system-help">Padrão: {@usar} você acaba de subir para o nível {nivel} com ({xp})!</p>
         <p class="prefix-status" id="xpAnnouncementStatus" role="status" aria-live="polite"></p>
       </div>
+      <div class="system-placeholder" style="margin-top:16px;border:1px solid rgba(255,120,140,.35)">
+        <h2>⚠️ Reset de XP do servidor</h2>
+        <p class="prefix-system-description">Zera o XP acumulado de todos os membros deste servidor e faz todos recomeçarem no nível 0. As advertências, datas de entrada e demais dados serão preservados. Esta ação não pode ser desfeita.</p>
+        <label for="xpResetConfirmInput">Para liberar o reset, digite ZERAR</label>
+        <input id="xpResetConfirmInput" class="prefix-input" type="text" autocomplete="off" maxlength="5" placeholder="Digite ZERAR">
+        <button type="button" class="primary-action" id="xpResetButton" disabled style="background:linear-gradient(135deg,#9b3b5d,#6d2948)">Zerar XP de todos</button>
+        <p class="prefix-status" id="xpResetStatus" role="status" aria-live="polite"></p>
+      </div>
     </section>    <section class="system-screen" data-screen-panel="multiplier" hidden>
       <p class="eyebrow">PROGRESSÃO DA COMUNIDADE</p><h1>Multiplicador de XP</h1>
       <p class="screen-description">Dê mais XP aos membros que possuem determinados cargos, como VIP, apoiador ou colaborador. Se alguém tiver mais de um cargo com multiplicador, a Yukina aplica somente o maior valor, sem somá-los.</p>
@@ -745,6 +753,27 @@
       const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar a contagem.");
       originalCounting=nextConfig;updateCountingSelectedChannel();countingStatus.textContent=nextConfig.enabled?"Pronto! A contagem ficará ativa em #"+(availableTextChannels.find(ch=>ch.id===channelId)?.name||"canal escolhido")+".":"O jogo de contagem foi desativado."; 
     }});
+
+    const xpResetConfirmInput=$("xpResetConfirmInput"),xpResetButton=$("xpResetButton"),xpResetStatus=$("xpResetStatus");
+    xpResetConfirmInput.addEventListener("input",()=>{xpResetButton.disabled=xpResetConfirmInput.value.trim().toLocaleUpperCase("pt-BR")!=="ZERAR";});
+    xpResetButton.addEventListener("click",async()=>{
+      const guild=selectedGuild();
+      if(!guild.id){xpResetStatus.textContent="Selecione um servidor no menu lateral.";return;}
+      if(xpResetConfirmInput.value.trim().toLocaleUpperCase("pt-BR")!=="ZERAR"){xpResetStatus.textContent="Digite ZERAR para confirmar.";return;}
+      if(!window.confirm("Confirma zerar o XP acumulado de TODOS os membros deste servidor? Esta ação é irreversível."))return;
+      xpResetButton.disabled=true;xpResetStatus.textContent="Processando o reset de XP…";
+      try{
+        let t=token();if(!t&&localStorage.getItem("yukina_discord_refresh_token"))t=await refreshAccessToken();
+        if(!t)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/xp/reset",{method:"POST",headers:{Authorization:"Bearer "+t,Accept:"application/json"},cache:"no-store"});
+        const data=await response.json().catch(()=>({}));
+        if(!response.ok)throw new Error(data.detail||"Não foi possível zerar o XP.");
+        xpResetConfirmInput.value="";
+        xpResetStatus.textContent="🌸 Reset concluído. O XP de "+Number(data.resetCount||0).toLocaleString("pt-BR")+" membro(s) foi zerado. Todos recomeçam no nível 0.";
+      }catch(error){xpResetStatus.textContent=error.message||"Falha ao executar o reset.";}
+      finally{xpResetButton.disabled=xpResetConfirmInput.value.trim().toLocaleUpperCase("pt-BR")!=="ZERAR";}
+    });
+
     const xpAnnouncementChannel=$("xpAnnouncementChannel"),xpAnnouncementFormat=$("xpAnnouncementFormat"),xpAnnouncementColor=$("xpAnnouncementColor"),xpAnnouncementColorWrap=$("xpAnnouncementColorWrap"),xpAnnouncementMessage=$("xpAnnouncementMessage"),xpAnnouncementStatus=$("xpAnnouncementStatus");
     const XP_ANNOUNCEMENT_DEFAULT="{@usar} você acaba de subir para o nível {nivel} com ({xp})!";
     let xpAnnouncementChannels=[],xpAnnouncementConfig={channelId:"",format:"text",color:"#c4b5fd",message:XP_ANNOUNCEMENT_DEFAULT},originalXpAnnouncementConfig="";
