@@ -410,7 +410,7 @@ async function handleButton(interaction) {
 module.exports = {
   data: (() => {
     const builder = new SlashCommandBuilder()
-      .setName("pagar-kizunas")
+      .setName("pagarkizunas")
       .setDescription("Transfira Kizunas para outro membro.")
       .setDMPermission(false)
       .addUserOption(option =>
