@@ -12,7 +12,7 @@ const crypto = require("node:crypto");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
-const PROPOSAL_MS = 6 * 60 * 1000;
+const DEFAULT_PROPOSAL_MS = 6 * 60 * 1000;
 let mongoClient = null;
 let proposals = null;
 let balances = null;
@@ -127,7 +127,7 @@ function scheduleExpiration(client, proposalId) {
   if (typeof timer.unref === "function") timer.unref();
 }
 
-async function createProposals({ guild, sender, recipients, amountInput, send, client }) {
+async function createProposals({ guild, sender, recipients, amountInput, autoAccept = false, durationMs = DEFAULT_PROPOSAL_MS, send, client }) {
   if (!guild) return send({ content: "🌸 O Yukina Pay só pode ser usado dentro de um servidor.", ephemeral: true });
 
   const uniqueRecipients = [];
@@ -190,10 +190,10 @@ async function createProposals({ guild, sender, recipients, amountInput, send, c
         amount,
         batchSize: validRecipients.length,
         batchIndex: index + 1,
-        acceptedBy: [],
+        acceptedBy: autoAccept ? [String(sender.id)] : [],
         status: "pending",
         createdAt: now,
-        expiresAt: new Date(now.getTime() + PROPOSAL_MS),
+        expiresAt: new Date(now.getTime() + durationMs),
         channelId: null,
         messageId: null,
       };
@@ -214,7 +214,8 @@ async function createProposals({ guild, sender, recipients, amountInput, send, c
         { id: proposal.id },
         { $set: { channelId: String(message.channelId), messageId: String(message.id) } }
       );
-      scheduleExpiration(client, proposal.id);
+      const timer = setTimeout(() => expireProposal(client, proposal.id), durationMs + 500);
+      if (typeof timer.unref === "function") timer.unref();
     }
   } catch (error) {
     console.error("[Yukina Pay] Não foi possível criar as propostas:", error);
@@ -409,27 +410,39 @@ async function handleButton(interaction) {
 module.exports = {
   data: (() => {
     const builder = new SlashCommandBuilder()
-      .setName("pay")
-      .setDescription("Proponha transferências individuais de Kizunas para até 10 pessoas.")
+      .setName("pagar-kizunas")
+      .setDescription("Transfira Kizunas para outro membro.")
       .setDMPermission(false)
+      .addUserOption(option =>
+        option.setName("usuario")
+          .setDescription("Pessoa que receberá as Kizunas")
+          .setRequired(true)
+      )
       .addStringOption(option =>
         option.setName("valor")
-          .setDescription("Valor: 1500, 1.5k, 2m, 3b, 1t, all ou half")
+          .setDescription("Valor em Kizunas: 100k, all, half ou 100000")
           .setRequired(true)
           .setMaxLength(32)
       )
-      .addUserOption(option =>
-        option.setName("usuario")
-          .setDescription("Primeiro destinatário")
-          .setRequired(true)
-      );
-    for (let i = 2; i <= 10; i++) {
-      builder.addUserOption(option =>
-        option.setName("usuario" + i)
-          .setDescription("Destinatário " + i + " (opcional)")
+      .addBooleanOption(option =>
+        option.setName("aceitacao")
+          .setDescription("Aceitar automaticamente em seu nome; o destinatário ainda precisa aceitar")
           .setRequired(false)
+      )
+      .addStringOption(option =>
+        option.setName("tempo")
+          .setDescription("Prazo para as duas confirmações")
+          .setRequired(false)
+          .addChoices(
+            { name: "6 minutos", value: "6m" },
+            { name: "12 minutos", value: "12m" },
+            { name: "1 hora", value: "1h" },
+            { name: "2 horas", value: "2h" },
+            { name: "5 horas", value: "5h" },
+            { name: "12 horas", value: "12h" },
+            { name: "24 horas", value: "24h" }
+          )
       );
-    }
     return builder;
   })(),
 
@@ -437,19 +450,28 @@ module.exports = {
   aliases: ["pix", "pagar"],
 
   async execute(interaction) {
-    const recipients = [];
-    for (let i = 1; i <= 10; i++) {
-      const recipient = interaction.options.getUser(i === 1 ? "usuario" : "usuario" + i);
-      if (recipient) recipients.push(recipient);
-    }
+    const recipient = interaction.options.getUser("usuario");
     const amountInput = interaction.options.getString("valor");
+    const autoAccept = interaction.options.getBoolean("aceitacao") ?? false;
+    const durationChoice = interaction.options.getString("tempo") || "6m";
+    const durationMs = ({
+      "6m": 6 * 60 * 1000,
+      "12m": 12 * 60 * 1000,
+      "1h": 60 * 60 * 1000,
+      "2h": 2 * 60 * 60 * 1000,
+      "5h": 5 * 60 * 60 * 1000,
+      "12h": 12 * 60 * 60 * 1000,
+      "24h": 24 * 60 * 60 * 1000,
+    })[durationChoice];
     await createProposals({
       guild: interaction.guild,
       sender: interaction.user,
-      recipients,
+      recipients: recipient ? [recipient] : [],
       amountInput,
+      autoAccept,
+      durationMs,
       client: interaction.client,
-      send: async (payload, index = 0) => {
+      send: async payload => {
         if (payload.ephemeral) {
           if (interaction.replied || interaction.deferred) {
             return interaction.followUp({ content: payload.content, flags: MessageFlags.Ephemeral });
