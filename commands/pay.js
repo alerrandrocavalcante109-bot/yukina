@@ -375,6 +375,30 @@ async function handleButton(interaction) {
       });
     }
 
+    // Consulta os saldos atualizados e a posição de cada pessoa no ranking de Kizunas.
+    const senderBalanceDoc = await balanceCollection.findOne({
+      guildId: String(proposal.guildId),
+      userId: String(proposal.senderId),
+    });
+    const recipientBalanceDoc = await balanceCollection.findOne({
+      guildId: String(proposal.guildId),
+      userId: String(proposal.recipientId),
+    });
+    const senderBalance = Number(senderBalanceDoc?.balance || 0);
+    const recipientBalance = Number(recipientBalanceDoc?.balance || 0);
+    const [senderAhead, recipientAhead] = await Promise.all([
+      balanceCollection.countDocuments({
+        guildId: String(proposal.guildId),
+        balance: { $gt: senderBalance },
+      }),
+      balanceCollection.countDocuments({
+        guildId: String(proposal.guildId),
+        balance: { $gt: recipientBalance },
+      }),
+    ]);
+    const senderRank = senderAhead + 1;
+    const recipientRank = recipientAhead + 1;
+
     await proposalCollection.updateOne(
       { id: proposalId, status: "processing" },
       { $set: { status: "completed", completedAt: new Date() } }
@@ -386,15 +410,15 @@ async function handleButton(interaction) {
     }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui editar a proposta:", error.message));
     await interaction.message.reply({
       content: [
-        "🌸 **Yukina Pay · Acordo selado!**",
+        "🌸 **Transação concluída**",
         "",
-        "📣 <@" + proposal.senderId + "> e <@" + proposal.recipientId + ">, vocês confirmaram e concluíram esta transferência!",
+        "・<@" + proposal.senderId + "> acaba de transferir **" + format(proposal.amount) + "** para <@" + proposal.recipientId + ">.",
         "",
-        "「 As Kizunas chegaram ao seu destino. Que a prosperidade acompanhe vocês! 」",
+        "・Agora <@" + proposal.senderId + "> possui **" + format(senderBalance) + "**",
+        "E está em **" + format(senderRank) + "º lugar** no rank de Kizunas!",
         "",
-        "💴 **Valor transferido:** " + format(proposal.amount) + " KZ",
-        "🎎 **Confirmações:** 2/2 — ambas recebidas",
-        "🏮 A transferência foi concluída com sucesso.",
+        "・E <@" + proposal.recipientId + "> agora possui **" + format(recipientBalance) + "**",
+        "E está em **" + format(recipientRank) + "º lugar** no rank de Kizunas!",
       ].join("\n"),
       allowedMentions: { users: [proposal.senderId, proposal.recipientId], parse: [] },
     }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui publicar a resposta:", error.message));
