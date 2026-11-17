@@ -410,37 +410,42 @@ async function handleButton(interaction) {
 module.exports = {
   data: (() => {
     const builder = new SlashCommandBuilder()
-      .setName("pagarkizunas")
-      .setDescription("Transfira Kizunas para outro membro.")
+      .setName("pagar")
+      .setDescription("Comandos para transferir Kizunas.")
       .setDMPermission(false)
-      .addUserOption(option =>
-        option.setName("usuario")
-          .setDescription("Pessoa que receberá as Kizunas")
-          .setRequired(true)
-      )
-      .addStringOption(option =>
-        option.setName("valor")
-          .setDescription("Valor em Kizunas: 100k, all, half ou 100000")
-          .setRequired(true)
-          .setMaxLength(32)
-      )
-      .addBooleanOption(option =>
-        option.setName("aceitacao")
-          .setDescription("Aceitar automaticamente em seu nome; o destinatário ainda precisa aceitar")
-          .setRequired(false)
-      )
-      .addStringOption(option =>
-        option.setName("tempo")
-          .setDescription("Prazo para as duas confirmações")
-          .setRequired(false)
-          .addChoices(
-            { name: "6 minutos", value: "6m" },
-            { name: "12 minutos", value: "12m" },
-            { name: "1 hora", value: "1h" },
-            { name: "2 horas", value: "2h" },
-            { name: "5 horas", value: "5h" },
-            { name: "12 horas", value: "12h" },
-            { name: "24 horas", value: "24h" }
+      .addSubcommand(subcommand =>
+        subcommand
+          .setName("kizunas")
+          .setDescription("Transfira Kizunas para outro membro.")
+          .addUserOption(option =>
+            option.setName("usuario")
+              .setDescription("Pessoa que receberá as Kizunas")
+              .setRequired(true)
+          )
+          .addStringOption(option =>
+            option.setName("valor")
+              .setDescription("Valor em Kizunas: 100k, all, half ou 100000")
+              .setRequired(true)
+              .setMaxLength(32)
+          )
+          .addBooleanOption(option =>
+            option.setName("aceitacao")
+              .setDescription("Aceitar automaticamente em seu nome; o destinatário ainda precisa aceitar")
+              .setRequired(false)
+          )
+          .addStringOption(option =>
+            option.setName("tempo")
+              .setDescription("Prazo para as duas confirmações")
+              .setRequired(false)
+              .addChoices(
+                { name: "6 minutos", value: "6m" },
+                { name: "12 minutos", value: "12m" },
+                { name: "1 hora", value: "1h" },
+                { name: "2 horas", value: "2h" },
+                { name: "5 horas", value: "5h" },
+                { name: "12 horas", value: "12h" },
+                { name: "24 horas", value: "24h" }
+              )
           )
       );
     return builder;
