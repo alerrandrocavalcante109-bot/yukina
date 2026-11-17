@@ -61,68 +61,31 @@ function parseAmount(input, availableBalance, recipientCount) {
   return Math.floor(amount);
 }
 
-function buildRows(proposal, disabled = false) {
+function buildRows(proposal, disabled = false, completed = false) {
   const count = Array.isArray(proposal.acceptedBy) ? proposal.acceptedBy.length : 0;
   const accept = new ButtonBuilder()
     .setCustomId("yukina-pay:accept:" + proposal.id)
-    .setLabel("Aceitar transferência · " + count + "/2")
-    .setStyle(ButtonStyle.Success)
-    .setDisabled(disabled || count >= 2);
-  const refuse = new ButtonBuilder()
-    .setCustomId("yukina-pay:refuse:" + proposal.id)
-    .setLabel("Recusar")
-    .setStyle(ButtonStyle.Secondary)
-    .setDisabled(disabled);
-  return [new ActionRowBuilder().addComponents(accept, refuse)];
+    .setLabel(completed ? "Transferência concluída" : "Aceitar " + count + "/2")
+    .setStyle(completed ? ButtonStyle.Success : ButtonStyle.Secondary)
+    .setDisabled(disabled || completed);
+  return [new ActionRowBuilder().addComponents(accept)];
 }
 
 function proposalText(proposal) {
-  const count = Array.isArray(proposal.acceptedBy) ? proposal.acceptedBy.length : 0;
-  const first = count >= 1 ? "✓ Uma pessoa confirmou." : "◌ Aguardando a primeira confirmação.";
-  const second = count >= 2 ? "✓ As duas confirmações foram recebidas." : "◌ A segunda confirmação ainda está pendente.";
+  const timestamp = Math.floor(new Date(proposal.expiresAt).getTime() / 1000);
   return [
-    "🌸 **Yukina Pay**",
+    "# 💸 Pagamento de Kizunas",
     "",
-    "🏮 **・ PROPOSTA DE TRANSFERÊNCIA**",
-    "📣 Atenção, <@" + proposal.senderId + "> e <@" + proposal.recipientId + ">!" + (proposal.batchSize > 1 ? " · Proposta " + proposal.batchIndex + "/" + proposal.batchSize : ""),
+    "<@" + proposal.senderId + "> está prestes a transferir **" + format(proposal.amount) + "** <:1000008301:1572057568086335508> para <@" + proposal.recipientId + ">!",
     "",
-    "「 " + PHRASE + " 」",
+    "**🏧 •** Para concluir a transferência, você e <@" + proposal.recipientId + "> precisam aceitar a transação clicando no botão abaixo.",
     "",
-    "💴 **Valor da transferência**",
-    "## " + format(proposal.amount) + " KZ",
-    "🧾 **Taxa:** 0 KZ",
-    "💰 **Total desta proposta:** " + format(proposal.amount) + " KZ",
+    "**⏳ •** Vocês têm até **<t:" + timestamp + ":F> (<t:" + timestamp + ":R>)** para aceitar a transferência!",
     "",
-    "🎎 **Confirmação do acordo**",
-    "⏳ **Prazo:** 6 minutos a partir da proposta",
-    "🔏 **Confirmações:** " + count + "/2",
-    first,
-    second,
+    "**⚠️ •** Não se esqueça: envie Kizunas apenas para pessoas confiáveis! Confira o destinatário e o valor antes de aceitar. Não aceite pagamentos de desconhecidos, não empreste Kizunas por promessas de devolução e desconfie de propostas suspeitas. Após a confirmação, a transação não poderá ser desfeita pela Yukina.",
     "",
-    "*A transferência só será realizada quando os dois participantes aceitarem. Se alguém recusar ou o prazo terminar, a proposta será cancelada.*"
+    "**🌸 •** Eu não me responsabilizo por acordos particulares entre membros."
   ].join("\n");
-}
-
-const TRANSFER_ANIMATION_MS = 4000;
-const TRANSFER_FRAMES = ["⟳", "↻", "⟲", "↺", "⟳", "↻", "⟲", "↺"];
-
-function wait(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-async function animateTransfer(interaction, proposal) {
-  const frameDelay = TRANSFER_ANIMATION_MS / TRANSFER_FRAMES.length;
-  for (const frame of TRANSFER_FRAMES) {
-    await interaction.message.edit({
-      content: "🌸 **Transferindo Kizunas " + frame + "**\\n\\n" +
-        "<@" + proposal.senderId + "> → <@" + proposal.recipientId + ">\\n" +
-        "💴 **Valor:** " + format(proposal.amount) + " KZ\\n\\n" +
-        "「 A Yukina está preparando a troca com cuidado... 」",
-      components: [],
-      allowedMentions: { parse: [] },
-    });
-    await wait(frameDelay);
-  }
 }
 
 async function editProposalMessage(client, proposal, content, components = []) {
@@ -310,22 +273,20 @@ async function handleButton(interaction) {
       return;
     }
 
-    const accepted = await proposalCollection.updateOne(
-      {
-        id: proposalId,
-        status: "pending",
-        expiresAt: { $gt: new Date() },
-        acceptedBy: { $ne: userId },
-      },
-      { $addToSet: { acceptedBy: userId } }
-    );
+    const wasAccepted = Array.isArray(proposal.acceptedBy) && proposal.acceptedBy.includes(userId);
+    const changed = wasAccepted
+      ? await proposalCollection.updateOne(
+          { id: proposalId, status: "pending", expiresAt: { $gt: new Date() }, acceptedBy: userId },
+          { $pull: { acceptedBy: userId } }
+        )
+      : await proposalCollection.updateOne(
+          { id: proposalId, status: "pending", expiresAt: { $gt: new Date() }, acceptedBy: { $ne: userId } },
+          { $addToSet: { acceptedBy: userId } }
+        );
     proposal = await proposalCollection.findOne({ id: proposalId });
     if (!proposal) return;
-    if (!accepted.modifiedCount) {
-      if (Array.isArray(proposal.acceptedBy) && proposal.acceptedBy.includes(userId)) {
-        return interaction.followUp({ content: "🌸 Você já confirmou esta proposta. Agora aguarde a outra pessoa.", flags: MessageFlags.Ephemeral });
-      }
-      return interaction.followUp({ content: "🍃 Esta proposta já foi respondida ou expirou.", flags: MessageFlags.Ephemeral });
+    if (!changed.modifiedCount) {
+      return interaction.followUp({ content: "🍃 Esta proposta já foi respondida ou expirou. Tente novamente se ela ainda estiver aberta.", flags: MessageFlags.Ephemeral });
     }
 
     if (proposal.acceptedBy.length < 2) {
@@ -334,7 +295,12 @@ async function handleButton(interaction) {
         components: buildRows(proposal),
         allowedMentions: { parse: [] },
       });
-      return interaction.followUp({ content: "🌸 Sua confirmação foi registrada. A Yukina está aguardando a outra pessoa.", flags: MessageFlags.Ephemeral });
+      return interaction.followUp({
+        content: wasAccepted
+          ? "🌸 Sua aceitação foi retirada. Você pode aceitar novamente enquanto a proposta estiver aberta."
+          : "🌸 Sua aceitação foi registrada. Clique novamente se quiser retirar sua confirmação.",
+        flags: MessageFlags.Ephemeral,
+      });
     }
 
     // Apenas um clique pode assumir o processamento depois da segunda confirmação.
@@ -349,12 +315,6 @@ async function handleButton(interaction) {
     );
     if (!claim.modifiedCount) {
       return interaction.followUp({ content: "🌙 As duas confirmações foram recebidas. A Yukina está concluindo o acordo.", flags: MessageFlags.Ephemeral });
-    }
-
-    try {
-      await animateTransfer(interaction, proposal);
-    } catch (animationError) {
-      console.warn("[Yukina Pay] A animação não pôde ser exibida por completo:", animationError.message);
     }
 
     const session = mongoClient.startSession();
@@ -419,8 +379,8 @@ async function handleButton(interaction) {
       { $set: { status: "completed", completedAt: new Date() } }
     );
     await interaction.message.edit({
-      content: "🌸 **Yukina Pay · Proposta concluída**\n\n「 O acordo foi selado; a transferência foi registrada. 」",
-      components: [],
+      content: proposalText(proposal),
+      components: buildRows(proposal, true, true),
       allowedMentions: { parse: [] },
     }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui editar a proposta:", error.message));
     await interaction.message.reply({
