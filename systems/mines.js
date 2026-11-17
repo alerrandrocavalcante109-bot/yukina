@@ -6,8 +6,7 @@ const {
   ButtonStyle,
   ContainerBuilder,
   TextDisplayBuilder,
-  MediaGalleryBuilder,
-  MediaGalleryItemBuilder,
+  EmbedBuilder,
   MessageFlags,
 } = require("discord.js");
 const { MongoClient } = require("mongodb");
@@ -222,20 +221,24 @@ function buildFinalContainer(game, kind) {
     text = "## 🏆 Você venceu!\nVocê acaba de sair das cavernas de Kizunas sem encontrar uma bomba, que feito emocionante, e você sai com (**" + format(game.currentPayout) + " KZ** com um lucro de **" + format(profit) + " KZ**).";
   }
   const numberLine = kind === "expired" ? "" : "\n\n**Partida #" + game.gameNumber + "**";
-  const container = new ContainerBuilder()
-    .setAccentColor(kind === "lost" ? 0xE8A0A0 : 0xA7D8F0);
+  return new ContainerBuilder()
+    .setAccentColor(kind === "lost" ? 0xE8A0A0 : 0xA7D8F0)
+    .addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
+}
 
-  if (kind === "lost" || kind === "won") {
-    const imageUrl = kind === "lost" ? MINES_DEFEAT_IMAGE : MINES_VICTORY_IMAGE;
-    container.addMediaGalleryComponents(
-      new MediaGalleryBuilder().addItems(
-        new MediaGalleryItemBuilder().setURL(imageUrl)
-      )
-    );
-  }
-
-  container.addTextDisplayComponents(new TextDisplayBuilder().setContent(text + numberLine));
-  return container;
+function buildFinalEmbed(game, kind) {
+  const lost = kind === "lost";
+  const profit = Math.max(0, Number(game.currentPayout) - Number(game.bet));
+  const description = lost
+    ? "Você perdeu, o universo não quis te ajudar em sua jornada nas cavernas de Kizunas, sendo assim, você perdeu **" + format(game.bet) + " KZ**.\n\n**Partida #" + game.gameNumber + "**"
+    : "Você acaba de sair das cavernas de Kizunas sem encontrar uma bomba, que feito emocionante, e você sai com (**" + format(game.currentPayout) + " KZ** com um lucro de **" + format(profit) + " KZ**).\n\n**Partida #" + game.gameNumber + "**";
+  return new EmbedBuilder()
+    .setColor(lost ? 0xE8A0A0 : 0xA7D8F0)
+    .setAuthor({
+      name: lost ? "💥 Você perdeu!" : "🏆 Você venceu!",
+      iconURL: lost ? MINES_DEFEAT_IMAGE : MINES_VICTORY_IMAGE,
+    })
+    .setDescription(description);
 }
 
 function buildRestartRow(game) {
@@ -457,26 +460,47 @@ async function finalizeDisplay(client, game) {
   const kind = game.status === "lost" ? "lost"
     : game.status === "expired" ? "expired"
     : game.status === "cancelled" ? "cancelled" : "won";
-  const resultContainer = buildFinalContainer(game, kind);
-  let components;
+
+  let updated = false;
   if (kind === "lost" || kind === "won") {
-    // O tabuleiro permanece em seu próprio container, com todas as ações desativadas.
+    // Mantém o tabuleiro encerrado na mensagem original.
     const boardContainer = buildGameComponents(game)[0];
-    // Resultado e botão Novamente ficam juntos em um segundo container, separado do tabuleiro.
-    resultContainer.addActionRowComponents(buildRestartRow(game));
-    components = [boardContainer, resultContainer];
+    updated = await editGameMessage(client, game, [boardContainer]);
+    if (!updated) return false;
+
+    try {
+      const channel = await client.channels.fetch(game.channelId);
+      if (!channel?.isTextBased()) return false;
+      let resultMessage = null;
+      if (game.finalResultMessageId) {
+        resultMessage = await channel.messages.fetch(game.finalResultMessageId).catch(() => null);
+      }
+      if (!resultMessage) {
+        resultMessage = await channel.send({
+          embeds: [buildFinalEmbed(game, kind)],
+          components: [buildRestartRow(game)],
+          allowedMentions: { parse: [] },
+        });
+        await getDb().then(db => db.collection("mines_games").updateOne(
+          { _id: game._id, status: game.status },
+          { $set: { finalResultMessageId: resultMessage.id } }
+        ));
+      }
+    } catch (error) {
+      console.warn("[Mines] Não foi possível publicar o resultado da partida #" + game.gameNumber + ":", error?.message || error);
+      return false;
+    }
   } else {
-    components = [resultContainer];
+    updated = await editGameMessage(client, game, [buildFinalContainer(game, kind)]);
+    if (!updated) return false;
   }
-  const updated = await editGameMessage(client, game, components);
-  if (updated) {
-    const db = await getDb();
-    await db.collection("mines_games").updateOne(
-      { _id: game._id, status: game.status },
-      { $set: { displayPending: false, displayedAt: new Date() } }
-    );
-  }
-  return updated;
+
+  const db = await getDb();
+  await db.collection("mines_games").updateOne(
+    { _id: game._id, status: game.status },
+    { $set: { displayPending: false, displayedAt: new Date() } }
+  );
+  return true;
 }
 
 async function initialize(client) {
