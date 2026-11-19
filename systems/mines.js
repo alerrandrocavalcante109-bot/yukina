@@ -20,6 +20,7 @@ const MAX_BET = 10_000_000;
 const MIN_BOMBS = 1;
 const MAX_BOMBS = 16;
 const EXPIRATION_MS = 5 * 60 * 1000;
+const RESTART_WINDOW_MS = 5 * 60 * 1000;
 const COLOR = 0x9B59B6;
 const MINES_VICTORY_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318138509/1572020345190350939/file_000000000164820eaba9981ac5e788dd.png?ex=6afcd989&is=6afb8809&hm=487fe55ce6c7d73b3f070275d7e43d658dc466f79948a833e3c77c81364969d3";
 const MINES_DEFEAT_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318138509/1572020345664311516/file_00000000bf4c820eb93005cddd28f21f.png?ex=6afcd989&is=6afb8809&hm=22fccc0130aec04e0598fdb32f4f1fd11dc27540da581b8c00aaef15383a8f2f";
@@ -27,6 +28,7 @@ const MINES_DEFEAT_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318
 let mongoClient;
 let dbPromise;
 const expiryTimers = new Map();
+const restartExpiryTimers = new Map();
 const gameLocks = new Set();
 
 async function getDb() {
@@ -243,12 +245,15 @@ function buildFinalEmbed(game, kind) {
 }
 
 function buildRestartRow(game) {
+  const endedAt = game.endedAt ? new Date(game.endedAt).getTime() : 0;
+  const expired = !endedAt || Date.now() >= endedAt + RESTART_WINDOW_MS;
   return new ActionRowBuilder().addComponents(
     new ButtonBuilder()
       .setCustomId("mines:again:" + game._id)
       .setLabel("Novamente")
       .setEmoji("🔁")
       .setStyle(ButtonStyle.Success)
+      .setDisabled(expired || Boolean(game.restartedAt))
   );
 }
 
@@ -270,6 +275,50 @@ async function sendEphemeral(interaction, content) {
   const payload = { content, flags: MessageFlags.Ephemeral };
   if (interaction.deferred || interaction.replied) return interaction.followUp(payload);
   return interaction.reply(payload);
+}
+
+async function getStartCommandMention(client) {
+  try {
+    const commands = await client.application.commands.fetch();
+    const command = commands.find(item => item.name === "iniciar-minas");
+    if (command?.id) return "</iniciar-minas:" + command.id + ">";
+  } catch (error) {
+    console.warn("[Mines] Não foi possível localizar o comando iniciar-minas:", error?.message || error);
+  }
+  return "`/iniciar-minas`";
+}
+
+async function disableRestartMessage(client, game) {
+  if (!game?.channelId || !game?.finalResultMessageId) return false;
+  try {
+    const channel = await client.channels.fetch(game.channelId);
+    if (!channel?.isTextBased()) return false;
+    const message = await channel.messages.fetch(game.finalResultMessageId);
+    await message.edit({ components: [buildRestartRow(game)], allowedMentions: { parse: [] } });
+    return true;
+  } catch (error) {
+    console.warn("[Mines] Não foi possível desativar o botão Novamente da partida #" + game.gameNumber + ":", error?.message || error);
+    return false;
+  }
+}
+
+function clearRestartExpiry(gameId) {
+  const timer = restartExpiryTimers.get(gameId);
+  if (timer) clearTimeout(timer);
+  restartExpiryTimers.delete(gameId);
+}
+
+function scheduleRestartExpiry(client, game) {
+  if (!game?.finalResultMessageId || !["lost", "cashed_out"].includes(game.status)) return;
+  clearRestartExpiry(game._id);
+  const endedAt = game.endedAt ? new Date(game.endedAt).getTime() : 0;
+  const remaining = Math.max(0, endedAt + RESTART_WINDOW_MS - Date.now());
+  const timer = setTimeout(async () => {
+    restartExpiryTimers.delete(game._id);
+    await disableRestartMessage(client, game);
+  }, Math.min(remaining, 2_147_000_000));
+  if (typeof timer.unref === "function") timer.unref();
+  restartExpiryTimers.set(game._id, timer);
 }
 
 async function withGameLock(gameId, callback) {
@@ -487,7 +536,9 @@ async function finalizeDisplay(client, game) {
           { _id: game._id, status: game.status },
           { $set: { finalResultMessageId: resultMessage.id } }
         ));
+        game = { ...game, finalResultMessageId: resultMessage.id };
       }
+      scheduleRestartExpiry(client, game);
     } catch (error) {
       console.warn("[Mines] Não foi possível publicar o resultado da partida #" + game.gameNumber + ":", error?.message || error);
       return false;
@@ -510,6 +561,17 @@ async function initialize(client) {
   const pendingDisplays = await db.collection("mines_games")
     .find({ displayPending: true, status: { $in: ["lost", "expired", "cashed_out", "cancelled"] } }).toArray();
   for (const game of pendingDisplays) await finalizeDisplay(client, game);
+
+  const finishedGames = await db.collection("mines_games")
+    .find({ status: { $in: ["lost", "cashed_out"] }, finalResultMessageId: { $exists: true } }).toArray();
+  for (const game of finishedGames) {
+    const endedAt = game.endedAt ? new Date(game.endedAt).getTime() : 0;
+    if (!endedAt || Date.now() >= endedAt + RESTART_WINDOW_MS || game.restartedAt) {
+      await disableRestartMessage(client, game);
+    } else {
+      scheduleRestartExpiry(client, game);
+    }
+  }
 
   const activeGames = await db.collection("mines_games")
     .find({ status: "active", expiresAt: { $ne: null } }).toArray();
@@ -597,6 +659,12 @@ async function handleButton(interaction, client) {
     if (!["lost", "cashed_out"].includes(game.status)) {
       return sendEphemeral(interaction, "Não é possível iniciar outra partida por este botão.");
     }
+    const endedAt = game.endedAt ? new Date(game.endedAt).getTime() : 0;
+    if (!endedAt || Date.now() >= endedAt + RESTART_WINDOW_MS || game.restartedAt) {
+      await disableRestartMessage(client, game);
+      const commandMention = await getStartCommandMention(client);
+      return sendEphemeral(interaction, "🌸 Esse jogo já encerrou. Utilize " + commandMention + " para iniciar uma nova partida.");
+    }
     await interaction.deferUpdate();
     const restartResult = await withGameLock(gameId, async () => {
       const latest = await db.collection("mines_games").findOne({ _id: gameId });
@@ -623,6 +691,9 @@ async function handleButton(interaction, client) {
           { _id: gameId, status: latest.status, restartedAt: { $exists: false } },
           { $set: { restartedAt: new Date(), updatedAt: new Date() } }
         );
+        const restartedGame = { ...latest, restartedAt: new Date() };
+        clearRestartExpiry(gameId);
+        await disableRestartMessage(client, restartedGame);
       }
       return result;
     });
