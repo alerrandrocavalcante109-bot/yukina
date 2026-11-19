@@ -135,6 +135,6 @@ module.exports = {
   async prefixExecute(message, args = [], client) {
     if (!message.guild) return message.reply("❄️ Use este comando dentro de um servidor.");
     const reason = args.join(" ").replace(/^motivo\s*:?\s*/i, "");
-    await run(message.guild, message.author, reason, text => message.channel.send(text), client || message.client);
+    await run(message.guild, message.author, reason, text => message.reply({ content: text, allowedMentions: { repliedUser: false } }), client || message.client);
   }
 };
