@@ -114,17 +114,12 @@ async function expireProposal(client, proposalId) {
     await editProposalMessage(
       client,
       proposal,
-      "🍃 **Yukina Pay · Proposta expirada**\nO momento da decisão passou. O prazo de seis minutos terminou e nenhuma Kizuna foi transferida.",
+      "🍃 **Yukina Pay · Proposta expirada**\nO momento da decisão passou. O prazo da proposta terminou e nenhuma Kizuna foi transferida.",
       []
     );
   } catch (error) {
     console.error("[Yukina Pay] Falha ao expirar proposta:", error.message || error);
   }
-}
-
-function scheduleExpiration(client, proposalId) {
-  const timer = setTimeout(() => expireProposal(client, proposalId), PROPOSAL_MS + 500);
-  if (typeof timer.unref === "function") timer.unref();
 }
 
 async function createProposals({ guild, sender, recipients, amountInput, autoAccept = false, durationMs = DEFAULT_PROPOSAL_MS, send, client }) {
@@ -254,7 +249,7 @@ async function handleButton(interaction) {
     }
     if (new Date(proposal.expiresAt).getTime() <= Date.now()) {
       await expireProposal(interaction.client, proposalId);
-      return interaction.followUp({ content: "⏳ O prazo de seis minutos terminou. A proposta foi cancelada.", flags: MessageFlags.Ephemeral });
+      return interaction.followUp({ content: "⏳ O prazo desta proposta terminou. Ela foi cancelada.", flags: MessageFlags.Ephemeral });
     }
 
     if (action === "refuse") {
@@ -447,26 +442,27 @@ module.exports = {
               .setRequired(true)
           )
           .addStringOption(option =>
-            option.setName("valor")
-              .setDescription("Valor em Kizunas: 100k, all, half ou 100000")
+            option.setName("quantidade")
+              .setDescription("Quantidade de Kizunas: 100k, all, half ou 100000")
               .setRequired(true)
               .setMaxLength(32)
           )
           .addBooleanOption(option =>
-            option.setName("aceitacao")
+            option.setName("autopay")
               .setDescription("Aceitar automaticamente em seu nome; o destinatário ainda precisa aceitar")
               .setRequired(false)
           )
           .addStringOption(option =>
-            option.setName("tempo")
+            option.setName("duracao")
               .setDescription("Prazo para as duas confirmações")
               .setRequired(false)
               .addChoices(
-                { name: "6 minutos", value: "6m" },
-                { name: "12 minutos", value: "12m" },
+                { name: "6 minutos", value: "6min" },
+                { name: "8 minutos", value: "8min" },
+                { name: "12 minutos", value: "12min" },
                 { name: "1 hora", value: "1h" },
-                { name: "2 horas", value: "2h" },
-                { name: "5 horas", value: "5h" },
+                { name: "3 horas", value: "3h" },
+                { name: "7 horas", value: "7h" },
                 { name: "12 horas", value: "12h" },
                 { name: "24 horas", value: "24h" }
               )
@@ -480,18 +476,19 @@ module.exports = {
 
   async execute(interaction) {
     const recipient = interaction.options.getUser("usuario");
-    const amountInput = interaction.options.getString("valor");
-    const autoAccept = interaction.options.getBoolean("aceitacao") ?? false;
-    const durationChoice = interaction.options.getString("tempo") || "6m";
+    const amountInput = interaction.options.getString("quantidade");
+    const autoAccept = interaction.options.getBoolean("autopay") ?? false;
+    const durationChoice = interaction.options.getString("duracao") || "6min";
     const durationMs = ({
-      "6m": 6 * 60 * 1000,
-      "12m": 12 * 60 * 1000,
+      "6min": 6 * 60 * 1000,
+      "8min": 8 * 60 * 1000,
+      "12min": 12 * 60 * 1000,
       "1h": 60 * 60 * 1000,
-      "2h": 2 * 60 * 60 * 1000,
-      "5h": 5 * 60 * 60 * 1000,
+      "3h": 3 * 60 * 60 * 1000,
+      "7h": 7 * 60 * 60 * 1000,
       "12h": 12 * 60 * 60 * 1000,
       "24h": 24 * 60 * 60 * 1000,
-    })[durationChoice];
+    })[durationChoice] || DEFAULT_PROPOSAL_MS;
     await createProposals({
       guild: interaction.guild,
       sender: interaction.user,
