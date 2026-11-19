@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#24143e"><title>Painel Economia · Yukina</title>
+<script src="./api-config.js"></script>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;color:#fff;background:#160d25}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(ellipse at top,#51306e 0,#24143e 48%,#100918 100%);padding:24px}
+main{width:min(760px,100%);margin:5vh auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:24px}
+a{color:#e8c8ff;text-decoration:none}.card{background:#ffffff0d;border:1px solid #ffffff24;border-radius:20px;padding:24px;box-shadow:0 18px 55px #0005}
+h1{margin:0 0 8px;font-size:clamp(26px,5vw,36px)}p{color:#e5d8ef;line-height:1.65}.warning{border-left:3px solid #ef8a9a;padding:10px 14px;background:#ef8a9a12;border-radius:8px;margin:20px 0}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:10px;margin:18px 0}.stat{padding:13px;border:1px solid #ffffff20;border-radius:12px;background:#ffffff08}.stat strong{display:block;font-size:22px;margin-top:5px;overflow-wrap:anywhere}.muted{color:#cbbbd8;font-size:13px}
+input{width:100%;padding:14px;border:1px solid #ffffff40;border-radius:10px;background:#10091b;color:#fff;font:inherit;margin:8px 0 14px}
+button{border:0;border-radius:11px;padding:13px 18px;font:inherit;font-weight:700;cursor:pointer;background:#c45caa;color:#fff}button:disabled{opacity:.4;cursor:not-allowed}.danger{background:#b83252}.actions{display:flex;gap:10px;flex-wrap:wrap}.status{min-height:24px;margin-top:14px;color:#f0d9ff}
+@media(max-width:520px){body{padding:14px}.card{padding:18px}.top{align-items:flex-start}}
+</style></head>
+<body><main>
+<div class="top"><a href="./configuracoes-servidor.html">← Voltar ao painel</a><span>❄️ YUKINA</span></div>
+<section class="card">
+<p class="muted">ÁREA RESTRITA · PROPRIETÁRIO</p>
+<h1>💴 Painel Economia</h1>
+<p>Ferramentas administrativas da economia global da Yukina.</p>
+<div class="warning"><strong>⚠️ Reset global</strong><br>Esta ação apaga saldos de carteira, dinheiro no banco, dívidas, transferências, registros do Daily, histórico de jogos e registros de recompensas econômicas. Planos VIP, XP, waifus, perfis e configurações dos sistemas serão preservados.</div>
+<h2>Registros atuais</h2><div class="stats" id="stats"><div class="stat">Carregando…</div></div>
+<h2>Resetar economia</h2>
+<p class="muted">Para liberar o reset, digite exatamente <strong>RESETAR ECONOMIA</strong>. A operação é global e não pode ser desfeita.</p>
+<label for="confirmation">Confirmação</label>
+<input id="confirmation" autocomplete="off" placeholder="Digite RESETAR ECONOMIA">
+<div class="actions"><button id="refresh">Atualizar dados</button><button class="danger" id="reset" disabled>Resetar toda a economia</button></div>
+<div class="status" id="status" role="status" aria-live="polite"></div>
+</section></main>
+<script>
+(() => {
+ const API=(window.YUKINA_API_URL||"https://yukina-s1lz.onrender.com").replace(/\/$/,"");
+ const $=id=>document.getElementById(id);
+ const names={
+  economy_balances:"Carteiras KZ",yukina_bank_accounts:"Contas bancárias e dívidas",
+  yukina_bank_transactions:"Histórico do banco",yukina_pay_proposals:"Transferências",
+  daily_claims:"Coletas do Daily",mines_games:"Partidas de Minas",mines_ledger:"Movimentações de Minas",
+  mines_counters:"Contadores de Minas",vip_plan_command_ledger:"Recompensas de comandos VIP",
+  drop_auto_manual_payouts:"Pagamentos manuais de Drop",drop_auto_payout_ledger:"Pagamentos de Drop",
+  drop_auto_payout_attempts:"Tentativas de pagamento",drop_auto_history:"Histórico de Drops"
+ };
+ let token=localStorage.getItem("yukina_discord_token")||"";
+ async function getToken(){
+  if(token)return token;
+  const refresh=localStorage.getItem("yukina_discord_refresh_token")||"";
+  if(!refresh)throw new Error("Entre com o Discord pelo painel principal antes de continuar.");
+  const response=await fetch(API+"/api/oauth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh}),cache:"no-store"});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok||!data.access_token)throw new Error("Sua sessão expirou. Entre novamente pelo painel.");
+  token=data.access_token;localStorage.setItem("yukina_discord_token",token);
+  if(data.refresh_token)localStorage.setItem("yukina_discord_refresh_token",data.refresh_token);
+  return token;
+ }
+ async function request(method,body){
+  const t=await getToken();
+  const response=await fetch(API+"/api/owner/economy",{method,headers:{Authorization:"Bearer "+t,Accept:"application/json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined,cache:"no-store"});
+  const data=await response.json().catch(()=>({}));
+  if(!response.ok)throw new Error(data.detail||"Não foi possível concluir a solicitação.");
+  return data;
+ }
+ function render(counts){
+  const root=$("stats");root.replaceChildren();
+  Object.entries(names).forEach(([key,label])=>{
+   const card=document.createElement("div");card.className="stat";
+   const title=document.createElement("span");title.textContent=label;
+   const value=document.createElement("strong");value.textContent=Number(counts[key]||0).toLocaleString("pt-BR");
+   card.append(title,value);root.append(card);
+  });
+ }
+ async function load(){
+  $("status").textContent="Consultando os registros…";
+  try{const data=await request("GET");render(data.counts||{});$("status").textContent="Dados carregados. A economia ainda não foi alterada.";}
+  catch(error){$("status").textContent=error.message;}
+ }
+ $("confirmation").addEventListener("input",()=>{$("reset").disabled=$("confirmation").value.trim()!=="RESETAR ECONOMIA";});
+ $("refresh").addEventListener("click",load);
+ $("reset").addEventListener("click",async()=>{
+  if($("confirmation").value.trim()!=="RESETAR ECONOMIA")return;
+  if(!window.confirm("Confirma apagar GLOBALMENTE os dados da economia? Esta ação não pode ser desfeita."))return;
+  $("reset").disabled=true;$("status").textContent="Executando o reset…";
+  try{
+   const data=await request("POST",{confirmation:"RESETAR ECONOMIA"});
+   $("status").textContent="Reset concluído. Registros apagados: "+Object.values(data.deleted||{}).reduce((a,b)=>a+Number(b||0),0).toLocaleString("pt-BR")+".";
+   $("confirmation").value="";await load();
+  }catch(error){$("status").textContent=error.message;$("reset").disabled=$("confirmation").value.trim()!=="RESETAR ECONOMIA";}
+ });
+ load();
+})();
+</script></body></html>
