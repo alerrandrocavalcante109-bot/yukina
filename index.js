@@ -888,6 +888,8 @@ async function panelApi(req, res, url) {
         "mines_ledger",
         "mines_counters",
         "vip_plan_command_ledger",
+        "drop_auto_runs",
+        "drop_auto_luck",
         "drop_auto_manual_payouts",
         "drop_auto_payout_ledger",
         "drop_auto_payout_attempts",
@@ -910,7 +912,7 @@ async function panelApi(req, res, url) {
         deleted[name] = Number(result.deletedCount || 0);
       }
       const legacyFile = path.join(__dirname, "data", "economia.json");
-      if (fs.existsSync(legacyFile)) fs.writeFileSync(legacyFile, "{}\\n", "utf8");
+      if (fs.existsSync(legacyFile)) fs.writeFileSync(legacyFile, "{}\n", "utf8");
       console.warn("[Painel Economia] Reset global executado pelo proprietário " + owner.id + ".", deleted);
       return sendJson(res, 200, { ok: true, deleted, detail: "A economia foi resetada." });
     } catch (error) {
