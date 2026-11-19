@@ -19,20 +19,23 @@ async function startFromCommand({ client, guild, channel, user, betInput, bombs,
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("iniciarminas")
-    .setDescription("[jogos] Explore as Cavernas de Kizunas.")
+    .setName("iniciar")
+    .setDescription("[jogos] Inicie um jogo.")
     .setDMPermission(false)
-    .addStringOption(option => option
-      .setName("valor")
-      .setDescription("Aposta em KZ: valor, all (todo o saldo) ou half (metade).")
-      .setRequired(true)
-      .setMaxLength(24))
-    .addIntegerOption(option => option
-      .setName("bombas")
-      .setDescription("Quantidade de bombas no tabuleiro.")
-      .setRequired(true)
-      .setMinValue(1)
-      .setMaxValue(16)),
+    .addSubcommand(subcommand => subcommand
+      .setName("minas")
+      .setDescription("Explore as Cavernas de Kizunas.")
+      .addStringOption(option => option
+        .setName("valor")
+        .setDescription("Aposta em KZ: valor, all (todo o saldo) ou half (metade).")
+        .setRequired(true)
+        .setMaxLength(24))
+      .addIntegerOption(option => option
+        .setName("bombas")
+        .setDescription("Quantidade de bombas no tabuleiro.")
+        .setRequired(true)
+        .setMinValue(1)
+        .setMaxValue(16))),
 
   name: "mines",
   aliases: ["mines"],
@@ -43,8 +46,8 @@ module.exports = {
       guild: interaction.guild,
       channel: interaction.channel,
       user: interaction.user,
-      betInput: interaction.options.getString("valor", true),
-      bombs: interaction.options.getInteger("bombas", true),
+      betInput: interaction.options.getString("valor", true, "minas"),
+      bombs: interaction.options.getInteger("bombas", true, "minas"),
       send: async payload => {
         if (interaction.replied || interaction.deferred) {
           return interaction.followUp(payload);
