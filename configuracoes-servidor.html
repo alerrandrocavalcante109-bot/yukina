@@ -180,6 +180,10 @@
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
     </nav>
+    <div class="drawer-category" id="ownerToolsCategory" aria-label="Administração" hidden>🔐 Administração</div>
+    <nav class="menu-links" id="ownerToolsNavigation" aria-label="Administração" hidden>
+      <a class="menu-link" href="./painel-economia.html" id="ownerEconomyLink" style="text-decoration:none"><span class="symbol">💴</span><span>Painel Economia</span></a>
+    </nav>
   </aside>
 
 
@@ -550,6 +554,13 @@
         }
         if(!response.ok) throw new Error("Não foi possível consultar o perfil");
         const user = await response.json();
+        const ownerToolsCategory = document.getElementById("ownerToolsCategory");
+        const ownerToolsNavigation = document.getElementById("ownerToolsNavigation");
+        if (ownerToolsCategory && ownerToolsNavigation) {
+          const isYukinaOwner = String(user.id) === "1533034328928555141";
+          ownerToolsCategory.hidden = !isYukinaOwner;
+          ownerToolsNavigation.hidden = !isYukinaOwner;
+        }
         if(!user?.id || !user?.username) throw new Error("Perfil inválido");
         const display = user.global_name || user.username;
         const picture = user.avatar
