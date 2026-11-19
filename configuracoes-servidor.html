@@ -141,6 +141,17 @@
     .staff-promotion-panel .prefix-status,
     .staff-promotion-panel .prefix-system-help{margin:0;line-height:1.65}
     .staff-promotion-panel .prefix-system-help{padding-top:2px}
+    .drop-config-panel{display:flex;flex-direction:column;gap:10px}
+    .drop-config-panel h2{margin:0 0 2px}
+    .drop-config-panel label:not(.ticket-option){display:block;margin-top:5px;font-weight:700}
+    .drop-config-area{display:grid;gap:9px;margin-top:8px;padding:14px;border:1px solid #ffffff2b;border-radius:14px;background:#ffffff08}
+    .drop-config-area[hidden]{display:none!important}
+    .drop-role-list{display:grid;gap:8px;margin-top:4px}
+    .drop-role-item{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border:1px solid #ffffff30;border-radius:11px;background:#ffffff08}
+    .drop-role-item strong{flex:1;min-width:110px;overflow-wrap:anywhere}
+    .drop-role-item input{width:105px;min-width:85px}
+    .drop-role-remove{padding:7px 10px;border:1px solid #ff9aa866;border-radius:9px;background:#ff9aa81a;color:#ffd1d8}
+
   </style>
 </head>
 <body>
@@ -180,6 +191,7 @@
     <div class="drawer-category" aria-label="Categoria Jogos">🎮 Jogos</div>
     <nav class="menu-links" id="gamesNavigation" aria-label="Jogos">
       <button class="menu-link" type="button" data-screen="contagem"><span class="symbol">🔢</span><span>Jogo de contagem</span></button>
+      <button class="menu-link" type="button" data-screen="drop"><span class="symbol">🎁</span><span>Drop</span></button>
     </nav>
     <div class="drawer-category" id="ownerToolsCategory" aria-label="Administração" hidden>🔐 Administração</div>
     <nav class="menu-links" id="ownerToolsNavigation" aria-label="Administração" hidden>
@@ -459,28 +471,73 @@
     </section>
     <section class="system-screen" data-screen-panel="drop" hidden>
       <p class="eyebrow">JOGO DA COMUNIDADE</p>
-      <h1>🎁 Sistema de drop</h1>
-      <p class="screen-description">Configure os cargos que poderão participar dos drops da comunidade. Selecione os cargos do servidor que deseja incluir; a seleção ficará visível aqui para você conferir.</p>
-      <div class="welcome-panel">
-        <span class="welcome-icon">🎁</span>
-        <h2>Cargos participantes</h2>
-        <p>Escolha os cargos que terão acesso aos drops. Você pode selecionar mais de um cargo e alterar sua escolha quando quiser.</p>
-        <button type="button" class="primary-action" id="dropChooseRoles" aria-expanded="false" aria-controls="dropRoleCard">Escolher cargos</button>
-        <p class="prefix-status" id="dropSelectedSummary" role="status" aria-live="polite">Nenhum cargo selecionado.</p>
-        <label for="dropExtraEntriesInput">Entradas extras</label>
-        <input class="prefix-input" id="dropExtraEntriesInput" type="number" min="0" max="1000" step="1" value="0" placeholder="Quantidade de entradas extras">
-        <p class="prefix-system-help">Defina quantas entradas adicionais os membros com os cargos selecionados receberão no drop.</p>
-        <button type="button" class="primary-action" id="dropAddButton">Adicionar</button>
-        <p class="prefix-status" id="dropAddStatus" role="status" aria-live="polite"></p>
-        <div id="dropAddedRoles" style="display:grid;gap:8px;margin-top:12px" aria-live="polite"></div>
-        <button type="button" class="primary-action" id="dropSaveButton">Salvar configurações do drop</button>
-        <p class="prefix-status" id="dropSaveStatus" role="status" aria-live="polite"></p>
-        <div class="counting-picker-card" id="dropRoleCard" hidden>
-          <h3>❄️ Cargos do servidor</h3>          <p>Toque nos cargos para marcar ou desmarcar.</p>
-          <input id="dropRoleSearch" class="prefix-input" type="search" placeholder="Pesquisar cargo pelo nome..." autocomplete="off" aria-label="Pesquisar cargos para o drop">
-          <div id="dropRoleOptions" style="display:grid;gap:6px;max-height:260px;overflow-y:auto;margin-top:10px"><p>Carregando cargos…</p></div>
-          <p class="prefix-status" id="dropRoleStatus" role="status" aria-live="polite"></p>
+      <h1>🎁 Sistema de Drop</h1>
+      <p class="screen-description">Configure as entradas, permissões, aparência e requisitos dos drops deste servidor. As alterações serão aplicadas depois de usar Salvar na barra inferior.</p>
+      <div class="system-placeholder drop-config-panel">
+        <h2>🎟️ Entradas extras</h2>
+        <p class="prefix-system-description">Ative para adicionar cargos que recebem entradas adicionais. Cada cargo pode ter uma quantidade diferente.</p>
+        <label class="ticket-option"><span><strong>Ativar entradas extras</strong><small>Quando ativado, você poderá adicionar cargos e definir as entradas de cada um.</small></span><span class="switch"><input id="dropExtraEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropExtraArea" class="drop-config-area" hidden>
+          <label for="dropExtraRoleSelect">Cargo</label>
+          <select id="dropExtraRoleSelect" class="prefix-input"><option value="">Carregando cargos…</option></select>
+          <label for="dropExtraCount">Quantidade de entradas extras</label>
+          <input id="dropExtraCount" class="prefix-input" type="number" min="1" max="1000" step="1" value="1" inputmode="numeric">
+          <button type="button" class="primary-action" id="dropExtraAdd">Adicionar cargo</button>
+          <div id="dropExtraList" class="drop-role-list" aria-live="polite"></div>
         </div>
+      </div>
+      <div class="system-placeholder drop-config-panel" style="margin-top:16px">
+        <h2>🛡️ Cargos que ignoram requisitos</h2>
+        <p class="prefix-system-description">Os membros com esses cargos poderão participar mesmo sem cumprir os requisitos ativados.</p>
+        <label class="ticket-option"><span><strong>Ativar exceção de requisitos</strong><small>Quando ativado, aparecerá a seleção de cargos autorizados.</small></span><span class="switch"><input id="dropIgnoreEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropIgnoreArea" class="drop-config-area" hidden>
+          <label for="dropIgnoreRoleSelect">Adicionar cargo</label>
+          <select id="dropIgnoreRoleSelect" class="prefix-input"><option value="">Carregando cargos…</option></select>
+          <button type="button" class="primary-action" id="dropIgnoreAdd">Adicionar cargo</button>
+          <div id="dropIgnoreList" class="drop-role-list" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="system-placeholder drop-config-panel" style="margin-top:16px">
+        <h2>⛔ Cargos impedidos de participar</h2>
+        <p class="prefix-system-description">Membros com qualquer um desses cargos não poderão participar, mesmo que tenham outro cargo com permissão para ignorar requisitos.</p>
+        <label class="ticket-option"><span><strong>Ativar bloqueio de cargos</strong><small>Quando ativado, aparecerá a seleção de cargos bloqueados.</small></span><span class="switch"><input id="dropBlockedEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropBlockedArea" class="drop-config-area" hidden>
+          <label for="dropBlockedRoleSelect">Adicionar cargo</label>
+          <select id="dropBlockedRoleSelect" class="prefix-input"><option value="">Carregando cargos…</option></select>
+          <button type="button" class="primary-action" id="dropBlockedAdd">Adicionar cargo</button>
+          <div id="dropBlockedList" class="drop-role-list" aria-live="polite"></div>
+        </div>
+      </div>
+      <div class="system-placeholder drop-config-panel" style="margin-top:16px">
+        <h2>🖼️ Personalização do Embed</h2>
+        <label for="dropImageUrl">Imagem do embed (URL)</label>
+        <input id="dropImageUrl" class="prefix-input" type="url" maxlength="1000" placeholder="https://...">
+        <label for="dropLinkUrl">Link do embed (URL)</label>
+        <input id="dropLinkUrl" class="prefix-input" type="url" maxlength="1000" placeholder="https://...">
+        <label for="dropMessage">Frase junto com o embed</label>
+        <textarea id="dropMessage" class="prefix-input" rows="4" maxlength="1800" placeholder="Escreva a frase que acompanhará o comando Ydrop..."></textarea>
+        <p class="prefix-system-help">A imagem será exibida no embed. O link poderá ser usado como destino clicável e a frase será enviada junto com o embed sempre que Ydrop for utilizado.</p>
+      </div>
+      <div class="system-placeholder drop-config-panel" style="margin-top:16px">
+        <h2>📋 Requisitos para participar</h2>
+        <p class="prefix-system-description">O membro precisa cumprir todos os requisitos ativados para conseguir participar do Drop.</p>
+        <label class="ticket-option"><span><strong>Nível mínimo</strong><small>Exige que o participante alcance o nível configurado.</small></span><span class="switch"><input id="dropReqLevelEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropReqLevelArea" class="drop-config-area" hidden>
+          <label for="dropReqLevelValue">Nível mínimo exigido</label>
+          <input id="dropReqLevelValue" class="prefix-input" type="number" min="0" max="1000000" step="1" value="1">
+        </div>
+        <label class="ticket-option"><span><strong>Quantidade de mensagens</strong><small>Exige um total mínimo de mensagens enviadas no servidor.</small></span><span class="switch"><input id="dropReqMessagesEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropReqMessagesArea" class="drop-config-area" hidden>
+          <label for="dropReqMessagesValue">Mensagens mínimas</label>
+          <input id="dropReqMessagesValue" class="prefix-input" type="number" min="1" max="100000000" step="1" value="100">
+        </div>
+        <label class="ticket-option"><span><strong>Convites para o servidor</strong><small>Exige convites válidos de pessoas que continuam no servidor.</small></span><span class="switch"><input id="dropReqInvitesEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropReqInvitesArea" class="drop-config-area" hidden>
+          <label for="dropReqInvitesValue">Convites válidos mínimos</label>
+          <input id="dropReqInvitesValue" class="prefix-input" type="number" min="1" max="1000000" step="1" value="5">
+        </div>
+        <p class="prefix-system-help">Se faltar qualquer requisito ativado, a Yukina recusará a participação. Cargos que ignoram requisitos serão liberados, mas cargos bloqueados continuarão impedidos.</p>
+        <p class="prefix-status" id="dropConfigStatus" role="status" aria-live="polite"></p>
       </div>
     </section>
     <section class="system-screen" data-screen-panel="prefixo" hidden>
@@ -1326,142 +1383,139 @@
         staffPromotionStatus.textContent="❄️ Configurações salvas com sucesso!";
       }
     });
-    const dropChooseRoles=$("dropChooseRoles"),dropRoleCard=$("dropRoleCard"),dropRoleSearch=$("dropRoleSearch"),dropRoleOptions=$("dropRoleOptions"),dropRoleStatus=$("dropRoleStatus"),dropSelectedSummary=$("dropSelectedSummary"),dropExtraEntriesInput=$("dropExtraEntriesInput"),dropAddButton=$("dropAddButton"),dropAddStatus=$("dropAddStatus"),dropAddedRoles=$("dropAddedRoles");
-    let dropRoles=[],dropSelectedRoleIds=new Set(),dropRolesGuildId="",dropConfiguredRoles=[];
-    function renderDropRoles(){
-      if(!dropRoleOptions)return;
-      const query=(dropRoleSearch.value||"").trim().toLocaleLowerCase("pt-BR");
-      const roles=dropRoles.filter(role=>!role.managed&&String(role.name||"").toLocaleLowerCase("pt-BR").includes(query)).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt-BR"));
-      dropRoleOptions.replaceChildren();
-      if(!roles.length){const empty=document.createElement("p");empty.textContent=query?"Nenhum cargo encontrado.":"Nenhum cargo disponível neste servidor.";dropRoleOptions.appendChild(empty);}
-      roles.forEach(role=>{
-        const id=String(role.id),selected=dropSelectedRoleIds.has(id),button=document.createElement("button");
-        button.type="button";button.setAttribute("aria-pressed",String(selected));button.textContent=(selected?"✓  ":"＋  ")+"@"+role.name;
-        const hex=getDropRoleColor(role);
-        button.style.cssText="width:100%;text-align:left;padding:10px 12px;border:1px solid "+(selected?"#c4b5fd":"#ffffff20")+";border-radius:9px;background:"+(selected?"rgba(196,181,253,.2)":"rgba(255,255,255,.04)")+";color:"+hex+";cursor:pointer";
-        button.addEventListener("click",()=>{if(dropSelectedRoleIds.has(id))dropSelectedRoleIds.delete(id);else dropSelectedRoleIds.add(id);renderDropRoles();updateDropSummary();});
-        dropRoleOptions.appendChild(button);
+    const dropIds={
+      extraEnabled:"dropExtraEnabled",extraArea:"dropExtraArea",extraRole:"dropExtraRoleSelect",extraCount:"dropExtraCount",extraAdd:"dropExtraAdd",extraList:"dropExtraList",
+      ignoreEnabled:"dropIgnoreEnabled",ignoreArea:"dropIgnoreArea",ignoreRole:"dropIgnoreRoleSelect",ignoreAdd:"dropIgnoreAdd",ignoreList:"dropIgnoreList",
+      blockedEnabled:"dropBlockedEnabled",blockedArea:"dropBlockedArea",blockedRole:"dropBlockedRoleSelect",blockedAdd:"dropBlockedAdd",blockedList:"dropBlockedList",
+      image:"dropImageUrl",link:"dropLinkUrl",message:"dropMessage",levelEnabled:"dropReqLevelEnabled",levelArea:"dropReqLevelArea",levelValue:"dropReqLevelValue",
+      messagesEnabled:"dropReqMessagesEnabled",messagesArea:"dropReqMessagesArea",messagesValue:"dropReqMessagesValue",invitesEnabled:"dropReqInvitesEnabled",invitesArea:"dropReqInvitesArea",invitesValue:"dropReqInvitesValue",status:"dropConfigStatus"
+    };
+    const dropEl=key=>$(dropIds[key]);
+    let dropRoles=[],dropRolesGuildId="",dropConfigOriginal=null;
+    let dropExtraRoles=[],dropIgnoreRoleIds=[],dropBlockedRoleIds=[];
+    const dropClone=value=>JSON.parse(JSON.stringify(value));
+    function dropRoleName(id){return dropRoles.find(role=>String(role.id)===String(id))?.name||"Cargo não encontrado";}
+    function dropPopulateRoleSelects(){
+      ["extraRole","ignoreRole","blockedRole"].forEach(key=>{
+        const select=dropEl(key),current=select.value;
+        select.replaceChildren(new Option("Selecione um cargo…",""));
+        dropRoles.filter(role=>!role.managed).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt-BR")).forEach(role=>select.add(new Option("@"+role.name,String(role.id))));
+        if([...select.options].some(option=>option.value===current))select.value=current;
       });
-      dropRoleStatus.textContent=dropRoles.length?dropSelectedRoleIds.size+" cargo(s) marcado(s).":"";
     }
-    function updateDropSummary(){
-      const selected=dropRoles.filter(role=>dropSelectedRoleIds.has(String(role.id)));
-      dropSelectedSummary.textContent=selected.length?"Cargos selecionados: "+selected.map(role=>"@"+role.name).join(", "):"Nenhum cargo selecionado.";
+    function dropRenderRoleList(kind){
+      const isExtra=kind==="extra",ids=kind==="ignore"?dropIgnoreRoleIds:kind==="blocked"?dropBlockedRoleIds:dropExtraRoles.map(item=>item.id);
+      const list=dropEl(kind==="extra"?"extraList":kind==="ignore"?"ignoreList":"blockedList");
+      list.replaceChildren();
+      if(!ids.length){const empty=document.createElement("p");empty.className="prefix-system-help";empty.textContent="Nenhum cargo adicionado.";list.append(empty);return;}
+      ids.forEach(value=>{
+        const id=String(isExtra?value.id:value),row=document.createElement("div");row.className="drop-role-item";row.dataset.roleId=id;
+        const name=document.createElement("strong");name.textContent="@"+dropRoleName(id);row.append(name);
+        if(isExtra){
+          const count=document.createElement("input");count.className="prefix-input";count.type="number";count.min="1";count.max="1000";count.step="1";count.value=String(value.entries||1);count.setAttribute("aria-label","Entradas extras para @"+dropRoleName(id));
+          count.addEventListener("input",()=>{const item=dropExtraRoles.find(entry=>entry.id===id);if(item)item.entries=Number(count.value);window.YukinaPendingChanges?.refresh();});
+          const suffix=document.createElement("span");suffix.textContent="entradas extras";suffix.style.fontSize=".8rem";row.append(count,suffix);
+        }
+        const remove=document.createElement("button");remove.type="button";remove.className="drop-role-remove";remove.textContent="Remover";
+        remove.addEventListener("click",()=>{if(kind==="extra")dropExtraRoles=dropExtraRoles.filter(item=>item.id!==id);else if(kind==="ignore")dropIgnoreRoleIds=dropIgnoreRoleIds.filter(item=>item!==id);else dropBlockedRoleIds=dropBlockedRoleIds.filter(item=>item!==id);dropRenderRoleList(kind);window.YukinaPendingChanges?.refresh();});
+        row.append(remove);list.append(row);
+      });
     }
-    async function loadDropRoles(){
-      if(!dropRoleOptions)return;
-      const guild=selectedGuild();
-      if(!guild.id){dropRoleOptions.innerHTML="<p>Selecione um servidor no menu lateral.</p>";dropRoleStatus.textContent="";return;}
-      if(dropRolesGuildId===guild.id&&dropRoles.length){renderDropRoles();return;}
-      dropRoleOptions.innerHTML="<p>Carregando cargos…</p>";dropRoleStatus.textContent="";
+    function dropAddRole(kind){
+      const select=dropEl(kind==="extra"?"extraRole":kind==="ignore"?"ignoreRole":"blockedRole"),id=String(select.value||"");
+      if(!id){dropEl("status").textContent="Selecione um cargo antes de adicionar.";return;}
+      if(kind==="extra"){
+        const entries=Number(dropEl("extraCount").value);
+        if(!Number.isInteger(entries)||entries<1||entries>1000){dropEl("status").textContent="Informe de 1 a 1000 entradas extras.";return;}
+        if(dropExtraRoles.some(item=>item.id===id)){dropEl("status").textContent="Esse cargo já está na lista de entradas extras.";return;}
+        dropExtraRoles.push({id,name:dropRoleName(id),entries});
+      }else{
+        const list=kind==="ignore"?dropIgnoreRoleIds:dropBlockedRoleIds;
+        if(list.includes(id)){dropEl("status").textContent="Esse cargo já foi adicionado.";return;}
+        list.push(id);
+      }
+      select.value="";dropRenderRoleList(kind);dropEl("status").textContent="Cargo adicionado. Salve as alterações na barra inferior.";window.YukinaPendingChanges?.refresh();
+    }
+    function dropGetConfig(){
+      return {
+        enabled:true,
+        extraEntries:{enabled:dropEl("extraEnabled").checked,roles:dropClone(dropExtraRoles)},
+        ignoreRequirements:{enabled:dropEl("ignoreEnabled").checked,roleIds:[...dropIgnoreRoleIds]},
+        blockedRoles:{enabled:dropEl("blockedEnabled").checked,roleIds:[...dropBlockedRoleIds]},
+        embed:{imageUrl:dropEl("image").value.trim(),linkUrl:dropEl("link").value.trim(),message:dropEl("message").value},
+        requirements:{
+          level:{enabled:dropEl("levelEnabled").checked,value:Number(dropEl("levelValue").value)||0},
+          messages:{enabled:dropEl("messagesEnabled").checked,value:Number(dropEl("messagesValue").value)||0},
+          invites:{enabled:dropEl("invitesEnabled").checked,value:Number(dropEl("invitesValue").value)||0}
+        }
+      };
+    }
+    function dropSetConfig(config){
+      const saved=config&&typeof config==="object"?config:{};
+      const extras=saved.extraEntries||{};
+      dropExtraRoles=Array.isArray(extras.roles)?extras.roles.map(item=>({id:String(item.id),name:String(item.name||dropRoleName(item.id)),entries:Number(item.entries)||1})).filter(item=>item.id):[];
+      const ignore=saved.ignoreRequirements||{},blocked=saved.blockedRoles||{},req=saved.requirements||{},embed=saved.embed||{};
+      dropIgnoreRoleIds=Array.isArray(ignore.roleIds)?ignore.roleIds.map(String):[];
+      dropBlockedRoleIds=Array.isArray(blocked.roleIds)?blocked.roleIds.map(String):[];
+      dropEl("extraEnabled").checked=Boolean(extras.enabled);dropEl("ignoreEnabled").checked=Boolean(ignore.enabled);dropEl("blockedEnabled").checked=Boolean(blocked.enabled);
+      dropEl("image").value=String(embed.imageUrl||"");dropEl("link").value=String(embed.linkUrl||"");dropEl("message").value=String(embed.message||"");
+      [["level","level"],["messages","messages"],["invites","invites"]].forEach(([key,prefix])=>{
+        const item=req[key]||{};dropEl(prefix+"Enabled").checked=Boolean(item.enabled);dropEl(prefix+"Value").value=String(Number.isFinite(Number(item.value))?Number(item.value):(key==="level"?1:key==="messages"?100:5));
+      });
+      ["extra","ignore","blocked"].forEach(kind=>{dropEl(kind==="extra"?"extraArea":kind==="ignore"?"ignoreArea":"blockedArea").hidden=!dropEl(kind==="extra"?"extraEnabled":kind==="ignore"?"ignoreEnabled":"blockedEnabled").checked;dropRenderRoleList(kind);});
+      [["level","level"],["messages","messages"],["invites","invites"]].forEach(([key,prefix])=>{dropEl(prefix+"Area").hidden=!dropEl(prefix+"Enabled").checked;});
+    }
+    async function loadDropConfig(force=false){
+      const guild=selectedGuild();if(!guild.id){dropEl("status").textContent="Selecione um servidor no menu lateral.";return;}
+      if(!force&&dropRolesGuildId===guild.id&&dropConfigOriginal)return;
+      dropEl("status").textContent="Carregando cargos e configurações…";
       try{
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
-        if(!accessToken)throw new Error("Entre com o Discord para carregar os cargos.");
+        if(!accessToken)throw new Error("Entre com o Discord para carregar as configurações.");
         const headers={Authorization:"Bearer "+accessToken,Accept:"application/json"};
         const [resourcesResponse,settingsResponse]=await Promise.all([
           fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/resources",{headers,cache:"no-store"}),
           fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{headers,cache:"no-store"})
         ]);
-        const data=await resourcesResponse.json().catch(()=>({})),settingsData=await settingsResponse.json().catch(()=>({}));
-        if(!resourcesResponse.ok)throw new Error(data.detail||"Não foi possível carregar os cargos.");
-        if(!settingsResponse.ok)throw new Error(settingsData.detail||"Não foi possível carregar as configurações do drop.");
-        dropRoles=Array.isArray(data.roles)?data.roles:[];dropRolesGuildId=guild.id;
-        const saved= settingsData.settings?.dropSystem || {};
-        dropConfiguredRoles=Array.isArray(saved.roles)?saved.roles.filter(entry=>dropRoles.some(role=>String(role.id)===String(entry.id))).map(entry=>({...entry,id:String(entry.id)})):[];
-        dropSelectedRoleIds.clear();renderDropRoles();updateDropSummary();renderDropAddedRoles();
-        if(dropExtraEntriesInput)dropExtraEntriesInput.value="0";
-        const saveStatus=$("dropSaveStatus");if(saveStatus)saveStatus.textContent=dropConfiguredRoles.length?"Configurações salvas carregadas.":"Configure os cargos e salve para usar nos drops.";
-      }catch(error){dropRoleOptions.innerHTML="";const message=document.createElement("p");message.textContent=error.message||"Erro ao carregar os cargos.";dropRoleOptions.appendChild(message);}
+        const resources=await resourcesResponse.json().catch(()=>({})),settingsData=await settingsResponse.json().catch(()=>({}));
+        if(!resourcesResponse.ok)throw new Error(resources.detail||"Não foi possível carregar os cargos do servidor.");
+        if(!settingsResponse.ok)throw new Error(settingsData.detail||"Não foi possível carregar as configurações.");
+        dropRoles=Array.isArray(resources.roles)?resources.roles:[];dropRolesGuildId=guild.id;dropPopulateRoleSelects();
+        dropSetConfig(settingsData.settings?.dropSystem||{});
+        dropConfigOriginal=JSON.stringify(dropGetConfig());
+        dropEl("status").textContent="Configurações carregadas. As alterações serão aplicadas após salvar.";
+        window.YukinaPendingChanges?.refresh();
+      }catch(error){dropEl("status").textContent=error.message||"Não foi possível carregar o sistema de Drop.";}
     }
-    dropChooseRoles.addEventListener("click",()=>{const opening=dropRoleCard.hidden;dropRoleCard.hidden=!opening;dropChooseRoles.setAttribute("aria-expanded",String(opening));if(opening){dropRoleSearch.value="";renderDropRoles();if(!dropRoles.length)loadDropRoles();dropRoleCard.scrollIntoView({behavior:"smooth",block:"nearest"});}});
-    dropRoleSearch.addEventListener("input",renderDropRoles);
-    function getDropRoleColor(role){
-      const toHex=value=>{
-        if(typeof value==="number"&&Number.isFinite(value)&&value>0)return "#"+Math.trunc(value).toString(16).padStart(6,"0").slice(-6);
-        if(typeof value!=="string")return null;
-        const v=value.trim();
-        if(/^#[0-9a-f]{6}$/i.test(v))return v.toLowerCase();
-        if(/^#[0-9a-f]{3}$/i.test(v))return "#"+v.slice(1).split("").map(ch=>ch+ch).join("").toLowerCase();
-        if(/^0x[0-9a-f]+$/i.test(v))return "#"+parseInt(v,16).toString(16).padStart(6,"0").slice(-6);
-        if(/^\d+$/.test(v)&&Number(v)>0)return "#"+Number(v).toString(16).padStart(6,"0").slice(-6);
-        return null;
-      };
-      // A cor numérica do Discord é a fonte mais confiável; hexColor pode ser #000000 quando sem cor.      const numeric=toHex(role?.color);
-      const primary=toHex(role?.colors?.primaryColor??role?.primaryColor??role?.colorPrimary);
-      const hex=toHex(role?.hexColor??role?.colorHex??role?.colour);
-      return numeric||primary||hex||"#e9ddff";
-    }
-    function renderDropAddedRoles(){
-      dropAddedRoles.replaceChildren();
-      dropConfiguredRoles.forEach(entry=>{
-        const roleColor=entry.color||"#e9ddff";
-        const row=document.createElement("div");
-        row.dataset.roleId=entry.id;
-        row.style.cssText="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid "+roleColor+";border-left:5px solid "+roleColor+";border-radius:10px;background:"+roleColor+"22;transition:transform .12s,opacity .12s";
-        const grip=document.createElement("span");
-        grip.textContent="⠿";grip.title="Segure por 2 segundos e mova para cima ou para baixo";grip.setAttribute("aria-label","Segure por 2 segundos para reordenar");
-        grip.style.cssText="font-size:24px;font-weight:700;color:"+roleColor+";cursor:grab;touch-action:none;user-select:none;padding:2px 6px";
-        const name=document.createElement("strong");
-        name.textContent="@"+entry.name;name.style.cssText="flex:1;color:"+roleColor;
-        const count=document.createElement("span");
-        count.textContent="+"+entry.extras+" entradas";count.style.cssText="font-size:12px;font-weight:600;color:"+roleColor;
-        row.append(grip,name,count);dropAddedRoles.appendChild(row);
-        let holdTimer=null,dragging=false,pointerId=null;
-        const clearHold=()=>{if(holdTimer!==null){clearTimeout(holdTimer);holdTimer=null;}};
-        const onMove=event=>{
-          if(!dragging||event.pointerId!==pointerId)return;
-          event.preventDefault();
-          const target=document.elementFromPoint(event.clientX,event.clientY)?.closest("#dropAddedRoles > div");
-          if(!target||target===row)return;
-          const rect=target.getBoundingClientRect();
-          dropAddedRoles.insertBefore(row,event.clientY<rect.top+rect.height/2?target:target.nextSibling);
-        };
-        const onEnd=event=>{
-          if(pointerId!==null&&event.pointerId!==pointerId)return;
-          clearHold();
-          if(dragging){
-            row.style.opacity="1";row.style.outline="none";grip.style.cursor="grab";
-            const byId=new Map(dropConfiguredRoles.map(item=>[item.id,item]));
-            dropConfiguredRoles=[...dropAddedRoles.children].map(el=>byId.get(el.dataset.roleId)).filter(Boolean);
-          }
-          dragging=false;pointerId=null;
-          document.removeEventListener("pointermove",onMove);
-          document.removeEventListener("pointerup",onEnd);
-          document.removeEventListener("pointercancel",onEnd);
-        };
-        grip.addEventListener("pointerdown",event=>{
-          event.preventDefault();clearHold();pointerId=event.pointerId;dragging=false;
-          holdTimer=setTimeout(()=>{
-            dragging=true;row.style.opacity=".72";row.style.outline="2px dashed "+roleColor;grip.style.cursor="grabbing";
-          },2000);
-          document.addEventListener("pointermove",onMove,{passive:false});
-          document.addEventListener("pointerup",onEnd);
-          document.addEventListener("pointercancel",onEnd);
-        });
-      });
-    }
-    dropAddButton.addEventListener("click",()=>{
-      const selected=dropRoles.filter(role=>dropSelectedRoleIds.has(String(role.id)));
-      const extras=Number(dropExtraEntriesInput.value);
-      if(!selected.length){dropAddStatus.textContent="Escolha pelo menos um cargo antes de adicionar.";return;}
-      if(!Number.isInteger(extras)||extras<0||extras>1000){dropAddStatus.textContent="Informe uma quantidade de entradas extras entre 0 e 1000.";return;}
-      selected.forEach(role=>{const id=String(role.id),existing=dropConfiguredRoles.find(entry=>entry.id===id);if(existing)existing.extras=extras;else dropConfiguredRoles.push({id,name:role.name,color:getDropRoleColor(role),extras});});
-      renderDropAddedRoles();dropAddStatus.textContent=selected.length+" cargo(s) adicionado(s) à lista abaixo.";
+    function dropIsDirty(){return JSON.stringify(dropGetConfig())!==dropConfigOriginal;}
+    ["extraEnabled","ignoreEnabled","blockedEnabled","levelEnabled","messagesEnabled","invitesEnabled"].forEach(key=>{
+      const input=dropEl(key),areaKey=key==="extraEnabled"?"extraArea":key==="ignoreEnabled"?"ignoreArea":key==="blockedEnabled"?"blockedArea":key==="levelEnabled"?"levelArea":key==="messagesEnabled"?"messagesArea":"invitesArea";
+      input.addEventListener("change",()=>{dropEl(areaKey).hidden=!input.checked;window.YukinaPendingChanges?.refresh();});
     });
-    $("dropSaveButton").addEventListener("click",async()=>{
-      const guild=selectedGuild(),status=$("dropSaveStatus"),button=$("dropSaveButton");
-      if(!guild.id){status.textContent="Selecione um servidor primeiro.";return;}
-      button.disabled=true;status.textContent="Salvando configurações…";
-      try{
+    ["image","link","message","levelValue","messagesValue","invitesValue"].forEach(key=>dropEl(key).addEventListener("input",()=>window.YukinaPendingChanges?.refresh()));
+    [["extra","extraAdd"],["ignore","ignoreAdd"],["blocked","blockedAdd"]].forEach(([kind,buttonKey])=>dropEl(buttonKey).addEventListener("click",()=>dropAddRole(kind)));
+    window.YukinaPendingChanges?.register({
+      id:"drop-config",
+      isDirty:dropIsDirty,
+      reset:()=>{if(dropConfigOriginal){dropSetConfig(JSON.parse(dropConfigOriginal));dropEl("status").textContent="Alterações descartadas.";}},
+      save:async()=>{
+        const guild=selectedGuild();if(!guild.id)throw new Error("Selecione um servidor antes de salvar.");
+        const config=dropGetConfig();
+        for(const [label,url] of [["Imagem",config.embed.imageUrl],["Link",config.embed.linkUrl]]){
+          if(url){let parsed;try{parsed=new URL(url);}catch(_){throw new Error("O endereço da "+label.toLowerCase()+" precisa ser uma URL válida.");}if(!["http:","https:"].includes(parsed.protocol))throw new Error("Use apenas links HTTP ou HTTPS para "+label.toLowerCase()+".");}
+        }
+        if(config.extraEntries.enabled&&config.extraEntries.roles.some(item=>!Number.isInteger(item.entries)||item.entries<1||item.entries>1000))throw new Error("Cada cargo precisa ter de 1 a 1000 entradas extras.");
+        if(config.requirements.level.enabled&&(!Number.isInteger(config.requirements.level.value)||config.requirements.level.value<0))throw new Error("Informe um nível mínimo válido.");
+        if(config.requirements.messages.enabled&&(!Number.isInteger(config.requirements.messages.value)||config.requirements.messages.value<1))throw new Error("Informe uma quantidade mínima de mensagens válida.");
+        if(config.requirements.invites.enabled&&(!Number.isInteger(config.requirements.invites.value)||config.requirements.invites.value<1))throw new Error("Informe uma quantidade mínima de convites válida.");
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
         if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
-        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{dropSystem:{enabled:true,roles:dropConfiguredRoles.map(entry=>({id:String(entry.id),name:String(entry.name),color:String(entry.color||"#e9ddff"),extras:Number(entry.extras)||0}))}}}),cache:"no-store"});
-        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações.");
-        status.textContent="❄️ Configurações do drop salvas com sucesso.";
-        window.YukinaPendingChanges?.refresh();
-      }catch(error){status.textContent=error.message||"Falha ao salvar as configurações.";}
-      finally{button.disabled=false;}
+        const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{dropSystem:config}}),cache:"no-store"});
+        const data=await response.json().catch(()=>({}));if(!response.ok)throw new Error(data.detail||"Não foi possível salvar as configurações do Drop.");
+        dropConfigOriginal=JSON.stringify(config);dropEl("status").textContent="❄️ Configurações do Drop salvas com sucesso.";
+      }
     });
+    document.querySelector('[data-screen="drop"]')?.addEventListener("click",()=>loadDropConfig());
     let nickColorsPalette=[],nickColorsLoadedGuild="",originalNickColorsConfig="";
     const nickColorEmojis=["1️⃣","2️⃣","3️⃣","4️⃣","5️⃣","6️⃣","7️⃣","8️⃣","9️⃣","🔟","🇦","🇧","🇨","🇩","🇪","🇫","🇬","🇭","🇮","🇯"];
     function setNickColorsChannelPicker(){
