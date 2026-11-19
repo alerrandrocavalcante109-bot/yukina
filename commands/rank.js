@@ -160,148 +160,81 @@ function drawText(ctx, text, x, y, font, color, maxWidth) {
   ctx.fillText(String(text), x, y, maxWidth);
 }
 
-async function buildRankCard(user, record, position, total, guild) {
-  // Renderização em alta densidade: cartão lógico de 220x180 com textos nítidos.
-  const SCALE = 3;
-  const CARD_W = 220;
-  const CARD_H = 180;
-  const canvas = createCanvas(CARD_W * SCALE, CARD_H * SCALE);
+async function buildXpRankingCard(guild) {
+  const width = 1536;
+  const height = 1024;
+  const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
-  ctx.scale(SCALE, SCALE);
+  const backgroundPath = require("node:path").join(__dirname, "../assets/images/rank/Rank.xp.png");
+  const background = await loadImage(backgroundPath);
+  ctx.drawImage(background, 0, 0, width, height);
 
-  const xp = Math.max(0, Number(record.xp) || 0);
-  const current = levelForXp(xp);
-  const highestXpRole = await getHighestConfiguredXpRole(guild);
-  const activeMultiplierRole = await getActiveMultiplierRole(guild, user.id);
-  const activePlan = await getActivePlan(user.id);
-  const displayName = normalizeCanvasName(user.globalName || user.username || "Aventureiro");
-
-  const bg = ctx.createLinearGradient(0, 0, CARD_W, CARD_H);
-  bg.addColorStop(0, "#101b3b");
-  bg.addColorStop(0.55, "#263f70");
-  bg.addColorStop(1, "#77558f");
-  ctx.fillStyle = bg;
-  ctx.fillRect(0, 0, CARD_W, CARD_H);
-
-  const moon = ctx.createRadialGradient(188, 12, 2, 188, 12, 72);
-  moon.addColorStop(0, "rgba(224,248,255,0.32)");
-  moon.addColorStop(1, "rgba(224,248,255,0)");
-  ctx.fillStyle = moon;
-  ctx.fillRect(130, 0, 90, 85);
-
-  for (let i = 0; i < 28; i++) {
-    const x = (i * 47 + 13) % CARD_W;
-    const y = (i * 29 + 7) % CARD_H;
-    ctx.beginPath();
-    ctx.arc(x, y, i % 4 === 0 ? 1 : 0.55, 0, Math.PI * 2);
-    ctx.fillStyle = i % 3 === 0 ? "rgba(255,220,246,0.9)" : "rgba(220,246,255,0.9)";
-    ctx.fill();
-  }
-
-  roundedRect(ctx, 5, 5, 210, 170, 12);
-  ctx.fillStyle = "rgba(7,14,34,0.76)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(207,239,255,0.72)";
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  // Avatar e identificação.
-  const avatarX = 13, avatarY = 17, avatarSize = 48;
-  ctx.save();
-  ctx.beginPath();
-  ctx.arc(avatarX + 24, avatarY + 24, 25.5, 0, Math.PI * 2);
-  ctx.fillStyle = "rgba(174,232,255,0.35)";
-  ctx.fill();
-  ctx.strokeStyle = "#c8f2ff";
-  ctx.lineWidth = 1.8;
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.arc(avatarX + 24, avatarY + 24, 23.5, 0, Math.PI * 2);
-  ctx.clip();
-  try {
-    const avatar = await loadImage(user.displayAvatarURL({ extension: "png", size: 128 }));
-    ctx.drawImage(avatar, avatarX + 1, avatarY + 1, avatarSize - 2, avatarSize - 2);
-  } catch {
-    ctx.fillStyle = "#5279a8";
-    ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
-  }
-  ctx.restore();
-
-  ctx.shadowColor = "rgba(112,213,255,0.55)";
-  ctx.shadowBlur = 5;
-  drawText(ctx, "YUKINA  ❄  PERFIL XP", 70, 25, "bold 8px sans-serif", "#9fe8ff", 142);
-  ctx.shadowBlur = 0;
-  drawText(ctx, displayName, 70, 43, "bold 12px sans-serif", "#ffffff", 140);
-  drawText(ctx, "POSIÇÃO  " + (position ? "#" + position : "—"), 70, 56, "bold 7.5px sans-serif", "#ffd4f0", 140);
-
-  // Nível em destaque e XP total.
-  roundedRect(ctx, 13, 74, 54, 47, 7);
-  ctx.fillStyle = "rgba(120,190,255,0.16)";
-  ctx.fill();
-  ctx.strokeStyle = "rgba(164,225,255,0.48)";
-  ctx.stroke();
-  drawText(ctx, "NÍVEL", 20, 86, "bold 7px sans-serif", "#aeeaff");
-  ctx.shadowColor = "rgba(255,255,255,0.35)";
-  ctx.shadowBlur = 4;
-  drawText(ctx, current.level.toLocaleString("pt-BR"), 19, 109, "bold 21px sans-serif", "#ffffff", 43);
-  ctx.shadowBlur = 0;
-
-  drawText(ctx, "XP ACUMULADO", 77, 83, "bold 7.5px sans-serif", "#aeeaff", 130);
-  drawText(ctx, xp.toLocaleString("pt-BR") + " XP", 77, 101, "bold 13px sans-serif", "#ffffff", 130);
-  drawText(ctx, "PRÓXIMO NÍVEL  " + current.progress + "%", 77, 114, "bold 7px sans-serif", "#f6d6ef", 130);
-
-  // Barra de progresso viva e de alto contraste.
-  roundedRect(ctx, 77, 119, 128, 7, 3.5);
-  ctx.fillStyle = "rgba(230,244,255,0.25)";
-  ctx.fill();
-  if (current.progress > 0) {
-    roundedRect(ctx, 77, 119, Math.max(3, 128 * current.progress / 100), 7, 3.5);
-    const bar = ctx.createLinearGradient(77, 0, 205, 0);
-    bar.addColorStop(0, "#65dcff");
-    bar.addColorStop(0.55, "#b5eaff");
-    bar.addColorStop(1, "#ff9bd8");
-    ctx.fillStyle = bar;
-    ctx.fill();
-  }
-
-  // Maior cargo de XP configurado e cargo multiplicador atualmente ativo.
-  if (highestXpRole) {
-    drawText(ctx, "PRÓXIMO CARGO / TOPO XP: " + normalizeCanvasName(highestXpRole.roleName), 13, 137, "bold 6.8px sans-serif", "#ffbce8", 192);
-    drawText(ctx, "Nível " + highestXpRole.level + " • " + highestXpRole.requiredXp.toLocaleString("pt-BR") + " XP", 13, 145, "bold 6.5px sans-serif", "#e5f4ff", 192);
-  } else {
-    drawText(ctx, "Nenhum cargo de XP configurado", 13, 141, "bold 6.8px sans-serif", "#d9eaff", 192);
-  }
-
-  if (activeMultiplierRole) {
-    const multiplierLabel = "MULTIPLICADOR: " + normalizeCanvasName(activeMultiplierRole.roleName);
-    const multiplierValue = "x" + activeMultiplierRole.multiplier.toLocaleString("pt-BR", { maximumFractionDigits: 2 });
-    drawText(ctx, multiplierLabel, 13, 155, "bold 6.8px sans-serif", "#9fffdc", 150);
-    drawText(ctx, multiplierValue, 164, 155, "bold 7px sans-serif", "#ffffff", 40);
-  } else {
-    drawText(ctx, "MULTIPLICADOR: nenhum cargo ativo", 13, 155, "bold 6.8px sans-serif", "#c9d8ec", 192);
-  }
-
-  // O plano só aparece quando existe uma assinatura ativa e dentro da validade.
-  if (activePlan) {
-    drawText(ctx, "PLANO: " + activePlan.name, 13, 171, "bold 8px sans-serif", "#ffd98f", 192);
-  }
-
-  return canvas.toBuffer("image/png");
-}
-async function respond(interaction, target) {
-  await memberData.initialize();
-  const guildId = interaction.guild.id;
-  const record = memberData.getRecord(guildId, target.id);
   const members = Object.entries(memberData.getMembers())
-    .filter(([key, value]) => key.startsWith(guildId + ":") && value && typeof value === "object")
+    .filter(([key, value]) => key.startsWith(guild.id + ":") && value && typeof value === "object")
     .map(([key, value]) => ({
-      userId: key.slice(guildId.length + 1),
+      userId: key.slice(guild.id.length + 1),
       xp: Math.max(0, Number(value.xp) || 0),
     }))
-    .sort((a, b) => b.xp - a.xp);
-  const index = members.findIndex(item => item.userId === target.id);
-  const buffer = await buildRankCard(target, record, index >= 0 ? index + 1 : null, members.length, interaction.guild);
-  const attachment = new AttachmentBuilder(buffer, { name: "yukina-rank.png" });
+    .sort((a, b) => b.xp - a.xp || a.userId.localeCompare(b.userId))
+    .slice(0, 5);
+
+  const rowCenters = [371, 477, 583, 688, 793];
+  for (let index = 0; index < members.length; index++) {
+    const entry = members[index];
+    const centerY = rowCenters[index];
+    let member = guild.members.cache.get(entry.userId) || null;
+    if (!member) {
+      member = await guild.members.fetch(entry.userId).catch(() => null);
+    }
+    let user = member?.user || guild.client.users.cache.get(entry.userId) || null;
+    if (!user) user = await guild.client.users.fetch(entry.userId).catch(() => null);
+
+    const name = normalizeCanvasName(
+      member?.displayName || user?.globalName || user?.username || ("Usuário " + entry.userId.slice(-4))
+    );
+
+    const avatarX = 932;
+    const avatarY = centerY - 37;
+    const avatarSize = 74;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    if (user) {
+      try {
+        const avatar = await loadImage(user.displayAvatarURL({ extension: "png", size: 128 }));
+        ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+      } catch {
+        ctx.fillStyle = "#5422a8";
+        ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+      }
+    } else {
+      ctx.fillStyle = "#5422a8";
+      ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
+    }
+    ctx.restore();
+
+    ctx.save();
+    ctx.shadowColor = "rgba(185, 92, 255, 0.9)";
+    ctx.shadowBlur = 9;
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.font = "bold 34px sans-serif";
+    ctx.fillStyle = "#fff4ff";
+    ctx.fillText(name, 1024, centerY, 340);
+    ctx.textAlign = "right";
+    ctx.font = "bold 29px sans-serif";
+    ctx.fillStyle = "#e8c9ff";
+    ctx.fillText(entry.xp.toLocaleString("pt-BR") + " XP", 1450, centerY + 30, 390);
+    ctx.restore();
+  }
+
+  return new AttachmentBuilder(await canvas.encode("png"), { name: "rank-xp-yukina.png" });
+}
+
+async function respond(interaction) {
+  await memberData.initialize();
+  const attachment = await buildXpRankingCard(interaction.guild);
   return interaction.reply({
     files: [attachment],
     allowedMentions: { parse: [] },
@@ -315,8 +248,7 @@ module.exports = {
     .setDMPermission(false)
     .addSubcommand(subcommand => subcommand
       .setName("xp")
-      .setDescription("Mostra seu nível, XP e posição neste servidor.")
-      .addUserOption(option => option.setName("membro").setDescription("Membro cujo perfil deseja consultar.").setRequired(false)))
+      .setDescription("Mostra os cinco maiores acumuladores de XP deste servidor."))
     .addSubcommand(subcommand => subcommand
       .setName("kz")
       .setDescription("Mostra o ranking global de Kizunas.")
@@ -339,8 +271,7 @@ module.exports = {
           interaction.options.getBoolean("local") || false
         );
       }
-      const target = interaction.options.getUser("membro") || interaction.user;
-      return await respond(interaction, target);
+      return await respond(interaction);
     } catch (error) {
       console.error("[Yukina /rank]", error);
       if (interaction.deferred || interaction.replied) {
@@ -376,7 +307,7 @@ module.exports = {
       reply: payload => message.channel.send({ ...payload, allowedMentions: { parse: [] } }),
     };
     try {
-      return await respond(interactionLike, target);
+      return await respond(interactionLike);
     } catch (error) {
       console.error("[Yukina Yrank xp]", error);
       return message.reply("💧 Não consegui gerar seu cartão de rank agora.").catch(() => {});
