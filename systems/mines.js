@@ -234,10 +234,8 @@ function buildFinalEmbed(game, kind) {
     : "Você acaba de sair das cavernas de Kizunas sem encontrar uma bomba, que feito emocionante, e você sai com (**" + format(game.currentPayout) + " KZ** com um lucro de **" + format(profit) + " KZ**).\n\n**Partida #" + game.gameNumber + "**";
   return new EmbedBuilder()
     .setColor(lost ? 0xE8A0A0 : 0xA7D8F0)
-    .setAuthor({
-      name: lost ? "💥 Você perdeu!" : "🏆 Você venceu!",
-      iconURL: lost ? MINES_DEFEAT_IMAGE : MINES_VICTORY_IMAGE,
-    })
+    .setAuthor({ name: lost ? "💥 Você perdeu!" : "🏆 Você venceu!" })
+    .setThumbnail(lost ? MINES_DEFEAT_IMAGE : MINES_VICTORY_IMAGE)
     .setDescription(description);
 }
 
