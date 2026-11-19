@@ -294,13 +294,6 @@ module.exports = {
         local
       );
     }
-    const xpArgs = action === "xp" ? args.slice(1) : args;
-    let target = message.author;
-    const mention = message.mentions.users.first();
-    if (mention) target = mention;
-    else if (xpArgs[0] && /^\d{17,20}$/.test(xpArgs[0])) {
-      target = await message.client.users.fetch(xpArgs[0]).catch(() => null) || message.author;
-    }
     const interactionLike = {
       guild: message.guild,
       user: message.author,
