@@ -178,8 +178,7 @@ function buildGameComponents(game) {
       new TextDisplayBuilder().setContent(
         "### 📈 Multiplicadores\n" +
         "**Atual:** " + currentMultiplier.toFixed(2) + "x\n" +
-        nextText +
-        (openedCount ? "\n\n**💵 Valor para saque:** " + format(currentPayout) + " KZ" : "")
+        nextText
       ),
       new TextDisplayBuilder().setContent(
         "### 🗺️ Tabuleiro\n" +
