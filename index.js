@@ -857,6 +857,68 @@ async function panelApi(req, res, url) {
     }
   }
 
+
+  // Área administrativa exclusiva do proprietário da Yukina.
+  if (url.pathname === "/api/owner/economy") {
+    if (!["GET", "POST"].includes(req.method)) return sendJson(res, 405, { detail: "Use GET ou POST." });
+    try {
+      const auth = String(req.headers.authorization || "");
+      const accessToken = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
+      if (!accessToken) return sendJson(res, 401, { detail: "Entre com sua conta Discord." });
+      const ownerResponse = await fetch("https://discord.com/api/users/@me", {
+        headers: { Authorization: "Bearer " + accessToken, Accept: "application/json" },
+        cache: "no-store",
+        signal: AbortSignal.timeout(10000)
+      });
+      const owner = ownerResponse.ok ? await ownerResponse.json().catch(() => null) : null;
+      if (!owner?.id) return sendJson(res, 401, { detail: "Sua sessão do Discord expirou. Entre novamente." });
+      const configuredOwnerId = String(process.env.OWNER_USER_ID || "1533034328928555141").trim();
+      if (String(owner.id) !== configuredOwnerId) return sendJson(res, 403, { detail: "Esta área é exclusiva do proprietário da Yukina." });
+      if (!MONGODB_URI) return sendJson(res, 503, { detail: "O banco de dados não está configurado." });
+      if (!settingsMongoClient) settingsMongoClient = new MongoClient(MONGODB_URI, { serverSelectionTimeoutMS: 10000 });
+      await settingsMongoClient.connect();
+      const db = settingsMongoClient.db(MONGODB_DB);
+      const economyCollections = [
+        "economy_balances",
+        "yukina_bank_accounts",
+        "yukina_bank_transactions",
+        "yukina_pay_proposals",
+        "daily_claims",
+        "mines_games",
+        "mines_ledger",
+        "mines_counters",
+        "vip_plan_command_ledger",
+        "drop_auto_manual_payouts",
+        "drop_auto_payout_ledger",
+        "drop_auto_payout_attempts",
+        "drop_auto_history"
+      ];
+      if (req.method === "GET") {
+        const counts = {};
+        for (const name of economyCollections) {
+          counts[name] = await db.collection(name).countDocuments({}, { maxTimeMS: 10000 }).catch(() => 0);
+        }
+        return sendJson(res, 200, { ok: true, counts, collections: economyCollections });
+      }
+      const body = await readBody(req);
+      if (String(body.confirmation || "") !== "RESETAR ECONOMIA") {
+        return sendJson(res, 400, { detail: "Confirmação inválida. Digite exatamente RESETAR ECONOMIA." });
+      }
+      const deleted = {};
+      for (const name of economyCollections) {
+        const result = await db.collection(name).deleteMany({});
+        deleted[name] = Number(result.deletedCount || 0);
+      }
+      const legacyFile = path.join(__dirname, "data", "economia.json");
+      if (fs.existsSync(legacyFile)) fs.writeFileSync(legacyFile, "{}\\n", "utf8");
+      console.warn("[Painel Economia] Reset global executado pelo proprietário " + owner.id + ".", deleted);
+      return sendJson(res, 200, { ok: true, deleted, detail: "A economia foi resetada." });
+    } catch (error) {
+      console.error("[Painel Economia] Falha no reset:", error.stack || error.message || error);
+      return sendJson(res, error.status || 500, { detail: error.message || "Não foi possível resetar a economia." });
+    }
+  }
+
   if (url.pathname === "/api/oauth/me") {
     if (req.method !== "GET") return sendJson(res, 405, { detail: "Use GET para consultar o perfil." });
     const auth = String(req.headers.authorization || "");
