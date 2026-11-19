@@ -43,8 +43,7 @@ button{border:0;border-radius:11px;padding:13px 18px;font:inherit;font-weight:70
   drop_auto_payout_attempts:"Tentativas de pagamento",drop_auto_history:"Histórico de Drops"
  };
  let token=localStorage.getItem("yukina_discord_token")||"";
- async function getToken(){
-  if(token)return token;
+ async function refreshToken(){
   const refresh=localStorage.getItem("yukina_discord_refresh_token")||"";
   if(!refresh)throw new Error("Entre com o Discord pelo painel principal antes de continuar.");
   const response=await fetch(API+"/api/oauth/refresh",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({refresh_token:refresh}),cache:"no-store"});
@@ -54,9 +53,15 @@ button{border:0;border-radius:11px;padding:13px 18px;font:inherit;font-weight:70
   if(data.refresh_token)localStorage.setItem("yukina_discord_refresh_token",data.refresh_token);
   return token;
  }
+ async function getToken(){
+  const expires=Number(localStorage.getItem("yukina_discord_token_expires_at")||0);
+  if(token&&(!expires||expires>Date.now()+30000))return token;
+  return refreshToken();
+ }
  async function request(method,body){
-  const t=await getToken();
-  const response=await fetch(API+"/api/owner/economy",{method,headers:{Authorization:"Bearer "+t,Accept:"application/json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined,cache:"no-store"});
+  let t=await getToken();
+  let response=await fetch(API+"/api/owner/economy",{method,headers:{Authorization:"Bearer "+t,Accept:"application/json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined,cache:"no-store"});
+  if(response.status===401){t=await refreshToken();response=await fetch(API+"/api/owner/economy",{method,headers:{Authorization:"Bearer "+t,Accept:"application/json","Content-Type":"application/json"},body:body?JSON.stringify(body):undefined,cache:"no-store"});}
   const data=await response.json().catch(()=>({}));
   if(!response.ok)throw new Error(data.detail||"Não foi possível concluir a solicitação.");
   return data;
