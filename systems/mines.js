@@ -280,12 +280,12 @@ async function sendEphemeral(interaction, content) {
 async function getStartCommandMention(client) {
   try {
     const commands = await client.application.commands.fetch();
-    const command = commands.find(item => item.name === "iniciar-minas");
-    if (command?.id) return "</iniciar-minas:" + command.id + ">";
+    const command = commands.find(item => item.name === "iniciarminas");
+    if (command?.id) return "</iniciarminas:" + command.id + ">";
   } catch (error) {
-    console.warn("[Mines] Não foi possível localizar o comando iniciar-minas:", error?.message || error);
+    console.warn("[Mines] Não foi possível localizar o comando iniciarminas:", error?.message || error);
   }
-  return "`/iniciar-minas`";
+  return "`/iniciarminas`";
 }
 
 async function disableRestartMessage(client, game) {
