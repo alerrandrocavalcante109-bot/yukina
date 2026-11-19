@@ -20,7 +20,7 @@ const MAX_BET = 10_000_000;
 const MIN_BOMBS = 1;
 const MAX_BOMBS = 16;
 const EXPIRATION_MS = 5 * 60 * 1000;
-const COLOR = 0xA7D8F0;
+const COLOR = 0x9B59B6;
 const MINES_VICTORY_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318138509/1572020345190350939/file_000000000164820eaba9981ac5e788dd.png?ex=6afcd989&is=6afb8809&hm=487fe55ce6c7d73b3f070275d7e43d658dc466f79948a833e3c77c81364969d3";
 const MINES_DEFEAT_IMAGE = "https://cdn.discordapp.com/attachments/1561408732318138509/1572020345664311516/file_00000000bf4c820eb93005cddd28f21f.png?ex=6afcd989&is=6afb8809&hm=22fccc0130aec04e0598fdb32f4f1fd11dc27540da581b8c00aaef15383a8f2f";
 
@@ -236,8 +236,9 @@ function buildFinalEmbed(game, kind) {
   const description = lost
     ? "Você perdeu, o universo não quis te ajudar em sua jornada nas cavernas de Kizunas, sendo assim, você perdeu **" + format(game.bet) + " KZ**.\n\n**Partida #" + game.gameNumber + "**"
     : "Você acaba de sair das cavernas de Kizunas sem encontrar uma bomba, que feito emocionante, e você sai com (**" + format(game.currentPayout) + " KZ** com um lucro de **" + format(profit) + " KZ**).\n\n**Partida #" + game.gameNumber + "**";
+  const color = lost ? 0xE74C3C : (kind === "cashed_out" ? 0x2ECC71 : 0x2ECC71);
   return new EmbedBuilder()
-    .setColor(lost ? 0xE8A0A0 : 0xA7D8F0)
+    .setColor(color)
     .setAuthor({ name: lost ? "💥 Você perdeu!" : "🏆 Você venceu!" })
     .setThumbnail(lost ? MINES_DEFEAT_IMAGE : MINES_VICTORY_IMAGE)
     .setDescription(description);
@@ -460,11 +461,12 @@ async function expireGame(client, gameId) {
 
 async function finalizeDisplay(client, game) {
   const kind = game.status === "lost" ? "lost"
+    : game.status === "cashed_out" ? "cashed_out"
     : game.status === "expired" ? "expired"
     : game.status === "cancelled" ? "cancelled" : "won";
 
   let updated = false;
-  if (kind === "lost" || kind === "won") {
+  if (kind === "lost" || kind === "won" || kind === "cashed_out") {
     // Mantém o tabuleiro encerrado na mensagem original.
     const boardContainer = buildGameComponents(game)[0];
     updated = await editGameMessage(client, game, [boardContainer]);
