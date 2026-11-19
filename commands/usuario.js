@@ -59,7 +59,7 @@ function buildUserInfo(user, member, requester) {
       { name: "🏠 Entrada no servidor", value: discordDate(member?.joinedAt), inline: false },
       { name: "🕒 Status", value: statusLabel(member?.presence), inline: true },
       { name: "🎭 Quantidade de cargos", value: String(roles.size), inline: true },
-      { name: "👑 Cargo mais alto", value: member?.roles?.highest?.id === member?.guild?.id
+      { name: "👑 Cargo mais alto", value: member && member.roles.highest.id === member.guild.id
         ? "Nenhum"
         : (member?.roles?.highest ? member.roles.highest.toString() : "Não disponível"), inline: false },
       { name: "🚀 Impulsionando o servidor", value: member?.premiumSince
