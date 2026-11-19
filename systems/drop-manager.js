@@ -35,7 +35,7 @@ async function getConfig(guildId){
   const collection=await getDb().then(()=>settings);
   const doc=await collection.findOne({guildId:String(guildId)},{projection:{"settings.dropSystem":1}});
   const config=doc?.settings?.dropSystem||{};
-  return {...config,enabled:config.enabled!==false,roles:Array.isArray(config.roles)?config.roles:[]};
+  return {...config,configured:Boolean(doc?.settings?.dropSystem),enabled:config.enabled!==false,roles:Array.isArray(config.roles)?config.roles:[]};
 }
 async function finish(clientRef,id){
   await getDb();
@@ -81,7 +81,7 @@ async function initialize(clientRef){
 async function create(clientRef,{guild,channel,creator,tempo,winnerCount,prize}){
   await getDb();
   const config=await getConfig(guild.id);
-  if(!config.enabled)throw new Error("O sistema de Drop está desativado nas configurações deste servidor.");
+  if(!config.configured||!config.enabled)throw new Error("Configure e salve o sistema de Drop no painel deste servidor antes de iniciar um drop.");
   const now=Date.now(),endsAt=now+tempo;
   const drop={guildId:guild.id,guildName:guild.name,channelId:channel.id,messageId:null,creatorId:creator.id,prize,winnerCount,createdAt:now,endsAt,status:"active",entries:{},roles:config.roles,configSnapshot:config,dmWinners:false};
   const result=await giveaways.insertOne(drop);
