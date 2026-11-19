@@ -193,9 +193,9 @@ async function buildXpRankingCard(guild) {
       member?.displayName || user?.globalName || user?.username || ("Usuário " + entry.userId.slice(-4))
     );
 
-    const avatarX = 932;
-    const avatarY = centerY - 37;
-    const avatarSize = 74;
+    const avatarX = 940;
+    const avatarY = centerY - 28;
+    const avatarSize = 56;
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
@@ -219,13 +219,12 @@ async function buildXpRankingCard(guild) {
     ctx.shadowBlur = 9;
     ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.font = "bold 34px sans-serif";
+    ctx.font = "bold 25px sans-serif";
     ctx.fillStyle = "#fff4ff";
-    ctx.fillText(name, 1024, centerY, 340);
-    ctx.textAlign = "right";
-    ctx.font = "bold 29px sans-serif";
+    ctx.fillText(name, 1012, centerY - 10, 430);
+    ctx.font = "bold 20px sans-serif";
     ctx.fillStyle = "#e8c9ff";
-    ctx.fillText(entry.xp.toLocaleString("pt-BR") + " XP", 1450, centerY + 30, 390);
+    ctx.fillText(entry.xp.toLocaleString("pt-BR") + " XP", 1012, centerY + 22, 430);
     ctx.restore();
   }
 
