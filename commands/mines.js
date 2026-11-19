@@ -19,8 +19,8 @@ async function startFromCommand({ client, guild, channel, user, betInput, bombs,
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("mines")
-    .setDescription("[Economia] Explore as Cavernas de Kizunas.")
+    .setName("iniciar-minas")
+    .setDescription("[jogos] Explore as Cavernas de Kizunas.")
     .setDMPermission(false)
     .addStringOption(option => option
       .setName("valor")
