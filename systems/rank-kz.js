@@ -69,142 +69,61 @@ async function resolveRankingUser(guild, userId) {
 }
 
 async function renderRankingCard(guild, ranking, requesterId, page = 0, local = false) {
-  const width = 1400;
-  const height = 1280;
+  const width = 1536;
+  const height = 1024;
   const canvas = createCanvas(width, height);
   const ctx = canvas.getContext("2d");
-
-  const background = ctx.createLinearGradient(0, 0, width, height);
-  background.addColorStop(0, "#171329");
-  background.addColorStop(0.52, "#30204a");
-  background.addColorStop(1, "#111827");
-  ctx.fillStyle = background;
-  ctx.fillRect(0, 0, width, height);
-
-  for (let i = 0; i < 100; i++) {
-    const x = (i * 197 + 61) % width;
-    const y = (i * 131 + 37) % height;
-    ctx.globalAlpha = 0.18 + ((i % 4) * 0.08);
-    ctx.fillStyle = i % 3 === 0 ? "#f0c9ff" : "#ffffff";
-    ctx.beginPath();
-    ctx.arc(x, y, i % 5 === 0 ? 2.5 : 1.4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.globalAlpha = 1;
-
-  const moon = ctx.createRadialGradient(1230, 110, 8, 1230, 110, 95);
-  moon.addColorStop(0, "#fff7ff");
-  moon.addColorStop(0.55, "#e9c9ff");
-  moon.addColorStop(1, "rgba(197,138,232,0)");
-  ctx.fillStyle = moon;
-  ctx.beginPath();
-  ctx.arc(1230, 110, 95, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = "#f8eaff";
-  ctx.font = "bold 28px sans-serif";
-  ctx.fillText("YUKINA  •  ARQUIVO DA ECONOMIA", 70, 70);
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "bold 68px sans-serif";
-  ctx.fillText(local ? "Top 5 — KZ do servidor" : "Top 5 — Kizunas globais", 70, 145);
-  ctx.fillStyle = "#d9c8f0";
-  ctx.font = "29px sans-serif";
-  ctx.fillText(local ? "Maiores carteiras globais entre os membros deste servidor" : "Os maiores saldos de Kizunas entre todos os usuários", 73, 192);
-
-  roundedRect(ctx, 50, 220, 1300, 900, 30);
-  ctx.fillStyle = "rgba(15, 12, 31, 0.72)";
-  ctx.fill();
+  const backgroundPath = require("node:path").join(__dirname, "../assets/images/rank/Rank.kz.png");
+  const background = await loadImage(backgroundPath);
+  ctx.drawImage(background, 0, 0, width, height);
 
   const top = ranking.slice(page * 5, page * 5 + 5);
-  if (!top.length) {
-    ctx.fillStyle = "#eee5f7";
-    ctx.font = "34px sans-serif";
-    ctx.fillText("Ainda não há Kizunas registradas nesta página.", 100, 390);
-  } else {
-    for (let index = 0; index < top.length; index++) {
-      const entry = top[index];
-      const y = 232 + index * 176;
-      const position = page * 5 + index + 1;
-      const { user, displayName } = await resolveRankingUser(guild, String(entry.userId));
-      // O ID continua visível mesmo se a API do Discord não devolver o perfil.
-      const name = normalizeDisplayName(displayName || "Usuário " + String(entry.userId).slice(-4));
-      const avatarUrl = user?.displayAvatarURL
-        ? user.displayAvatarURL({ extension: "png", size: 512 })
-        : null;
-      const isRequester = String(entry.userId) === String(requesterId);
+  const rowCenters = [392, 504, 612, 717, 813];
 
-      roundedRect(ctx, 70, y, 1260, 164, 24);
-      ctx.fillStyle = isRequester ? "rgba(197, 138, 232, 0.30)" : "rgba(255, 255, 255, 0.065)";
-      ctx.fill();
+  for (let index = 0; index < top.length; index++) {
+    const entry = top[index];
+    const centerY = rowCenters[index];
+    const { user, displayName } = await resolveRankingUser(guild, String(entry.userId));
+    const name = normalizeDisplayName(
+      displayName || "Usuário " + String(entry.userId).slice(-4)
+    );
 
-      ctx.font = "bold 42px sans-serif";
-      ctx.fillStyle = position === 1 ? "#ffd66b" : position === 2 ? "#e4e9f3" : position === 3 ? "#e8b28e" : "#d9c8f0";
-      ctx.fillText("#" + position, 88, y + 94);
-
-      const avatarX = 178;
-      const avatarY = y + 12;
-      const avatarSize = 128;
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
-      ctx.clip();
-      if (avatarUrl) {
-        try {
-          const avatar = await loadImage(avatarUrl);
-          ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
-        } catch {
-          ctx.fillStyle = "#6d4a89";
-          ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
-        }
-      } else {
-        ctx.fillStyle = "#6d4a89";
+    const avatarX = 932;
+    const avatarY = centerY - 37;
+    const avatarSize = 74;
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
+    ctx.clip();
+    if (user?.displayAvatarURL) {
+      try {
+        const avatar = await loadImage(user.displayAvatarURL({ extension: "png", size: 128 }));
+        ctx.drawImage(avatar, avatarX, avatarY, avatarSize, avatarSize);
+      } catch {
+        ctx.fillStyle = "#5422a8";
         ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
       }
-      ctx.restore();
-      ctx.strokeStyle = "#e0c0ff";
-      ctx.lineWidth = 5;
-      ctx.beginPath();
-      ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2 + 2, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Renderiza o nome do Discord com fonte maior e área dedicada.
-      ctx.textAlign = "left";
-      ctx.textBaseline = "alphabetic";
-      ctx.font = "bold 34px sans-serif";
-      ctx.fillStyle = "#fff7ff";
-      ctx.fillText(fitText(ctx, name, 570), 340, y + 65);
-
-      ctx.font = "bold 22px sans-serif";
-      ctx.fillStyle = "#cdb8e6";
-      ctx.fillText("ID DO DISCORD", 340, y + 103);
-      ctx.font = "27px sans-serif";
-      ctx.fillStyle = "#f5edff";
-      ctx.fillText(fitText(ctx, String(entry.userId), 570), 340, y + 139);
-
-      ctx.textAlign = "right";
-      ctx.font = "bold 22px sans-serif";
-      ctx.fillStyle = "#cdb8e6";
-      ctx.fillText("SALDO EM KIZUNAS", 1295, y + 49);
-      ctx.font = "bold 43px sans-serif";
-      ctx.fillStyle = "#e8c9ff";
-      ctx.fillText(fitText(ctx, formatKz(entry.balance), 390), 1295, y + 105);
-      ctx.textAlign = "left";
+    } else {
+      ctx.fillStyle = "#5422a8";
+      ctx.fillRect(avatarX, avatarY, avatarSize, avatarSize);
     }
-  }
+    ctx.restore();
 
-  const ownPosition = ranking.findIndex(entry => String(entry.userId) === String(requesterId));
-  const own = ownPosition >= 0 ? ranking[ownPosition] : null;
-  roundedRect(ctx, 50, 1150, 1300, 68, 18);
-  ctx.fillStyle = "rgba(197, 138, 232, 0.16)";
-  ctx.fill();
-  ctx.font = "bold 23px sans-serif";
-  ctx.fillStyle = "#f5e8ff";
-  ctx.fillText(own ? "Sua posição: #" + (ownPosition + 1) + "  •  " + formatKz(own.balance) : "Sua posição: ainda sem saldo no ranking", 75, 1193);
-  ctx.textAlign = "right";
-  ctx.fillStyle = "#cdb8e6";
-  ctx.font = "22px sans-serif";
-  ctx.fillText("Página " + (page + 1) + " de " + Math.max(1, Math.ceil(ranking.length / 5)), 1320, 1193);
-  ctx.textAlign = "left";
+    ctx.save();
+    ctx.shadowColor = "rgba(185, 92, 255, 0.9)";
+    ctx.shadowBlur = 9;
+    ctx.textBaseline = "middle";
+    ctx.textAlign = "left";
+    ctx.font = "bold 34px sans-serif";
+    ctx.fillStyle = "#fff4ff";
+    ctx.fillText(fitText(ctx, name, 340), 1024, centerY, 340);
+
+    ctx.textAlign = "right";
+    ctx.font = "bold 29px sans-serif";
+    ctx.fillStyle = "#e8c9ff";
+    ctx.fillText(fitText(ctx, formatKz(entry.balance), 390), 1450, centerY + 30, 390);
+    ctx.restore();
+  }
 
   return new AttachmentBuilder(await canvas.encode("png"), { name: "rank-kz-yukina.png" });
 }
