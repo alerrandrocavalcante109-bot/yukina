@@ -1453,7 +1453,8 @@
     function dropSetConfig(config){
       const saved=config&&typeof config==="object"?config:{};
       const extras=saved.extraEntries||{};
-      dropExtraRoles=Array.isArray(extras.roles)?extras.roles.map(item=>({id:String(item.id),name:String(item.name||dropRoleName(item.id)),entries:Number(item.entries)||1})).filter(item=>item.id):[];
+      const storedExtraRoles=Array.isArray(extras.roles)?extras.roles:(Array.isArray(saved.roles)?saved.roles.map(item=>({...item,entries:item.entries??item.extras})):[]);
+      dropExtraRoles=storedExtraRoles.map(item=>({id:String(item.id),name:String(item.name||dropRoleName(item.id)),entries:Number(item.entries)||1})).filter(item=>item.id);
       const ignore=saved.ignoreRequirements||{},blocked=saved.blockedRoles||{},req=saved.requirements||{},embed=saved.embed||{};
       dropIgnoreRoleIds=Array.isArray(ignore.roleIds)?ignore.roleIds.map(String):[];
       dropBlockedRoleIds=Array.isArray(blocked.roleIds)?blocked.roleIds.map(String):[];
