@@ -61,13 +61,14 @@ function parseAmount(input, availableBalance, recipientCount) {
   return Math.floor(amount);
 }
 
-function buildRows(proposal, disabled = false, completed = false) {
+function buildRows(proposal, disabled = false, completed = false, expired = false) {
   const count = Array.isArray(proposal.acceptedBy) ? proposal.acceptedBy.length : 0;
   const accept = new ButtonBuilder()
     .setCustomId("yukina-pay:accept:" + proposal.id)
-    .setLabel(completed ? "Transferência concluída" : "Aceitar " + count + "/2")
-    .setStyle(completed ? ButtonStyle.Success : ButtonStyle.Secondary)
-    .setDisabled(disabled || completed);
+    .setLabel(expired ? "A transferência expirou." : completed ? "Transferência concluída" : "Aceitar " + count + "/2")
+    .setStyle(expired ? ButtonStyle.Danger : completed ? ButtonStyle.Success : ButtonStyle.Secondary)
+    .setDisabled(disabled || completed || expired);
+  if (expired) accept.setEmoji({ id: "1572057685770248292" });
   return [new ActionRowBuilder().addComponents(accept)];
 }
 
@@ -114,10 +115,9 @@ async function expireProposal(client, proposalId) {
     await editProposalMessage(
       client,
       proposal,
-      "🍃 **Yukina Pay · Proposta expirada**\nO momento da decisão passou. O prazo da proposta terminou e nenhuma Kizuna foi transferida.",
-      []
-    );
-  } catch (error) {
+      proposalText(proposal),
+      buildRows(proposal, true, false, true)
+    );  } catch (error) {
     console.error("[Yukina Pay] Falha ao expirar proposta:", error.message || error);
   }
 }
