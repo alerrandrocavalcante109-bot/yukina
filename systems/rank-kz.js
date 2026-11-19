@@ -88,9 +88,9 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0, local = 
       displayName || "Usuário " + String(entry.userId).slice(-4)
     );
 
-    const avatarX = 932;
-    const avatarY = centerY - 37;
-    const avatarSize = 74;
+    const avatarX = 940;
+    const avatarY = centerY - 28;
+    const avatarSize = 56;
     ctx.save();
     ctx.beginPath();
     ctx.arc(avatarX + avatarSize / 2, avatarY + avatarSize / 2, avatarSize / 2, 0, Math.PI * 2);
@@ -114,14 +114,13 @@ async function renderRankingCard(guild, ranking, requesterId, page = 0, local = 
     ctx.shadowBlur = 9;
     ctx.textBaseline = "middle";
     ctx.textAlign = "left";
-    ctx.font = "bold 34px sans-serif";
+    ctx.font = "bold 25px sans-serif";
     ctx.fillStyle = "#fff4ff";
-    ctx.fillText(fitText(ctx, name, 340), 1024, centerY, 340);
+    ctx.fillText(fitText(ctx, name, 430), 1012, centerY - 10, 430);
 
-    ctx.textAlign = "right";
-    ctx.font = "bold 29px sans-serif";
+    ctx.font = "bold 20px sans-serif";
     ctx.fillStyle = "#e8c9ff";
-    ctx.fillText(fitText(ctx, formatKz(entry.balance), 390), 1450, centerY + 30, 390);
+    ctx.fillText(fitText(ctx, formatKz(entry.balance), 430), 1012, centerY + 22, 430);
     ctx.restore();
   }
 
