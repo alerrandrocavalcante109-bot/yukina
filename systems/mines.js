@@ -181,7 +181,6 @@ function buildGameComponents(game) {
         nextText
       ),
       new TextDisplayBuilder().setContent(
-        "### 🗺️ Tabuleiro\n" +
         "💎 Casas encontradas: **" + openedCount + "/" + safeTotal + "**\n" +
         "Escolha uma casa para continuar sua exploração."
       )
