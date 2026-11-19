@@ -723,7 +723,8 @@ async function startGame({ client, guild, channel, user, betInput, bombs, send }
   }
 
   if (!Number.isInteger(bombs) || bombs < MIN_BOMBS || bombs > MAX_BOMBS) {
-    return { ok: false, message: "💣 A quantidade de bombas não é válida. Escolha um valor entre **1 e 16 bombas**." };
+    const prefix = await getGuildPrefix(guild.id).catch(() => "Y");
+    return { ok: false, message: "💎 Valor ou quantidade de bombas inválida. Use: \`" + prefix + "mines [valor] [bombas]\`." };
   }
   const active = await db.collection("mines_games").findOne({ userId: String(user.id), status: "active" });
   if (active) return { ok: false, message: "Você já está explorando uma caverna! Termine sua partida #" + active.gameNumber + " antes de iniciar outra." };
