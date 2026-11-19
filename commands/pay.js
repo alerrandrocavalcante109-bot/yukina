@@ -407,7 +407,7 @@ async function handleButton(interaction) {
       content: [
         "🌸 **Transação concluída**",
         "",
-        "・<@" + proposal.senderId + "> acaba de transferir **" + format(proposal.amount) + "** para <@" + proposal.recipientId + ">.",
+        "・<:1000008462:1572808081027637319> <@" + proposal.senderId + "> acaba de transferir **" + format(proposal.amount) + "** para <@" + proposal.recipientId + ">.",
         "",
         "・Agora <@" + proposal.senderId + "> possui **" + format(senderBalance) + "**",
         "E está em **" + format(senderRank) + "º lugar** no rank de Kizunas!",
