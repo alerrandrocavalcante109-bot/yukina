@@ -160,7 +160,7 @@ function buildGameComponents(game) {
   const nextPayout = nextMultiplier === null ? null : payoutFor(game.bet, nextMultiplier);
   const nextText = nextMultiplier === null
     ? "**Próximo:** todas as casas seguras foram abertas"
-    : "**Próximo:** " + nextMultiplier.toFixed(2) + "x  (+" + format(Math.max(0, nextPayout - currentPayout)) + " KZ)";
+    : "**Próximo:** " + nextMultiplier.toFixed(2) + "x  (" + format(nextPayout) + " KZ)";
   
   const container = new ContainerBuilder()
     .setAccentColor(COLOR)
