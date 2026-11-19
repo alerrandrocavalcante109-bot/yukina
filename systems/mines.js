@@ -58,7 +58,7 @@ async function getDb() {
   return dbPromise;
 }
 
-function parseBet(input) {
+function parseBetAmount(input) {
   let raw = String(input ?? "").trim().toLowerCase().replace(/\s+/g, "");
   if (!raw) return null;
 
@@ -75,8 +75,12 @@ function parseBet(input) {
     return null;
   }
 
-  if (!Number.isSafeInteger(amount) || amount < MIN_BET || amount > MAX_BET) return null;
-  return amount;
+  return Number.isSafeInteger(amount) ? amount : null;
+}
+
+function parseBet(input) {
+  const amount = parseBetAmount(input);
+  return amount !== null && amount >= MIN_BET && amount <= MAX_BET ? amount : null;
 }
 
 function format(value) {
@@ -700,15 +704,26 @@ async function startGame({ client, guild, channel, user, betInput, bombs, send }
     const availableBalance = Math.max(0, Math.floor(Number(balanceDoc?.balance) || 0));
     bet = normalizedBet === "all" ? availableBalance : Math.floor(availableBalance / 2);
   } else {
-    bet = parseBet(betInput);
+    bet = parseBetAmount(betInput);
   }
 
-  if (!bet || bet < MIN_BET || bet > MAX_BET || !Number.isInteger(bombs) || bombs < MIN_BOMBS || bombs > MAX_BOMBS) {
-    const prefix = await getGuildPrefix(guild.id).catch(() => "Y");
-    const reason = normalizedBet === "all" || normalizedBet === "half"
-      ? "O valor escolhido com **" + normalizedBet + "** precisa resultar em uma aposta entre **100 e 10.000.000 KZ**."
-      : "Valor ou quantidade de bombas inválida.";
-    return { ok: false, message: reason + " Use " + prefix + "mines valor bombas. Você também pode usar **all** (todo o saldo) ou **half** (metade do saldo)." };
+  if (!Number.isSafeInteger(bet)) {
+    return { ok: false, message: "⚠️ Não consegui entender o valor da sua aposta. Informe um número válido, como **100**, **50k** ou **1m**." };
+  }
+
+  if (bet > MAX_BET) {
+    const message = normalizedBet === "all" || normalizedBet === "half"
+      ? "💰 Sua aposta ficou acima do limite permitido! Mesmo utilizando **" + (normalizedBet === "all" ? "todo o seu saldo (all)" : "metade do seu saldo (half)") + "**, o máximo por partida é de **10.000.000 KZ**."
+      : "🌸 Ei, calma! Sua aposta ultrapassa o limite permitido. O máximo que você pode apostar por partida é de **10.000.000 KZ**.";
+    return { ok: false, message };
+  }
+
+  if (bet < MIN_BET) {
+    return { ok: false, message: "🍃 Opa! Sua aposta está abaixo do mínimo permitido. Para começar sua exploração, aposte pelo menos **100 KZ**." };
+  }
+
+  if (!Number.isInteger(bombs) || bombs < MIN_BOMBS || bombs > MAX_BOMBS) {
+    return { ok: false, message: "💣 A quantidade de bombas não é válida. Escolha um valor entre **1 e 16 bombas**." };
   }
   const active = await db.collection("mines_games").findOne({ userId: String(user.id), status: "active" });
   if (active) return { ok: false, message: "Você já está explorando uma caverna! Termine sua partida #" + active.gameNumber + " antes de iniciar outra." };
