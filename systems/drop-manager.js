@@ -106,11 +106,36 @@ async function join(interaction,id){
   if(Date.now()>=drop.endsAt){await finish(interaction.client,id);return interaction.reply({content:"🌙 O tempo deste drop acabou.",ephemeral:true});}
   const member=await interaction.guild.members.fetch(interaction.user.id).catch(()=>null);
   if(!member)return interaction.reply({content:"❄️ Não consegui localizar seu membro no servidor.",ephemeral:true});
-  const roles=Array.isArray(drop.roles)?drop.roles:[];
-  if(roles.length&&!roles.some(rule=>member.roles.cache.has(String(rule.id)))){
-    return interaction.reply({content:"🫧 Você não possui um dos cargos permitidos para participar deste drop.",ephemeral:true});
+  const config=drop.configSnapshot||{};
+  const hasRole = roleId => member.roles.cache.has(String(roleId));
+  const blocked=config.blockedRoles?.enabled===true
+    && (config.blockedRoles.roleIds||[]).some(hasRole);
+  if(blocked){
+    return interaction.reply({content:"🚫 Você possui um cargo que está impedido de participar deste drop.",ephemeral:true});
   }
-  const extra=roles.filter(rule=>member.roles.cache.has(String(rule.id))).reduce((sum,rule)=>sum+Math.max(0,Math.min(1000,Number(rule.extras)||0)),0);
+
+  const ignoresRequirements=config.ignoreRequirements?.enabled===true
+    && (config.ignoreRequirements.roleIds||[]).some(hasRole);
+  if(!ignoresRequirements){
+    const messageRequirement=config.requirements?.messages;
+    if(messageRequirement?.enabled===true){
+      const messageCounter=require("./message-counter");
+      const stats=await messageCounter.getStats(drop.guildId,interaction.user.id);
+      const required=Math.max(1,Number(messageRequirement.value)||1);
+      if(stats.total<required){
+        return interaction.reply({
+          content:"💬 Você ainda não atingiu o requisito de mensagens deste drop.\n**Mensagens válidas:** "+stats.total+" / "+required,
+          ephemeral:true
+        });
+      }
+    }
+  }
+
+  const extraConfig=config.extraEntries||{};
+  const extraRoles=extraConfig.enabled===true&&Array.isArray(extraConfig.roles)?extraConfig.roles:[];
+  const legacyRoles=Array.isArray(drop.roles)?drop.roles:[];
+  const roles=extraRoles.length?extraRoles:legacyRoles;
+  const extra=roles.filter(rule=>hasRole(rule.id)).reduce((sum,rule)=>sum+Math.max(0,Math.min(1000,Number(rule.entries??rule.extras)||0)),0);
   const tickets=1+extra;
   await giveaways.updateOne({_id:drop._id,status:"active"},{$set:{["entries."+interaction.user.id]:{tickets,joinedAt:Date.now()}}});
   return interaction.reply({content:"🎁 Você está participando! Suas chances foram registradas com **"+tickets+" entrada(s)**.",ephemeral:true});
