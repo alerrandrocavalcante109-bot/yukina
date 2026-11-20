@@ -82,48 +82,8 @@ async function runDailyReminders(client, scheduled = false) {
       const claimedToday = await claims.findOne({ userId: userKey, day });
       const state = await reminders.findOne({ guildId, userId: userKey });
 
-      // O aviso do Banco Central continua enquanto houver Kizunas na conta bancária.
-      // Ele é independente dos lembretes comuns, que param após mais de 4 dias sem Daily.
       const lastClaim = await claims.find({ userId: userKey })
         .sort({ claimedAt: -1, day: -1 }).limit(1).next();
-      const lastClaimAt = lastClaim?.claimedAt ? new Date(lastClaim.claimedAt) : null;
-      if (lastClaimAt && !Number.isNaN(lastClaimAt.getTime())) {
-        const elapsedDays = (now.getTime() - lastClaimAt.getTime()) / (24 * 60 * 60 * 1000);
-        const bankAccount = await db.collection("yukina_bank_accounts").findOne({ guildId, userId: userKey });
-        const bankBalance = Math.max(0, Number(bankAccount?.balance) || 0);
-        const warningDay = localDayKey(getLocalDateTime(now));
-        if (!claimedToday && elapsedDays >= 2 && bankBalance > 0 && state?.lastBankWarningDay !== warningDay) {
-          try {
-            const user = await client.users.fetch(userKey);
-            await user.send({
-              embeds: [{
-                color: 0xA7D8F0,
-                title: "❄️ Nee~ um aviso importante da Yukina",
-                description: elapsedDays < 3
-                  ? "Oii~! 💙 Faz quase 3 dias que você não coleta seu Daily. Se passar de **3 dias completos sem coletar**, o Banco Central começará a cobrar uma taxa de **3% ao dia** sobre suas Kizunas guardadas no banco.\n\nAinda dá tempo de evitar a taxa: venha coletar seu Daily antes do prazo!"
-                  : "Oii~! 💙 Você continua sem coletar seu Daily e a taxa de inatividade do Banco Central já pode estar sendo aplicada. Enquanto houver Kizunas guardadas no banco, continuarei avisando você. Volte ao Daily para interromper esse ciclo! 🌸",
-                fields: [{ name: "🌙 Seu Daily", value: "[Abrir o painel e coletar agora](" + DAILY_URL + ")" }],
-                footer: { text: "Yukina • Aviso do Banco Central" },
-                timestamp: now.toISOString()
-              }],
-              allowedMentions: { parse: [] }
-            });
-            await reminders.updateOne(
-              { guildId, userId: userKey },
-              { $set: { lastBankWarningDay: warningDay, lastBankWarningAt: now }, $setOnInsert: { createdAt: now } },
-              { upsert: true }
-            );
-            console.log("[Daily Reminder] Aviso do Banco Central enviado para " + userKey + ".");
-            await new Promise(resolve => setTimeout(resolve, 900));
-          } catch (error) {
-            if (error?.code === 50007) {
-              console.log("[Daily Reminder] DM fechada para aviso do Banco Central: " + userKey + ".");
-            } else {
-              console.warn("[Daily Reminder] Falha no aviso do Banco Central para " + userKey + ":", error?.message || error);
-            }
-          }
-        }
-      }
 
       // O lembrete comum é único e para após mais de 4 dias completos sem coleta.
       if (claimedToday || state?.lastReminderDay === day) continue;
