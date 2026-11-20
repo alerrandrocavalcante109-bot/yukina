@@ -151,24 +151,39 @@ async function processUser(client, db, vipCollection, userId, now) {
   const effectiveRate = baseRate * (1 - discount);
   const fee = Math.min(freshBalance, Math.floor(freshBalance * effectiveRate));
 
-  // Reserva a cobrança antes do débito para impedir cobranças duplicadas.
-  const reservation = await states.updateOne(
-    { guildId: GUILD_ID, userId: userKey, lastClaimAt, chargedAt: null },
-    { $set: { chargedAt: now, fee, baseRate, effectiveRate, planKey: planKey || null, updatedAt: now } }
-  );
-  if (!reservation.modifiedCount || fee <= 0) return;
-
-  const debit = await balances.updateOne(
-    { userId: userKey, balance: { $gte: fee } },
-    { $inc: { balance: -fee }, $set: { updatedAt: now } }
-  );
-  if (!debit.modifiedCount) {
+  if (fee <= 0) {
     await states.updateOne(
-      { guildId: GUILD_ID, userId: userKey, lastClaimAt, chargedAt: now },
-      { $set: { fee: 0, debitFailed: true, updatedAt: new Date() } }
+      { guildId: GUILD_ID, userId: userKey, lastClaimAt, chargedAt: null },
+      { $set: { chargedAt: now, fee: 0, baseRate, effectiveRate, planKey: planKey || null, updatedAt: now } }
     );
     return;
   }
+
+  // Registra a cobrança e debita a carteira na mesma transação para evitar duplicidade
+  // ou perda da cobrança caso o processo seja interrompido entre as duas operações.
+  const session = mongoClient.startSession();
+  let charged = false;
+  try {
+    await session.withTransaction(async () => {
+      const reservation = await states.updateOne(
+        { guildId: GUILD_ID, userId: userKey, lastClaimAt, chargedAt: null },
+        { $set: { chargedAt: now, fee, baseRate, effectiveRate, planKey: planKey || null, updatedAt: now } },
+        { session }
+      );
+      if (!reservation.modifiedCount) return;
+
+      const debit = await balances.updateOne(
+        { userId: userKey, balance: { $gte: fee } },
+        { $inc: { balance: -fee }, $set: { updatedAt: now } },
+        { session }
+      );
+      if (!debit.modifiedCount) throw new Error("Saldo alterado antes da cobrança; transação cancelada.");
+      charged = true;
+    });
+  } finally {
+    await session.endSession();
+  }
+  if (!charged) return;
 
   try {
     await sendChargeNotice(client, userKey, freshBalance, fee, effectiveRate, planKey);
