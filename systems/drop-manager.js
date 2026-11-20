@@ -117,6 +117,22 @@ async function join(interaction,id){
   const ignoresRequirements=config.ignoreRequirements?.enabled===true
     && (config.ignoreRequirements.roleIds||[]).some(hasRole);
   if(!ignoresRequirements){
+    const levelRequirement=config.requirements?.level;
+    if(levelRequirement?.enabled===true){
+      const memberData=require("../member-data");
+      await memberData.initialize();
+      const record=memberData.getRecord(drop.guildId,interaction.user.id);
+      const xp=Math.max(0,Number(record.xp)||0);
+      const currentLevel=Math.floor(xp/1000);
+      const required=Math.max(1,Number(levelRequirement.value)||1);
+      if(currentLevel<required){
+        return interaction.reply({
+          content:"🌙 Você ainda não atingiu o nível mínimo deste drop.\\n**Seu nível:** "+currentLevel+" / "+required+"\\n**XP atual:** "+xp.toLocaleString("pt-BR"),
+          ephemeral:true
+        });
+      }
+    }
+
     const messageRequirement=config.requirements?.messages;
     if(messageRequirement?.enabled===true){
       const messageCounter=require("./message-counter");
