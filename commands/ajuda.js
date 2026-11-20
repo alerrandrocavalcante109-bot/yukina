@@ -11,7 +11,7 @@ const COLOR = 0xA9DDF5;
 const CATEGORY_ORDER = [
   { key: "geral", label: "🌸 Geral", description: "Comandos básicos e informações", match: /ajuda|help|ping|info|sobre|avatar|server|servidor|convite|say|dizer/i },
   { key: "diversao", label: "🎮 Jogos e diversão", description: "Jogos, brincadeiras e interação", match: /jogo|game|domino|forca|quiz|ship|beijo|abraco|abraço|cafune|carinho|meme|sorte|coin|cara|coroa/i },
-  { key: "economia", label: "💴 Economia", description: "Kizunas, carteira e banco", match: /saldo|banco|deposit|sacar|transfer|pagar|emprest|loan|work|trabalh|daily|colet|loja|comprar|vender|invent|econom|kizuna|sonho/i },
+  { key: "economia", label: "💴 Economia", description: "Kizunas, carteira e transferências", match: /saldo|transfer|pagar|work|trabalh|daily|colet|loja|comprar|vender|invent|econom|kizuna|sonho/i },
   { key: "progressao", label: "📈 Níveis e atividade", description: "XP, rank e progresso", match: /rank|ranking|nivel|nível|xp|level|tempo|hierarquia|top|leaderboard/i },
   { key: "moderacao", label: "🛡️ Moderação", description: "Ferramentas de moderação", match: /ban|kick|mute|timeout|warn|aviso|clear|limpar|purge|modera|castigo|expuls/i },
   { key: "painel", label: "⚙️ Servidor e painel", description: "Configurações e sistemas do servidor", match: /painel|config|prefix|canal|cargo|role|promo|staff|ticket|contagem|count|sorteio|giveaway/i },
