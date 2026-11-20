@@ -146,7 +146,8 @@ async function processUser(client, db, vipCollection, userId, now) {
   try {
     plan = await getBestActivePlan(vipCollection, userKey, now);
   } catch (error) {
-    console.warn("[Daily Inatividade] Falha ao consultar plano de " + userKey + ":", error?.message || error);
+    console.warn("[Daily Inatividade] Falha ao consultar plano de " + userKey + "; cobrança adiada para não ignorar um possível desconto VIP:", error?.message || error);
+    return;
   }
   const planKey = String(plan?.planKey || "").toLowerCase();
   const discount = PLAN_DISCOUNTS[planKey] || 0;
