@@ -141,7 +141,7 @@
       return;
     }
 
-    const api = String(window.YUKINA_API_URL || 'https://yukina-s1lz.onrender.com').replace(/\/$/, '');
+    const api = String(window.YUKINA_API_URL || 'https://yukina-jspa.onrender.com').replace(/\/$/, '');
     const token = localStorage.getItem('yukina_discord_token');
     if (!token) {
       const returnTo = './vip.html?plan=' + encodeURIComponent(selected) + '&billing=' + encodeURIComponent(billing);
