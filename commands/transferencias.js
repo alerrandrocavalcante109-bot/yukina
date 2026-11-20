@@ -8,10 +8,9 @@ const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 const HISTORY_LIMIT = 15;
 let mongoClient = null;
 let proposals = null;
-let bankTransactions = null;
 
 async function getCollections() {
-  if (proposals && bankTransactions) return { proposals, bankTransactions };
+  if (proposals) return { proposals };
   if (!MONGODB_URI) throw new Error("MONGODB_URI não está configurada.");
   if (!mongoClient) {
     mongoClient = new MongoClient(MONGODB_URI, {
@@ -23,13 +22,11 @@ async function getCollections() {
   await mongoClient.connect();
   const db = mongoClient.db(MONGODB_DB);
   proposals = db.collection("yukina_pay_proposals");
-  bankTransactions = db.collection("yukina_bank_transactions");
   await Promise.all([
     proposals.createIndex({ guildId: 1, status: 1, senderId: 1, completedAt: -1 }, { name: "transfer_history_sender" }),
     proposals.createIndex({ guildId: 1, status: 1, recipientId: 1, completedAt: -1 }, { name: "transfer_history_recipient" }),
-    bankTransactions.createIndex({ guildId: 1, userId: 1, createdAt: -1 }, { name: "bank_ledger_user_history" }),
   ]);
-  return { proposals, bankTransactions };
+  return { proposals };
 }
 
 function format(value) {
@@ -55,44 +52,31 @@ async function showHistory({ guild, user, viewerId, send }) {
   }
 
   try {
-    const { proposals: proposalCollection, bankTransactions: ledger } = await getCollections();
+    const { proposals: proposalCollection } = await getCollections();
     const guildId = String(guild.id);
     const userId = String(user.id);
-    const [transferRows, bankRows] = await Promise.all([
-      proposalCollection.find({
-        guildId,
-        status: "completed",
-        $or: [{ senderId: userId }, { recipientId: userId }],
-      }).sort({ completedAt: -1 }).limit(HISTORY_LIMIT).toArray(),
-      ledger.find({ guildId, userId }).sort({ createdAt: -1 }).limit(HISTORY_LIMIT).toArray(),
-    ]);
+    const transferRows = await proposalCollection.find({
+      guildId,
+      status: "completed",
+      $or: [{ senderId: userId }, { recipientId: userId }],
+    }).sort({ completedAt: -1 }).limit(HISTORY_LIMIT).toArray();
 
-    const entries = [
-      ...transferRows.map(item => ({
-        kind: String(item.senderId) === userId ? "sent" : "received",
-        amount: Math.max(0, Number(item.amount) || 0),
-        otherId: String(item.senderId) === userId ? item.recipientId : item.senderId,
-        date: item.completedAt || item.createdAt,
-      })),
-      ...bankRows.map(item => ({
-        kind: item.type === "depositar" ? "deposit" : item.type === "taxa_daily" ? "fee" : "withdraw",
-        amount: Math.max(0, Number(item.amount) || 0),
-        date: item.createdAt,
-      })),
-    ].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, HISTORY_LIMIT);
+    const entries = transferRows.map(item => ({
+      kind: String(item.senderId) === userId ? "sent" : "received",
+      amount: Math.max(0, Number(item.amount) || 0),
+      otherId: String(item.senderId) === userId ? item.recipientId : item.senderId,
+      date: item.completedAt || item.createdAt,
+    })).sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()).slice(0, HISTORY_LIMIT);
 
-    const outgoingTotal = entries.reduce((sum, item) => sum + (["sent", "deposit", "fee"].includes(item.kind) ? item.amount : 0), 0);
-    const incomingTotal = entries.reduce((sum, item) => sum + (["received", "withdraw"].includes(item.kind) ? item.amount : 0), 0);
+    const outgoingTotal = entries.reduce((sum, item) => sum + (item.kind === "sent" ? item.amount : 0), 0);
+    const incomingTotal = entries.reduce((sum, item) => sum + (item.kind === "received" ? item.amount : 0), 0);
 
     const details = entries.length
-      ? entries.map(item => {
-          if (item.kind === "sent") return "📤 **Transferência enviada** · " + format(item.amount) + " KZ\nPara: <@" + item.otherId + "> · " + formatDate(item.date);
-          if (item.kind === "received") return "📥 **Transferência recebida** · " + format(item.amount) + " KZ\nDe: <@" + item.otherId + "> · " + formatDate(item.date);
-          if (item.kind === "deposit") return "🏦 **Depósito no banco** · −" + format(item.amount) + " KZ\nDa carteira para o Banco Central · " + formatDate(item.date);
-          if (item.kind === "fee") return "🧾 **Taxa de inatividade** · −" + format(item.amount) + " KZ\nDescontada da carteira · " + formatDate(item.date);
-          return "👛 **Saque do banco** · +" + format(item.amount) + " KZ\nDo Banco Central para a carteira · " + formatDate(item.date);
-        }).join("\n\n")
-      : "Ainda não há movimentações concluídas registradas para esta carteira.";
+      ? entries.map(item => item.kind === "sent"
+          ? "📤 **Transferência enviada** · " + format(item.amount) + " KZ\\nPara: <@" + item.otherId + "> · " + formatDate(item.date)
+          : "📥 **Transferência recebida** · " + format(item.amount) + " KZ\\nDe: <@" + item.otherId + "> · " + formatDate(item.date)
+        ).join("\\n\\n")
+      : "Ainda não há transferências concluídas registradas para esta carteira.";
 
     const isOtherUser = String(user.id) !== String(viewerId || user.id);
     const embed = new EmbedBuilder()
