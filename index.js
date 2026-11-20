@@ -275,6 +275,7 @@ client.once("clientReady", async () => {
   loadYukinaSystems();
   require("./vip-reminders")(client);
   require("./daily-reminders")(client);
+  require("./systems/daily-inactivity")(client);
   startupLog(`🌸 Identidade: ${client.user.tag}`);
   startupLog(`🏠 Servidores conectados: ${client.guilds.cache.size}`);
   startupLog("⚙️ Preparando os sistemas da Yukina...");
