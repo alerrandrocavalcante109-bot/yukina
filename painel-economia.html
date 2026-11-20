@@ -21,7 +21,7 @@ button{border:0;border-radius:11px;padding:13px 18px;font:inherit;font-weight:70
 <p class="muted">ÁREA RESTRITA · PROPRIETÁRIO</p>
 <h1>💴 Painel Economia</h1>
 <p>Ferramentas administrativas da economia global da Yukina.</p>
-<div class="warning"><strong>⚠️ Reset global</strong><br>Esta ação apaga saldos de carteira, dinheiro no banco, dívidas, transferências, registros do Daily, histórico de jogos e registros de recompensas econômicas. Planos VIP, XP, perfis e configurações dos sistemas serão preservados.</div>
+<div class="warning"><strong>⚠️ Reset global</strong><br>Esta ação apaga saldos de carteira, transferências, registros do Daily, histórico de jogos e registros de recompensas econômicas. Planos VIP, XP, perfis e configurações dos sistemas serão preservados.</div>
 <h2>Registros atuais</h2><div class="stats" id="stats"><div class="stat">Carregando…</div></div>
 <h2>Resetar economia</h2>
 <p class="muted">Para liberar o reset, digite exatamente <strong>RESETAR ECONOMIA</strong>. A operação é global e não pode ser desfeita.</p>
@@ -35,8 +35,7 @@ button{border:0;border-radius:11px;padding:13px 18px;font:inherit;font-weight:70
  const API=(window.YUKINA_API_URL||"https://yukina-jspa.onrender.com").replace(/\/$/,"");
  const $=id=>document.getElementById(id);
  const names={
-  economy_balances:"Carteiras KZ",yukina_bank_accounts:"Contas bancárias e dívidas",
-  yukina_bank_transactions:"Histórico do banco",yukina_pay_proposals:"Transferências",
+  economy_balances:"Carteiras KZ",yukina_pay_proposals:"Transferências",
   daily_claims:"Coletas do Daily",mines_games:"Partidas de Minas",mines_ledger:"Movimentações de Minas",
   mines_counters:"Contadores de Minas",vip_plan_command_ledger:"Recompensas de comandos VIP",drop_auto_runs:"Drops em andamento",drop_auto_luck:"Sorte acumulada dos Drops",
   drop_auto_manual_payouts:"Pagamentos manuais de Drop",drop_auto_payout_ledger:"Pagamentos de Drop",
