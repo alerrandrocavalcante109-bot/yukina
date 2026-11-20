@@ -73,9 +73,9 @@ async function showHistory({ guild, user, viewerId, send }) {
 
     const details = entries.length
       ? entries.map(item => item.kind === "sent"
-          ? "📤 **Transferência enviada** · " + format(item.amount) + " KZ\\nPara: <@" + item.otherId + "> · " + formatDate(item.date)
-          : "📥 **Transferência recebida** · " + format(item.amount) + " KZ\\nDe: <@" + item.otherId + "> · " + formatDate(item.date)
-        ).join("\\n\\n")
+          ? "📤 **Transferência enviada** · " + format(item.amount) + " KZ\nPara: <@" + item.otherId + "> · " + formatDate(item.date)
+          : "📥 **Transferência recebida** · " + format(item.amount) + " KZ\nDe: <@" + item.otherId + "> · " + formatDate(item.date)
+        ).join("\n\n")
       : "Ainda não há transferências concluídas registradas para esta carteira.";
 
     const isOtherUser = String(user.id) !== String(viewerId || user.id);
