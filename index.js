@@ -24,7 +24,6 @@ const xpStorage = require("./system-storage").forSystem("xp-level-roles");
 const xpMultiplierStorage = require("./system-storage").forSystem("xp-multipliers");
 const { parseCountingValue } = require("./counting-number-parser");
 const { getVipCollection, activateSubscription } = require("./vip-store");
-const { applyDailyInactivityFee } = require("./systems/bank-inactivity-fee");
 const { invalidateGuildSettings } = require("./guild-settings-store");
 const nickColorsSystem = require("./systems/nick-colors");
 const reactionRolesSystem = require("./systems/reaction-roles");
@@ -881,8 +880,6 @@ async function panelApi(req, res, url) {
       const db = settingsMongoClient.db(MONGODB_DB);
       const economyCollections = [
         "economy_balances",
-        "yukina_bank_accounts",
-        "yukina_bank_transactions",
         "yukina_pay_proposals",
         "daily_claims",
         "mines_games",
@@ -1049,7 +1046,6 @@ async function panelApi(req, res, url) {
         : matchCount === 3 ? "3 símbolos iguais"
         : matchCount === 2 ? "2 símbolos iguais"
         : "4 símbolos diferentes";
-      const feeResult = await applyDailyInactivityFee({ db: settingsMongoClient.db(MONGODB_DB), guildId, userId: String(user.id), now });
       const session = settingsMongoClient.startSession();
       try {
         await session.withTransaction(async () => {
@@ -1066,7 +1062,7 @@ async function panelApi(req, res, url) {
       } finally {
         await session.endSession();
       }
-      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, slots, combination, baseReward, reward, bankFee: feeResult.fee, bankFeeOverdueDays: feeResult.overdueDays, balanceUpdated: true, nextReset: getNextDailyReset(now) });
+      return sendJson(res, 200, { ok: true, claimed: true, day, plan: planName, multiplier, slots, combination, baseReward, reward, balanceUpdated: true, nextReset: getNextDailyReset(now) });
     } catch (error) {
       console.error("[Daily] Falha na coleta:", error.message || error);
       return sendJson(res, 500, { ok: false, detail: "Não foi possível verificar a coleta do Daily. Tente novamente." });
