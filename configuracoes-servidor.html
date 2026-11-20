@@ -536,6 +536,11 @@
           <label for="dropReqInvitesValue">Convites válidos mínimos</label>
           <input id="dropReqInvitesValue" class="prefix-input" type="number" min="1" max="1000000" step="1" value="5">
         </div>
+        <label class="ticket-option"><span><strong>Cargo obrigatório</strong><small>Exige que o membro possua este cargo para participar do Drop.</small></span><span class="switch"><input id="dropReqRoleEnabled" type="checkbox"><span></span></span></label>
+        <div id="dropReqRoleArea" class="drop-config-area" hidden>
+          <label for="dropReqRoleSelect">Cargo exigido</label>
+          <select id="dropReqRoleSelect" class="prefix-input"><option value="">Carregando cargos…</option></select>
+        </div>
         <p class="prefix-system-help">Se faltar qualquer requisito ativado, a Yukina recusará a participação. Cargos que ignoram requisitos serão liberados, mas cargos bloqueados continuarão impedidos.</p>
         <p class="prefix-status" id="dropConfigStatus" role="status" aria-live="polite"></p>
       </div>
@@ -1388,7 +1393,7 @@
       ignoreEnabled:"dropIgnoreEnabled",ignoreArea:"dropIgnoreArea",ignoreRole:"dropIgnoreRoleSelect",ignoreAdd:"dropIgnoreAdd",ignoreList:"dropIgnoreList",
       blockedEnabled:"dropBlockedEnabled",blockedArea:"dropBlockedArea",blockedRole:"dropBlockedRoleSelect",blockedAdd:"dropBlockedAdd",blockedList:"dropBlockedList",
       image:"dropImageUrl",link:"dropLinkUrl",message:"dropMessage",levelEnabled:"dropReqLevelEnabled",levelArea:"dropReqLevelArea",levelValue:"dropReqLevelValue",
-      messagesEnabled:"dropReqMessagesEnabled",messagesArea:"dropReqMessagesArea",messagesValue:"dropReqMessagesValue",invitesEnabled:"dropReqInvitesEnabled",invitesArea:"dropReqInvitesArea",invitesValue:"dropReqInvitesValue",status:"dropConfigStatus"
+      messagesEnabled:"dropReqMessagesEnabled",messagesArea:"dropReqMessagesArea",messagesValue:"dropReqMessagesValue",invitesEnabled:"dropReqInvitesEnabled",invitesArea:"dropReqInvitesArea",invitesValue:"dropReqInvitesValue",roleEnabled:"dropReqRoleEnabled",roleArea:"dropReqRoleArea",roleSelect:"dropReqRoleSelect",status:"dropConfigStatus"
     };
     const dropEl=key=>$(dropIds[key]);
     let dropRoles=[],dropRolesGuildId="",dropConfigOriginal=null;
@@ -1396,7 +1401,7 @@
     const dropClone=value=>JSON.parse(JSON.stringify(value));
     function dropRoleName(id){return dropRoles.find(role=>String(role.id)===String(id))?.name||"Cargo não encontrado";}
     function dropPopulateRoleSelects(){
-      ["extraRole","ignoreRole","blockedRole"].forEach(key=>{
+      ["extraRole","ignoreRole","blockedRole","roleSelect"].forEach(key=>{
         const select=dropEl(key),current=select.value;
         select.replaceChildren(new Option("Selecione um cargo…",""));
         dropRoles.filter(role=>!role.managed).sort((a,b)=>(a.name||"").localeCompare(b.name||"","pt-BR")).forEach(role=>select.add(new Option("@"+role.name,String(role.id))));
@@ -1446,7 +1451,8 @@
         requirements:{
           level:{enabled:dropEl("levelEnabled").checked,value:Number(dropEl("levelValue").value)||0},
           messages:{enabled:dropEl("messagesEnabled").checked,value:Number(dropEl("messagesValue").value)||0},
-          invites:{enabled:dropEl("invitesEnabled").checked,value:Number(dropEl("invitesValue").value)||0}
+          invites:{enabled:dropEl("invitesEnabled").checked,value:Number(dropEl("invitesValue").value)||0},
+          role:{enabled:dropEl("roleEnabled").checked,roleId:String(dropEl("roleSelect").value||"")}
         }
       };
     }
@@ -1465,6 +1471,7 @@
       });
       ["extra","ignore","blocked"].forEach(kind=>{dropEl(kind==="extra"?"extraArea":kind==="ignore"?"ignoreArea":"blockedArea").hidden=!dropEl(kind==="extra"?"extraEnabled":kind==="ignore"?"ignoreEnabled":"blockedEnabled").checked;dropRenderRoleList(kind);});
       [["level","level"],["messages","messages"],["invites","invites"]].forEach(([key,prefix])=>{dropEl(prefix+"Area").hidden=!dropEl(prefix+"Enabled").checked;});
+      const requiredRole=req.role||{};dropEl("roleEnabled").checked=Boolean(requiredRole.enabled);dropEl("roleSelect").value=String(requiredRole.roleId||"");dropEl("roleArea").hidden=!requiredRole.enabled;
     }
     async function loadDropConfig(force=false){
       const guild=selectedGuild();if(!guild.id){dropEl("status").textContent="Selecione um servidor no menu lateral.";return;}
@@ -1489,11 +1496,12 @@
       }catch(error){dropEl("status").textContent=error.message||"Não foi possível carregar o sistema de Drop.";}
     }
     function dropIsDirty(){return JSON.stringify(dropGetConfig())!==dropConfigOriginal;}
-    ["extraEnabled","ignoreEnabled","blockedEnabled","levelEnabled","messagesEnabled","invitesEnabled"].forEach(key=>{
-      const input=dropEl(key),areaKey=key==="extraEnabled"?"extraArea":key==="ignoreEnabled"?"ignoreArea":key==="blockedEnabled"?"blockedArea":key==="levelEnabled"?"levelArea":key==="messagesEnabled"?"messagesArea":"invitesArea";
+    ["extraEnabled","ignoreEnabled","blockedEnabled","levelEnabled","messagesEnabled","invitesEnabled","roleEnabled"].forEach(key=>{
+      const input=dropEl(key),areaKey=key==="extraEnabled"?"extraArea":key==="ignoreEnabled"?"ignoreArea":key==="blockedEnabled"?"blockedArea":key==="levelEnabled"?"levelArea":key==="messagesEnabled"?"messagesArea":key==="invitesEnabled"?"invitesArea":"roleArea";
       input.addEventListener("change",()=>{dropEl(areaKey).hidden=!input.checked;window.YukinaPendingChanges?.refresh();});
     });
     ["image","link","message","levelValue","messagesValue","invitesValue"].forEach(key=>dropEl(key).addEventListener("input",()=>window.YukinaPendingChanges?.refresh()));
+    dropEl("roleSelect").addEventListener("change",()=>window.YukinaPendingChanges?.refresh());
     [["extra","extraAdd"],["ignore","ignoreAdd"],["blocked","blockedAdd"]].forEach(([kind,buttonKey])=>dropEl(buttonKey).addEventListener("click",()=>dropAddRole(kind)));
     window.YukinaPendingChanges?.register({
       id:"drop-config",
@@ -1509,6 +1517,7 @@
         if(config.requirements.level.enabled&&(!Number.isInteger(config.requirements.level.value)||config.requirements.level.value<0))throw new Error("Informe um nível mínimo válido.");
         if(config.requirements.messages.enabled&&(!Number.isInteger(config.requirements.messages.value)||config.requirements.messages.value<1))throw new Error("Informe uma quantidade mínima de mensagens válida.");
         if(config.requirements.invites.enabled&&(!Number.isInteger(config.requirements.invites.value)||config.requirements.invites.value<1))throw new Error("Informe uma quantidade mínima de convites válida.");
+        if(config.requirements.role.enabled&&!config.requirements.role.roleId)throw new Error("Selecione o cargo obrigatório para participar do Drop.");
         let accessToken=token();if(!accessToken&&localStorage.getItem("yukina_discord_refresh_token"))accessToken=await refreshAccessToken();
         if(!accessToken)throw new Error("Sua sessão expirou. Entre novamente com o Discord.");
         const response=await fetch(API_BASE+"/api/guilds/"+encodeURIComponent(guild.id)+"/settings",{method:"PUT",headers:{Authorization:"Bearer "+accessToken,"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify({settings:{dropSystem:config}}),cache:"no-store"});
