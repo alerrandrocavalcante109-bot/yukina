@@ -122,12 +122,14 @@ async function processUser(client, db, vipCollection, userId, now) {
         { guildId: GUILD_ID, userId: userKey, lastClaimAt, warningSentAt: null },
         { $set: { warningSentAt: now, updatedAt: now } }
       );
+      state.warningSentAt = now;
     } catch (error) {
       console.warn("[Daily Inatividade] Falha ao enviar aviso para " + userKey + ":", error?.message || error);
     }
   }
 
-  if (inactiveFor < CHARGE_AFTER || state.chargedAt) return;
+  if (inactiveFor < CHARGE_AFTER || state.chargedAt || !state.warningSentAt) return;
+  if (now.getTime() - new Date(state.warningSentAt).getTime() < 12 * HOUR) return;
 
   const freshBalanceDoc = await balances.findOne({ userId: userKey });
   const freshBalance = Math.max(0, Number(freshBalanceDoc?.balance) || 0);
