@@ -117,6 +117,18 @@ async function join(interaction,id){
   const ignoresRequirements=config.ignoreRequirements?.enabled===true
     && (config.ignoreRequirements.roleIds||[]).some(hasRole);
   if(!ignoresRequirements){
+    const roleRequirement=config.requirements?.role;
+    if(roleRequirement?.enabled===true){
+      const requiredRoleId=String(roleRequirement.roleId||"");
+      if(!requiredRoleId||!hasRole(requiredRoleId)){
+        const requiredRole=requiredRoleId?interaction.guild.roles.cache.get(requiredRoleId):null;
+        return interaction.reply({
+          content:"🔒 Para participar deste drop, você precisa possuir o cargo obrigatório"+(requiredRole?" **@"+requiredRole.name+"**.":"."),
+          ephemeral:true
+        });
+      }
+    }
+
     const levelRequirement=config.requirements?.level;
     if(levelRequirement?.enabled===true){
       const memberData=require("../member-data");
