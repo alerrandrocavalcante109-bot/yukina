@@ -85,9 +85,6 @@ module.exports = {
       const id = String(args[0]).replace(/[<@!>]/g, "");
       if (/^\d{17,20}$/.test(id)) target = await message.client.users.fetch(id).catch(() => null);
     }
-    if (target && !message.guild.members.cache.has(target.id)) {
-      return message.reply("🌙 Esse usuário não é membro deste servidor.");
-    }
     return showStats(message, target || message.author);
   }
 };
