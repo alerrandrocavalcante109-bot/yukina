@@ -89,6 +89,7 @@ function loadYukinaSystems() {
   require("./command-engine")(client, getSettingsCollection);
   require("./custom-command-engine")(client, getSettingsCollection);
   require("./rank-system")(client);
+  require("./systems/message-counter").install(client);
   require("./xp-level-system")(client);
   require("./time-role-system")(client);
   require("./staff-promotion-announcements")(client);
