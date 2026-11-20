@@ -60,7 +60,6 @@ async function recordMessage(message) {
   if (!message.guild || !message.author || message.author.bot || message.webhookId) return;
 
   const content = String(message.content || "").trim();
-  if (Array.from(content).length < 5 || isEmojiOnly(content)) return;
 
   const guildId = String(message.guild.id);
   const userId = String(message.author.id);
@@ -91,6 +90,10 @@ async function recordMessage(message) {
       },
       { upsert: true }
     );
+
+    // Mensagens curtas e somente emojis também interrompem a sequência anterior,
+    // mas nunca entram na contagem.
+    if (Array.from(content).length < 5 || isEmojiOnly(content)) return;
 
     // Duas ocorrências consecutivas da mesma frase contam; da terceira em diante, não.
     if (repeatCount > 2) return;
