@@ -1,6 +1,7 @@
 const { MongoClient } = require("mongodb");
-const { MessageFlags, ContainerBuilder, SectionBuilder, TextDisplayBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const languageBridge = require("./systems/idioma/bridge");
+const { MessageFlags, ContainerBuilder, TextDisplayBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const languageSystem = require("./systems/idioma");
+const dailyLocale = require("./systems/idioma/locales/daily");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
@@ -52,7 +53,6 @@ function saoPauloMidnightUtc(year, month, day) {
 }
 
 let lastCycleDay = null;
-
 let mongoClient;
 let running = false;
 
@@ -71,7 +71,7 @@ async function runDailyReminders(client, scheduled = false) {
     const reminders = db.collection("daily_reminder_state");
     await reminders.createIndex({ guildId: 1, userId: 1 }, { unique: true });
     const now = new Date();
-    const day = localDayKey(getLocalDateTime(now));
+    const todayKey = localDayKey(getLocalDateTime(now));
     const guildId = (process.env.VIP_GUILD_ID || "").trim();
     if (!/^\d{17,20}$/.test(guildId)) {
       console.warn("[Daily Reminder] VIP_GUILD_ID não configurado; lembretes ignorados.");
@@ -80,61 +80,61 @@ async function runDailyReminders(client, scheduled = false) {
     const eligible = await claims.distinct("userId", {});
     for (const userId of eligible) {
       const userKey = String(userId);
-      const claimedToday = await claims.findOne({ userId: userKey, day });
+      const claimedToday = await claims.findOne({ userId: userKey, day: todayKey });
       const state = await reminders.findOne({ guildId, userId: userKey });
 
       const lastClaim = await claims.find({ userId: userKey })
         .sort({ claimedAt: -1, day: -1 }).limit(1).next();
 
       // Envia à meia-noite, mas interrompe os lembretes após mais de 1 dia completo sem coleta.
-      if (claimedToday || state?.lastReminderDay === day) continue;
+      if (claimedToday || state?.lastReminderDay === todayKey) continue;
       if (lastClaim?.claimedAt) {
         const elapsedDays = (now.getTime() - new Date(lastClaim.claimedAt).getTime()) / (24 * 60 * 60 * 1000);
         if (elapsedDays > 1) continue;
       }
-      const streak = await getDailyStreak(claims, guildId, userKey, day);
+      const streak = await getDailyStreak(claims, guildId, userKey, todayKey);
       try {
         const user = await client.users.fetch(userKey);
+        const language = await languageSystem.getUserLanguage(userKey);
+        const messages = dailyLocale.getDailyMessages(language);
         const message = new ContainerBuilder()
           .setAccentColor(0xe85cba)
           .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-              "## 🌸 Resgate Diário Disponível! ・🔥 Sequência: " + streak + " dias\n\n" +
-              "Seu presente diário de Kizunas está esperando por você! Faça seu resgate e descubra quantas Kizunas a Yukina preparou especialmente para hoje. 💜\n\n" +
-              "🔗 [Clique aqui para realizar seu resgate diário!](<" + DAILY_URL + ">)"
+              "## " + dailyLocale.formatDailyText(messages.reminderTitle, { streak }) + "\n\n" +
+              messages.reminderBody + "\n\n" +
+              dailyLocale.formatDailyText(messages.reminderLink, { url: DAILY_URL })
             )
           )
           .addMediaGalleryComponents(
             new MediaGalleryBuilder().addItems(
               new MediaGalleryItemBuilder()
                 .setURL(DAILY_IMAGE_URL)
-                .setDescription("Imagem do resgate diário da Yukina")
+                .setDescription(messages.imageDescription)
             )
           )
           .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-              "**Não deixe sua sequência acabar!** Continue realizando suas coletas diariamente e mantenha sua sequência de conquistas. ✨\n\n" +
-              "-# Yukina • Lembrete diário de Kizunas"
+              messages.reminderClosing + "\n\n" + messages.reminderSignature
             )
           )
           .addActionRowComponents(
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
-                .setLabel("Resgatar recompensa")
+                .setLabel(messages.reminderButton)
                 .setEmoji("🎁")
                 .setStyle(ButtonStyle.Link)
                 .setURL(DAILY_URL)
             )
           );
-        const reminderPayload = await languageBridge.localizePayload(userKey, {
+        await user.send({
           components: [message],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
         });
-        await user.send(reminderPayload);
         await reminders.updateOne(
           { guildId, userId: userKey },
-          { $set: { lastReminderDay: day, lastSentAt: now }, $setOnInsert: { createdAt: now } },
+          { $set: { lastReminderDay: todayKey, lastSentAt: now }, $setOnInsert: { createdAt: now } },
           { upsert: true }
         );
         await new Promise(resolve => setTimeout(resolve, 900));
