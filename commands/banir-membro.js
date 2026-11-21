@@ -54,7 +54,7 @@ async function createRequest({ guild, moderator, targetId, reason, durationValue
   const row = createConfirmation({ guildId: guild.id, moderatorId: moderator.id, targetId, reason: safeReason, durationMs });
   const durationText = durationMs ? "\nDuração: **" + formatDuration(durationMs) + "**." : "\nDuração: **permanente**.";
   return reply({
-    content: "🌸 **Solicitação de banimento**\n*Uma decisão deve ser tomada com responsabilidade.*\n\n" +
+    content: t("banTitle") + "\n*Uma decisão deve ser tomada com responsabilidade.*\n\n" +
       "<@" + moderator.id + ">, você vai banir <@" + targetId + "> do servidor?\n" +
       "Motivo: " + safeReason + ".\n*Toda escolha tem consequências. Que esta decisão seja tomada com sabedoria e respeito à nossa comunidade.*" + durationText + "\n\n⏳ **Tempo para aceitar: 5 minutos.**",
     components: [row], allowedMentions: { users: [moderator.id, targetId], parse: [] }, ephemeral: false
