@@ -1,5 +1,8 @@
 "use strict";
 
+const { AsyncLocalStorage } = require("node:async_hooks");
+const responseContext = new AsyncLocalStorage();
+const patchedChannels = new WeakSet();
 const languageSystem = require("./index");
 
 const EXACT = Object.freeze({
@@ -79,8 +82,20 @@ async function localizePayload(userId, payload) {
   return localizeObject(language, payload);
 }
 
+function installChannelBridge(channel) {
+  if (!channel || patchedChannels.has(channel) || typeof channel.send !== "function") return;
+  const originalSend = channel.send.bind(channel);
+  channel.send = (...args) => {
+    const context = responseContext.getStore();
+    if (!context?.userId) return originalSend(...args);
+    return localizePayload(context.userId, args[0]).then(payload => originalSend(payload, ...args.slice(1)));
+  };
+  patchedChannels.add(channel);
+}
+
 async function runWithUserLanguage(userId, callback, target) {
   if (!target || typeof callback !== "function") return callback();
+  installChannelBridge(target.channel);
   const methods = ["reply", "followUp", "editReply", "deferReply"];
   const originals = new Map();
 
@@ -96,7 +111,7 @@ async function runWithUserLanguage(userId, callback, target) {
   }
 
   try {
-    return await callback();
+    return await responseContext.run({ userId: String(userId) }, callback);
   } finally {
     for (const [method, original] of originals) target[method] = original;
   }
