@@ -1,9 +1,9 @@
 "use strict";
 const {SlashCommandBuilder,ActionRowBuilder,ButtonBuilder,ButtonStyle,PermissionFlagsBits}=require("discord.js");
-const pending=new Map();
-async function request({guild,moderator,targetId,reason,reply}){
- if(!guild)return reply({content:"❄️ Este comando só funciona dentro de um servidor.",ephemeral:true});
- if(!moderator.permissions.has(PermissionFlagsBits.KickMembers))return reply({content:"Você precisa da permissão **Expulsar membros**.",ephemeral:true});
+const pending=new Map();\nconst languageSystem=require("../systems/idioma");\nconst moderationLocale=require("../systems/idioma/locales/moderation");
+async function request({guild,moderator,targetId,reason,reply}){\n const language=await languageSystem.getUserLanguage(moderator?.id),t=(key,vars)=>moderationLocale.getMessage(language,key,vars);
+ if(!guild)return reply({content:t("serverOnly"),ephemeral:true});
+ if(!moderator.permissions.has(PermissionFlagsBits.KickMembers))return reply({content:"🌙 "+t("adminPermission"),ephemeral:true});
  if(targetId===moderator.id||targetId===guild.client.user.id)return reply({content:"Você não pode expulsar a si mesmo ou a Yukina.",ephemeral:true});
  const target=await guild.members.fetch(targetId).catch(()=>null),bot=guild.members.me||await guild.members.fetchMe().catch(()=>null);
  if(!target)return reply({content:"Esse usuário não é membro deste servidor.",ephemeral:true});
