@@ -8,8 +8,8 @@ const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
 const GUILD_ID = (process.env.VIP_GUILD_ID || "").trim();
 const HOUR = 60 * 60 * 1000;
 const CHECK_INTERVAL = 5 * 60 * 1000;
-const WARNING_AFTER = 60 * HOUR;
-const CHARGE_AFTER = 72 * HOUR;
+const INACTIVITY_LIMIT = 72 * HOUR;
+const SAO_PAULO_OFFSET = 3 * HOUR;
 
 const PLAN_DISCOUNTS = {
   starter: 0.37,
@@ -29,6 +29,28 @@ function getBaseRate(balance) {
   if (balance > 10_000_000) return 0.07;
   if (balance > 1_000_000) return 0.05;
   return 0;
+}
+
+function getSaoPauloMidnightAtOrAfter(date) {
+  const parts = new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  let midnight = Date.UTC(Number(values.year), Number(values.month) - 1, Number(values.day)) + SAO_PAULO_OFFSET;
+  if (midnight < date.getTime()) midnight += 24 * HOUR;
+  return new Date(midnight);
+}
+
+function getInactivitySchedule(lastClaimAt) {
+  const eligibleAt = new Date(lastClaimAt.getTime() + INACTIVITY_LIMIT);
+  const chargeAt = getSaoPauloMidnightAtOrAfter(eligibleAt);
+  return {
+    warningAt: new Date(chargeAt.getTime() - 12 * HOUR),
+    chargeAt,
+  };
 }
 
 async function getBestActivePlan(vipCollection, userId, now) {
@@ -88,8 +110,8 @@ async function processUser(client, db, vipCollection, userId, now) {
   if (!lastClaim?.claimedAt) return;
 
   const lastClaimAt = new Date(lastClaim.claimedAt);
-  const inactiveFor = now.getTime() - lastClaimAt.getTime();
-  if (!Number.isFinite(lastClaimAt.getTime()) || inactiveFor < WARNING_AFTER) return;
+  if (!Number.isFinite(lastClaimAt.getTime())) return;
+  const schedule = getInactivitySchedule(lastClaimAt);
 
   let state = await states.findOne({ guildId: GUILD_ID, userId: userKey });
   if (!state || new Date(state.lastClaimAt).getTime() !== lastClaimAt.getTime()) {
@@ -100,6 +122,8 @@ async function processUser(client, db, vipCollection, userId, now) {
           guildId: GUILD_ID,
           userId: userKey,
           lastClaimAt,
+          warningAt: schedule.warningAt,
+          chargeAt: schedule.chargeAt,
           warningSentAt: null,
           chargedAt: null,
           fee: null,
@@ -115,21 +139,28 @@ async function processUser(client, db, vipCollection, userId, now) {
   const balanceDoc = await balances.findOne({ userId: userKey });
   const balance = Math.max(0, Number(balanceDoc?.balance) || 0);
 
+  if (now < new Date(state.warningAt) || state.chargedAt) return;
+
   if (!state.warningSentAt && balance >= 100_000) {
     try {
       await sendWarning(client, userKey, balance);
+      const warningSentAt = new Date();
+      // Se o bot enviar o aviso atrasado, mantém pelo menos 12h de antecedência
+      // e agenda a cobrança para a próxima meia-noite de Brasília.
+      const earliestCharge = new Date(warningSentAt.getTime() + 12 * HOUR);
+      const chargeAt = getSaoPauloMidnightAtOrAfter(earliestCharge);
       await states.updateOne(
         { guildId: GUILD_ID, userId: userKey, lastClaimAt, warningSentAt: null },
-        { $set: { warningSentAt: now, updatedAt: now } }
+        { $set: { warningSentAt, chargeAt, updatedAt: warningSentAt } }
       );
-      state.warningSentAt = now;
+      state.warningSentAt = warningSentAt;
+      state.chargeAt = chargeAt;
     } catch (error) {
       console.warn("[Daily Inatividade] Falha ao enviar aviso para " + userKey + ":", error?.message || error);
     }
   }
 
-  if (inactiveFor < CHARGE_AFTER || state.chargedAt || !state.warningSentAt) return;
-  if (now.getTime() - new Date(state.warningSentAt).getTime() < 12 * HOUR) return;
+  if (state.chargedAt || !state.warningSentAt || now < new Date(state.chargeAt)) return;
 
   const freshBalanceDoc = await balances.findOne({ userId: userKey });
   const freshBalance = Math.max(0, Number(freshBalanceDoc?.balance) || 0);
@@ -234,5 +265,5 @@ module.exports = function startDailyInactivity(client) {
   void run(client);
   const timer = setInterval(() => void run(client), CHECK_INTERVAL);
   timer.unref?.();
-  console.log("[Daily Inatividade] Aviso após 60h e cobrança única após 72h ativados.");
+  console.log("[Daily Inatividade] Aviso às 12:00 e cobrança única à meia-noite (America/Sao_Paulo), após pelo menos 72h de inatividade.");
 };
