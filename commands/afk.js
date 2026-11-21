@@ -3,6 +3,9 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { SlashCommandBuilder } = require("discord.js");
 const storage = require("../system-storage").forSystem("afk-status");
+const languageSystem = require("../systems/idioma");
+const afkLocale = require("../systems/idioma/locales/afk");
+function tr(language, key, variables) { return afkLocale.getMessage(language, key, variables); }
 const DATA_FILE = path.join(process.cwd(), "data", "afk-status.json");
 const active = new Map();
 const hooked = new WeakSet();
@@ -68,8 +71,9 @@ function installHooks(client) {
       for (const notice of (own.mentions || [])) {
         const channel = await message.guild.channels.fetch(notice.channelId).catch(() => null);
         if (channel && channel.isTextBased()) {
+          const noticeLanguage = await languageSystem.getUserLanguage(notice.userId);
           await channel.send({
-            content: "<@" + notice.userId + ">, " + message.author.toString() + " voltou! Você o mencionou enquanto estava ausente.",
+            content: tr(noticeLanguage, "returnedNotice", { mention: "<@" + notice.userId + ">", user: message.author.toString() }),
             allowedMentions: { users: [notice.userId] }
           }).catch(() => {});
         }
@@ -101,6 +105,7 @@ async function run(guild, user, reasonRaw, reply, client) {
   installHooks(client);
   const key = keyFor(guild.id, user.id);
   const existing = await getStatus(guild.id, user.id);
+  const language = await languageSystem.getUserLanguage(user.id);
   if (existing) {
     active.delete(key);
     await persist(guild.id, user.id, null);
@@ -115,7 +120,7 @@ async function run(guild, user, reasonRaw, reply, client) {
   };
   active.set(key, record);
   await persist(guild.id, user.id, record);
-  return reply(statusText(user, record));
+  return reply(statusText(user, record, language));
 }
 module.exports = {
   data: new SlashCommandBuilder()
@@ -127,13 +132,19 @@ module.exports = {
   name: "afk",
   aliases: ["ausente", "ausentar"],
   async execute(interaction) {
-    if (!interaction.guild) return interaction.reply({ content: "❄️ Use este comando dentro de um servidor.", ephemeral: true });
+    if (!interaction.guild) {
+      const language = await languageSystem.getUserLanguage(interaction.user.id);
+      return interaction.reply({ content: tr(language, "serverOnly"), ephemeral: true });
+    }
     if (interaction.options.getSubcommand() !== "afk") return;
     await run(interaction.guild, interaction.user, interaction.options.getString("motivo"),
       text => interaction.reply({ content: text }), interaction.client);
   },
   async prefixExecute(message, args = [], client) {
-    if (!message.guild) return message.reply("❄️ Use este comando dentro de um servidor.");
+    if (!message.guild) {
+      const language = await languageSystem.getUserLanguage(message.author.id);
+      return message.reply(tr(language, "serverOnly"));
+    }
     const reason = args.join(" ").replace(/^motivo\s*:?\s*/i, "");
     await run(message.guild, message.author, reason, text => message.reply({ content: text, allowedMentions: { repliedUser: false } }), client || message.client);
   }
