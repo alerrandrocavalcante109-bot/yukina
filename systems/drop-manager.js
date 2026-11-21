@@ -2,6 +2,7 @@
 
 const { MongoClient, ObjectId } = require("mongodb");
 const { EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const languageBridge = require("./idioma/bridge");
 const URI=(process.env.MONGODB_URI||"").trim();
 const DB=(process.env.MONGODB_DB||"yukina").trim();
 let client, db, giveaways, settings;
@@ -58,11 +59,11 @@ async function finish(clientRef,id){
   const channel=await clientRef.channels.fetch(drop.channelId).catch(()=>null);
   const message=channel?await channel.messages.fetch(drop.messageId).catch(()=>null):null;
   if(message)await message.edit({embeds:[makeEmbed({...drop,status:"ended"},true,winners)],components:[makeRow(id,true)]}).catch(()=>{});
-  if(channel&&winners.length)await channel.send({content:"🌸 Parabéns aos ganhadores do drop **"+drop.prize+"**: "+winners.map(id=>"<@"+id+">").join(", ")+"!",allowedMentions:{users:winners}}).catch(()=>{});
+  if(channel&&winners.length){const languageOwner=winners[0]||drop.creatorId;const payload=await languageBridge.localizePayload(languageOwner,{content:"🌸 Parabéns aos ganhadores do drop **"+drop.prize+"**: "+winners.map(id=>"<@"+id+">").join(", ")+"!",allowedMentions:{users:winners}});await channel.send(payload).catch(()=>{});}
   if(drop.dmWinners){
     for(const userId of winners){
       const user=await clientRef.users.fetch(userId).catch(()=>null);
-      if(user)await user.send("🌸 Você ganhou o drop **"+drop.prize+"** no servidor **"+drop.guildName+"**!").catch(()=>{});
+      if(user){const payload=await languageBridge.localizePayload(userId,"🌸 Você ganhou o drop **"+drop.prize+"** no servidor **"+drop.guildName+"**!");await user.send(payload).catch(()=>{});}
     }
   }
 }
@@ -87,7 +88,7 @@ async function create(clientRef,{guild,channel,creator,tempo,winnerCount,prize})
   const result=await giveaways.insertOne(drop);
   const id=String(result.insertedId);
   try{
-    const message=await channel.send({embeds:[makeEmbed(drop)],components:[makeRow(id)],allowedMentions:{parse:[]}});
+    const payload=await languageBridge.localizePayload(creator.id,{embeds:[makeEmbed(drop)],components:[makeRow(id)],allowedMentions:{parse:[]}});\n    const message=await channel.send(payload);
     await giveaways.updateOne({_id:result.insertedId},{$set:{messageId:message.id}});
     drop.messageId=message.id;drop._id=result.insertedId;schedule(clientRef,drop);
     return {id,message};
