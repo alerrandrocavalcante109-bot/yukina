@@ -3,6 +3,8 @@ const fs = require("node:fs/promises");
 const path = require("node:path");
 const { SlashCommandBuilder } = require("discord.js");
 const { MongoClient } = require("mongodb");
+const languageSystem = require("./systems/idioma");
+const balanceLocale = require("./systems/idioma/locales/saldo");
 
 const FILE = path.join(process.cwd(), "data", "economia.json");
 const CURRENCY = "Kizunas";
@@ -79,11 +81,13 @@ async function getEconomyRanking(localUserIds = null) {
     .filter(doc => doc.balance > 0 && (!allowed || allowed.has(doc.userId)))
     .sort((a, b) => b.balance - a.balance || a.userId.localeCompare(b.userId));
 }
-function format(value) {
-  return Math.floor(value).toLocaleString("pt-BR");
+function format(value, language) {
+  return Math.floor(value).toLocaleString(language || "pt-BR");
 }
-async function run({ guild, target, requesterId, reply }) {
-  if (!guild) return reply({ content: "❄️ Este comando só pode ser usado dentro de um servidor." });
+async function run({ guild, target, requesterId, userId, reply }) {
+  const language = await languageSystem.getUserLanguage(userId || requesterId);
+  const t = (key, variables) => balanceLocale.getMessage(language, key, variables);
+  if (!guild) return reply({ content: t("serverOnly") });
   let stats;
   try {
     stats = await getMongoStats(target.id);
@@ -99,12 +103,16 @@ async function run({ guild, target, requesterId, reply }) {
   }
 
   const isSelf = target.id === requesterId;
-  const balanceLine = isSelf
-    ? `💰 Você tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`
-    : `💰 **${target.globalName || target.username}** tem **${format(stats.balance)} ${CURRENCY} (${SYMBOL})**.`;
-  const rankLine = stats.balance > 0
-    ? `\n🏆 **Rank global de KZ:** #${stats.rank} de ${stats.total} usuário(s) no ranking.`
-    : "";
+  const variables = {
+    amount: format(stats.balance, language),
+    currency: CURRENCY,
+    symbol: SYMBOL,
+    name: target.globalName || target.username,
+    rank: stats.rank,
+    total: stats.total,
+  };
+  const balanceLine = t(isSelf ? "self" : "other", variables);
+  const rankLine = stats.balance > 0 ? t("rank", variables) : "";
   return reply({ content: `${balanceLine}${rankLine}` });
 }
 function makeCommand(name, description) {
@@ -113,11 +121,11 @@ function makeCommand(name, description) {
       .addUserOption(option => option.setName("usuario").setDescription("Veja o saldo de outra pessoa").setRequired(false)),
     async execute(interaction) {
       const target = interaction.options.getUser("usuario") || interaction.user;
-      await run({ guild: interaction.guild, target, requesterId: interaction.user.id, reply: payload => interaction.reply(payload) });
+      await run({ guild: interaction.guild, target, requesterId: interaction.user.id, userId: interaction.user.id, reply: payload => interaction.reply(payload) });
     },
     async prefixExecute(message, args = []) {
       const target = message.mentions.users.first() || (args[0] ? await message.client.users.fetch(args[0].replace(/[<@!>]/g, "")).catch(() => null) : null) || message.author;
-      await run({ guild: message.guild, target, requesterId: message.author.id, reply: payload => message.reply(payload) });
+      await run({ guild: message.guild, target, requesterId: message.author.id, userId: message.author.id, reply: payload => message.reply(payload) });
     }
   };
 }
