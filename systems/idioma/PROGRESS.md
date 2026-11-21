@@ -53,7 +53,7 @@ Também auditar `components/buttons/`, `components/selects/` e módulos em `syst
 ## Validação
 Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminhos, sintaxe JS e cobertura de respostas. Testes de runtime/Discord e deploy Render só podem ser marcados como concluídos quando realmente executados e confirmados.
 
-## Histórico desta etapa
+- [~] `commands/infoserver.js`: embed de informações do servidor, campos, rodapé, erro e uso fora de servidor localizados via `locales/infoserver.js` (25 idiomas). A descrição/metadata do slash ainda está em português. Não houve teste no Discord nem confirmação de deploy Render.\n\n## Histórico desta etapa\n- Criado `systems/idioma/locales/infoserver.js` com textos manuais para os 25 idiomas e integrado `commands/infoserver.js` para slash e prefixo. Formatação de números acompanha o locale do usuário.
 - Criado catálogo de calculadora para 25 idiomas; integradas respostas do slash e prefixo, formatação numérica por idioma e mensagens de erro mapeadas.
 - Verificação de sintaxe e cobertura do catálogo concluídas; não houve teste no Discord nem confirmação de deploy Render.
 - Criado catálogo AFK para 25 idiomas e integrado às respostas do slash, prefixo e listener de retorno/menções.
