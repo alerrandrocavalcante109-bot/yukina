@@ -36,7 +36,7 @@ async function createRequest({ guild, moderator, targetId, reason, durationValue
   const language = await languageSystem.getUserLanguage(moderator?.id);
   const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!guild) return reply({ content: t("serverOnly"), ephemeral: true });
-  if (!moderator.permissions.has(PermissionFlagsBits.BanMembers)) return reply({ content: "🌙 " + t("adminPermission"), ephemeral: true });
+  if (!moderator.permissions.has(PermissionFlagsBits.BanMembers)) return reply({ content: "Você precisa da permissão **Banir membros**.", ephemeral: true });
   if (targetId === moderator.id) return reply({ content: "Você não pode banir a si mesmo.", ephemeral: true });
   if (targetId === guild.client.user.id) return reply({ content: "Não posso banir a mim mesma.", ephemeral: true });
   let durationMs;
