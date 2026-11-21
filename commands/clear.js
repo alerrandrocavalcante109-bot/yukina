@@ -8,6 +8,8 @@ const {
 
 const MIN_MESSAGES = 2;
 const MAX_MESSAGES = 100;
+const languageSystem = require("../systems/idioma");
+const moderationLocale = require("../systems/idioma/locales/moderation");
 const MAX_AGE_MS = 14 * 24 * 60 * 60 * 1000;
 const CONFIRMATION_DELETE_MS = 6000;
 
@@ -29,9 +31,9 @@ async function sendTemporaryReply(reply, content) {
   return sent;
 }
 
-async function clearMessages({ guild, channel, member, amount, invocationMessageId = null, reply }) {
+async function clearMessages({ guild, channel, member, amount, invocationMessageId = null, userId, reply }) {\n  const language = await languageSystem.getUserLanguage(userId || member?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!isAdministrator(member)) {
-    return sendTemporaryReply(reply, "🌙 Você precisa da permissão **Administrador** para utilizar este comando.");
+    return sendTemporaryReply(reply, t("adminPermission"));
   }
 
   if (!Number.isInteger(amount) || amount < MIN_MESSAGES || amount > MAX_MESSAGES) {
@@ -77,7 +79,7 @@ async function clearMessages({ guild, channel, member, amount, invocationMessage
       return sendTemporaryReply(reply, "❄️ Algumas mensagens que você selecionou ultrapassaram o limite de **14 dias** e não podem mais ser excluídas pelo Discord.\n\n🌸 Por segurança, essas mensagens foram preservadas. Apenas mensagens dentro do prazo permitido foram removidas.");
     }
 
-    return sendTemporaryReply(reply, "🌸 Foram apagadas **" + deleted.size + "** mensagens com sucesso!");
+    return sendTemporaryReply(reply, t("clearSuccess", { count: deleted.size }));
   } catch (error) {
     console.error("[Yukina limpar] Falha ao apagar mensagens:", error);
     return sendTemporaryReply(reply, "🫧 Não consegui limpar o chat. Verifique minhas permissões e tente novamente.");
@@ -105,7 +107,7 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.inGuild()) {
       return interaction.reply({
-        content: "❄️ Este comando só funciona dentro de um servidor.",
+        content: t("serverOnly"),
         flags: MessageFlags.Ephemeral
       });
     }
@@ -114,7 +116,7 @@ module.exports = {
       guild: interaction.guild,
       channel: interaction.channel,
       member: interaction.member,
-      amount: interaction.options.getInteger("quantidade", true),
+      amount: interaction.options.getInteger("quantidade", true),\n      userId: interaction.user.id,
       reply: async content => {
         await interaction.reply({ content, flags: MessageFlags.Ephemeral });
         const timer = setTimeout(() => interaction.deleteReply().catch(() => {}), CONFIRMATION_DELETE_MS);
