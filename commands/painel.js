@@ -83,7 +83,7 @@ module.exports = {
       url.searchParams.set("guild", message.guildId);
       url.searchParams.set("name", message.guild.name || "Servidor");
       return message.reply({
-        content: "❄️ **Painel de Configurações da Yukina**\nAbra o painel para gerenciar as configurações deste servidor:\n\n🔗 " + url.toString(),
+        content: t("title") + "\n" + t("description") + "\n\n🔗 " + url.toString(),
         allowedMentions: { parse: [] },
       });
     } catch (error) {
