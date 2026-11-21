@@ -1,7 +1,7 @@
 "use strict";
 
 const { MongoClient } = require("mongodb");
-const { getVipCollection } = require("./vip-store");
+const { getVipCollection } = require("../vip-store");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
