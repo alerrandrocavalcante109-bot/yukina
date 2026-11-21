@@ -16,7 +16,6 @@ Tradução manual das respostas e interações dos comandos para os 25 idiomas d
 
 ## Pendentes
 Todos os demais comandos e fluxos ainda precisam ser auditados individualmente, incluindo mensagens de erro/sucesso, confirmações, embeds, botões, selects, modais, handlers e textos enviados por sistemas acionados pelos comandos. Inventário inicial em `commands/`:
-- `addkz.js`
 - `advertencias.js`
 - `advertir-membro.js`
 - `ajuda.js`
