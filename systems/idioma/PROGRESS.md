@@ -56,4 +56,5 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 ## Histórico desta etapa
 - Adicionado `systems/idioma/locales/painel.js` com 25 idiomas.
 - Integrado `commands/painel.js` para obter o idioma individual do autor tanto em slash quanto em prefixo.
-- Commits: `b586b66`, `b571509`, `cbac314`.
+- Commits: `b586b66`, `b571509`, `cbac314`, `970a285`.
+- Verificação: catálogo do painel contém exatamente 25 idiomas e os dois arquivos JavaScript passaram na verificação de sintaxe. Não houve teste no Discord nem confirmação de deploy Render.
