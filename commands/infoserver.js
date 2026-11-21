@@ -1,15 +1,25 @@
 "use strict";
 
 const { SlashCommandBuilder, EmbedBuilder, ChannelType } = require("discord.js");
+const idioma = require("../systems/idioma");
+const LOCALES = require("../systems/idioma/locales/infoserver");
 
 const COLOR = 0xA7D8F0;
+
+function translator(language) {
+  const locale = LOCALES[language] || LOCALES["pt-BR"];
+  return (key, variables = {}) => String(locale[key] || LOCALES["pt-BR"][key] || key)
+    .replace(/\{([a-zA-Z0-9_]+)\}/g, (_, name) =>
+      Object.prototype.hasOwnProperty.call(variables, name) ? String(variables[name]) : ""
+    );
+}
 
 function formatDate(date) {
   const unix = Math.floor(date.getTime() / 1000);
   return "<t:" + unix + ":F>\n<t:" + unix + ":R>";
 }
 
-function buildServerInfo(guild, owner, invoker) {
+function buildServerInfo(guild, owner, invoker, t, language) {
   const channels = guild.channels.cache;
   const textChannels = channels.filter(channel =>
     channel.type === ChannelType.GuildText ||
@@ -21,23 +31,24 @@ function buildServerInfo(guild, owner, invoker) {
     channel.type === ChannelType.GuildVoice ||
     channel.type === ChannelType.GuildStageVoice
   ).size;
+  const number = value => Number(value).toLocaleString(language);
 
   const embed = new EmbedBuilder()
     .setColor(COLOR)
-    .setAuthor({ name: "Yukina · Informações solicitadas por " + (invoker.globalName || invoker.username), iconURL: invoker.displayAvatarURL({ size: 128 }) })
-    .setTitle("❄️ Informações do servidor")
-    .setDescription("Aqui estão os dados de **" + guild.name + "**.")
+    .setAuthor({ name: t("requested", { user: invoker.globalName || invoker.username }), iconURL: invoker.displayAvatarURL({ size: 128 }) })
+    .setTitle(t("title"))
+    .setDescription(t("description", { server: guild.name }))
     .addFields(
-      { name: "🆔 ID do servidor", value: "`" + guild.id + "`", inline: true },
-      { name: "🌌 Shard ID", value: String(guild.shardId ?? 0), inline: true },
-      { name: "👑 Dono", value: owner.user.tag + "\n`" + owner.id + "`", inline: false },
-      { name: "📚 Canais no total", value: String(channels.size), inline: true },
-      { name: "💬 Canais de texto", value: String(textChannels), inline: true },
-      { name: "🔊 Canais de voz", value: String(voiceChannels), inline: true },
-      { name: "👥 Membros", value: guild.memberCount.toLocaleString("pt-BR"), inline: true },
-      { name: "📅 Criado em", value: formatDate(guild.createdAt), inline: false }
+      { name: t("id"), value: "`" + guild.id + "`", inline: true },
+      { name: t("shard"), value: String(guild.shardId ?? 0), inline: true },
+      { name: t("owner"), value: owner.user.tag + "\n`" + owner.id + "`", inline: false },
+      { name: t("channels"), value: number(channels.size), inline: true },
+      { name: t("text"), value: number(textChannels), inline: true },
+      { name: t("voice"), value: number(voiceChannels), inline: true },
+      { name: t("members"), value: number(guild.memberCount), inline: true },
+      { name: t("created"), value: formatDate(guild.createdAt), inline: false }
     )
-    .setFooter({ text: "Yukina · Cuidando deste cantinho" })
+    .setFooter({ text: t("footer") })
     .setTimestamp();
 
   const icon = guild.iconURL({ size: 1024 });
@@ -48,10 +59,13 @@ function buildServerInfo(guild, owner, invoker) {
 async function replyWithInfo(interaction) {
   const guild = interaction.guild;
   const invoker = interaction.author || interaction.user;
-  const isPrefixCommand = Boolean(interaction.author);
+  const userId = invoker.id;
+  const language = await idioma.getUserLanguage(userId);
+  const t = translator(language);
+
   if (!guild) {
     return interaction.reply({
-      content: "❄️ Este comando só funciona dentro de um servidor.",
+      content: t("serverOnly"),
       ephemeral: true
     });
   }
@@ -60,12 +74,12 @@ async function replyWithInfo(interaction) {
     await guild.fetch();
     await guild.channels.fetch();
     const owner = await guild.fetchOwner();
-    const payload = { embeds: [buildServerInfo(guild, owner, invoker)] };
+    const payload = { embeds: [buildServerInfo(guild, owner, invoker, t, language)] };
     return interaction.reply(payload);
   } catch (error) {
     console.error("[Yukina /infoserver]", error);
     const payload = {
-      content: "💧 Não consegui obter todas as informações do servidor. Confira minhas permissões e tente novamente.",
+      content: t("error"),
       ephemeral: true
     };
     if (interaction.deferred || interaction.replied) return interaction.followUp(payload).catch(() => {});
@@ -83,8 +97,10 @@ module.exports = {
     return replyWithInfo(interaction);
   },
   async prefixExecute(message) {
-    if (!message.guild) return message.reply("❄️ Este comando só funciona dentro de um servidor.");
-    // Mostra o indicador nativo de digitação enquanto a Yukina consulta os dados.
+    if (!message.guild) {
+      const language = await idioma.getUserLanguage(message.author.id);
+      return message.reply(translator(language)("serverOnly"));
+    }
     await message.channel.sendTyping().catch(() => {});
     const interactionLike = {
       guild: message.guild,
