@@ -96,38 +96,31 @@ async function runDailyReminders(client, scheduled = false) {
         const user = await client.users.fetch(userKey);
         const message = new ContainerBuilder()
           .setAccentColor(0xe85cba)
-          .addSectionComponents(
-            new SectionBuilder()
-              .addTextDisplayComponents(
-                new TextDisplayBuilder().setContent(
-                  "## ❄️ Seu Daily está esperando!\n" +
-                  "Oii~! 💙 Um novo dia chegou e sua recompensa diária já está disponível!\n\n" +
-                  "Continue sua jornada, acumule Kizunas e não deixe sua sequência acabar. Estou esperando por você! 🌸"
-                )
-              )
-              .setButtonAccessory(
-                new ButtonBuilder()
-                  .setLabel(streak + " dias")
-                  .setEmoji("🔥")
-                  .setStyle(ButtonStyle.Link)
-                  .setURL(DAILY_URL)
-              )
+          .addTextDisplayComponents(
+            new TextDisplayBuilder().setContent(
+              "## 🌸 Resgate Diário Disponível! ・🔥 Sequência: " + streak + " dias\\n\\n" +
+              "Seu presente diário de Kizunas está esperando por você! Faça seu resgate e descubra quantas Kizunas a Yukina preparou especialmente para hoje. 💜\\n\\n" +
+              "🔗 [Clique aqui para realizar seu resgate diário!](<" + DAILY_URL + ">)"
+            )
           )
           .addMediaGalleryComponents(
             new MediaGalleryBuilder().addItems(
               new MediaGalleryItemBuilder()
                 .setURL(DAILY_IMAGE_URL)
-                .setDescription("Yukina convidando você para coletar suas Kizunas diárias")
+                .setDescription("Imagem do resgate diário da Yukina")
             )
           )
           .addTextDisplayComponents(
-            new TextDisplayBuilder().setContent("-# Yukina • Lembrete diário de Kizunas")
+            new TextDisplayBuilder().setContent(
+              "**Não deixe sua sequência acabar!** Continue realizando suas coletas diariamente e mantenha sua sequência de conquistas. ✨\\n\\n" +
+              "-# Yukina • Lembrete diário de Kizunas"
+            )
           )
           .addActionRowComponents(
             new ActionRowBuilder().addComponents(
               new ButtonBuilder()
-                .setLabel("Coletar Kizunas")
-                .setEmoji("🌸")
+                .setLabel("Resgatar recompensa")
+                .setEmoji("🎁")
                 .setStyle(ButtonStyle.Link)
                 .setURL(DAILY_URL)
             )
