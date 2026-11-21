@@ -6,6 +6,7 @@ const { PermissionFlagsBits } = require("discord.js");
 const memberData = require("./member-data");
 const { getGuildSettings } = require("./guild-settings-store");
 const xpStorage = require("./system-storage").forSystem("xp-level-roles");
+const languageBridge = require("./systems/idioma/bridge");
 const CHECK_INTERVAL_MS = 10 * 60_000;
 const updateLocks = new Set();
 
@@ -134,9 +135,9 @@ async function updateLevel(member, announce = false) {
             thumbnail: serverIcon ? { url: serverIcon } : undefined,
             footer: { text: member.guild.name },
           };
-          await channel.send({ embeds: [embed], allowedMentions: { users: [member.id] } });
+          await channel.send(await languageBridge.localizePayload(member.id, { embeds: [embed], allowedMentions: { users: [member.id] } }));
         } else {
-          await channel.send({ content: message, allowedMentions: { users: [member.id] } });
+          await channel.send(await languageBridge.localizePayload(member.id, { content: message, allowedMentions: { users: [member.id] } }));
         }
         lastAnnouncedMilestone.set(announcementKey, currentLevel);
       }
