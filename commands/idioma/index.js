@@ -21,6 +21,22 @@ function parsePrefixLanguage(value) {
     ja: "ja-JP", japones: "ja-JP", japonês: "ja-JP", japanese: "ja-JP",
     de: "de-DE", alemao: "de-DE", alemão: "de-DE", german: "de-DE",
     it: "it-IT", italiano: "it-IT",
+    ko: "ko-KR", coreano: "ko-KR", korean: "ko-KR",
+    "zh-cn": "zh-CN", chines: "zh-CN", chinês: "zh-CN", chinese: "zh-CN",
+    "zh-tw": "zh-TW", russo: "ru-RU", russian: "ru-RU", ru: "ru-RU",
+    arabe: "ar-SA", árabe: "ar-SA", arabic: "ar-SA", ar: "ar-SA",
+    hindi: "hi-IN", hi: "hi-IN", bengali: "bn-IN", bn: "bn-IN",
+    holandes: "nl-NL", holandês: "nl-NL", dutch: "nl-NL", nl: "nl-NL",
+    polones: "pl-PL", polonês: "pl-PL", polish: "pl-PL", pl: "pl-PL",
+    turco: "tr-TR", turkish: "tr-TR", tr: "tr-TR",
+    ucraniano: "uk-UA", ukrainian: "uk-UA", uk: "uk-UA",
+    vietnamita: "vi-VN", vietnamese: "vi-VN", vi: "vi-VN",
+    tailandes: "th-TH", tailandês: "th-TH", thai: "th-TH", th: "th-TH",
+    indonesio: "id-ID", indonésio: "id-ID", indonesian: "id-ID", id: "id-ID",
+    malaio: "ms-MY", malay: "ms-MY", ms: "ms-MY",
+    sueco: "sv-SE", swedish: "sv-SE", sv: "sv-SE",
+    dinamarques: "da-DK", dinamarquês: "da-DK", danish: "da-DK", da: "da-DK",
+    finlandes: "fi-FI", finlandês: "fi-FI", finnish: "fi-FI", fi: "fi-FI",
   };
   return { action: "set", language: aliases[input] || languageSystem.normalizeLanguage(value) };
 }
