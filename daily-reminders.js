@@ -98,8 +98,8 @@ async function runDailyReminders(client, scheduled = false) {
           .setAccentColor(0xe85cba)
           .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-              "## 🌸 Resgate Diário Disponível! ・🔥 Sequência: " + streak + " dias\\n\\n" +
-              "Seu presente diário de Kizunas está esperando por você! Faça seu resgate e descubra quantas Kizunas a Yukina preparou especialmente para hoje. 💜\\n\\n" +
+              "## 🌸 Resgate Diário Disponível! ・🔥 Sequência: " + streak + " dias\n\n" +
+              "Seu presente diário de Kizunas está esperando por você! Faça seu resgate e descubra quantas Kizunas a Yukina preparou especialmente para hoje. 💜\n\n" +
               "🔗 [Clique aqui para realizar seu resgate diário!](<" + DAILY_URL + ">)"
             )
           )
@@ -112,7 +112,7 @@ async function runDailyReminders(client, scheduled = false) {
           )
           .addTextDisplayComponents(
             new TextDisplayBuilder().setContent(
-              "**Não deixe sua sequência acabar!** Continue realizando suas coletas diariamente e mantenha sua sequência de conquistas. ✨\\n\\n" +
+              "**Não deixe sua sequência acabar!** Continue realizando suas coletas diariamente e mantenha sua sequência de conquistas. ✨\n\n" +
               "-# Yukina • Lembrete diário de Kizunas"
             )
           )
