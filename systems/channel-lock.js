@@ -18,7 +18,8 @@ async function getTarget(message, args, optionName = "canal") {
 }
 
 async function changeChannel({ guild, channel, moderator, action, reply }) {
-  const language = await languageSystem.getUserLanguage(moderator?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
+  const language = await languageSystem.getUserLanguage(moderator?.id);
+  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!guild || !channel || channel.guildId !== guild.id) {
     return reply("❄️ Não encontrei esse canal neste servidor.");
   }
