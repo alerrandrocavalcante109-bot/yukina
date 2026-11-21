@@ -13,6 +13,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { MessageFlags } = require("discord.js");
+const languageBridge = require("./systems/idioma/bridge");
 
 const ROOT = __dirname;
 
@@ -99,10 +100,11 @@ async function safeErrorReply(interaction, error) {
   };
 
   try {
+    const localizedPayload = await languageBridge.localizePayload(interaction.user?.id, payload);
     if (interaction.deferred || interaction.replied) {
-      await interaction.followUp(payload);
+      await interaction.followUp(localizedPayload);
     } else {
-      await interaction.reply(payload);
+      await interaction.reply(localizedPayload);
     }
   } catch (replyError) {
     // A interação pode ter expirado; não deixe um erro de resposta derrubar o bot.
@@ -148,7 +150,7 @@ function registerInteractionHandlers(client) {
           return;
         }
 
-        await command.execute(interaction, client);
+        await languageBridge.runWithUserLanguage(interaction.user.id, () => command.execute(interaction, client), interaction);
         return;
       }
 
@@ -167,7 +169,7 @@ function registerInteractionHandlers(client) {
         // Este é o único listener que os executa, evitando respostas duplicadas.
         for (const command of client.commands.values()) {
           if (typeof command.handleInteraction !== "function") continue;
-          await command.handleInteraction(interaction);
+          await languageBridge.runWithUserLanguage(interaction.user.id, () => command.handleInteraction(interaction), interaction);
           if (interaction.replied || interaction.deferred) return;
         }
 
@@ -180,7 +182,7 @@ function registerInteractionHandlers(client) {
         return;
       }
 
-      await handler.execute(interaction, client);
+      await languageBridge.runWithUserLanguage(interaction.user.id, () => handler.execute(interaction, client), interaction);
     } catch (error) {
       await safeErrorReply(interaction, error);
     }
