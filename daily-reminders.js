@@ -1,5 +1,6 @@
 const { MongoClient } = require("mongodb");
 const { MessageFlags, ContainerBuilder, SectionBuilder, TextDisplayBuilder, MediaGalleryBuilder, MediaGalleryItemBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
+const languageBridge = require("./systems/idioma/bridge");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const DB_NAME = (process.env.MONGODB_DB || "yukina").trim();
@@ -125,11 +126,12 @@ async function runDailyReminders(client, scheduled = false) {
                 .setURL(DAILY_URL)
             )
           );
-        await user.send({
+        const reminderPayload = await languageBridge.localizePayload(userKey, {
           components: [message],
           flags: MessageFlags.IsComponentsV2,
           allowedMentions: { parse: [] }
         });
+        await user.send(reminderPayload);
         await reminders.updateOne(
           { guildId, userId: userKey },
           { $set: { lastReminderDay: day, lastSentAt: now }, $setOnInsert: { createdAt: now } },
