@@ -88,7 +88,8 @@ async function create(clientRef,{guild,channel,creator,tempo,winnerCount,prize})
   const result=await giveaways.insertOne(drop);
   const id=String(result.insertedId);
   try{
-    const payload=await languageBridge.localizePayload(creator.id,{embeds:[makeEmbed(drop)],components:[makeRow(id)],allowedMentions:{parse:[]}});\n    const message=await channel.send(payload);
+    const payload=await languageBridge.localizePayload(creator.id,{embeds:[makeEmbed(drop)],components:[makeRow(id)],allowedMentions:{parse:[]}});
+    const message=await channel.send(payload);
     await giveaways.updateOne({_id:result.insertedId},{$set:{messageId:message.id}});
     drop.messageId=message.id;drop._id=result.insertedId;schedule(clientRef,drop);
     return {id,message};
