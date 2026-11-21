@@ -134,6 +134,16 @@ async function processUser(client, db, vipCollection, userId, now) {
       { upsert: true }
     );
     state = await states.findOne({ guildId: GUILD_ID, userId: userKey });
+  } else if (!state.warningAt || !state.chargeAt) {
+    const migratedChargeAt = state.warningSentAt
+      ? getSaoPauloMidnightAtOrAfter(new Date(new Date(state.warningSentAt).getTime() + 12 * HOUR))
+      : schedule.chargeAt;
+    await states.updateOne(
+      { guildId: GUILD_ID, userId: userKey, lastClaimAt },
+      { $set: { warningAt: schedule.warningAt, chargeAt: migratedChargeAt, updatedAt: now } }
+    );
+    state.warningAt = schedule.warningAt;
+    state.chargeAt = migratedChargeAt;
   }
 
   const balanceDoc = await balances.findOne({ userId: userKey });
