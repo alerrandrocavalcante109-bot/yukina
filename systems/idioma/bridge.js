@@ -4,6 +4,7 @@ const { AsyncLocalStorage } = require("node:async_hooks");
 const responseContext = new AsyncLocalStorage();
 const patchedChannels = new WeakSet();
 const languageSystem = require("./index");
+const translator = require("./translator");
 
 const EXACT = Object.freeze({
   "en-US": new Map([
@@ -44,7 +45,7 @@ const EXACT = Object.freeze({
   "it-IT": new Map([
     ["❄️ Não consegui concluir essa ação. Tente novamente.", "❄️ Non è stato possibile completare l'azione. Riprova."],
     ["Esse comando ainda não está disponível na Yukina.", "Questo comando non è ancora disponibile su Yukina."],
-    ["Esta opção ainda não está conectada à Yukina. Tente novamente mais tarde.", "Questa opzione non è ancora collegata a Yukina. Riprova più tardi."],
+    ["Esta opção ainda não está conectada à Yukina. Tente novamente mais tardi.", "Questa opzione non è ancora collegata a Yukina. Riprova più tardi."],
     ["🌙 Este comando ainda não possui execução por prefixo.", "🌙 Questo comando non supporta ancora il prefisso."],
     ["🫧 Não consegui executar esse comando. Confira as permissões e tente novamente.", "🫧 Non è stato possibile eseguire il comando. Controlla i permessi e riprova."],
   ]),
@@ -56,30 +57,59 @@ function translateText(language, value) {
   return EXACT[language]?.get(value) || value;
 }
 
-function localizeObject(language, value, key = "") {
-  if (typeof value === "string") {
-    if (/^(url|iconURL|avatarURL|proxyURL|customId|id|name|filename|attachment|spoiler)$/i.test(key)) return value;
-    return translateText(language, value);
-  }
-  if (Array.isArray(value)) return value.map(item => localizeObject(language, item));
-  if (!value || typeof value !== "object") return value;
+function isProtectedKey(key) {
+  return /^(url|iconURL|avatarURL|proxyURL|customId|id|name|filename|attachment|spoiler|emoji|skuId)$/i.test(key);
+}
 
-  // Builders do not expose their payload as enumerable public fields. Convert
-  // them through toJSON, which is the format accepted by discord.js send/reply.
+function collectStrings(value, output, key = "") {
+  if (typeof value === "string") {
+    if (!isProtectedKey(key) && value.trim() && !/^https?:\/\//i.test(value)) output.push(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    for (const item of value) collectStrings(item, output);
+    return;
+  }
+  if (!value || typeof value !== "object") return;
   if (typeof value.toJSON === "function") {
-    try { return localizeObject(language, value.toJSON()); } catch { return value; }
+    try { collectStrings(value.toJSON(), output); return; } catch { return; }
+  }
+  for (const [childKey, childValue] of Object.entries(value)) collectStrings(childValue, output, childKey);
+}
+
+function replaceStrings(value, translations, language, key = "") {
+  if (typeof value === "string") {
+    if (isProtectedKey(key) || !value.trim() || /^https?:\/\//i.test(value)) return value;
+    return translations.get(value) || translateText(language, value);
+  }
+  if (Array.isArray(value)) return value.map(item => replaceStrings(item, translations, language));
+  if (!value || typeof value !== "object") return value;
+  if (typeof value.toJSON === "function") {
+    try { return replaceStrings(value.toJSON(), translations, language); } catch { return value; }
   }
   const result = {};
   for (const [childKey, childValue] of Object.entries(value)) {
-    result[childKey] = localizeObject(language, childValue, childKey);
+    result[childKey] = replaceStrings(childValue, translations, language, childKey);
   }
   return result;
 }
 
 async function localizePayload(userId, payload) {
   const language = await languageSystem.getUserLanguage(userId);
-  if (typeof payload === "string") return translateText(language, payload);
-  return localizeObject(language, payload);
+  if (language === languageSystem.DEFAULT_LANGUAGE) return payload;
+  const strings = [];
+  collectStrings(payload, strings);
+  const unique = [...new Set(strings)];
+  const exact = new Map();
+  const pending = [];
+  for (const source of unique) {
+    const known = translateText(language, source);
+    if (known !== source) exact.set(source, known);
+    else pending.push(source);
+  }
+  const automatic = await translator.translateMany(language, pending);
+  for (const [source, translated] of automatic) exact.set(source, translated);
+  return replaceStrings(payload, exact, language);
 }
 
 function installChannelBridge(channel) {
@@ -98,7 +128,6 @@ async function runWithUserLanguage(userId, callback, target) {
   installChannelBridge(target.channel);
   const methods = ["reply", "followUp", "editReply", "deferReply"];
   const originals = new Map();
-
   for (const method of methods) {
     if (typeof target[method] !== "function") continue;
     originals.set(method, target[method]);
@@ -109,7 +138,6 @@ async function runWithUserLanguage(userId, callback, target) {
       return original(localized, ...args.slice(1));
     };
   }
-
   try {
     return await responseContext.run({ userId: String(userId) }, callback);
   } finally {
@@ -117,4 +145,4 @@ async function runWithUserLanguage(userId, callback, target) {
   }
 }
 
-module.exports = { translateText, localizePayload, runWithUserLanguage };
+module.exports = { translateText, localizePayload, runWithUserLanguage, getTranslatorStatus: translator.getStatus };
