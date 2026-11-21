@@ -2,11 +2,18 @@
 
 const { PermissionFlagsBits } = require("discord.js");
 const { MongoClient } = require("mongodb");
+const idioma = require("../systems/idioma");
+const LOCALES = require("../systems/idioma/locales/addkz");
 
 const MONGODB_URI = (process.env.MONGODB_URI || "").trim();
 const MONGODB_DB = (process.env.MONGODB_DB || "yukina").trim();
 let mongoClient;
 let balancesCollection;
+
+const translator = language => {
+  const locale = LOCALES[language] || LOCALES["pt-BR"];
+  return key => locale[key] || LOCALES["pt-BR"][key] || key;
+};
 
 async function getBalancesCollection() {
   if (balancesCollection) return balancesCollection;
@@ -30,8 +37,8 @@ function parseAmount(raw) {
   return Number.isSafeInteger(amount) && amount > 0 ? amount : null;
 }
 
-function format(value) {
-  return Math.floor(value).toLocaleString("pt-BR");
+function format(value, language) {
+  return Math.floor(value).toLocaleString(language || "pt-BR");
 }
 
 function isAllowed(member) {
@@ -63,29 +70,32 @@ module.exports = {
   aliases: ["addkz", "adicionarkz"],
 
   async prefixExecute(message, args = []) {
-    if (!message.guild) return message.reply("❄️ Este comando só pode ser usado em um servidor.");
-    if (!isAllowed(message.member)) {
-      return message.reply("❄️ Você precisa da permissão Gerenciar servidor ou Administrador para usar este comando.");
-    }
+    const language = await idioma.getUserLanguage(message.author.id);
+    const t = translator(language);
+    if (!message.guild) return message.reply(t("serverOnly"));
+    if (!isAllowed(message.member)) return message.reply(t("permission"));
 
     const mentions = [...message.mentions.users.values()].filter(user => !user.bot);
     const amountText = args.filter(arg => !/^<@!?\d+>$/.test(arg)).join("");
     const amount = parseAmount(amountText);
 
-    if (!mentions.length || !amount) {
-      return message.reply("🫧 Use: Yaddkz @membro valor. Exemplos: Yaddkz @membro 5k ou Yaddkz @membro1 @membro2 1.5m");
-    }
+    if (!mentions.length || !amount) return message.reply(t("usage"));
 
     try {
       const results = await addKz(mentions, amount);
-      const lines = results.map(({ user, balance }) => "• " + user + " — novo saldo: **" + format(balance) + " KZ**");
+      const lines = results.map(({ user, balance }) => t("line")
+        .replace("{user}", String(user))
+        .replace("{balance}", format(balance, language)));
       return message.reply({
-        content: "🌸 **" + format(amount) + " KZ adicionadas para " + results.length + " membro(s)!**\n" + lines.join("\n"),
+        content: t("success")
+          .replace("{amount}", format(amount, language))
+          .replace("{count}", String(results.length))
+          .replace("{lines}", lines.join("\n")),
         allowedMentions: { users: [] }
       });
     } catch (error) {
       console.error("[Yukina addkz] Falha ao adicionar KZ:", error);
-      return message.reply("🌙 Não consegui atualizar as carteiras. Verifique a conexão com o banco de dados e tente novamente.");
+      return message.reply(t("error"));
     }
   }
 };
