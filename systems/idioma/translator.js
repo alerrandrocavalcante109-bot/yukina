@@ -80,7 +80,7 @@ async function requestBatch(texts, target) {
     const data = await response.json();
     failures = 0;
     circuitOpenUntil = 0;
-    return data.map(item => item?.translations?.[0]?.text ?? texts[data.indexOf(item)]);
+    return data.map((item, index) => item?.translations?.[0]?.text ?? texts[index]);
   } finally {
     release();
   }
