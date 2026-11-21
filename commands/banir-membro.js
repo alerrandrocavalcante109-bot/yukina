@@ -1,6 +1,8 @@
 "use strict";
 const { SlashCommandBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle, PermissionFlagsBits } = require("discord.js");
-const pending = new Map();\nconst languageSystem = require("../systems/idioma");\nconst moderationLocale = require("../systems/idioma/locales/moderation");
+const pending = new Map();
+const languageSystem = require("../systems/idioma");
+const moderationLocale = require("../systems/idioma/locales/moderation");
 
 function parseDuration(value) {
   if (!value) return null;
@@ -30,7 +32,8 @@ function createConfirmation(data) {
   timer.unref?.();
   return row;
 }
-async function createRequest({ guild, moderator, targetId, reason, durationValue, reply }) {\n  const language = await languageSystem.getUserLanguage(moderator?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
+async function createRequest({ guild, moderator, targetId, reason, durationValue, reply }) {
+  const language = await languageSystem.getUserLanguage(moderator?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!guild) return reply({ content: t("serverOnly"), ephemeral: true });
   if (!moderator.permissions.has(PermissionFlagsBits.BanMembers)) return reply({ content: "🌙 " + t("adminPermission"), ephemeral: true });
   if (targetId === moderator.id) return reply({ content: "Você não pode banir a si mesmo.", ephemeral: true });
