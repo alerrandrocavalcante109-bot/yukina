@@ -90,7 +90,7 @@ async function resetUserLanguage(userId) {
 function translate(language, key, variables = {}) {
   const locale = normalizeLanguage(language) || DEFAULT_LANGUAGE;
   const template = MESSAGES[locale]?.[key] || MESSAGES[DEFAULT_LANGUAGE][key] || key;
-  return String(template).replace(/\\{([a-zA-Z0-9_]+)\\}/g, (_, name) =>
+  return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, (_, name) =>
     Object.prototype.hasOwnProperty.call(variables, name) ? String(variables[name]) : ""
   );
 }
