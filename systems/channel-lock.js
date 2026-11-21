@@ -1,6 +1,8 @@
 "use strict";
 
-const { PermissionFlagsBits } = require("discord.js");\nconst languageSystem = require("./idioma");\nconst moderationLocale = require("./idioma/locales/moderation");
+const { PermissionFlagsBits } = require("discord.js");
+const languageSystem = require("./idioma");
+const moderationLocale = require("./idioma/locales/moderation");
 
 async function getTarget(message, args, optionName = "canal") {
   if (message) {
@@ -15,7 +17,8 @@ async function getTarget(message, args, optionName = "canal") {
   return null;
 }
 
-async function changeChannel({ guild, channel, moderator, action, reply }) {\n  const language = await languageSystem.getUserLanguage(moderator?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
+async function changeChannel({ guild, channel, moderator, action, reply }) {
+  const language = await languageSystem.getUserLanguage(moderator?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!guild || !channel || channel.guildId !== guild.id) {
     return reply("❄️ Não encontrei esse canal neste servidor.");
   }
