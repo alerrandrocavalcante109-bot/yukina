@@ -35,16 +35,6 @@ const MESSAGES = [
   "🌙 Com um último aceno sob o luar, a Yukina se despede desta ocasião com muito carinho. As histórias continuam nos outros espaços do servidor, e será uma alegria encontrar vocês por lá."
 ];
 
-const SYSTEM_PROMPT = [
-  "Você é a Yukina, uma bot de Discord brasileira, delicada, acolhedora e levemente divertida.",
-  "Sua identidade mistura cultura japonesa, festivais, templos, sakura, neve e luar.",
-  "Escreva uma mensagem longa e natural de despedida simbólica de um evento ou sorteio, em português brasileiro.",
-  "IMPORTANTE: esta mensagem NÃO encerra, cancela, pausa nem altera o sorteio. Não anuncie vencedores nem diga que acabou de verdade.",
-  "Use os nomes dos canais fornecidos para adaptar o texto de forma contextual e convide as pessoas a continuarem a conversa neles.",
-  "Não invente canais, IDs, links, resultados ou acontecimentos. Não escreva menções de canal; elas serão adicionadas pelo bot.",
-  "Retorne somente o texto da mensagem, sem título, sem aspas e com no máximo 3 emojis."
-].join(" ");
-
 function chooseMessage() {
   const index = Math.floor(Math.random() * MESSAGES.length);
   return { index, fallback: MESSAGES[index] };
@@ -75,82 +65,17 @@ function chooseChannels(guild, currentChannel) {
   return candidates.slice(0, Math.min(candidates.length, Math.random() < 0.5 ? 1 : 2));
 }
 
-async function askProvider(url, headers, model, prompt) {
-  const response = await fetch(url, {
-    method: "POST",
-    headers,
-    body: JSON.stringify({
-      model,
-      messages: [{ role: "system", content: SYSTEM_PROMPT }, { role: "user", content: prompt }],
-      temperature: 0.95,
-      max_tokens: 320
-    }),
-    signal: AbortSignal.timeout(9000)
-  });
-  if (!response.ok) throw new Error("HTTP " + response.status);
-  const data = await response.json();
-  const result = data.choices?.[0]?.message?.content?.trim();
-  if (!result) throw new Error("Resposta vazia");
-  return clean(result);
-}
-
-async function generateWithAI(baseMessage, channels) {
-  const channelContext = channels.length
-    ? channels.map(channel => "- #" + channel.name + ": " + (channel.topic || "canal da comunidade").slice(0, 180)).join("\n")
-    : "Nenhum canal público adicional foi encontrado.";
-  const prompt = "Inspiração de estilo (não copie literalmente): " + baseMessage +
-    "\n\nCanais disponíveis escolhidos aleatoriamente para esta mensagem:\n" + channelContext +
-    "\nAdapte a despedida aos temas desses canais e convide os membros a continuarem por lá. Não invente outros canais.";
-  if (process.env.GROQ_API_KEY) {
-    try {
-      return await askProvider(
-        "https://api.groq.com/openai/v1/chat/completions",
-        { Authorization: "Bearer " + process.env.GROQ_API_KEY, "Content-Type": "application/json" },
-        process.env.YUKINA_GROQ_MODEL || "llama-3.3-70b-versatile",
-        prompt
-      );
-    } catch (error) {
-      console.warn("[Yukina fim] Groq indisponível:", error.message);
-    }
-  }
-  if (process.env.OPENROUTER_API_KEY) {
-    try {
-      return await askProvider(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          Authorization: "Bearer " + process.env.OPENROUTER_API_KEY,
-          "Content-Type": "application/json",
-          "HTTP-Referer": process.env.YUKINA_SITE_URL || "https://yukina.onrender.com",
-          "X-Title": "Yukina Discord Bot"
-        },
-        process.env.YUKINA_OPENROUTER_MODEL || "openrouter/free",
-        prompt
-      );
-    } catch (error) {
-      console.warn("[Yukina fim] OpenRouter indisponível:", error.message);
-    }
-  }
-  return baseMessage;
-}
-
 async function run(channel, guild, reply) {
   if (!channel?.isTextBased?.() || !channel.send || !guild) return false;
   const selected = chooseMessage();
   const chosenChannels = chooseChannels(guild, channel);
-  let message = selected.fallback;
-  try {
-    message = await generateWithAI(selected.fallback, chosenChannels);
-  } catch (error) {
-    console.warn("[Yukina fim] Usando mensagem alternativa:", error.message);
-  }
-
   const mentions = chosenChannels.length
     ? "\n\n**🌸 Se quiserem continuar a conversa, encontrem a Yukina por aqui:**\n" + chosenChannels.map(item => "・<#"+item.id+">").join("\n")
     : "";
   const embed = new EmbedBuilder()
     .setColor(0xDDA8C7)
     .setTitle("🌸 Até nosso próximo encontro")
-    .setDescription((message || selected.fallback).slice(0, 3500) + mentions)
+    .setDescription(selected.fallback.slice(0, 3500) + mentions)
     .setFooter({ text: "Com carinho, Yukina ❄️" })
     .setTimestamp();
 
