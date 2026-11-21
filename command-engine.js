@@ -7,6 +7,7 @@ const path = require("node:path");
 const prefixCache = new Map();
 const { AsyncLocalStorage } = require("node:async_hooks");
 const prefixReplyContext = new AsyncLocalStorage();
+const languageBridge = require("./systems/idioma/bridge");
 const patchedChannels = new WeakSet();
 
 // Instala um wrapper único por canal; o contexto assíncrono identifica a mensagem
@@ -35,7 +36,7 @@ function installReplyAwareChannel(channel) {
         repliedUser: true
       };
     }
-    return originalSend(payload);
+    return languageBridge.localizePayload(context.userId, payload).then(localized => originalSend(localized));
   };
   patchedChannels.add(channel);
 }
@@ -145,7 +146,7 @@ function startPrefixEngine(client, getSettingsCollection) {
     const [commandName, command] = entry;
     const executePrefix = command.prefixExecute || command.executePrefix;
     if (typeof executePrefix !== "function") {
-      await message.reply("🌙 Este comando ainda não possui execução por prefixo.");
+      await message.reply(await languageBridge.localizePayload(message.author.id, "🌙 Este comando ainda não possui execução por prefixo."));
       return;
     }
     // Indicador nativo de digitação para todos os comandos de prefixo.
@@ -156,12 +157,17 @@ function startPrefixEngine(client, getSettingsCollection) {
     // O contexto por mensagem evita que dois comandos simultâneos no mesmo canal
     // sobrescrevam/restaurem channel.send um do outro.
     installReplyAwareChannel(message.channel);
-    const context = { message, active: true };
+    const context = { message, userId: message.author.id, active: true };
     try {
-      await prefixReplyContext.run(context, () => executePrefix(message, args, client));
+      await prefixReplyContext.run(context, () => languageBridge.runWithUserLanguage(
+        message.author.id,
+        () => executePrefix(message, args, client),
+        message
+      ));
     } catch (error) {
       console.error(`❄️ [Motor] Erro em ${prefix}${commandName}:`, error);
-      await message.reply("🫧 Não consegui executar esse comando. Confira as permissões e tente novamente.").catch(() => {});
+      const errorText = await languageBridge.localizePayload(message.author.id, "🫧 Não consegui executar esse comando. Confira as permissões e tente novamente.");
+      await message.reply(errorText).catch(() => {});
     } finally {
       context.active = false;
       clearInterval(typingInterval);
