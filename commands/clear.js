@@ -109,7 +109,7 @@ module.exports = {
   async execute(interaction) {
     if (!interaction.inGuild()) {
       return interaction.reply({
-        content: t("serverOnly"),
+        content: moderationLocale.getMessage(await languageSystem.getUserLanguage(interaction.user.id), "serverOnly"),
         flags: MessageFlags.Ephemeral
       });
     }
@@ -141,6 +141,7 @@ module.exports = {
       channel: message.channel,
       member: message.member,
       amount,
+      userId: message.author.id,
       invocationMessageId: message.id,
       reply: content => message.reply(content)
     });
