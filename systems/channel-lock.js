@@ -1,6 +1,6 @@
 "use strict";
 
-const { PermissionFlagsBits } = require("discord.js");
+const { PermissionFlagsBits } = require("discord.js");\nconst languageSystem = require("./idioma");\nconst moderationLocale = require("./idioma/locales/moderation");
 
 async function getTarget(message, args, optionName = "canal") {
   if (message) {
@@ -15,7 +15,7 @@ async function getTarget(message, args, optionName = "canal") {
   return null;
 }
 
-async function changeChannel({ guild, channel, moderator, action, reply }) {
+async function changeChannel({ guild, channel, moderator, action, reply }) {\n  const language = await languageSystem.getUserLanguage(moderator?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!guild || !channel || channel.guildId !== guild.id) {
     return reply("❄️ Não encontrei esse canal neste servidor.");
   }
@@ -41,7 +41,7 @@ async function changeChannel({ guild, channel, moderator, action, reply }) {
       await channel.permissionOverwrites.edit(everyone, { SendMessages: false }, {
         reason: "Bloqueio solicitado por " + moderator.user?.tag
       });
-      return reply("🔒 O canal " + channel.toString() + " foi bloqueado. Para conversar, utilize outro canal disponível.");
+      return reply(t("lockSuccess", { channel: channel.toString() }));
     } catch (error) {
       console.error("[Yukina] Falha ao bloquear canal:", error);
       return reply("🫧 Não consegui bloquear esse canal. Verifique minhas permissões.");
@@ -57,7 +57,7 @@ async function changeChannel({ guild, channel, moderator, action, reply }) {
       await channel.permissionOverwrites.edit(everyone, { SendMessages: null }, {
         reason: "Desbloqueio solicitado por " + moderator.user?.tag
       });
-      return reply("🔓 O canal " + channel.toString() + " foi desbloqueado conforme as permissões herdadas.");
+      return reply(t("unlockSuccess", { channel: channel.toString() }));
     } catch (error) {
       console.error("[Yukina] Falha ao desbloquear canal:", error);
       return reply("🫧 Não consegui desbloquear esse canal. Verifique minhas permissões.");
