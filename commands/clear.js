@@ -31,7 +31,9 @@ async function sendTemporaryReply(reply, content) {
   return sent;
 }
 
-async function clearMessages({ guild, channel, member, amount, invocationMessageId = null, userId, reply }) {\n  const language = await languageSystem.getUserLanguage(userId || member?.id);\n  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
+async function clearMessages({ guild, channel, member, amount, invocationMessageId = null, userId, reply }) {
+  const language = await languageSystem.getUserLanguage(userId || member?.id);
+  const t = (key, variables) => moderationLocale.getMessage(language, key, variables);
   if (!isAdministrator(member)) {
     return sendTemporaryReply(reply, t("adminPermission"));
   }
