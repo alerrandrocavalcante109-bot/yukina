@@ -118,7 +118,8 @@ module.exports = {
       guild: interaction.guild,
       channel: interaction.channel,
       member: interaction.member,
-      amount: interaction.options.getInteger("quantidade", true),\n      userId: interaction.user.id,
+      amount: interaction.options.getInteger("quantidade", true),
+      userId: interaction.user.id,
       reply: async content => {
         await interaction.reply({ content, flags: MessageFlags.Ephemeral });
         const timer = setTimeout(() => interaction.deleteReply().catch(() => {}), CONFIRMATION_DELETE_MS);
@@ -141,6 +142,7 @@ module.exports = {
       channel: message.channel,
       member: message.member,
       amount,
+      userId: message.author.id,
       userId: message.author.id,
       invocationMessageId: message.id,
       reply: content => message.reply(content)
