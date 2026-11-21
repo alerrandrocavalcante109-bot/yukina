@@ -6,6 +6,7 @@
 Tradução manual das respostas e interações dos comandos para os 25 idiomas definidos em `systems/idioma/index.js`. Preservar lógica, permissões, aliases e comportamento. Não reintroduzir IA, banco/empréstimos ou Waifu.
 
 ## Concluídos ou parcialmente integrados
+- [x] `commands/addkz.js`: mensagens de servidor, permissão, uso, sucesso (incluindo saldos individuais) e erro localizadas via `systems/idioma/locales/addkz.js` nos 25 idiomas. Comando continua somente por prefixo; lógica de permissões, parsing de valores e atualização de carteiras preservada.
 - [x] `commands/daily.js` + `daily-reminders.js`: catálogo manual em `systems/idioma/locales/daily.js` (25 idiomas).
 - [x] `commands/saldo.js` / `economia-saldo.js`: catálogo manual em `systems/idioma/locales/saldo.js` (25 idiomas); aliases `atm` e `bal`.
 - [~] Moderação: `clear.js`, `banir-membro.js`, `expulsar-membro.js`, `systems/channel-lock.js` usam `locales/moderation.js`; faltam mensagens secundárias, permissões específicas, erros e componentes de confirmação.
@@ -65,3 +66,9 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Integrado `commands/painel.js` para obter o idioma individual do autor tanto em slash quanto em prefixo.
 - Commits: `b586b66`, `b571509`, `cbac314`, `970a285`.
 - Verificação: catálogo do painel contém exatamente 25 idiomas e os dois arquivos JavaScript passaram na verificação de sintaxe. Não houve teste no Discord nem confirmação de deploy Render.
+
+
+## Histórico da execução — addkz
+- Criado catálogo manual `systems/idioma/locales/addkz.js` com os 25 idiomas cadastrados.
+- Integrado o comando de prefixo `addkz`/ `adicionarkz` à preferência individual de idioma; valores numéricos formatados conforme o idioma.
+- Validação estática: verificar sintaxe JavaScript, quantidade de idiomas e placeholders antes de considerar o lote validado. Não houve teste no Discord nem confirmação de deploy Render.
