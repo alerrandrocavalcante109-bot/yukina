@@ -47,12 +47,12 @@ async function getStatus(guildId, userId) {
   if (local) { active.set(key, local); return local; }
   return null;
 }
-function statusText(user, record) {
+function statusText(user, record, language) {
   return [
-    "[ ausência ativa ]",
-    "**Usuario:** " + user.toString(),
-    record.reason ? "**motivo:**\n### " + record.reason : "",
-    "O estado de ausente está ativo, para desativar basta mandar algo em um canal que tenho permissão de acessar."
+    tr(language, "activeTitle"),
+    tr(language, "userLabel") + " " + user.toString(),
+    record.reason ? tr(language, "reasonLabel") + "\n### " + record.reason : "",
+    tr(language, "instruction")
   ].filter(Boolean).join("\n");
 }
 function installHooks(client) {
@@ -64,8 +64,9 @@ function installHooks(client) {
     if (own) {
       active.delete(keyFor(message.guild.id, message.author.id));
       await persist(message.guild.id, message.author.id, null);
+      const ownLanguage = await languageSystem.getUserLanguage(message.author.id);
       await message.reply({
-        content: "🌸 **Yukina · Boas-vindas de volta**\nSua ausência foi encerrada automaticamente. Que bom ter você novamente sob o luar!",
+        content: tr(ownLanguage, "welcomeTitle") + "\n" + tr(ownLanguage, "welcomeBody"),
         allowedMentions: { repliedUser: false }
       }).catch(() => {});
       for (const notice of (own.mentions || [])) {
@@ -86,11 +87,12 @@ function installHooks(client) {
       const elapsed = Math.max(0, Date.now() - (record.startedAt || Date.now()));
       const hours = Math.floor(elapsed / 3600000);
       const days = Math.floor(elapsed / 86400000);
-      const reason = record.reason ? "\n**Motivo:**\n### " + record.reason : "";
+      const language = await languageSystem.getUserLanguage(user.id);
+      const reason = record.reason ? "\n" + tr(language, "reasonLabel") + "\n### " + record.reason : "";
       await message.reply({
-        content: message.author.toString() + " esta ausente\n**Usuario:** " + user.toString() +
-          reason + "\n**horas** " + hours + "\n**dias:** " + days +
-          "\nQuando ele voltar eu aviso que voce o mencionou.",
+        content: tr(language, "awayNotice", {
+          author: message.author.toString(), user: user.toString(), reason, hours, days
+        }),
         allowedMentions: { repliedUser: false, parse: [] }
       }).catch(() => null);
       record.mentions = Array.isArray(record.mentions) ? record.mentions : [];
@@ -109,7 +111,7 @@ async function run(guild, user, reasonRaw, reply, client) {
   if (existing) {
     active.delete(key);
     await persist(guild.id, user.id, null);
-    return reply("🌸 **Yukina · Boas-vindas de volta**\nSua ausência foi encerrada. Que bom ter você novamente!");
+    return reply(tr(language, "welcomeTitle") + "\n" + tr(language, "welcomeManual"));
   }
   const record = {
     userId: user.id,
