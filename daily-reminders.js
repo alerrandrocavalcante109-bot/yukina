@@ -85,11 +85,11 @@ async function runDailyReminders(client, scheduled = false) {
       const lastClaim = await claims.find({ userId: userKey })
         .sort({ claimedAt: -1, day: -1 }).limit(1).next();
 
-      // O lembrete comum é único e para após mais de 4 dias completos sem coleta.
+      // Envia à meia-noite, mas interrompe os lembretes após mais de 1 dia completo sem coleta.
       if (claimedToday || state?.lastReminderDay === day) continue;
       if (lastClaim?.claimedAt) {
         const elapsedDays = (now.getTime() - new Date(lastClaim.claimedAt).getTime()) / (24 * 60 * 60 * 1000);
-        if (elapsedDays > 4) continue;
+        if (elapsedDays > 1) continue;
       }
       const streak = await getDailyStreak(claims, guildId, userKey, day);
       try {
