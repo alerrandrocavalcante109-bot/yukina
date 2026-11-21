@@ -1,7 +1,10 @@
 "use strict";
 const {SlashCommandBuilder,ActionRowBuilder,ButtonBuilder,ButtonStyle,PermissionFlagsBits}=require("discord.js");
-const pending=new Map();\nconst languageSystem=require("../systems/idioma");\nconst moderationLocale=require("../systems/idioma/locales/moderation");
-async function request({guild,moderator,targetId,reason,reply}){\n const language=await languageSystem.getUserLanguage(moderator?.id),t=(key,vars)=>moderationLocale.getMessage(language,key,vars);
+const pending=new Map();
+const languageSystem=require("../systems/idioma");
+const moderationLocale=require("../systems/idioma/locales/moderation");
+async function request({guild,moderator,targetId,reason,reply}){
+ const language=await languageSystem.getUserLanguage(moderator?.id),t=(key,vars)=>moderationLocale.getMessage(language,key,vars);
  if(!guild)return reply({content:t("serverOnly"),ephemeral:true});
  if(!moderator.permissions.has(PermissionFlagsBits.KickMembers))return reply({content:"🌙 "+t("adminPermission"),ephemeral:true});
  if(targetId===moderator.id||targetId===guild.client.user.id)return reply({content:"Você não pode expulsar a si mesmo ou a Yukina.",ephemeral:true});
