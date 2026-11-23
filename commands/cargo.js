@@ -81,7 +81,7 @@ module.exports = {
       : ["remove", "remover", "retirar", "tirar"].includes(actionText) ? "remove" : null;
     const roleMention = message.mentions.roles.first();
     const roleName = args
-      .filter(arg => !/^<@!?\\d{17,20}>$/.test(String(arg)) && !/^<@&\\d{17,20}>$/.test(String(arg)))
+      .filter(arg => !/^<@!?\d{17,20}>$/.test(String(arg)) && !/^<@&\d{17,20}>$/.test(String(arg)))
       .slice(0, -1)
       .join(" ")
       .trim();
