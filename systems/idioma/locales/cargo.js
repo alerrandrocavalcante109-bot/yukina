@@ -433,7 +433,7 @@ const LOCALES = Object.fromEntries(Object.entries(ROWS).map(([language, values])
 function getMessage(language, key, variables = {}) {
   const locale = LOCALES[language] || LOCALES["pt-BR"];
   const template = locale[key] || LOCALES["pt-BR"][key] || key;
-  return String(template).replace(/\\{([a-zA-Z0-9_]+)\\}/g, (_, name) =>
+  return String(template).replace(/\{([a-zA-Z0-9_]+)\}/g, (_, name) =>
     Object.prototype.hasOwnProperty.call(variables, name) ? String(variables[name]) : ""
   );
 }
