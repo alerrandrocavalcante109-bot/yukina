@@ -91,4 +91,4 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Ampliado `systems/idioma/locales/moderation.js` com oito mensagens específicas do bloqueio/desbloqueio para os 25 idiomas.
 - Integrado o idioma individual em `systems/channel-lock.js` e nas respostas de uso em DM dos comandos `bloquear` e `desbloquear`.
 - Preservados aliases, IDs, permissões exigidas, checagem de herança, overwrites e comportamento de prefixo/Slash.
-- Validação estática: catálogo contém 50 idiomas e as oito chaves do fluxo. Imports foram conferidos por leitura dos arquivos. Não foi executado `node --check`, teste de runtime no Discord nem deploy Render.
+- Validação estática: catálogo contém 25 idiomas e as oito chaves do fluxo. Imports foram conferidos por leitura dos arquivos. Não foi executado `node --check`, teste de runtime no Discord nem deploy Render.
