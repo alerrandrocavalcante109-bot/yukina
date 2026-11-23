@@ -86,7 +86,7 @@ async function claimCooldown(db, { guildId, userId, command, cooldownMs, now }) 
   }
 }
 
-async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, title, description, rewardFactory, messages, language = "pt-BR" }) {
+async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, title, description, descriptionVariables = {}, rewardFactory, messages, language = "pt-BR" }) {
   const localized = (key, fallback, variables = {}) => messages?.getMessage
     ? messages.getMessage(language, key, variables)
     : fallback;
@@ -193,7 +193,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
       .setColor(result.color || 0xA7D8F0)
       .setAuthor({ name: localized("author", "Yukina · Benefícios dos planos") })
       .setTitle(result.emoji ? result.emoji + " " + localized("title", title) : localized("title", title))
-      .setDescription([localized("description", description), result.message ? localized("rewardMessage", result.message) : null].filter(Boolean).join("\n\n"))
+      .setDescription([localized("description", description, descriptionVariables), result.message ? localized("rewardMessage", result.message) : null].filter(Boolean).join("\n\n"))
       .addFields(
         ...(reward > 0 ? [{ name: localized("fieldKizunas", "💴 Kizunas recebidas"), value: `+${format(reward, language)} KZ`, inline: true }] : []),
         ...(result.item ? [{ name: localized("fieldItem", "🎁 Item desbloqueado"), value: result.item.name, inline: true }] : []),
