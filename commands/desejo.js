@@ -95,6 +95,7 @@ module.exports = {
       cooldownMs: 7 * 24 * 60 * 60 * 1000,
       title,
       description,
+      descriptionVariables: { cap: cap.toLocaleString(language) },
       messages,
       language,
       rewardFactory: () => ({
