@@ -36,11 +36,18 @@ module.exports = {
         .setRequired(true)
         .setMinValue(1)
         .setMaxValue(16))),
+    .addSubcommand(s => s.setName("blackjack").setDescription("Jogue Blackjack contra a banca da Yukina.").addStringOption(o => o.setName("valor").setDescription("Aposta em KZ, como 100, 10k ou 1m.").setRequired(true).setMaxLength(24))),
 
   name: "mines",
   aliases: ["mines"],
 
   async execute(interaction) {
+    if (interaction.options.getSubcommand() === "blackjack") {
+      const bj = require("../systems/blackjack");
+      const result = await bj.startGame({client:interaction.client,guild:interaction.guild,channel:interaction.channel,user:interaction.user,betInput:interaction.options.getString("valor",true,"blackjack"),send:async p=>{if(interaction.replied||interaction.deferred)return interaction.followUp(p);await interaction.reply(p);return interaction.fetchReply();}});
+      if (!result.ok) { const p={content:result.message,flags:MessageFlags.Ephemeral}; if(interaction.replied||interaction.deferred)return interaction.followUp(p); return interaction.reply(p); }
+      return result.message;
+    }
     return startFromCommand({
       client: interaction.client,
       guild: interaction.guild,
