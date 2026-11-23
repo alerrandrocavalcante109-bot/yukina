@@ -6,6 +6,7 @@
 Tradução manual das respostas e interações dos comandos para os 25 idiomas definidos em `systems/idioma/index.js`. Preservar lógica, permissões, aliases e comportamento. Não reintroduzir IA, banco/empréstimos ou Waifu.
 
 ## Concluídos ou parcialmente integrados
+- [~] `commands/desejo.js` + `systems/plan-commands.js`: respostas do desejo, validação do limite, título/descrição do embed, recompensa, erros de servidor/plano/cooldown/falha e campos localizados via `locales/desejo.js` nos 25 idiomas. Mensagens de item especial não exibem mais texto fixo em português; o item permanece registrado no inventário. Preservados plano mínimo Infinity, cooldown de 7 dias, pesos, faixas de recompensa, limite de 100k–10m e transação. Descrição/opções do Slash Command ainda estão em português; sem teste no Discord ou deploy Render.
 - [~] `commands/cofre.js` + `systems/plan-commands.js`: respostas do cofre, bloqueio por plano, cooldown, falha, embed e campos localizados via `locales/cofre.js` nos 25 idiomas. O suporte do motor compartilhado é opcional e mantém o texto original dos demais comandos que ainda não passaram tradução. Formatação numérica acompanha o idioma. Descrição/metadados do Slash ainda estão em português; sem teste no Discord ou deploy Render.
 - [~] `commands/cargo.js`: respostas de sucesso, erros, permissões, hierarquia, cargo inválido, uso e servidor localizados via `locales/cargo.js` nos 25 idiomas. Lógica de atribuição/retirada e anúncio de promoção preservados. Descrição, opções e escolhas do Slash Command ainda estão em português; metadados permanecem estáticos. Não houve teste de runtime no Discord nem deploy Render.
 - [~] `commands/bloquear.js`, `commands/desbloquear.js` e `systems/channel-lock.js`: respostas de canal inexistente, permissões do moderador e bot, canal já bloqueado, bloqueio herdado, ausência de bloqueio explícito, falhas e sucessos localizadas via `locales/moderation.js` nos 25 idiomas. Slash/prefixo preservados; descrições e opções dos Slash Commands ainda estão em português.
@@ -109,3 +110,11 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - `systems/plan-commands.js` aceita localização opcional para as respostas do benefício, sem alterar a saída dos demais comandos que ainda não fornecem catálogo; saldo e recompensa são formatados conforme o idioma.
 - Preservados plano mínimo Plus, cooldown diário, probabilidades e valores das recompensas, ledger, carteira e transação.
 - Validação estática: sintaxe dos três arquivos, cobertura dos 25 idiomas, 13 chaves e placeholders aprovados. Não houve teste runtime no Discord nem confirmação de deploy Render.
+
+
+## Histórico da execução — desejo
+- Criado `systems/idioma/locales/desejo.js` com 14 mensagens manuais para os 25 idiomas cadastrados.
+- Integrado `commands/desejo.js` para usar a preferência individual do usuário tanto no Slash quanto no prefixo; validação do limite e descrição do desejo agora são localizadas e formatadas conforme o idioma.
+- Estendido `systems/plan-commands.js` para aceitar variáveis na descrição localizada, mantendo compatibilidade com os comandos que já usam o motor compartilhado.
+- Preservados plano mínimo Infinity, cooldown de 7 dias, probabilidades, faixas e teto da recompensa, tipos de item, inventário e transação. Para item especial, o embed não exibe a antiga mensagem fixa em português.
+- Validação estática: sintaxe dos três arquivos JavaScript, cobertura dos 25 idiomas, 14 chaves por idioma e placeholder `{cap}` conferidos. Não houve teste de runtime no Discord nem confirmação de deploy Render.
