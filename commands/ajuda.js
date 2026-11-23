@@ -7,7 +7,7 @@ const { getMessage } = require("../systems/idioma/locales/help");
 const COLOR = 0xA9DDF5;
 const CATEGORY_ORDER = [
   { key: "geral", match: /ajuda|help|ping|info|sobre|avatar|server|servidor|convite|say|dizer/i },
-  { key: "diversao", match: /jogo|game|domino|forca|quiz|ship|beijo|abraco|abraço|cafune|carinho|meme|sorte|coin|cara|coroa/i },
+  { key: "diversao", match: /jogo|game|forca|quiz|ship|beijo|abraco|abraço|cafune|carinho|meme|sorte|coin|cara|coroa/i },
   { key: "economia", match: /saldo|transfer|pagar|work|trabalh|daily|colet|loja|comprar|vender|invent|econom|kizuna|sonho/i },
   { key: "progressao", match: /rank|ranking|nivel|nível|xp|level|tempo|hierarquia|top|leaderboard/i },
   { key: "moderacao", match: /ban|kick|mute|timeout|warn|aviso|clear|limpar|purge|modera|castigo|expuls/i },
