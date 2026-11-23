@@ -6,6 +6,7 @@
 Tradução manual das respostas e interações dos comandos para os 25 idiomas definidos em `systems/idioma/index.js`. Preservar lógica, permissões, aliases e comportamento. Não reintroduzir IA, banco/empréstimos ou Waifu.
 
 ## Concluídos ou parcialmente integrados
+- [~] `commands/bloquear.js`, `commands/desbloquear.js` e `systems/channel-lock.js`: respostas de canal inexistente, permissões do moderador e bot, canal já bloqueado, bloqueio herdado, ausência de bloqueio explícito, falhas e sucessos localizadas via `locales/moderation.js` nos 25 idiomas. Slash/prefixo preservados; descrições e opções dos Slash Commands ainda estão em português.
 - [~] `commands/ajuda.js` + `components/selects/ajuda-categoria.js`: categorias, descrições de categoria, visão geral, título, rodapé, placeholder e erro do menu localizados via `locales/help.js` nos 25 idiomas; seleção preserva a preferência individual. As descrições/metadados dos Slash Commands e descrições individuais dos comandos exibidas dentro das categorias continuam vindo dos próprios comandos e precisam de auditoria/localização separada. Sem teste de runtime no Discord ou deploy Render.
 - [~] `commands/advertencias.js` e `commands/advertir-membro.js`: histórico, permissões, erros, confirmação, botões e mensagens do fluxo localizados via `systems/idioma/locales/warnings.js` nos 25 idiomas. As descrições/metadados do Slash Command ainda permanecem em português; handlers externos dos botões precisam ser auditados separadamente.
 - [x] `commands/addkz.js`: mensagens de servidor, permissão, uso, sucesso (incluindo saldos individuais) e erro localizadas via `systems/idioma/locales/addkz.js` nos 25 idiomas. Comando continua somente por prefixo; lógica de permissões, parsing de valores e atualização de carteiras preservada.
@@ -18,7 +19,6 @@ Tradução manual das respostas e interações dos comandos para os 25 idiomas d
 
 ## Pendentes
 Todos os demais comandos e fluxos ainda precisam ser auditados individualmente, incluindo mensagens de erro/sucesso, confirmações, embeds, botões, selects, modais, handlers e textos enviados por sistemas acionados pelos comandos. Inventário inicial em `commands/`:
-- `bloquear.js` / `desbloquear.js` (wrappers; revisar fluxo compartilhado)
 - `cargo.js`
 - `cofre.js`
 - `desejo.js`
@@ -85,3 +85,10 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Preservadas categorias, aliases, filtro de comandos, IDs de componentes e comportamento do menu.
 - Descrições originais dos comandos e metadados Slash não foram reescritos; permanecem pendentes para não alterar definições globais sem auditoria específica.
 - Não houve teste de runtime no Discord nem confirmação de deploy Render.
+
+
+## Histórico da execução — bloqueio de canais
+- Ampliado `systems/idioma/locales/moderation.js` com oito mensagens específicas do bloqueio/desbloqueio para os 25 idiomas.
+- Integrado o idioma individual em `systems/channel-lock.js` e nas respostas de uso em DM dos comandos `bloquear` e `desbloquear`.
+- Preservados aliases, IDs, permissões exigidas, checagem de herança, overwrites e comportamento de prefixo/Slash.
+- Validação estática: catálogo contém 50 idiomas e as oito chaves do fluxo. Imports foram conferidos por leitura dos arquivos. Não foi executado `node --check`, teste de runtime no Discord nem deploy Render.
