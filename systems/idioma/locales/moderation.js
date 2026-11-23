@@ -484,6 +484,6 @@ const EXTRA_KEYS = ["channelNotFound","moderatorChannelPermission","botChannelPe
 for (const [locale, values] of Object.entries(EXTRA)) CATALOG[locale] = Object.freeze({ ...CATALOG[locale], ...Object.fromEntries(EXTRA_KEYS.map((key, index) => [key, values[index]])) });
 function getMessage(language, key, variables = {}) {
   const template = CATALOG[language]?.[key] || CATALOG["pt-BR"][key] || key;
-  return template.replace(/\\{(count|channel)\\}/g, (_, name) => String(variables[name] ?? ""));
+  return template.replace(/\{(count|channel)\}/g, (_, name) => String(variables[name] ?? ""));
 }
 module.exports = { CATALOG, getMessage };
