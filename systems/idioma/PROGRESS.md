@@ -6,6 +6,7 @@
 Tradução manual das respostas e interações dos comandos para os 25 idiomas definidos em `systems/idioma/index.js`. Preservar lógica, permissões, aliases e comportamento. Não reintroduzir IA, banco/empréstimos ou Waifu.
 
 ## Concluídos ou parcialmente integrados
+- [~] `commands/advertencias.js` e `commands/advertir-membro.js`: histórico, permissões, erros, confirmação, botões e mensagens do fluxo localizados via `systems/idioma/locales/warnings.js` nos 25 idiomas. As descrições/metadados do Slash Command ainda permanecem em português; handlers externos dos botões precisam ser auditados separadamente.
 - [x] `commands/addkz.js`: mensagens de servidor, permissão, uso, sucesso (incluindo saldos individuais) e erro localizadas via `systems/idioma/locales/addkz.js` nos 25 idiomas. Comando continua somente por prefixo; lógica de permissões, parsing de valores e atualização de carteiras preservada.
 - [x] `commands/daily.js` + `daily-reminders.js`: catálogo manual em `systems/idioma/locales/daily.js` (25 idiomas).
 - [x] `commands/saldo.js` / `economia-saldo.js`: catálogo manual em `systems/idioma/locales/saldo.js` (25 idiomas); aliases `atm` e `bal`.
@@ -16,8 +17,6 @@ Tradução manual das respostas e interações dos comandos para os 25 idiomas d
 
 ## Pendentes
 Todos os demais comandos e fluxos ainda precisam ser auditados individualmente, incluindo mensagens de erro/sucesso, confirmações, embeds, botões, selects, modais, handlers e textos enviados por sistemas acionados pelos comandos. Inventário inicial em `commands/`:
-- `advertencias.js`
-- `advertir-membro.js`
 - `ajuda.js`
 - `bloquear.js` / `desbloquear.js` (wrappers; revisar fluxo compartilhado)
 - `cargo.js`
@@ -71,3 +70,10 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Criado catálogo manual `systems/idioma/locales/addkz.js` com os 25 idiomas cadastrados.
 - Integrado o comando de prefixo `addkz`/ `adicionarkz` à preferência individual de idioma; valores numéricos formatados conforme o idioma.
 - Validação estática: verificar sintaxe JavaScript, quantidade de idiomas e placeholders antes de considerar o lote validado. Não houve teste no Discord nem confirmação de deploy Render.
+
+
+## Histórico da execução — advertências
+- Criado `systems/idioma/locales/warnings.js` com traduções manuais para os 25 idiomas.
+- Integrados `advertencias.js` e `advertir-membro.js`, incluindo mensagens de uso, permissões, hierarquia, confirmação e rótulos dos botões.
+- Lógica de consulta, registro pendente, expiração de 5 minutos, permissões e hierarquia preservada.
+- Não houve teste de runtime no Discord nem confirmação de deploy Render.
