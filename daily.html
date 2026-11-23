@@ -24,12 +24,11 @@
     *{box-sizing:border-box}
     html,body{width:100%;min-height:100%;margin:0}
     body{min-height:100vh;min-height:100dvh;background:#10091d;color:#fff;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;overflow-x:hidden;overflow-y:auto}
-    .backdrop{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:-2;pointer-events:none}
-    .shade{position:fixed;inset:0;background:rgba(13,6,24,.28);z-index:-1;pointer-events:none}
+    .backdrop{position:fixed;inset:0;width:100%;height:100%;object-fit:cover;object-position:center center;z-index:-2;pointer-events:none;transform:none;animation:none}
+    .shade{position:fixed;inset:0;background:linear-gradient(180deg,rgba(13,6,24,.38),rgba(13,6,24,.58));z-index:-1;pointer-events:none}
     .profile{position:fixed;z-index:10;top:20px;right:clamp(16px,3vw,38px);display:none;align-items:center;gap:11px;max-width:min(280px,calc(100vw - 32px));padding:8px 14px 8px 8px;border:1px solid rgba(255,192,229,.35);border-radius:999px;background:rgba(20,8,34,.68);box-shadow:0 8px 28px rgba(0,0,0,.2);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     .profile.visible{display:flex}
-    .welcome{position:relative;z-index:1;min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(28px,5vh,52px);padding:110px 24px 42px;text-align:center}
-        .daily-cover{display:block;width:min(460px,82vw);max-height:min(42vh,420px);aspect-ratio:1/1;object-fit:cover;border:1px solid rgba(255,203,235,.42);border-radius:28px;box-shadow:0 18px 55px rgba(0,0,0,.42),0 0 38px rgba(255,190,230,.16);animation:welcome-in .8s ease both}
+    .welcome{position:relative;z-index:1;width:min(100%,1180px);min-height:100vh;min-height:100dvh;margin:0 auto;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:clamp(24px,4vh,44px);padding:clamp(92px,12vh,132px) clamp(16px,4vw,48px) 48px;text-align:center}
 .welcome h1{max-width:1100px;min-height:1.04em;margin:0;color:#fff4fc;font-size:clamp(2.8rem,8.5vw,7.2rem);font-weight:900;line-height:1.04;letter-spacing:-.055em;text-wrap:balance;text-shadow:0 5px 28px rgba(0,0,0,.48),0 0 42px rgba(255,190,230,.22)}
     .welcome h1::after{content:"";display:inline-block;width:3px;height:.82em;margin-left:7px;vertical-align:-.06em;background:#ffd8ef;box-shadow:0 0 14px rgba(255,190,230,.8);animation:caret-blink .75s steps(2,start) infinite}
     .welcome h1.done::after{display:none}
@@ -55,7 +54,7 @@
     @media(prefers-reduced-motion:reduce){.reel-field span{animation:none}}
     .reel-field:nth-child(1){border-color:rgba(255,174,220,.48)}.reel-field:nth-child(2){border-color:rgba(190,222,255,.48)}.reel-field:nth-child(3){border-color:rgba(255,215,143,.48)}.reel-field:nth-child(4){border-color:rgba(255,190,190,.48)}
     @keyframes welcome-in{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-    @media(max-width:650px){.welcome{gap:30px;padding:100px 16px 30px}.welcome h1{font-size:clamp(2.7rem,12vw,4.4rem)}.daily-reel{grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px}.reel-field{min-height:104px;border-radius:18px}.reel-field span{font-size:clamp(1.8rem,8vw,2.5rem)}}
+    @media(max-width:650px){.backdrop{object-position:center center}.shade{background:rgba(13,6,24,.58)}.welcome{width:100%;min-height:100svh;gap:26px;padding:88px 14px 28px}.welcome h1{font-size:clamp(2.15rem,9.5vw,3.7rem);letter-spacing:-.04em}.daily-quote{font-size:clamp(1.05rem,4.2vw,1.35rem);line-height:1.55}.daily-reel{grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px}.reel-field{min-height:96px;border-radius:18px}.reel-field span{font-size:clamp(1.65rem,7vw,2.35rem)}.security-check{padding:16px 12px}.daily-spin{font-size:16px}}\n    @media(min-width:651px){.daily-quote{max-width:1000px}.security-check{width:min(460px,100%)}.daily-reel{max-width:940px}}
 
     .profile{cursor:pointer;user-select:none;transition:transform .2s,background .2s}
     .profile:hover{transform:translateY(-2px);background:rgba(45,18,62,.86)}
@@ -74,10 +73,10 @@
   </style>
 </head>
 <body>
-  <img class="backdrop" src="./assets/yukina-bg.png" alt="" aria-hidden="true">
+  <img class="backdrop" src="./imagem-daily/daily.png" alt="" aria-hidden="true">
   <div class="shade" aria-hidden="true"></div>
   <main class="welcome">
-    <img class="daily-cover" src="https://raw.githubusercontent.com/alerrandrocavalcante109-bot/yukina/main/imagem-daily/daily.png" alt="Yukina no Santuário Sakura com moedas Kizuna">
+
     <h1>Que bom ter você por aqui!</h1>
     <div class="daily-quote"><span class="quote-mark">❀</span>Que a delicadeza das flores de cerejeira lembre você de que até os momentos mais breves podem guardar uma beleza imensa. Não tenha pressa para florescer, nem compare sua jornada com a de ninguém: cada coração tem seu próprio tempo, cada sonho encontra sua estação e cada pequeno passo merece ser celebrado. Mesmo nas noites mais silenciosas, existe uma luz esperando para encontrar o seu caminho.<span class="quote-sign">— Com carinho, Yukina</span></div>
     <section class="daily-reel" aria-label="Roleta Daily">
