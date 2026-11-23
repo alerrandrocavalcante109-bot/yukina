@@ -42,8 +42,8 @@ async function getPlan(userId) {
   )[0] || null;
 }
 
-function format(value) {
-  return Math.floor(Number(value) || 0).toLocaleString("pt-BR");
+function format(value, language = "pt-BR") {
+  return Math.floor(Number(value) || 0).toLocaleString(language || "pt-BR");
 }
 
 function weightedPick(entries) {
@@ -86,7 +86,10 @@ async function claimCooldown(db, { guildId, userId, command, cooldownMs, now }) 
   }
 }
 
-async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, title, description, rewardFactory }) {
+async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, title, description, rewardFactory, messages, language = "pt-BR" }) {
+  const localized = (key, fallback, variables = {}) => messages?.getMessage
+    ? messages.getMessage(language, key, variables)
+    : fallback;
   // O Discord exige uma confirmação em até 3 segundos. As consultas de plano,
   // MongoDB e transação podem demorar; deferimos antes de iniciar esse trabalho.
   try {
@@ -103,7 +106,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     : interaction.reply(payload);
 
   if (!interaction.inGuild() || !interaction.guild) {
-    return respond({ content: "❄️ Este comando só pode ser usado dentro de um servidor." });
+    return respond({ content: localized("serverOnly", "❄️ Este comando só pode ser usado dentro de um servidor.") });
   }
 
   let claim;
@@ -114,7 +117,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     if (!subscription || actualTier < TIERS[minimumPlan]) {
       const requiredName = PLAN_NAMES[minimumPlan];
       return respond({
-        content: `🌸 Este comando é exclusivo do plano **${requiredName}** ou superior. Assine ou renove seu plano para desbloqueá-lo.`,
+        content: localized("planRequired", `🌸 Este comando é exclusivo do plano **${requiredName}** ou superior. Assine ou renove seu plano para desbloqueá-lo.`, { plan: requiredName }),
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -133,7 +136,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
     if (claim && !claim.ok) {
       const timestamp = Math.ceil(claim.nextAvailableAt.getTime() / 1000);
       return respond({
-        content: `🌙 Você já utilizou este benefício. Ele estará disponível novamente <t:${timestamp}:R>.`,
+        content: localized("cooldown", `🌙 Você já utilizou este benefício. Ele estará disponível novamente <t:${timestamp}:R>.`, { timestamp }),
         flags: MessageFlags.Ephemeral,
       });
     }
@@ -188,16 +191,16 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
 
     const embed = new EmbedBuilder()
       .setColor(result.color || 0xA7D8F0)
-      .setAuthor({ name: "Yukina · Benefícios dos planos" })
-      .setTitle(result.emoji ? result.emoji + " " + title : title)
-      .setDescription([description, result.message || null].filter(Boolean).join("\n\n"))
+      .setAuthor({ name: localized("author", "Yukina · Benefícios dos planos") })
+      .setTitle(result.emoji ? result.emoji + " " + localized("title", title) : localized("title", title))
+      .setDescription([localized("description", description), result.message ? localized("rewardMessage", result.message) : null].filter(Boolean).join("\n\n"))
       .addFields(
-        ...(reward > 0 ? [{ name: "💴 Kizunas recebidas", value: `+${format(reward)} KZ`, inline: true }] : []),
-        ...(result.item ? [{ name: "🎁 Item desbloqueado", value: result.item.name, inline: true }] : []),
-        { name: "👛 Sua carteira", value: `${format(balanceDoc?.balance)} KZ`, inline: true },
-        ...(claim ? [{ name: "🌙 Próxima utilização", value: `<t:${Math.floor(claim.nextAvailableAt.getTime() / 1000)}:R>`, inline: true }] : [])
+        ...(reward > 0 ? [{ name: localized("fieldKizunas", "💴 Kizunas recebidas"), value: `+${format(reward, language)} KZ`, inline: true }] : []),
+        ...(result.item ? [{ name: localized("fieldItem", "🎁 Item desbloqueado"), value: result.item.name, inline: true }] : []),
+        { name: localized("fieldWallet", "👛 Sua carteira"), value: `${format(balanceDoc?.balance, language)} KZ`, inline: true },
+        ...(claim ? [{ name: localized("fieldNext", "🌙 Próxima utilização"), value: `<t:${Math.floor(claim.nextAvailableAt.getTime() / 1000)}:R>`, inline: true }] : [])
       )
-      .setFooter({ text: `Benefício do plano ${PLAN_NAMES[String(subscription.planKey).toLowerCase()] || subscription.planKey}` })
+      .setFooter({ text: localized("footer", `Benefício do plano ${PLAN_NAMES[String(subscription.planKey).toLowerCase()] || subscription.planKey}`, { plan: PLAN_NAMES[String(subscription.planKey).toLowerCase()] || subscription.planKey }) })
       .setTimestamp();
 
     return respond({ embeds: [embed], allowedMentions: { parse: [] } });
@@ -214,7 +217,7 @@ async function runPlanCommand({ interaction, command, minimumPlan, cooldownMs, t
       }
     }
     console.error(`[Yukina /${command}] Falha ao executar benefício:`, error);
-    const payload = { content: "🫧 Não consegui concluir seu benefício agora. Tente novamente em instantes." };
+    const payload = { content: localized("failure", "🫧 Não consegui concluir seu benefício agora. Tente novamente em instantes.") };
     if (interaction.deferred || interaction.replied) return interaction.editReply(payload).catch(() => {});
     return interaction.reply({ ...payload, flags: MessageFlags.Ephemeral }).catch(() => {});
   }
