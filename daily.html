@@ -43,7 +43,8 @@
     .daily-spin{width:min(320px,100%);padding:15px 24px;border:1px solid rgba(255,203,235,.48);border-radius:999px;background:linear-gradient(135deg,#e9a6d0,#9c79c9);color:#24102f;font-size:17px;font-weight:850;cursor:pointer;box-shadow:0 10px 28px rgba(0,0,0,.28);transition:transform .2s,opacity .2s}
     .daily-spin:disabled{opacity:.48;cursor:not-allowed;filter:grayscale(.35)}
     .daily-spin:not(:disabled):active{transform:scale(.97)}
-    .daily-complete{display:block;width:min(420px,100%);padding:15px 18px;border:1px solid rgba(255,203,235,.48);border-radius:999px;background:rgba(35,17,49,.88);color:#ffe8f6;font-size:15px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.28)}\n    .security-check.claimed{gap:10px;padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none}\n    .daily-result{width:min(520px,100%);min-height:24px;color:#fff1fb;font-size:15px;font-weight:650;text-shadow:0 2px 10px #000;white-space:pre-line}
+    .daily-complete{display:block;width:min(420px,100%);padding:15px 18px;border:1px solid rgba(255,203,235,.48);border-radius:999px;background:rgba(35,17,49,.88);color:#ffe8f6;font-size:15px;font-weight:800;box-shadow:0 10px 28px rgba(0,0,0,.28)}
+    .security-check.claimed{gap:10px;padding:0;border:0;background:transparent;box-shadow:none;backdrop-filter:none}\n    .daily-result{width:min(520px,100%);min-height:24px;color:#fff1fb;font-size:15px;font-weight:650;text-shadow:0 2px 10px #000;white-space:pre-line}
     .daily-reel{width:min(900px,100%);display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:clamp(9px,2vw,18px);animation:welcome-in 1s .12s ease both}
     .reel-field{min-height:clamp(112px,17vw,158px);display:flex;align-items:center;justify-content:center;gap:clamp(3px,1vw,10px);padding:12px 8px;border:1px solid rgba(255,203,235,.36);border-radius:22px;background:linear-gradient(145deg,rgba(255,225,245,.16),rgba(28,10,45,.62));box-shadow:0 12px 34px rgba(0,0,0,.24),inset 0 1px rgba(255,255,255,.12);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px)}
     .reel-field span{display:inline-block;font-size:clamp(1.45rem,4vw,2.7rem);line-height:1;filter:drop-shadow(0 3px 8px rgba(0,0,0,.3));transform-style:preserve-3d;animation:emoji-spin 3.4s ease-in-out infinite}
@@ -54,7 +55,8 @@
     @media(prefers-reduced-motion:reduce){.reel-field span{animation:none}}
     .reel-field:nth-child(1){border-color:rgba(255,174,220,.48)}.reel-field:nth-child(2){border-color:rgba(190,222,255,.48)}.reel-field:nth-child(3){border-color:rgba(255,215,143,.48)}.reel-field:nth-child(4){border-color:rgba(255,190,190,.48)}
     @keyframes welcome-in{from{opacity:0;transform:translateY(18px) scale(.98)}to{opacity:1;transform:translateY(0) scale(1)}}
-    @media(max-width:650px){.backdrop{object-position:center center}.shade{background:rgba(13,6,24,.58)}.welcome{width:100%;min-height:100svh;gap:26px;padding:88px 14px 28px}.welcome h1{font-size:clamp(2.15rem,9.5vw,3.7rem);letter-spacing:-.04em}.daily-quote{font-size:clamp(1.05rem,4.2vw,1.35rem);line-height:1.55}.daily-reel{grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px}.reel-field{min-height:96px;border-radius:18px}.reel-field span{font-size:clamp(1.65rem,7vw,2.35rem)}.security-check{padding:16px 12px}.daily-spin{font-size:16px}}\n    @media(min-width:651px){.daily-quote{max-width:1000px}.security-check{width:min(460px,100%)}.daily-reel{max-width:940px}}
+    @media(max-width:650px){.backdrop{object-position:center center}.shade{background:rgba(13,6,24,.58)}.welcome{width:100%;min-height:100svh;gap:26px;padding:88px 14px 28px}.welcome h1{font-size:clamp(2.15rem,9.5vw,3.7rem);letter-spacing:-.04em}.daily-quote{font-size:clamp(1.05rem,4.2vw,1.35rem);line-height:1.55}.daily-reel{grid-template-columns:repeat(2,minmax(0,1fr));max-width:440px}.reel-field{min-height:96px;border-radius:18px}.reel-field span{font-size:clamp(1.65rem,7vw,2.35rem)}.security-check{padding:16px 12px}.daily-spin{font-size:16px}}
+    @media(min-width:651px){.daily-quote{max-width:1000px}.security-check{width:min(460px,100%)}.daily-reel{max-width:940px}}
 
     .profile{cursor:pointer;user-select:none;transition:transform .2s,background .2s}
     .profile:hover{transform:translateY(-2px);background:rgba(45,18,62,.86)}
@@ -176,6 +178,40 @@
         if (spinMusicTimer !== null) {
           window.clearInterval(spinMusicTimer);
           spinMusicTimer = null;
+        }
+      };
+      // Melodia original de comemoração: sinos suaves em escala pentatônica.
+      const playDailyCelebration = async () => {
+        try {
+          const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+          if (!AudioContextClass) return;
+          if (!spinAudioContext) spinAudioContext = new AudioContextClass();
+          if (spinAudioContext.state === "suspended") await spinAudioContext.resume();
+          const notes = [659.25, 783.99, 987.77, 783.99, 880, 1174.66, 987.77, 1318.51];
+          const startAt = spinAudioContext.currentTime + 0.08;
+          notes.forEach((frequency, index) => {
+            const at = startAt + index * 0.19;
+            const bell = spinAudioContext.createOscillator();
+            const bellGain = spinAudioContext.createGain();
+            const overtone = spinAudioContext.createOscillator();
+            const overtoneGain = spinAudioContext.createGain();
+            bell.type = "sine";
+            bell.frequency.setValueAtTime(frequency, at);
+            bellGain.gain.setValueAtTime(0.0001, at);
+            bellGain.gain.exponentialRampToValueAtTime(0.085, at + 0.012);
+            bellGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.62);
+            overtone.type = "triangle";
+            overtone.frequency.setValueAtTime(frequency * 2.01, at);
+            overtoneGain.gain.setValueAtTime(0.0001, at);
+            overtoneGain.gain.exponentialRampToValueAtTime(0.022, at + 0.01);
+            overtoneGain.gain.exponentialRampToValueAtTime(0.0001, at + 0.28);
+            bell.connect(bellGain); bellGain.connect(spinAudioContext.destination);
+            overtone.connect(overtoneGain); overtoneGain.connect(spinAudioContext.destination);
+            bell.start(at); bell.stop(at + 0.65);
+            overtone.start(at); overtone.stop(at + 0.3);
+          });
+        } catch (error) {
+          console.warn("[Daily] Não foi possível tocar a comemoração:", error);
         }
       };
       const showClaimedState = () => {
@@ -317,6 +353,8 @@
           });
           result.textContent = "🎁 Recompensa do Daily: " + Number(data.baseReward ?? data.reward).toLocaleString("pt-BR") + " Kizunas" + (data.plan && data.plan !== "Sem VIP" ? "\nMultiplicador: " + data.plan + " (x" + Number(data.multiplier).toLocaleString("pt-BR") + ")" : "") + "\nTotal: " + Number(data.reward).toLocaleString("pt-BR") + " Kizunas recebidos.\nCombinação: " + String(data.combination || "sorteio diário");
           setStatus("Daily coletado com sucesso!");
+          stopSpinMusic();
+          playDailyCelebration();
           result.textContent += "\n\nVocê já coletou seu Daily hoje. Volte amanhã! 🌸";
           showClaimedState();
           captchaToken = "";
