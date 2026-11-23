@@ -227,7 +227,261 @@ const RAW = {
   ]
 };
 const KEYS = ["serverOnly","adminPermission","clearSuccess","banTitle","kickTitle","lockSuccess","unlockSuccess"];
-const CATALOG = Object.freeze(Object.fromEntries(Object.entries(RAW).map(([locale, values]) => [locale, Object.freeze(Object.fromEntries(KEYS.map((key, index) => [key, values[index]])))])));
+const CATALOG = Object.fromEntries(Object.entries(RAW).map(([locale, values]) => [locale, Object.freeze(Object.fromEntries(KEYS.map((key, index) => [key, values[index]])))]));
+const EXTRA = {
+  "pt-BR": [
+    "❄️ Não encontrei esse canal neste servidor.",
+    "🌙 Você precisa da permissão **Gerenciar canais** para fazer isso.",
+    "🫧 Preciso da permissão **Gerenciar canais** para alterar este canal.",
+    "🌙 O canal {channel} já está bloqueado. Não alterei as permissões.",
+    "🫧 Não consegui bloquear esse canal. Verifique minhas permissões.",
+    "🌙 O canal possui bloqueio herdado de uma categoria ou outra configuração. Não alterei as permissões.",
+    "❄️ O canal {channel} não possui bloqueio explícito para remover.",
+    "🫧 Não consegui desbloquear esse canal. Verifique minhas permissões."
+  ],
+  "en-US": [
+    "❄️ I couldn't find that channel on this server.",
+    "🌙 You need **Manage Channels** permission to do this.",
+    "🫧 I need **Manage Channels** permission to change this channel.",
+    "🌙 Channel {channel} is already locked. No permissions were changed.",
+    "🫧 I couldn't lock this channel. Check my permissions.",
+    "🌙 The channel has a lock inherited from a category or another setting. No permissions were changed.",
+    "❄️ Channel {channel} has no explicit lock to remove.",
+    "🫧 I couldn't unlock this channel. Check my permissions."
+  ],
+  "es-ES": [
+    "❄️ No encontré ese canal en este servidor.",
+    "🌙 Necesitas el permiso **Gestionar canales** para hacerlo.",
+    "🫧 Necesito el permiso **Gestionar canales** para modificar este canal.",
+    "🌙 El canal {channel} ya está bloqueado. No cambié los permisos.",
+    "🫧 No pude bloquear este canal. Comprueba mis permisos.",
+    "🌙 El canal tiene un bloqueo heredado de una categoría u otra configuración. No cambié los permisos.",
+    "❄️ El canal {channel} no tiene un bloqueo explícito que eliminar.",
+    "🫧 No pude desbloquear este canal. Comprueba mis permisos."
+  ],
+  "fr-FR": [
+    "❄️ Je n’ai pas trouvé ce salon sur ce serveur.",
+    "🌙 Vous devez avoir la permission **Gérer les salons** pour effectuer cette action.",
+    "🫧 J’ai besoin de la permission **Gérer les salons** pour modifier ce salon.",
+    "🌙 Le salon {channel} est déjà verrouillé. Aucune permission n’a été modifiée.",
+    "🫧 Impossible de verrouiller ce salon. Vérifiez mes permissions.",
+    "🌙 Le salon est verrouillé par une catégorie ou un autre paramètre hérité. Aucune permission n’a été modifiée.",
+    "❄️ Le salon {channel} ne possède aucun verrouillage explicite à supprimer.",
+    "🫧 Impossible de déverrouiller ce salon. Vérifiez mes permissions."
+  ],
+  "ja-JP": [
+    "❄️ このサーバーでチャンネルが見つかりません。",
+    "🌙 この操作には**チャンネル管理**権限が必要です。",
+    "🫧 変更するには**チャンネル管理**権限が必要です。",
+    "🌙 チャンネル {channel} はすでにロックされています。権限は変更していません。",
+    "🫧 ロックできませんでした。Botの権限を確認してください。",
+    "🌙 カテゴリなどからロックが継承されています。権限は変更していません。",
+    "❄️ チャンネル {channel} に解除できる明示的なロックはありません。",
+    "🫧 ロック解除できませんでした。Botの権限を確認してください。"
+  ],
+  "de-DE": [
+    "❄️ Ich konnte diesen Kanal auf diesem Server nicht finden.",
+    "🌙 Du benötigst **Kanäle verwalten**, um dies zu tun.",
+    "🫧 Ich benötige **Kanäle verwalten**, um diesen Kanal zu ändern.",
+    "🌙 Kanal {channel} ist bereits gesperrt. Es wurden keine Rechte geändert.",
+    "🫧 Kanal konnte nicht gesperrt werden. Überprüfe meine Rechte.",
+    "🌙 Die Sperre wird von einer Kategorie oder einer anderen Einstellung übernommen. Es wurde nichts geändert.",
+    "❄️ Kanal {channel} hat keine explizite Sperre zum Aufheben.",
+    "🫧 Kanal konnte nicht entsperrt werden. Überprüfe meine Rechte."
+  ],
+  "it-IT": [
+    "❄️ Non ho trovato questo canale nel server.",
+    "🌙 Ti serve il permesso **Gestire i canali** per farlo.",
+    "🫧 Mi serve il permesso **Gestire i canali** per modificare questo canale.",
+    "🌙 Il canale {channel} è già bloccato. Non ho modificato i permessi.",
+    "🫧 Non sono riuscita a bloccare il canale. Controlla i miei permessi.",
+    "🌙 Il blocco è ereditato da una categoria o da un'altra impostazione. Non ho modificato i permessi.",
+    "❄️ Il canale {channel} non ha un blocco esplicito da rimuovere.",
+    "🫧 Non sono riuscita a sbloccare il canale. Controlla i miei permessi."
+  ],
+  "ko-KR": [
+    "❄️ 이 서버에서 채널을 찾을 수 없습니다.",
+    "🌙 이 작업에는 **채널 관리** 권한이 필요합니다.",
+    "🫧 채널을 변경하려면 **채널 관리** 권한이 필요합니다.",
+    "🌙 채널 {channel}은(는) 이미 잠겨 있습니다. 권한을 변경하지 않았습니다.",
+    "🫧 채널을 잠글 수 없습니다. 봇 권한을 확인해 주세요.",
+    "🌙 카테고리 또는 다른 설정에서 잠금이 상속되었습니다. 권한을 변경하지 않았습니다.",
+    "❄️ 채널 {channel}에는 해제할 명시적 잠금이 없습니다.",
+    "🫧 채널 잠금을 해제할 수 없습니다. 봇 권한을 확인해 주세요."
+  ],
+  "zh-CN": [
+    "❄️ 在此服务器中找不到该频道。",
+    "🌙 你需要 **管理频道** 权限才能执行此操作。",
+    "🫧 我需要 **管理频道** 权限才能修改此频道。",
+    "🌙 频道 {channel} 已经锁定。我没有更改权限。",
+    "🫧 无法锁定此频道，请检查我的权限。",
+    "🌙 该频道继承了类别或其他设置的锁定状态。我没有更改权限。",
+    "❄️ 频道 {channel} 没有可移除的明确锁定。",
+    "🫧 无法解锁此频道，请检查我的权限。"
+  ],
+  "zh-TW": [
+    "❄️ 在此伺服器中找不到該頻道。",
+    "🌙 你需要 **管理頻道** 權限才能執行此操作。",
+    "🫧 我需要 **管理頻道** 權限才能修改此頻道。",
+    "🌙 頻道 {channel} 已經鎖定。我沒有變更權限。",
+    "🫧 無法鎖定此頻道，請檢查我的權限。",
+    "🌙 頻道繼承了分類或其他設定的鎖定狀態。我沒有變更權限。",
+    "❄️ 頻道 {channel} 沒有可移除的明確鎖定。",
+    "🫧 無法解除此頻道鎖定，請檢查我的權限。"
+  ],
+  "ru-RU": [
+    "❄️ Не удалось найти этот канал на сервере.",
+    "🌙 Требуется разрешение **Управление каналами**.",
+    "🫧 Мне нужно разрешение **Управление каналами**, чтобы изменить канал.",
+    "🌙 Канал {channel} уже заблокирован. Права не изменены.",
+    "🫧 Не удалось заблокировать канал. Проверьте мои права.",
+    "🌙 Блокировка унаследована от категории или другой настройки. Права не изменены.",
+    "❄️ На канале {channel} нет явной блокировки для снятия.",
+    "🫧 Не удалось разблокировать канал. Проверьте мои права."
+  ],
+  "ar-SA": [
+    "❄️ لم أجد هذه القناة في هذا الخادم.",
+    "🌙 تحتاج إلى صلاحية **إدارة القنوات** لتنفيذ ذلك.",
+    "🫧 أحتاج إلى صلاحية **إدارة القنوات** لتعديل هذه القناة.",
+    "🌙 القناة {channel} مقفلة بالفعل. لم أغيّر الأذونات.",
+    "🫧 تعذر قفل القناة. تحقق من أذوناتي.",
+    "🌙 القفل موروث من فئة أو إعداد آخر. لم أغيّر الأذونات.",
+    "❄️ لا يوجد قفل صريح على القناة {channel} لإزالته.",
+    "🫧 تعذر فتح القناة. تحقق من أذوناتي."
+  ],
+  "hi-IN": [
+    "❄️ मुझे इस सर्वर में यह चैनल नहीं मिला।",
+    "🌙 इसके लिए **Manage Channels** अनुमति आवश्यक है।",
+    "🫧 चैनल बदलने के लिए मुझे **Manage Channels** अनुमति चाहिए।",
+    "🌙 चैनल {channel} पहले से लॉक है। मैंने अनुमतियाँ नहीं बदलीं।",
+    "🫧 चैनल लॉक नहीं कर सकी। मेरी अनुमतियाँ जाँचें।",
+    "🌙 चैनल किसी श्रेणी या अन्य सेटिंग से लॉक है। मैंने अनुमतियाँ नहीं बदलीं।",
+    "❄️ चैनल {channel} पर हटाने के लिए कोई स्पष्ट लॉक नहीं है।",
+    "🫧 चैनल अनलॉक नहीं कर सकी। मेरी अनुमतियाँ जाँचें।"
+  ],
+  "bn-IN": [
+    "❄️ এই সার্ভারে চ্যানেলটি খুঁজে পাইনি।",
+    "🌙 এটি করতে **Manage Channels** অনুমতি প্রয়োজন।",
+    "🫧 চ্যানেল পরিবর্তন করতে আমার **Manage Channels** অনুমতি প্রয়োজন।",
+    "🌙 {channel} চ্যানেলটি ইতিমধ্যেই লক করা। অনুমতি বদলাইনি।",
+    "🫧 চ্যানেলটি লক করতে পারিনি। আমার অনুমতি পরীক্ষা করুন।",
+    "🌙 বিভাগ বা অন্য সেটিং থেকে লকটি এসেছে। অনুমতি বদলাইনি।",
+    "❄️ {channel} চ্যানেলে সরানোর মতো স্পষ্ট লক নেই।",
+    "🫧 চ্যানেলটি আনলক করতে পারিনি। আমার অনুমতি পরীক্ষা করুন।"
+  ],
+  "nl-NL": [
+    "❄️ Ik kon dat kanaal niet vinden op deze server.",
+    "🌙 Je hebt **Kanalen beheren** nodig om dit te doen.",
+    "🫧 Ik heb **Kanalen beheren** nodig om dit kanaal te wijzigen.",
+    "🌙 Kanaal {channel} is al vergrendeld. Ik heb geen machtigingen gewijzigd.",
+    "🫧 Ik kon dit kanaal niet vergrendelen. Controleer mijn machtigingen.",
+    "🌙 De vergrendeling is overgenomen van een categorie of andere instelling. Er is niets gewijzigd.",
+    "❄️ Kanaal {channel} heeft geen expliciete vergrendeling om te verwijderen.",
+    "🫧 Ik kon dit kanaal niet ontgrendelen. Controleer mijn machtigingen."
+  ],
+  "pl-PL": [
+    "❄️ Nie znaleziono tego kanału na serwerze.",
+    "🌙 Potrzebujesz uprawnienia **Zarządzanie kanałami**.",
+    "🫧 Potrzebuję uprawnienia **Zarządzanie kanałami**, aby zmienić kanał.",
+    "🌙 Kanał {channel} jest już zablokowany. Nie zmieniono uprawnień.",
+    "🫧 Nie udało się zablokować kanału. Sprawdź moje uprawnienia.",
+    "🌙 Blokada jest odziedziczona z kategorii lub innego ustawienia. Nie zmieniono uprawnień.",
+    "❄️ Kanał {channel} nie ma jawnej blokady do usunięcia.",
+    "🫧 Nie udało się odblokować kanału. Sprawdź moje uprawnienia."
+  ],
+  "tr-TR": [
+    "❄️ Bu sunucuda bu kanalı bulamadım.",
+    "🌙 Bunun için **Kanalları Yönet** izni gerekir.",
+    "🫧 Bu kanalı değiştirmek için **Kanalları Yönet** iznine ihtiyacım var.",
+    "🌙 {channel} kanalı zaten kilitli. İzinleri değiştirmedim.",
+    "🫧 Kanalı kilitleyemedim. İzinlerimi kontrol et.",
+    "🌙 Kanal kilidi bir kategoriden veya başka ayardan devralmış. İzinleri değiştirmedim.",
+    "❄️ {channel} kanalında kaldırılacak açık bir kilit yok.",
+    "🫧 Kanalın kilidini açamadım. İzinlerimi kontrol et."
+  ],
+  "uk-UA": [
+    "❄️ Не вдалося знайти цей канал на сервері.",
+    "🌙 Потрібен дозвіл **Керування каналами**.",
+    "🫧 Мені потрібен дозвіл **Керування каналами**, щоб змінити канал.",
+    "🌙 Канал {channel} уже заблокований. Дозволи не змінено.",
+    "🫧 Не вдалося заблокувати канал. Перевірте мої дозволи.",
+    "🌙 Блокування успадковане від категорії або іншого налаштування. Дозволи не змінено.",
+    "❄️ На каналі {channel} немає явного блокування для скасування.",
+    "🫧 Не вдалося розблокувати канал. Перевірте мої дозволи."
+  ],
+  "vi-VN": [
+    "❄️ Tôi không tìm thấy kênh đó trong máy chủ này.",
+    "🌙 Bạn cần quyền **Quản lý kênh** để thực hiện việc này.",
+    "🫧 Tôi cần quyền **Quản lý kênh** để thay đổi kênh này.",
+    "🌙 Kênh {channel} đã bị khóa. Tôi không thay đổi quyền.",
+    "🫧 Tôi không thể khóa kênh. Hãy kiểm tra quyền của tôi.",
+    "🌙 Kênh kế thừa trạng thái khóa từ danh mục hoặc cài đặt khác. Tôi không thay đổi quyền.",
+    "❄️ Kênh {channel} không có khóa cụ thể để gỡ bỏ.",
+    "🫧 Tôi không thể mở khóa kênh. Hãy kiểm tra quyền của tôi."
+  ],
+  "th-TH": [
+    "❄️ ไม่พบช่องนี้ในเซิร์ฟเวอร์นี้",
+    "🌙 คุณต้องมีสิทธิ์ **จัดการช่อง** เพื่อดำเนินการนี้",
+    "🫧 ฉันต้องมีสิทธิ์ **จัดการช่อง** เพื่อแก้ไขช่องนี้",
+    "🌙 ช่อง {channel} ถูกล็อกอยู่แล้ว ฉันไม่ได้เปลี่ยนสิทธิ์",
+    "🫧 ไม่สามารถล็อกช่องได้ โปรดตรวจสอบสิทธิ์ของฉัน",
+    "🌙 ช่องรับสถานะล็อกจากหมวดหมู่หรือการตั้งค่าอื่น ฉันไม่ได้เปลี่ยนสิทธิ์",
+    "❄️ ช่อง {channel} ไม่มีการล็อกโดยตรงให้ยกเลิก",
+    "🫧 ไม่สามารถปลดล็อกช่องได้ โปรดตรวจสอบสิทธิ์ของฉัน"
+  ],
+  "id-ID": [
+    "❄️ Saya tidak menemukan kanal itu di server ini.",
+    "🌙 Kamu memerlukan izin **Kelola Kanal** untuk melakukan ini.",
+    "🫧 Saya memerlukan izin **Kelola Kanal** untuk mengubah kanal ini.",
+    "🌙 Kanal {channel} sudah terkunci. Saya tidak mengubah izin.",
+    "🫧 Saya tidak dapat mengunci kanal. Periksa izin saya.",
+    "🌙 Kanal mewarisi kunci dari kategori atau pengaturan lain. Saya tidak mengubah izin.",
+    "❄️ Kanal {channel} tidak memiliki kunci eksplisit untuk dilepas.",
+    "🫧 Saya tidak dapat membuka kunci kanal. Periksa izin saya."
+  ],
+  "ms-MY": [
+    "❄️ Saya tidak menemui saluran itu dalam pelayan ini.",
+    "🌙 Anda memerlukan kebenaran **Urus Saluran** untuk melakukannya.",
+    "🫧 Saya memerlukan kebenaran **Urus Saluran** untuk mengubah saluran ini.",
+    "🌙 Saluran {channel} sudah dikunci. Saya tidak mengubah kebenaran.",
+    "🫧 Saya tidak dapat mengunci saluran. Semak kebenaran saya.",
+    "🌙 Kunci diwarisi daripada kategori atau tetapan lain. Saya tidak mengubah kebenaran.",
+    "❄️ Saluran {channel} tiada kunci khusus untuk dibuang.",
+    "🫧 Saya tidak dapat membuka kunci saluran. Semak kebenaran saya."
+  ],
+  "sv-SE": [
+    "❄️ Jag hittade inte kanalen på den här servern.",
+    "🌙 Du behöver behörigheten **Hantera kanaler** för detta.",
+    "🫧 Jag behöver **Hantera kanaler** för att ändra kanalen.",
+    "🌙 Kanalen {channel} är redan låst. Jag ändrade inga behörigheter.",
+    "🫧 Jag kunde inte låsa kanalen. Kontrollera mina behörigheter.",
+    "🌙 Låsningen ärvs från en kategori eller annan inställning. Inget ändrades.",
+    "❄️ Kanalen {channel} har ingen uttrycklig låsning att ta bort.",
+    "🫧 Jag kunde inte låsa upp kanalen. Kontrollera mina behörigheter."
+  ],
+  "da-DK": [
+    "❄️ Jeg kunne ikke finde kanalen på denne server.",
+    "🌙 Du skal have tilladelsen **Administrer kanaler** for dette.",
+    "🫧 Jeg skal have **Administrer kanaler** for at ændre kanalen.",
+    "🌙 Kanalen {channel} er allerede låst. Ingen tilladelser blev ændret.",
+    "🫧 Jeg kunne ikke låse kanalen. Kontrollér mine tilladelser.",
+    "🌙 Låsningen er arvet fra en kategori eller anden indstilling. Intet blev ændret.",
+    "❄️ Kanalen {channel} har ingen eksplicit lås, der kan fjernes.",
+    "🫧 Jeg kunne ikke låse kanalen op. Kontrollér mine tilladelser."
+  ],
+  "fi-FI": [
+    "❄️ En löytänyt kanavaa tältä palvelimelta.",
+    "🌙 Tarvitset **Kanavien hallinta** -oikeuden tähän.",
+    "🫧 Tarvitsen **Kanavien hallinta** -oikeuden kanavan muuttamiseen.",
+    "🌙 Kanava {channel} on jo lukittu. En muuttanut oikeuksia.",
+    "🫧 En voinut lukita kanavaa. Tarkista käyttöoikeuteni.",
+    "🌙 Lukitus periytyy kategoriasta tai muusta asetuksesta. En muuttanut oikeuksia.",
+    "❄️ Kanavalla {channel} ei ole poistettavaa erillistä lukitusta.",
+    "🫧 En voinut avata kanavan lukitusta. Tarkista käyttöoikeuteni."
+  ]
+};
+const EXTRA_KEYS = ["channelNotFound","moderatorChannelPermission","botChannelPermission","lockAlready","lockFailure","unlockInherited","unlockNotLocked","unlockFailure"];
+for (const [locale, values] of Object.entries(EXTRA)) CATALOG[locale] = Object.freeze({ ...CATALOG[locale], ...Object.fromEntries(EXTRA_KEYS.map((key, index) => [key, values[index]])) });
 function getMessage(language, key, variables = {}) {
   const template = CATALOG[language]?.[key] || CATALOG["pt-BR"][key] || key;
   return template.replace(/\\{(count|channel)\\}/g, (_, name) => String(variables[name] ?? ""));
