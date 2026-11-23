@@ -1,6 +1,8 @@
 "use strict";
 
 const { SlashCommandBuilder } = require("discord.js");
+const idioma = require("../systems/idioma");
+const messages = require("../systems/idioma/locales/desejo");
 const { runPlanCommand, weightedPick, randomInt } = require("../systems/plan-commands");
 
 const BANDS = [
@@ -13,26 +15,10 @@ const BANDS = [
 ];
 
 const WISH_ITEMS = {
-  moldura: [
-    "Moldura Luar de Cristal",
-    "Moldura Sakura Celeste",
-    "Moldura Jardim Lunar",
-  ],
-  enfeite: [
-    "Lanterna da Raposa Branca",
-    "Sino de Vento das Cerejeiras",
-    "Amuleto da Lua Serena",
-  ],
-  titulo: [
-    "Guardião das Pétalas",
-    "Herdeiro do Luar",
-    "Viajante das Estrelas",
-  ],
-  colecionavel: [
-    "Omamori da Sorte",
-    "Miniatura Kitsune Lunar",
-    "Cristal do Santuário",
-  ],
+  moldura: ["Moldura Luar de Cristal", "Moldura Sakura Celeste", "Moldura Jardim Lunar"],
+  enfeite: ["Lanterna da Raposa Branca", "Sino de Vento das Cerejeiras", "Amuleto da Lua Serena"],
+  titulo: ["Guardião das Pétalas", "Herdeiro do Luar", "Viajante das Estrelas"],
+  colecionavel: ["Omamori da Sorte", "Miniatura Kitsune Lunar", "Cristal do Santuário"],
 };
 
 function parseCap(value) {
@@ -56,18 +42,12 @@ function rollWish(cap) {
   if (category.type !== "kz") {
     const pool = WISH_ITEMS[category.type];
     const name = pool[Math.floor(Math.random() * pool.length)];
-    const labels = {
-      moldura: "Moldura lendária",
-      enfeite: "Enfeite exclusivo",
-      titulo: "Título especial",
-      colecionavel: "Colecionável",
-    };
     return {
       amount: 0,
       item: { type: category.type, name, rarity: "especial" },
       emoji: "🌠",
       color: 0xD9B7FF,
-      message: "Seu desejo trouxe um item especial! Ele foi registrado na sua coleção de recompensas da Yukina.",
+      message: null,
     };
   }
   const eligible = BANDS.filter(band => band.min <= cap);
@@ -78,6 +58,15 @@ function rollWish(cap) {
     color: 0xD9B7FF,
     message: "Seu desejo foi atendido! A recompensa em KZ é aleatória e respeita o limite escolhido.",
   };
+}
+
+async function getLanguage(userId) {
+  return idioma.getUserLanguage(userId);
+}
+
+function invalidCap(language, prefix = false) {
+  const text = messages.getMessage(language, "invalidCap");
+  return prefix ? text.replace("**100k**", "**Ydesejo 100k**").replace("**500k**", "**Ydesejo 500k**").replace("**1m**", "**Ydesejo 1m**").replace("**2,5m**", "**Ydesejo 2,5m**") : text;
 }
 
 module.exports = {
@@ -92,17 +81,22 @@ module.exports = {
       .setMaxLength(16)),
   aliases: ["desejo"],
   async execute(interaction) {
+    const language = await getLanguage(interaction.user.id);
     const cap = parseCap(interaction.options.getString("limite", true));
     if (!Number.isInteger(cap) || cap < 100000 || cap > 10000000) {
-      return interaction.reply({ content: "🌠 Informe um limite entre **100k** e **10m** KZ. Exemplos: **100k**, **500k**, **1m**, **2,5m**.", ephemeral: true });
+      return interaction.reply({ content: invalidCap(language), ephemeral: true });
     }
+    const title = messages.getMessage(language, "title");
+    const description = messages.getMessage(language, "description", { cap: cap.toLocaleString(language) });
     return runPlanCommand({
       interaction,
       command: "desejo",
       minimumPlan: "infinity",
       cooldownMs: 7 * 24 * 60 * 60 * 1000,
-      title: "Desejo sob a Lua",
-      description: "Você confiou seu desejo à Yukina. O limite escolhido foi **" + cap.toLocaleString("pt-BR") + " KZ**. Ele define o teto, não o valor garantido.",
+      title,
+      description,
+      messages,
+      language,
       rewardFactory: () => ({
         ...rollWish(cap),
         details: { selectedCap: cap },
@@ -110,9 +104,10 @@ module.exports = {
     });
   },
   async prefixExecute(message, args = []) {
+    const language = await getLanguage(message.author.id);
     const cap = parseCap(args[0]);
     if (!Number.isInteger(cap) || cap < 100000 || cap > 10000000) {
-      return message.reply("🌠 Informe um limite entre **100k** e **10m** KZ. Exemplos: **Ydesejo 100k**, **Ydesejo 1m**, **Ydesejo 2,5m**.");
+      return message.reply(invalidCap(language, true));
     }
     const fake = {
       inGuild: () => Boolean(message.guild),
