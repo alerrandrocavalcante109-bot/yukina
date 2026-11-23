@@ -25,7 +25,6 @@ Todos os demais comandos e fluxos ainda precisam ser auditados individualmente, 
 - `cargo.js`
 - `cofre.js`
 - `desejo.js`
-- `domino.js`
 - `drop-controle.js`
 - `drop.js`
 - `enigma.js`
@@ -118,3 +117,9 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Estendido `systems/plan-commands.js` para aceitar variáveis na descrição localizada, mantendo compatibilidade com os comandos que já usam o motor compartilhado.
 - Preservados plano mínimo Infinity, cooldown de 7 dias, probabilidades, faixas e teto da recompensa, tipos de item, inventário e transação. Para item especial, o embed não exibe a antiga mensagem fixa em português.
 - Validação estática: sintaxe dos três arquivos JavaScript, cobertura dos 25 idiomas, 14 chaves por idioma e placeholder `{cap}` conferidos. Não houve teste de runtime no Discord nem confirmação de deploy Render.
+
+
+## Remoção do comando dominó
+- Removido `commands/domino.js` por decisão do projeto; o jogo de dominó não fará mais parte da Yukina e não deve ser incluído no inventário de internacionalização.
+- Removida a palavra-chave `domino` da classificação de comandos de diversão em `commands/ajuda.js`, evitando manter referência ao recurso descontinuado.
+- Não foram encontrados outros arquivos com referências ativas ao comando ou aos IDs `domino:` na busca do repositório.
