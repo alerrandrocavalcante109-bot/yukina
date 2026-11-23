@@ -2,6 +2,8 @@
 
 const { SlashCommandBuilder } = require("discord.js");
 const { runPlanCommand, weightedPick } = require("../systems/plan-commands");
+const idioma = require("../systems/idioma");
+const cofreLocale = require("../systems/idioma/locales/cofre");
 
 const COOLDOWN = 24 * 60 * 60 * 1000;
 
@@ -12,7 +14,10 @@ module.exports = {
     .setDMPermission(false),
   aliases: ["cofre"],
   async execute(interaction) {
+    const language = await idioma.getUserLanguage(interaction.user.id);
     return runPlanCommand({
+      language,
+      messages: cofreLocale,
       interaction,
       command: "cofre",
       minimumPlan: "plus",
