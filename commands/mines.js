@@ -35,7 +35,7 @@ module.exports = {
         .setDescription("Quantidade de bombas no tabuleiro.")
         .setRequired(true)
         .setMinValue(1)
-        .setMaxValue(16))),
+        .setMaxValue(16)))
     .addSubcommand(s => s.setName("blackjack").setDescription("Jogue Blackjack contra a banca da Yukina.").addStringOption(o => o.setName("valor").setDescription("Aposta em KZ, como 100, 10k ou 1m.").setRequired(true).setMaxLength(24))),
 
   name: "mines",
