@@ -517,11 +517,11 @@ module.exports = {
           }
           return interaction.reply({ content: payload.content, flags: MessageFlags.Ephemeral });
         }
-        if (!interaction.replied && !interaction.deferred) {
-          await interaction.reply(payload);
-          return interaction.fetchReply();
+        // As propostas são mensagens públicas no canal, não follow-ups da resposta privada.
+        if (!interaction.channel || !interaction.channel.isTextBased() || !interaction.channel.send) {
+          throw new Error("O canal atual não permite enviar propostas.");
         }
-        return interaction.followUp(payload);
+        return interaction.channel.send(payload);
       },
     });
   },
