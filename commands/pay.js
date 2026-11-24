@@ -174,6 +174,7 @@ async function createProposals({ guild, sender, recipients, amountInput, autoAcc
     }
 
     // Cada destinatário recebe sua própria proposta, mensagem, contador e prazo.
+    let createdCount = 0;
     for (let index = 0; index < validRecipients.length; index++) {
       const recipient = validRecipients[index];
       const now = new Date();
@@ -209,9 +210,16 @@ async function createProposals({ guild, sender, recipients, amountInput, autoAcc
         { id: proposal.id },
         { $set: { channelId: String(message.channelId), messageId: String(message.id) } }
       );
+      createdCount++;
       const timer = setTimeout(() => expireProposal(client, proposal.id), durationMs + 500);
       if (typeof timer.unref === "function") timer.unref();
     }
+    await send({
+      content: createdCount
+        ? "🌸 " + createdCount + " proposta(s) de transferência criada(s) com sucesso."
+        : "🌙 Não foi possível publicar nenhuma proposta. Tente novamente.",
+      ephemeral: true,
+    });
   } catch (error) {
     console.error("[Yukina Pay] Não foi possível criar as propostas:", error);
     return send({
@@ -489,6 +497,8 @@ module.exports = {
       "12h": 12 * 60 * 60 * 1000,
       "24h": 24 * 60 * 60 * 1000,
     })[durationChoice] || DEFAULT_PROPOSAL_MS;
+    // Reconhece a interação antes das consultas ao MongoDB e da criação das propostas.
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     await createProposals({
       guild: interaction.guild,
       sender: interaction.user,
@@ -499,6 +509,9 @@ module.exports = {
       client: interaction.client,
       send: async payload => {
         if (payload.ephemeral) {
+          if (interaction.deferred && !interaction.replied) {
+            return interaction.editReply({ content: payload.content, components: [] });
+          }
           if (interaction.replied || interaction.deferred) {
             return interaction.followUp({ content: payload.content, flags: MessageFlags.Ephemeral });
           }
