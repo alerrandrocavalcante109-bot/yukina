@@ -411,7 +411,7 @@ async function handleButton(interaction) {
       components: buildRows(proposal, true, true),
       allowedMentions: { parse: [] },
     }).catch(error => console.warn("[Yukina Pay] Transferência concluída, mas não consegui editar a proposta:", error.message));
-    await interaction.message.reply({
+    await interaction.channel.send({
       content: [
         "🌸 **Transação concluída**",
         "",
