@@ -3,36 +3,34 @@
 const { SlashCommandBuilder, PermissionFlagsBits } = require("discord.js");
 const dropManager = require("../systems/drop-manager");
 const { getUserLanguage, translate } = require("../systems/idioma");
-const messages = require("../systems/idioma/locales/drop");
-
-function msg(userId, key, vars = {}) {
-  return translate(getUserLanguage(userId), key, vars);
+async function msg(userId, key, vars = {}) {
+  return translate(await getUserLanguage(userId), key, vars);
 }
-function parseTime(value, userId) {
+async function parseTime(value, userId) {
   const match = String(value || "").trim().match(/^(\d{1,5})\s*(s|seg|segundos?|m|min|minutos?|h|horas?|d|dias?)$/i);
-  if (!match) throw new Error(msg(userId, "time"));
+  if (!match) throw new Error(await msg(userId, "time"));
   const n = Number(match[1]), unit = match[2].toLowerCase();
   const factor = /^s|^seg/.test(unit) ? 1000 : /^m/.test(unit) ? 60000 : /^h/.test(unit) ? 3600000 : 86400000;
   const ms = n * factor;
-  if (!Number.isSafeInteger(ms) || n < 1 || ms < 10000 || ms > 30 * 86400000) throw new Error(msg(userId, "duration"));
+  if (!Number.isSafeInteger(ms) || n < 1 || ms < 10000 || ms > 30 * 86400000) throw new Error(await msg(userId, "duration"));
   return ms;
 }
 async function run({ guild, channel, member, user, tempo, ganhadores, premio, reply, client }) {
   const userId = user.id;
-  if (!guild) return reply(msg(userId, "dm"));
-  if (!member.permissions.has(PermissionFlagsBits.ManageGuild) && !member.permissions.has(PermissionFlagsBits.ManageMessages)) return reply(msg(userId, "permission"));
-  let duration; try { duration = parseTime(tempo, userId); } catch (e) { return reply("⚠️ " + e.message); }
+  if (!guild) return reply(await msg(userId, "dm"));
+  if (!member.permissions.has(PermissionFlagsBits.ManageGuild) && !member.permissions.has(PermissionFlagsBits.ManageMessages)) return reply(await msg(userId, "permission"));
+  let duration; try { duration = await parseTime(tempo, userId); } catch (e) { return reply("⚠️ " + e.message); }
   const count = Number(ganhadores);
-  if (!Number.isInteger(count) || count < 1 || count > 20) return reply(msg(userId, "winners"));
+  if (!Number.isInteger(count) || count < 1 || count > 20) return reply(await msg(userId, "winners"));
   const prize = String(premio || "").trim();
-  if (!prize || prize.length > 180) return reply(msg(userId, "prize"));
-  if (!channel?.isTextBased?.() || !channel.send) return reply(msg(userId, "channel"));
+  if (!prize || prize.length > 180) return reply(await msg(userId, "prize"));
+  if (!channel?.isTextBased?.() || !channel.send) return reply(await msg(userId, "channel"));
   try {
     const result = await dropManager.create(client, { guild, channel, creator: user, tempo: duration, winnerCount: count, prize });
-    return reply(msg(userId, "success", { url: result.message.url }));
+    return reply(await msg(userId, "success", { url: result.message.url }));
   } catch (error) {
     console.error("[Yukina drop] Falha ao criar drop:", error);
-    return reply(msg(userId, "failure", { error: error.message || "Não consegui criar o drop. Verifique a configuração do painel e minhas permissões." }));
+    return reply(await msg(userId, "failure", { error: error.message || "Não consegui criar o drop. Verifique a configuração do painel e minhas permissões." }));
   }
 }
 module.exports = {
@@ -46,7 +44,7 @@ module.exports = {
   async prefixExecute(m, args) {
     const raw = m.content.replace(/^\s*[Yy](?:drop|giveaway|sorteio)\b/i, "").trim();
     const match = raw.match(/^(\S+)\s+(\d+)\s+([\s\S]+)$/);
-    if (!match) return m.reply(msg(m.author.id, "usage"));
+    if (!match) return m.reply(await msg(m.author.id, "usage"));
     return run({ guild: m.guild, channel: m.channel, member: m.member, user: m.author, tempo: match[1], ganhadores: match[2], premio: match[3], client: m.client, reply: content => m.reply(content) });
   }
 };
