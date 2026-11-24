@@ -1,6 +1,6 @@
 # Progresso de internacionalização — Yukina
 
-Última atualização: 2026-11-23
+Última atualização: 2026-11-24
 
 ## Escopo
 Tradução manual das respostas e interações dos comandos para os 25 idiomas definidos em `systems/idioma/index.js`. Preservar lógica, permissões, aliases e comportamento. Não reintroduzir IA, banco/empréstimos ou Waifu.
@@ -123,3 +123,10 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Removido `commands/domino.js` por decisão do projeto; o jogo de dominó não fará mais parte da Yukina e não deve ser incluído no inventário de internacionalização.
 - Removida a palavra-chave `domino` da classificação de comandos de diversão em `commands/ajuda.js`, evitando manter referência ao recurso descontinuado.
 - Não foram encontrados outros arquivos com referências ativas ao comando ou aos IDs `domino:` na busca do repositório.
+
+
+## Histórico da execução — drop
+- Criado `systems/idioma/locales/drop.js` com mensagens manuais do comando `drop` nos 25 idiomas cadastrados.
+- Integrado `commands/drop.js` para localizar respostas de DM, permissões, duração, ganhadores, prêmio, canal, sucesso, erro e uso do prefixo conforme o idioma individual do autor.
+- Preservados aliases, parsing de tempo, limites, permissões, criação do drop e integração com `systems/drop-manager.js`.
+- Validação estática: sintaxe dos dois arquivos, cobertura dos 25 idiomas e placeholder `{url}` conferidos. Não houve teste de runtime no Discord nem confirmação de deploy Render.
