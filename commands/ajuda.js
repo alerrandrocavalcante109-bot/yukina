@@ -24,6 +24,14 @@ function getCategory(command) {
   return "outros";
 }
 
+function getCategoryMessageKey(categoryKey, suffix) {
+  const categoryName = String(categoryKey)
+    .replace(/^\\[\\s*|\\s*\\]$/g, "")
+    .normalize("NFD")
+    .replace(/[\\u0300-\\u036f]/g, "");
+  return categoryName + suffix;
+}
+
 function getCategories(commands, language = "pt-BR") {
   const grouped = new Map([...CATEGORY_KEYS, "outros"].map(key => [key, []]));
   for (const [name, command] of commands) {
@@ -33,7 +41,7 @@ function getCategories(commands, language = "pt-BR") {
     bucket.push({ name, command });
   }
   const categories = CATEGORY_KEYS.filter(key => grouped.get(key).length > 0).map(key => ({
-    key, label: getMessage(language, key + "Label"), description: getMessage(language, key + "Description"),
+    key, label: getMessage(language, getCategoryMessageKey(key, "Label")), description: getMessage(language, getCategoryMessageKey(key, "Description")),
   }));
   if (grouped.get("outros").length) categories.push({
     key: "outros", label: getMessage(language, "outrosLabel"), description: getMessage(language, "outrosDescription"),
