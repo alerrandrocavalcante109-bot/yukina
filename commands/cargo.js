@@ -42,13 +42,21 @@ async function applyRoleChange({ guild, moderator, target, role, action, actor, 
 
   const shouldAdd = action === "add";
   const hasRole = target.roles.cache.has(role.id);
-  if ((!shouldAdd && !hasRole) || (shouldAdd && hasRole && !durationMs)) {
-    return {
-      ok: true,
-      text: shouldAdd
-        ? t("alreadyHas", { user: target.user.tag, role: role.name })
-        : t("doesNotHave", { user: target.user.tag, role: role.name })
-    };
+  if (!shouldAdd && !hasRole) {
+    return { ok: true, text: t("doesNotHave", { user: target.user.tag, role: role.name }) };
+  }
+  if (shouldAdd && hasRole && !durationMs) {
+    try {
+      await cancelRoleExpirations(guild.id, target.id, role.id);
+      return {
+        ok: true,
+        text: t("alreadyHas", { user: target.user.tag, role: role.name }) +
+          " Qualquer prazo temporário anterior foi cancelado; o cargo permanecerá até ser retirado manualmente."
+      };
+    } catch (error) {
+      console.error("[Yukina cargo] Falha ao tornar permanente o cargo:", error);
+      return { ok: false, text: t("failure") };
+    }
   }
 
   try {
