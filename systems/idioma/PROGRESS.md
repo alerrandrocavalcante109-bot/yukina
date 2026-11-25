@@ -130,3 +130,10 @@ Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminho
 - Integrado `commands/drop.js` para localizar respostas de DM, permissões, duração, ganhadores, prêmio, canal, sucesso, erro e uso do prefixo conforme o idioma individual do autor.
 - Preservados aliases, parsing de tempo, limites, permissões, criação do drop e integração com `systems/drop-manager.js`.
 - Validação estática: sintaxe dos dois arquivos, cobertura dos 25 idiomas e placeholder `{url}` conferidos. Não houve teste de runtime no Discord nem confirmação de deploy Render.
+
+
+## Histórico da execução — drop-controle
+- Criado `systems/idioma/locales/drop-controle.js` com catálogo manual para os 25 idiomas cadastrados.
+- Integrado `commands/drop-controle.js` para localizar permissões, ausência de configuração, pausa/retomada, estatísticas, histórico, falhas de pagamento, recompensas pendentes, títulos, campos, rodapés e falhas gerais.
+- Mantidos filtros MongoDB, ações administrativas, IDs de canais, estados internos e comportamento ephemeral; descrições/opções do Slash ainda permanecem em português e precisam de auditoria posterior.
+- Validação estática: sintaxe dos arquivos e cobertura dos 25 idiomas conferidas após a normalização do catálogo. Não houve teste de runtime no Discord nem confirmação de deploy Render.
