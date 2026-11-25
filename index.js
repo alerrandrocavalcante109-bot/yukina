@@ -381,10 +381,10 @@ client.on("messageCreate", async (message) => {
     if (configured && configured.length <= 5 && !/\\s/.test(configured)) prefix = configured;
 
     const intro =
-      "❄️ Oii! Eu sou a Yukina! 🌸\n\n" +
-      "Sou a assistente deste servidor e estou aqui para trazer diversão, interação e um pouquinho da magia japonesa.\n\n" +
+      "❄️ Oie!!! meu nome é Yukina!Prazer!! 🌸\n\n" +
+      "Sou um bot de servidores, eu trago muitas coisas intereçantes para você se divertir com seus amigos\n\n" +
       "⌨️ Meu prefixo neste servidor é: `" + prefix + "`\n" +
-      "📚 Para ver meus comandos, use `" + prefix + "ajuda` ou `/ajuda`.\n\n" +
+      "📚 Para ver meus comandos, use `" + prefix + "ajuda` ou `</ajuda:1564818818038108200> para ver meus comandos`.\n\n" +
       "Espero que a gente se divirta bastante juntinhos! 🌙";
 
     await message.reply({ content: intro, allowedMentions: { repliedUser: false, parse: [] } });
