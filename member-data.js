@@ -206,11 +206,11 @@ async function resetGuildXp(guildId) {
   if (collection) {
     await collection.updateMany(
       { _id: { $regex: "^" + prefix } },
-      { $set: { xp: 0, xpResetVersion: 1, updatedAt: new Date() } }
+      { $set: { xp: 0, xpAnnouncedLevel: 0, xpResetVersion: 1, updatedAt: new Date() } }
     );
   }
   for (const [, record] of entries) {
-    if (record && typeof record === "object") record.xp = 0;
+    if (record && typeof record === "object") { record.xp = 0; record.xpAnnouncedLevel = 0; }
   }
   saveLocal();
   return { count: entries.length, userIds };
