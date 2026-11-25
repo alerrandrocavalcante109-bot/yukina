@@ -69,14 +69,17 @@ async function applyRoleChange({ guild, moderator, target, role, action, actor, 
           assignedBy: moderator.id
         });
       }
-      await require("../staff-promotion-announcements").announcePromotion(guild.client, target, role).catch(() => {});
+      if (!hasRole) await require("../staff-promotion-announcements").announcePromotion(guild.client, target, role).catch(() => {});
       const durationText = durationMs
         ? " Duração: " + formatDuration(durationMs) + "."
         : "";
       const notificationText = durationMs
         ? (notifyExpiration ? " A notificação de expiração está ativada." : " A notificação de expiração está desativada.")
         : "";
-      return { ok: true, text: t("added", { role: role.name, user: target.user.tag }) + durationText + notificationText };
+      const successText = hasRole
+        ? t("alreadyHas", { user: target.user.tag, role: role.name }) + " O prazo do cargo foi atualizado."
+        : t("added", { role: role.name, user: target.user.tag });
+      return { ok: true, text: successText + durationText + notificationText };
     }
 
     await target.roles.remove(role, "Cargo retirado por " + actor);
