@@ -146,7 +146,7 @@ function startRankSystem(client) {
     const gainedXp = Math.max(1, Math.round(baseXp * multiplier));
     record.xp += gainedXp;
     await memberData.persistRecord(key);
-    client.emit("yukinaXpUpdated", message.member);
+    client.emit("yukinaXpUpdated", message.member, message.channel);
     if (multiplier > 1) {
       console.log("[XP multiplicador] " + message.author.tag + " recebeu " + gainedXp + " XP (base " + baseXp + " × " + multiplier + ") em " + message.guild.name + ".");
     }
