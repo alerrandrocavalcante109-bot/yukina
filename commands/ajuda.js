@@ -6,13 +6,13 @@ const { getMessage } = require("../systems/idioma/locales/help");
 
 const COLOR = 0xA9DDF5;
 const CATEGORY_ORDER = [
-  { key: "**[ geral ]**", match: /ajuda|help|ping|info|sobre|avatar|server|servidor|convite|say|dizer/i },
-  { key: "**[ diversao ]**", match: /jogo|game|forca|quiz|ship|beijo|abraco|abraço|cafune|carinho|meme|sorte|coin|cara|coroa/i },
-  { key: "**[ economia ]**", match: /saldo|transfer|pagar|work|trabalh|daily|colet|loja|comprar|vender|invent|econom|kizuna|sonho/i },
-  { key: "**[ progressao ]**", match: /rank|ranking|nivel|nível|xp|level|tempo|hierarquia|top|leaderboard/i },
-  { key: "**[ moderacao ]**", match: /ban|kick|mute|timeout|warn|aviso|clear|limpar|purge|modera|castigo|expuls/i },
-  { key: "**[ painel ]**", match: /painel|config|prefix|canal|cargo|role|promo|staff|ticket|contagem|count|sorteio|giveaway/i },
-  { key: "**[ vip ]**", match: /vip|plano|daily|recompensa|bonus|bônus|multiplicador/i },
+  { key: "[ geral ]", match: /ajuda|help|ping|info|sobre|avatar|server|servidor|convite|say|dizer/i },
+  { key: "[ diversao ]", match: /jogo|game|forca|quiz|ship|beijo|abraco|abraço|cafune|carinho|meme|sorte|coin|cara|coroa/i },
+  { key: "[ economia ]", match: /saldo|transfer|pagar|work|trabalh|daily|colet|loja|comprar|vender|invent|econom|kizuna|sonho/i },
+  { key: "[ progressão ]", match: /rank|ranking|nivel|nível|xp|level|tempo|hierarquia|top|leaderboard/i },
+  { key: "[ moderação ]", match: /ban|kick|mute|timeout|warn|aviso|clear|limpar|purge|modera|castigo|expuls/i },
+  { key: "[ painel ]", match: /painel|config|prefix|canal|cargo|role|promo|staff|ticket|contagem|count|sorteio|giveaway/i },
+  { key: "[ vip ]", match: /vip|plano|daily|recompensa|bonus|bônus|multiplicador/i },
 ];
 const CATEGORY_KEYS = ["[ geral ]", "[ diversao ]", "[ economia ]", "[ progressão ]", "[ moderação ]", "[ painel ]", "[ vip ]"];
 
@@ -28,7 +28,9 @@ function getCategories(commands, language = "pt-BR") {
   const grouped = new Map([...CATEGORY_KEYS, "outros"].map(key => [key, []]));
   for (const [name, command] of commands) {
     if (!command || typeof command.execute !== "function") continue;
-    grouped.get(getCategory(command)).push({ name, command });
+    const categoryKey = getCategory(command);
+    const bucket = grouped.get(categoryKey) || grouped.get("outros");
+    bucket.push({ name, command });
   }
   const categories = CATEGORY_KEYS.filter(key => grouped.get(key).length > 0).map(key => ({
     key, label: getMessage(language, key + "Label"), description: getMessage(language, key + "Description"),
