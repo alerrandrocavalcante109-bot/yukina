@@ -26,7 +26,8 @@ function getCategory(command) {
 
 function getCategoryMessageKey(categoryKey, suffix) {
   const categoryName = String(categoryKey)
-    .replace(/^\\[\\s*|\\s*\\]$/g, "")
+    .replace(/[\\[\\]]/g, "")
+    .trim()
     .normalize("NFD")
     .replace(/[\\u0300-\\u036f]/g, "");
   return categoryName + suffix;
