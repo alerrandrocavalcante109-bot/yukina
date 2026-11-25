@@ -2,7 +2,7 @@
 
 const { SlashCommandBuilder, MessageFlags, ChannelType, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const { MongoClient } = require("mongodb");
-const { getUserLanguage, translate } = require("../systems/idioma");
+const { getUserLanguage } = require("../systems/idioma");
 const messages = require("../systems/idioma/locales/drop-controle");
 
 const URI = (process.env.MONGODB_URI || "").trim();
@@ -22,7 +22,7 @@ async function getDb() {
 }
 
 const fmt = (value, language) => Math.floor(Number(value) || 0).toLocaleString(language || "pt-BR");
-const tr = (language, key, vars = {}) => translate(language, key, vars);
+const tr = (language, key, vars = {}) => String(messages[language]?.[key] || messages["pt-BR"][key] || key).replace(/\{([a-zA-Z0-9_]+)\}/g, (_, name) => Object.prototype.hasOwnProperty.call(vars, name) ? String(vars[name]) : "");
 const PLAN_NAMES = { starter: "Starter", plus: "Plus", premium: "Premium", ultra: "Ultra", infinity: "Infinity" };
 
 module.exports = {
