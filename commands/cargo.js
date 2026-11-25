@@ -42,7 +42,7 @@ async function applyRoleChange({ guild, moderator, target, role, action, actor, 
 
   const shouldAdd = action === "add";
   const hasRole = target.roles.cache.has(role.id);
-  if ((shouldAdd && hasRole) || (!shouldAdd && !hasRole)) {
+  if ((!shouldAdd && !hasRole) || (shouldAdd && hasRole && !durationMs)) {
     return {
       ok: true,
       text: shouldAdd
@@ -53,8 +53,8 @@ async function applyRoleChange({ guild, moderator, target, role, action, actor, 
 
   try {
     if (shouldAdd) {
-      await target.roles.add(role, "Cargo atribuído por " + actor);
-      // Evita manter vencimentos antigos quando o cargo é concedido novamente.
+      if (!hasRole) await target.roles.add(role, "Cargo atribuído por " + actor);
+      // Evita manter vencimentos antigos quando o cargo é concedido ou renovado.
       await cancelRoleExpirations(guild.id, target.id, role.id);
       if (durationMs) {
         const expiresAt = new Date(Date.now() + durationMs);
