@@ -17,7 +17,6 @@ function getCurrentLevel(xp) {
 }
 
 const knownConfiguredRoleIds = new Map();
-const lastAnnouncedMilestone = new Map();
 
 async function resolveXpRoles(guild) {
   let settings = await xpStorage.get(guild.id, "config", null);
@@ -64,7 +63,7 @@ async function resolveXpRoles(guild) {
   return { configured: true, roles: new Map(), managedIds: new Set() };
 }
 
-async function updateLevel(member, announce = false) {
+async function updateLevel(member, announce = false, sourceChannel = null) {
   if (!member || member.user.bot || !member.guild) return;
   const resolved = await resolveXpRoles(member.guild);
   if (!resolved) return;
@@ -87,18 +86,27 @@ async function updateLevel(member, announce = false) {
     if (selectedRole && !hadSelected) await member.roles.add(selectedRole, "Cargo automático por nível de XP da Yukina");
 
     const announcementKey = member.guild.id + ":" + member.id;
-    // No início do bot, registra marcos já alcançados para não repetir anúncios antigos.
-    if (!announce && currentLevel % 5 === 0 && !lastAnnouncedMilestone.has(announcementKey)) {
-      lastAnnouncedMilestone.set(announcementKey, currentLevel);
+    const persistedMilestone = Math.max(0, Number(record.xpAnnouncedLevel) || 0);
+
+    // Ao iniciar/recalcular sem uma mensagem de origem, registra o último marco já alcançado.
+    // Assim, reinicializações não repetem anúncios antigos.
+    if (!announce && currentLevel >= 5) {
+      const reachedMilestone = Math.floor(currentLevel / 5) * 5;
+      if (reachedMilestone > persistedMilestone) {
+        record.xpAnnouncedLevel = reachedMilestone;
+        await memberData.persistRecord(announcementKey);
+      }
     }
 
-    // A mensagem de evolução é enviada somente nos níveis 5, 10, 15, 20...
+    // Só anuncia uma vez por marco. O bloqueio impede envios duplicados simultâneos.
     if (announce && currentLevel >= 5 && currentLevel % 5 === 0 &&
-        lastAnnouncedMilestone.get(announcementKey) !== currentLevel) {
+        currentLevel > persistedMilestone && !updateLocks.has(announcementKey)) {
+      updateLocks.add(announcementKey);
+      try {
       const guildSettings = await getGuildSettings(member.guild.id, { force: true });
       const config = guildSettings.xpAnnouncement && typeof guildSettings.xpAnnouncement === "object" ? guildSettings.xpAnnouncement : {};
-      let channel = config.channelId ? member.guild.channels.cache.get(String(config.channelId)) : member.guild.systemChannel;
-      if (config.channelId && !channel) channel = await member.guild.channels.fetch(String(config.channelId)).catch(() => null);
+      let channel = sourceChannel || (config.channelId ? member.guild.channels.cache.get(String(config.channelId)) : member.guild.systemChannel);
+      if (!channel && config.channelId) channel = await member.guild.channels.fetch(String(config.channelId)).catch(() => null);
       const me = member.guild.members.me;
       if (channel && channel.isTextBased?.() && channel.send &&
           channel.permissionsFor(me)?.has(PermissionFlagsBits.ViewChannel) &&
@@ -139,7 +147,11 @@ async function updateLevel(member, announce = false) {
         } else {
           await channel.send(await languageBridge.localizePayload(member.id, { content: message, allowedMentions: { users: [member.id] } }));
         }
-        lastAnnouncedMilestone.set(announcementKey, currentLevel);
+        record.xpAnnouncedLevel = currentLevel;
+        await memberData.persistRecord(announcementKey);
+      }
+      } finally {
+        updateLocks.delete(announcementKey);
       }
     }
   } catch (error) {
@@ -155,9 +167,9 @@ function startXpLevelSystem(client) {
   });
 
   // O sistema de XP emite esse evento depois de persistir o XP novo.
-  client.on("yukinaXpUpdated", async (member) => {
+  client.on("yukinaXpUpdated", async (member, sourceChannel) => {
     await memberData.initialize();
-    await updateLevel(member, true);
+    await updateLevel(member, true, sourceChannel || null);
   });
 
   // Após um reset, recalcula imediatamente os cargos dos membros afetados.
@@ -167,7 +179,9 @@ function startXpLevelSystem(client) {
     if (!guild || !Array.isArray(userIds)) return;
     for (const userId of userIds) {
       const key = guild.id + ":" + String(userId);
-      lastAnnouncedMilestone.delete(key);
+      const record = memberData.getRecord(guild.id, String(userId));
+      record.xpAnnouncedLevel = 0;
+      await memberData.persistRecord(key);
       const member = await guild.members.fetch(String(userId)).catch(() => null);
       if (member && !member.user.bot) await updateLevel(member, false);
     }
