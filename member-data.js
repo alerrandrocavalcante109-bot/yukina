@@ -48,7 +48,8 @@ function keyFor(guildId, userId) {
 
 function getRecord(guildId, userId) {
   const key = keyFor(guildId, userId);
-  if (!store.members[key]) store.members[key] = { xp: 0, joinedAt: null, rank: null, warnings: [] };
+  if (!store.members[key]) store.members[key] = { xp: 0, xpAnnouncedLevel: 0, joinedAt: null, rank: null, warnings: [] };
+  if (!Number.isFinite(Number(store.members[key].xpAnnouncedLevel))) store.members[key].xpAnnouncedLevel = 0;
   if (!Array.isArray(store.members[key].warnings)) store.members[key].warnings = [];
   return store.members[key];
 }
@@ -68,6 +69,7 @@ async function persistRecord(key) {
       {
         $set: {
           xp: Math.max(0, Number(record.xp) || 0),
+          xpAnnouncedLevel: Math.max(0, Number(record.xpAnnouncedLevel) || 0),
           xpResetVersion: 1,
           joinedAt: record.joinedAt || null,
           rank: record.rank || null,
@@ -108,7 +110,7 @@ async function initialize() {
     // Reinicialização única da progressão: preserva avisos, data de entrada e demais dados.
     if (store.xpResetVersion !== 1) {
       for (const record of Object.values(store.members)) {
-        if (record && typeof record === "object") record.xp = 0;
+        if (record && typeof record === "object") { record.xp = 0; record.xpAnnouncedLevel = 0; }
       }
       store.xpResetVersion = 1;
       saveLocal();
@@ -138,7 +140,7 @@ async function initialize() {
       collection = db.collection(COLLECTION_NAME);
       await collection.updateMany(
         { xpResetVersion: { $ne: 1 } },
-        { $set: { xp: 0, xpResetVersion: 1, updatedAt: new Date() } }
+        { $set: { xp: 0, xpAnnouncedLevel: 0, xpResetVersion: 1, updatedAt: new Date() } }
       );
 
       const documents = await collection.find({}).toArray();
@@ -149,6 +151,7 @@ async function initialize() {
         mongoKeys.add(key);
         store.members[key] = {
           xp: Math.max(0, Number(doc.xp) || 0),
+          xpAnnouncedLevel: Math.max(0, Number(doc.xpAnnouncedLevel) || 0),
           joinedAt: doc.joinedAt || null,
           rank: doc.rank || null,
           warnings: Array.isArray(doc.warnings) ? doc.warnings : [],
@@ -164,6 +167,7 @@ async function initialize() {
           {
             $set: {
               xp: Math.max(0, Number(record.xp) || 0),
+              xpAnnouncedLevel: Math.max(0, Number(record.xpAnnouncedLevel) || 0),
               xpResetVersion: 1,
               joinedAt: record.joinedAt || null,
               rank: record.rank || null,
