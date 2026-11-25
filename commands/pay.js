@@ -286,7 +286,7 @@ async function handleButton(interaction) {
       : await proposalCollection.updateOne(
           { id: proposalId, status: "pending", expiresAt: { $gt: new Date() }, acceptedBy: { $ne: userId } },
           { $addToSet: { acceptedBy: userId }
-        );
+
     proposal = await proposalCollection.findOne({ id: proposalId });
     if (!proposal) return;
     if (!changed.modifiedCount) {
