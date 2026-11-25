@@ -69,7 +69,6 @@ function buildHelpPayload(commands, selectedKey = null, language = "pt-BR") {
       label: category.label.replace(/^\S+\s/, "").slice(0, 100),
       value: category.key,
       description: category.description.slice(0, 100),
-      emoji: category.label.split(" ")[0],
       default: category.key === selectedKey,
     })));
   return { embeds: [embed], components: [new ActionRowBuilder().addComponents(select)], allowedMentions: { parse: [] } };
