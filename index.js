@@ -87,6 +87,7 @@ function loadYukinaSystems() {
   require("./systems/message-counter").install(client);
   require("./xp-level-system")(client);
   require("./time-role-system")(client);
+  require("./role-expiration-system")(client);
   require("./staff-promotion-announcements")(client);
   require("./interaction")(client);
   nickColorsSystem.install(client, getSettingsCollection);
