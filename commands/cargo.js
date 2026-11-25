@@ -113,16 +113,19 @@ function formatDuration(milliseconds) {
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("cargo")
-    .setDescription("Conceder ou retirar um cargo de um membro.")
+    .setName("membro")
+    .setDescription("Gerenciar cargos dos membros.")
     .setDMPermission(false)
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageRoles)
-    .addUserOption(option => option.setName("usuario").setDescription("Membro que terá o cargo alterado.").setRequired(true))
-    .addRoleOption(option => option.setName("cargo").setDescription("Cargo que será concedido ou retirado.").setRequired(true))
-    .addStringOption(option => option.setName("acao").setDescription("Escolha a ação.").setRequired(true)
-      .addChoices({ name: "Conceder", value: "add" }, { name: "Retirar", value: "remove" }))
-    .addStringOption(option => option.setName("duracao").setDescription("Opcional: 10m, 2h, 7d ou 1w."))
-    .addBooleanOption(option => option.setName("notificar_expiracao").setDescription("Enviar DM quando o cargo temporário expirar?")),
+    .addSubcommand(subcommand => subcommand
+      .setName("cargo")
+      .setDescription("Conceder ou retirar um cargo de um membro.")
+      .addUserOption(option => option.setName("usuario").setDescription("Membro que terá o cargo alterado.").setRequired(true))
+      .addRoleOption(option => option.setName("cargo").setDescription("Cargo que será concedido ou retirado.").setRequired(true))
+      .addStringOption(option => option.setName("acao").setDescription("Escolha a ação.").setRequired(true)
+        .addChoices({ name: "Conceder", value: "add" }, { name: "Retirar", value: "remove" }))
+      .addStringOption(option => option.setName("duracao").setDescription("Opcional: 10m, 2h, 7d ou 1w."))
+      .addBooleanOption(option => option.setName("notificar_expiracao").setDescription("Enviar DM quando o cargo temporário expirar?"))),
 
   aliases: ["dar-cargo", "tirar-cargo"],
 
