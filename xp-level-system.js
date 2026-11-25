@@ -63,7 +63,7 @@ async function resolveXpRoles(guild) {
   return { configured: true, roles: new Map(), managedIds: new Set() };
 }
 
-async function updateLevel(member, announce = false, sourceChannel = null) {
+async function updateLevel(member, announce = false, sourceChannel = null, initializeBaseline = false) {
   if (!member || member.user.bot || !member.guild) return;
   const resolved = await resolveXpRoles(member.guild);
   if (!resolved) return;
@@ -90,7 +90,7 @@ async function updateLevel(member, announce = false, sourceChannel = null) {
 
     // Ao iniciar/recalcular sem uma mensagem de origem, registra o último marco já alcançado.
     // Assim, reinicializações não repetem anúncios antigos.
-    if (!announce && currentLevel >= 5) {
+    if (!announce && initializeBaseline && currentLevel >= 5) {
       const reachedMilestone = Math.floor(currentLevel / 5) * 5;
       if (reachedMilestone > persistedMilestone) {
         record.xpAnnouncedLevel = reachedMilestone;
@@ -163,7 +163,7 @@ function startXpLevelSystem(client) {
   client.on("guildMemberAdd", async (member) => {
     if (member.user.bot) return;
     await memberData.initialize();
-    await updateLevel(member, false);
+    await updateLevel(member, false, null, true);
   });
 
   // O sistema de XP emite esse evento depois de persistir o XP novo.
@@ -192,7 +192,7 @@ function startXpLevelSystem(client) {
     for (const guild of client.guilds.cache.values()) {
       await resolveXpRoles(guild);
       for (const member of guild.members.cache.values()) {
-        if (!member.user.bot) await updateLevel(member, false);
+        if (!member.user.bot) await updateLevel(member, false, null, true);
       }
     }
     console.log("[Níveis XP] Cargos automáticos integrados ao painel por nível de XP.");
