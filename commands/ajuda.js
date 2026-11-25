@@ -42,10 +42,10 @@ function getCategories(commands, language = "pt-BR") {
     bucket.push({ name, command });
   }
   const categories = CATEGORY_KEYS.filter(key => grouped.get(key).length > 0).map(key => ({
-    key, label: getMessage(language, getCategoryMessageKey(key, "Label")), description: getMessage(language, getCategoryMessageKey(key, "Description")),
+    key, label: "[ " + getMessage(language, getCategoryMessageKey(key, "Label")) + " ]", description: getMessage(language, getCategoryMessageKey(key, "Description")),
   }));
   if (grouped.get("outros").length) categories.push({
-    key: "outros", label: getMessage(language, "outrosLabel"), description: getMessage(language, "outrosDescription"),
+    key: "outros", label: "[ " + getMessage(language, "outrosLabel") + " ]", description: getMessage(language, "outrosDescription"),
   });
   return { grouped, categories };
 }
