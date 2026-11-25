@@ -1,4 +1,6 @@
-"use strict";\n\nmodule.exports = {
+"use strict";
+
+module.exports = {
   "pt-BR": {
     "perm": "❄️ Apenas a equipe com permissão de **Gerenciar Servidor** pode usar este controle.",
     "none": "🌙 Não encontrei uma configuração ativa do Drop Automático neste servidor.",
@@ -999,4 +1001,4 @@
     "privateChannel": "Canal",
     "error": "❄️ No pude consultar el sistema de Drops. Revisa los registros e inténtalo de nuevo."
   }
-};\n
+};
