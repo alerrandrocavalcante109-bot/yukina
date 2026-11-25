@@ -112,8 +112,8 @@ module.exports = {
         const lines = docs.map((run, index) => {
           const winners = (run.winners || []).length ? run.winners.map(id => "<@" + id + ">").join(", ") : tr(language, "noWinners");
           return "**" + (index + 1) + ".** " + (run.status === "active" ? tr(language, "inProgress") : run.status === "paying" ? tr(language, "processing") : tr(language, "closed")) +
-            " · " + fmt(run.reward) + " KZ\nCanal: <#" + run.channelId + "> · Participantes: " + (run.participantCount ?? Object.keys(run.entries || {}).length) +
-            "\n" + tr(language, "winners") + ": " + winners;
+            " · " + fmt(run.reward, language) + " KZ\\n" + tr(language, "channelLabel") + ": <#" + run.channelId + "> · " + tr(language, "participants") + ": " + (run.participantCount ?? Object.keys(run.entries || {}).length) +
+            "\\n" + tr(language, "winners") + ": " + winners;
         });
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xA7D8F0).setTitle(tr(language, "history")).setDescription(lines.join("\n\n")).setFooter({ text: tr(language, "historyFooter", { count: docs.length }) })] });
       }
@@ -121,14 +121,14 @@ module.exports = {
       if (action === "failures") {
         const docs = await attempts.find({ guildId: String(interaction.guildId), status: "failed" }).sort({ finishedAt: -1 }).limit(10).toArray();
         if (!docs.length) return interaction.editReply(tr(language, "noFailures"));
-        const lines = docs.map((item, index) => "**" + (index + 1) + ".** <@" + item.userId + "> · tentativa " + item.attempt + "/5\nDrop: `" + item.runId + "`\nMotivo: " + String(item.error || tr(language, "notInformed")).slice(0, 300));
+        const lines = docs.map((item, index) => "**" + (index + 1) + ".** <@" + item.userId + "> · " + tr(language, "attempt") + " " + item.attempt + "/5\\n" + tr(language, "drop") + ": `" + item.runId + "`\\n" + tr(language, "reason") + ": " + String(item.error || tr(language, "notInformed")).slice(0, 300));
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle(tr(language, "failures")).setDescription(lines.join("\n\n")).setFooter({ text: tr(language, "failureFooter") })] });
       }
 
       if (action === "pending") {
         const docs = await payouts.find({ guildId: String(interaction.guildId), status: { $in: ["waiting_member", "staff_review", "creating_channel"] } }).sort({ createdAt: 1 }).limit(10).toArray();
         if (!docs.length) return interaction.editReply(tr(language, "noPending"));
-        const lines = docs.map((p, i) => "**" + (i + 1) + ".** <@" + p.userId + "> · **" + fmt(p.amount, language) + " KZ**\nStatus: `" + p.status + "` · Drop: `" + p.runId + "`" + (p.privateChannelId ? " · " + tr(language, "privateChannel") + ": <#" + p.privateChannelId + ">" : ""));
+        const lines = docs.map((p, i) => "**" + (i + 1) + ".** <@" + p.userId + "> · **" + fmt(p.amount, language) + " KZ**\\n" + tr(language, "status") + ": `" + p.status + "` · Drop: `" + p.runId + "`" + (p.privateChannelId ? " · " + tr(language, "privateChannel") + ": <#" + p.privateChannelId + ">" : ""));
         return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle(tr(language, "pendingTitle")).setDescription(lines.join("\n\n")).setFooter({ text: tr(language, "pendingFooter") })] });
       }
     } catch (error) {
