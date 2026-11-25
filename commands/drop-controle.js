@@ -2,6 +2,8 @@
 
 const { SlashCommandBuilder, MessageFlags, ChannelType, PermissionFlagsBits, EmbedBuilder } = require("discord.js");
 const { MongoClient } = require("mongodb");
+const { getUserLanguage, translate } = require("../systems/idioma");
+const messages = require("../systems/idioma/locales/drop-controle");
 
 const URI = (process.env.MONGODB_URI || "").trim();
 const DB = (process.env.MONGODB_DB || "Yukina").trim();
@@ -19,7 +21,8 @@ async function getDb() {
   return connecting;
 }
 
-const fmt = value => Math.floor(Number(value) || 0).toLocaleString("pt-BR");
+const fmt = (value, language) => Math.floor(Number(value) || 0).toLocaleString(language || "pt-BR");
+const tr = (language, key, vars = {}) => translate(language, key, vars);
 const PLAN_NAMES = { starter: "Starter", plus: "Plus", premium: "Premium", ultra: "Ultra", infinity: "Infinity" };
 
 module.exports = {
@@ -39,8 +42,9 @@ module.exports = {
     .addIntegerOption(option => option.setName("quantidade").setDescription("Quantidade de registros no histórico (1 a 10).").setMinValue(1).setMaxValue(10)),
 
   async execute(interaction) {
+    const language = await getUserLanguage(interaction.user.id);
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-      return interaction.reply({ content: "❄️ Apenas a equipe com permissão de Gerenciar Servidor pode usar este controle.", flags: MessageFlags.Ephemeral });
+      return interaction.reply({ content: tr(language, "perm"), flags: MessageFlags.Ephemeral });
     }
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     try {
@@ -53,20 +57,20 @@ module.exports = {
       const action = interaction.options.getString("acao", true);
       const selectedChannel = interaction.options.getChannel("canal");
       const config = await configs.findOne({ guildId: String(interaction.guildId), status: "active" });
-      if (!config) return interaction.editReply("🌙 Não encontrei uma configuração ativa do Drop Automático neste servidor.");
+      if (!config) return interaction.editReply(tr(language, "none"));
 
       if (action === "pause" || action === "resume") {
         const channelIds = selectedChannel ? [String(selectedChannel.id)] : (config.channelIds || []).map(String);
         const validIds = channelIds.filter(id => config.channelIds?.includes(id));
-        if (!validIds.length) return interaction.editReply("❄️ O canal selecionado não pertence à configuração do Drop.");
+        if (!validIds.length) return interaction.editReply(tr(language, "invalid"));
         const dropAuto = require("../components/buttons/drop-auto");
         for (const id of validIds) {
           if (action === "pause") await dropAuto.pauseChannel(config, id);
           else await dropAuto.resumeChannel(interaction.client, config, id);
         }
         return interaction.editReply(action === "pause"
-          ? "⏸️ Drop Automático pausado em: " + validIds.map(id => "<#" + id + ">").join(", ")
-          : "▶️ Drop Automático retomado em: " + validIds.map(id => "<#" + id + ">").join(", ") + ". O próximo horário foi reagendado.");
+          ? tr(language, "pause", { channels: validIds.map(id => "<#" + id + ">").join(", ") })
+          : tr(language, "resume", { channels: validIds.map(id => "<#" + id + ">").join(", ") }));
       }
 
       if (action === "stats") {
@@ -87,49 +91,49 @@ module.exports = {
         const manualInfo = manual[0] || { total: 0, count: 0 };
         const totalPaid = paidInfo.total + manualInfo.total;
         const paidCount = paidInfo.count + manualInfo.count;
-        const embed = new EmbedBuilder().setColor(0xA7D8F0).setTitle("🌸 Estatísticas do Drop Automático")
+        const embed = new EmbedBuilder().setColor(0xA7D8F0).setTitle(tr(language, "stats"))
           .addFields(
-            { name: "🎁 Drops realizados", value: fmt(total), inline: true },
-            { name: "⌛ Drops ativos", value: fmt(active), inline: true },
-            { name: "🌙 Drops encerrados", value: fmt(ended), inline: true },
-            { name: "🏆 Prêmios entregues", value: fmt(paidCount), inline: true },
-            { name: "💴 KZ distribuídas", value: fmt(totalPaid) + " KZ", inline: true },
-            { name: "📦 Entregas pendentes", value: fmt(pending), inline: true },
-            { name: "📢 Canais configurados", value: fmt((configFresh?.channelIds || []).length), inline: true },
-            { name: "🌸 Plano", value: PLAN_NAMES[config.planKey] || config.planKey, inline: true }
-          ).setFooter({ text: "Yukina · Registros persistentes do Drop" }).setTimestamp();
+            { name: tr(language, "runs"), value: fmt(total, language), inline: true },
+            { name: tr(language, "active"), value: fmt(active, language), inline: true },
+            { name: tr(language, "ended"), value: fmt(ended, language), inline: true },
+            { name: tr(language, "paid"), value: fmt(paidCount, language), inline: true },
+            { name: tr(language, "kz"), value: fmt(totalPaid, language) + " KZ", inline: true },
+            { name: tr(language, "pending"), value: fmt(pending, language), inline: true },
+            { name: tr(language, "channels"), value: fmt((configFresh?.channelIds || []).length, language), inline: true },
+            { name: tr(language, "plan"), value: PLAN_NAMES[config.planKey] || config.planKey, inline: true }
+          ).setFooter({ text: tr(language, "footer") }).setTimestamp();
         return interaction.editReply({ embeds: [embed] });
       }
 
       if (action === "history") {
         const limit = interaction.options.getInteger("quantidade") || 5;
         const docs = await runs.find({ guildId: String(interaction.guildId) }).sort({ createdAt: -1 }).limit(limit).toArray();
-        if (!docs.length) return interaction.editReply("🌙 Ainda não há Drops registrados neste servidor.");
+        if (!docs.length) return interaction.editReply(tr(language, "noHistory"));
         const lines = docs.map((run, index) => {
-          const winners = (run.winners || []).length ? run.winners.map(id => "<@" + id + ">").join(", ") : "Sem vencedores";
-          return "**" + (index + 1) + ".** " + (run.status === "active" ? "Em andamento" : run.status === "paying" ? "Processando" : "Encerrado") +
+          const winners = (run.winners || []).length ? run.winners.map(id => "<@" + id + ">").join(", ") : tr(language, "noWinners");
+          return "**" + (index + 1) + ".** " + (run.status === "active" ? tr(language, "inProgress") : run.status === "paying" ? tr(language, "processing") : tr(language, "closed")) +
             " · " + fmt(run.reward) + " KZ\nCanal: <#" + run.channelId + "> · Participantes: " + (run.participantCount ?? Object.keys(run.entries || {}).length) +
-            "\nVencedores: " + winners;
+            "\n" + tr(language, "winners") + ": " + winners;
         });
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xA7D8F0).setTitle("📜 Histórico de Drops").setDescription(lines.join("\n\n")).setFooter({ text: "Exibindo os " + docs.length + " registros mais recentes." })] });
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xA7D8F0).setTitle(tr(language, "history")).setDescription(lines.join("\n\n")).setFooter({ text: tr(language, "historyFooter", { count: docs.length }) })] });
       }
 
       if (action === "failures") {
         const docs = await attempts.find({ guildId: String(interaction.guildId), status: "failed" }).sort({ finishedAt: -1 }).limit(10).toArray();
-        if (!docs.length) return interaction.editReply("🌸 Não há falhas de pagamento registradas.");
-        const lines = docs.map((item, index) => "**" + (index + 1) + ".** <@" + item.userId + "> · tentativa " + item.attempt + "/5\nDrop: `" + item.runId + "`\nMotivo: " + String(item.error || "Não informado").slice(0, 300));
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle("⚠️ Falhas de pagamento").setDescription(lines.join("\n\n")).setFooter({ text: "Exibindo as 10 falhas mais recentes." })] });
+        if (!docs.length) return interaction.editReply(tr(language, "noFailures"));
+        const lines = docs.map((item, index) => "**" + (index + 1) + ".** <@" + item.userId + "> · tentativa " + item.attempt + "/5\nDrop: `" + item.runId + "`\nMotivo: " + String(item.error || tr(language, "notInformed")).slice(0, 300));
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle(tr(language, "failures")).setDescription(lines.join("\n\n")).setFooter({ text: tr(language, "failureFooter") })] });
       }
 
       if (action === "pending") {
         const docs = await payouts.find({ guildId: String(interaction.guildId), status: { $in: ["waiting_member", "staff_review", "creating_channel"] } }).sort({ createdAt: 1 }).limit(10).toArray();
-        if (!docs.length) return interaction.editReply("🌸 Não há recompensas pendentes neste momento.");
-        const lines = docs.map((p, i) => "**" + (i + 1) + ".** <@" + p.userId + "> · **" + fmt(p.amount) + " KZ**\nStatus: `" + p.status + "` · Drop: `" + p.runId + "`" + (p.privateChannelId ? " · Canal: <#" + p.privateChannelId + ">" : ""));
-        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle("📦 Recompensas pendentes").setDescription(lines.join("\n\n")).setFooter({ text: "Até 10 entregas pendentes." })] });
+        if (!docs.length) return interaction.editReply(tr(language, "noPending"));
+        const lines = docs.map((p, i) => "**" + (i + 1) + ".** <@" + p.userId + "> · **" + fmt(p.amount, language) + " KZ**\nStatus: `" + p.status + "` · Drop: `" + p.runId + "`" + (p.privateChannelId ? " · " + tr(language, "privateChannel") + ": <#" + p.privateChannelId + ">" : ""));
+        return interaction.editReply({ embeds: [new EmbedBuilder().setColor(0xE8C878).setTitle(tr(language, "pendingTitle")).setDescription(lines.join("\n\n")).setFooter({ text: tr(language, "pendingFooter") })] });
       }
     } catch (error) {
       console.error("[Drop Controle] Falha ao executar ação:", error);
-      return interaction.editReply("❄️ Não consegui consultar o sistema de Drops. Verifique os logs e tente novamente.");
+      return interaction.editReply(tr(language, "error"));
     }
   }
 };
