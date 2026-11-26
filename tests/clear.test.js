@@ -36,6 +36,7 @@ test("rejects non-administrators before attempting deletion", async () => {
   const replies = [];
   await command.prefixExecute({
     guild: guildWithBotPermission,
+    author: { id: "clear-test-user" },
     channel: { messages: { fetch: async () => { throw new Error("should not fetch"); } }, bulkDelete: async () => { attemptedDelete = true; } },
     member: { permissions: { has: () => false } },
     id: "invoke",
@@ -50,6 +51,7 @@ test("rejects amounts outside 2..100", async () => {
   for (const amount of ["1", "101", "abc"]) {
     await command.prefixExecute({
       guild: {},
+      author: { id: "clear-test-user" },
       channel: {},
       member: admin,
       id: "invoke",
@@ -90,6 +92,7 @@ test("does not count the prefix command message and deletes the confirmation aft
 
   await command.prefixExecute({
     guild: guildWithBotPermission,
+    author: { id: "clear-test-user" },
     channel,
     member: admin,
     id: invocation.id,
