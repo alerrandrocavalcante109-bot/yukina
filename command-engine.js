@@ -8,6 +8,7 @@ const prefixCache = new Map();
 const { AsyncLocalStorage } = require("node:async_hooks");
 const prefixReplyContext = new AsyncLocalStorage();
 const languageBridge = require("./systems/idioma/bridge");
+const prefixAliases = require("./systems/idioma/prefix-aliases");
 const patchedChannels = new WeakSet();
 
 // Instala um wrapper único por canal; o contexto assíncrono identifica a mensagem
@@ -140,7 +141,7 @@ function startPrefixEngine(client, getSettingsCollection) {
     const [rawName, ...args] = body.split(/\s+/);
     const name = rawName.toLowerCase();
     const entry = [...client.commands.entries()].find(([key, cmd]) =>
-      key.toLowerCase() === name || (cmd.aliases || []).some((alias) => String(alias).toLowerCase() === name)
+      key.toLowerCase() === name || [...(cmd.aliases || []), ...(prefixAliases[key] || [])].some((alias) => String(alias).toLowerCase() === name)
     );
     if (!entry) return;
     const [commandName, command] = entry;
