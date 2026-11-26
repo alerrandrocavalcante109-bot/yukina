@@ -3,6 +3,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { PermissionFlagsBits, Collection } = require("discord.js");
+const languageSystem = require("../systems/idioma");
+languageSystem.getUserLanguage = async () => "pt-BR";
+
 const command = require("../commands/clear");
 
 const admin = { permissions: { has: permission => permission === PermissionFlagsBits.Administrator } };
