@@ -2,6 +2,9 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
+const languageSystem = require("../systems/idioma");
+languageSystem.getUserLanguage = async () => "pt-BR";
+
 const calculator = require("../commands/calc");
 
 test("accepts compact operators without spaces", () => {
