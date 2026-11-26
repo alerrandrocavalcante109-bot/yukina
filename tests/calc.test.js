@@ -62,6 +62,7 @@ test("keeps each simultaneous prefix response isolated", async () => {
     const expression = (index + 1) + "*2";
     const replies = [];
     const message = {
+      author: { id: "calc-prefix-test-user" },
       reply: async payload => {
         replies.push(typeof payload === "string" ? payload : payload.content);
         return true;
@@ -93,6 +94,7 @@ test("keeps 50 simultaneous slash replies isolated", async () => {
       expression,
       replies,
       interaction: {
+        user: { id: "calc-slash-test-user" },
         options: { getString: () => expression },
         deferReply: async () => true,
         editReply: async payload => {
