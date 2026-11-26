@@ -123,6 +123,7 @@ test("preserves messages older than fourteen days", async () => {
 
   await command.prefixExecute({
     guild: guildWithBotPermission,
+    author: { id: "clear-test-user" },
     channel,
     member: admin,
     id: "invoke",
