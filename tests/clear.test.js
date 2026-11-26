@@ -46,7 +46,7 @@ test("rejects non-administrators before attempting deletion", async () => {
     reply: async message => { replies.push(message); return null; }
   }, ["5"]);
   assert.equal(attemptedDelete, false);
-  assert.match(replies[0], /Apenas membros da administração/);
+  assert.match(replies[0], /permissão \*\*Administrador\*\*/);
 });
 
 test("rejects amounts outside 2..100", async () => {
