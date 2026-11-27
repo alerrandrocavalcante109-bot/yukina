@@ -1,5 +1,7 @@
 "use strict";
 const { SlashCommandBuilder, MessageFlags } = require("discord.js");
+const { getUserLanguage } = require("../systems/idioma");
+const { getMessage } = require("../systems/idioma/locales/enigma");
 const ROUND_TIME_MS = 30000;
 const activeGames = new Map();
 const ENIGMAS = [
@@ -20,21 +22,22 @@ function normalize(value) {
 function chooseEnigma() {
   return ENIGMAS[Math.floor(Math.random() * ENIGMAS.length)];
 }
-async function startGame(channel, reply) {
-  if (activeGames.has(channel.id)) return reply("🧩 Já existe um enigma ativo neste canal. Aguarde os 30 segundos terminarem.");
+async function startGame(channel, reply, userId) {
+  const language = await getUserLanguage(userId);
+  if (activeGames.has(channel.id)) return reply(getMessage(language, "active"));
   const enigma = chooseEnigma();
   const game = { channelId: channel.id, answer: normalize(enigma.answer), displayAnswer: enigma.answer, timeout: null };
   activeGames.set(channel.id, game);
   try {
     await channel.send({
       content: [
-        "## 🧩 Enigma • Yukina",
-        "Descubra a palavra usando a dica abaixo!",
+        getMessage(language, "title"),
+        getMessage(language, "prompt"),
         "",
-        "💡 **Dica:** " + enigma.hint,
+        getMessage(language, "hint") + " " + enigma.hint,
         "",
-        "⏳ **Tempo:** 30 segundos",
-        "Envie sua resposta neste canal. A primeira pessoa que acertar vence a rodada!"
+        getMessage(language, "time"),
+        getMessage(language, "send")
       ].join("\n"),
       allowedMentions: { parse: [] }
     });
@@ -42,17 +45,17 @@ async function startGame(channel, reply) {
       if (activeGames.get(channel.id) !== game) return;
       activeGames.delete(channel.id);
       await channel.send({
-        content: "⏰ **Tempo esgotado!** Ninguém acertou o enigma. A resposta era **" + game.displayAnswer + "**. O jogo foi encerrado.",
+        content: getMessage(language, "timeout", { answer: game.displayAnswer }),
         allowedMentions: { parse: [] }
       }).catch(error => console.error("[Yukina /enigma] Falha ao encerrar rodada:", error));
     }, ROUND_TIME_MS);
     game.timeout.unref?.();
-    return reply("🌸 Enigma iniciado neste canal! Boa sorte a todos.");
+    return reply(getMessage(language, "started"));
   } catch (error) {
     activeGames.delete(channel.id);
     if (game.timeout) clearTimeout(game.timeout);
     console.error("[Yukina /enigma] Não foi possível iniciar:", error);
-    return reply("🫧 Não consegui iniciar o enigma. Confira se tenho permissão para ver e enviar mensagens neste canal.");
+    return reply(getMessage(language, "failed"));
   }
 }
 async function handleMessage(message) {
@@ -61,8 +64,9 @@ async function handleMessage(message) {
   if (!game || normalize(message.content) !== game.answer) return;
   activeGames.delete(message.channel.id);
   if (game.timeout) clearTimeout(game.timeout);
+  const language = await getUserLanguage(message.author.id);
   await message.reply({
-    content: "🎉 **" + message.author.username + " acertou!** A resposta era **" + game.displayAnswer + "**. Enigma encerrado!",
+    content: getMessage(language, "winner", { user: message.author.username, answer: game.displayAnswer }),
     allowedMentions: { repliedUser: false }
   }).catch(error => console.error("[Yukina /enigma] Falha ao anunciar vencedor:", error));
 }
@@ -74,13 +78,17 @@ module.exports = {
   aliases: ["enigma"],
   async execute(interaction) {
     if (!interaction.inGuild() || !interaction.channel) {
-      return interaction.reply({ content: "❄️ Este comando só funciona em um canal de servidor.", flags: MessageFlags.Ephemeral });
+      const language = await getUserLanguage(interaction.user.id);
+      return interaction.reply({ content: getMessage(language, "guild"), flags: MessageFlags.Ephemeral });
     }
-    return startGame(interaction.channel, content => interaction.reply({ content, flags: MessageFlags.Ephemeral }));
+    return startGame(interaction.channel, content => interaction.reply({ content, flags: MessageFlags.Ephemeral }), interaction.user.id);
   },
   async prefixExecute(message) {
-    if (!message.guild) return message.reply("❄️ Este comando só funciona em um servidor.");
-    return startGame(message.channel, content => message.reply(content));
+    if (!message.guild) {
+      const language = await getUserLanguage(message.author.id);
+      return message.reply(getMessage(language, "guild"));
+    }
+    return startGame(message.channel, content => message.reply(content), message.author.id);
   },
   handleMessage
 };
