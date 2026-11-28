@@ -31,6 +31,14 @@ Todos os demais comandos e fluxos ainda precisam ser auditados individualmente, 
 ## Validação
 Para cada lote: conferir os 25 códigos de idioma, placeholders, imports/caminhos, sintaxe JS e cobertura de respostas. Testes de runtime/Discord e deploy Render só podem ser marcados como concluídos quando realmente executados e confirmados.
 
+## Histórico desta etapa — expedição
+- Criado `systems/idioma/locales/expedicao.js` com traduções manuais para os 25 idiomas e chaves de plano, rotas, recompensa, erro, cooldown e uso do prefixo.
+- Integrado `commands/expedicao.js` para localizar respostas Slash e prefixo, título, descrição, rotas, recompensa bônus/normal e mensagens compartilhadas de `runPlanCommand`.
+- Preservados plano mínimo Ultra, cooldown de 48 horas, faixas de recompensa, chances de bônus, aliases e lógica de carteira/ledger.
+- Descrição, opções e escolhas do Slash Command ainda permanecem em português e seguem registradas como pendência de auditoria.
+- Validação estática de sintaxe dos dois arquivos concluída; não houve teste de runtime no Discord nem confirmação de deploy Render.
+- Commits: `d81fbc0` e `96a7047`.
+
 ## Histórico desta etapa — enigma
 - Criado `systems/idioma/locales/enigma.js` com traduções manuais para os 25 idiomas e chaves de estado do fluxo.
 - Integrado `commands/enigma.js` para usar a preferência individual do usuário em Slash, prefixo, início, timeout, erro e anúncio do vencedor.
